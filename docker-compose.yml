@@ -13,7 +13,6 @@ volumes:
   
 networks:
   services:
-    external: true
 
 services:
   app:
@@ -28,6 +27,8 @@ services:
     volumes:
       - app_data:/data
       - letsencrypt:/etc/letsencrypt
+    networks:
+      - services
   redis:
     image: redis/redis-stack-server:latest
     container_name: redis
