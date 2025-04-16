@@ -1,0 +1,23 @@
+{
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/ui/src",
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/ui/src",
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "standard",
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}/backend",
+    "python.testing.pytestArgs": [
+        "-vvv",
+        "--rootdir",
+        "${workspaceFolder}/backend",
+    ],
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.venv": true
+    },
+}
