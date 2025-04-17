@@ -1,3 +1,5 @@
+from chainlit.types import CommandDict
+
 scientist = {
     "id": "Scientist",
     "icon": "microscope",
@@ -54,3 +56,14 @@ researcher = {
     "button": True,
     "persistent": True,
 }
+
+COMMANDS = [
+    CommandDict(**researcher),
+    CommandDict(**crawler),
+    CommandDict(**finance),
+    CommandDict(**youtube),
+    CommandDict(**wikipedia),
+    CommandDict(**medic),
+    CommandDict(**reasoning),
+    CommandDict(**scientist),
+]

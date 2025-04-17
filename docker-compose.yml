@@ -1,13 +1,9 @@
 volumes:
-  sqlite:
   postgres:
   redis:
   storage_context:
-  memory_context:
   knowledge_base:
   vector_db:
-  ollama:
-  fastembed:
   app_data:
   letsencrypt:
   
@@ -15,124 +11,11 @@ networks:
   services:
 
 services:
-  app:
-    image: 'jc21/nginx-proxy-manager:latest'
-    container_name: app
-    hostname: app
-    restart: always
-    ports:
-      - '80:80' # Public HTTP Port
-      - '443:443' # Public HTTPS Port
-      - '81:81' # Admin Web Port
-    volumes:
-      - app_data:/data
-      - letsencrypt:/etc/letsencrypt
-    networks:
-      - services
-  redis:
-    image: redis/redis-stack-server:latest
-    container_name: redis
-    hostname: redis
-    restart: always
-    expose:
-      - ${REDIS_PORT:-6379}
-    volumes:
-      - redis:/data
-    environment:
-      REDIS_ARGS: --requirepass ${REDIS_PASSWORD}
-      TZ: ${TZ}
-    networks:
-      - services
-  localstack:
-    image: localstack/localstack:latest
-    container_name: localstack
-    hostname: localstack
-    restart: always
-    environment:
-      SERVICES: s3
-    ports:
-      - 4566:4566
-    volumes:
-      - ./localstack-script.sh:/etc/localstack/init/ready.d/script.sh
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - services
-  postgres:
-    image: postgres:17-alpine
-    container_name: postgres
-    hostname: postgres
-    restart: always
-    expose:
-      - 5432
-    volumes:
-      - postgres:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=S3cret
-      - POSTGRES_USER=chatbot_user
-      - POSTGRES_DB=chatbot_db
-    networks:
-      - services
-  prisma:
-    container_name: prisma
-    hostname: prisma
-    image: prisma
-    build:
-      context: ./ui
-      target: prisma
-  webui:
-    container_name: webui
-    hostname: webui
-    image: webui
-    restart: always
-    build:
-      context: ./ui
-      target: webui
-      args:
-        DATABASE_URL: postgresql://chatbot_user:S3cret@postgres:5432/chatbot_db
-    ports:
-      - 9000:9000
-      - 7777:7777
-      - 7000:3000
-    environment:
-      TZ: ${TZ}
-      OLLAMA_URL: ${OLLAMA_URL}
-      CHATBOT_MODEL: ${CHATBOT_MODEL}
-      TOOL_MODEL: ${TOOL_MODEL}
-      VISION_MODEL: ${VISION_MODEL}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
-      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET}
-      AGNO_TELEMETRY: false
-      #DATABASE_URL: postgresql://chatbot_user:S3cret@postgres:5432/chatbot_db
-      AGNO_API_KEY: ${AGNO_API_KEY}
-      CHAINLIT_URL: ${CHAINLIT_URL}
-      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID}
-      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET}
-      FASTEMBED_CACHE_PATH: /opt/fastembed
-      OAUTH_PROMPT: ${OAUTH_PROMPT:-consent}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL}
-      LITERAL_API_KEY: ${LITERAL_API_KEY}
-    volumes:
-      - ./ui/src:/code
-      - ./ui/src/public:/public
-      - storage_context:/opt/storage
-      - memory_context:/opt/memory
-      - knowledge_base:/opt/knowledge
-      - vector_db:/opt/vector_db
-      - fastembed:/opt/fastembed
-    networks:
-      - services
-    depends_on:
-      - postgres
-      - localstack
-      - redis
   byparr:
     image: ghcr.io/thephaseless/byparr:latest
     container_name: byparr
     hostname: byparr
     restart: always
-    expose:
-      - 8191
     environment:
       TZ: ${TZ}
     networks:
@@ -160,13 +43,122 @@ services:
     image: amir20/dozzle:latest
     container_name: dozzle
     hostname: dozzle
+    restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - 9876:8080
+      - ./dozzle/users.yml:/data/users.yml
     environment:
       DOZZLE_ENABLE_ACTIONS: true
       DOZZLE_NO_ANALYTICS: true
-    restart: always
+      DOZZLE_AUTH_PROVIDER: simple
+    ports:
+      - 9876:8080
     networks:
       - services
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: app
+    hostname: app
+    restart: always
+    environment:
+      TZ: ${TZ}
+    ports:
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+      - '81:81' # Admin Web Port
+    volumes:
+      - app_data:/data
+      - letsencrypt:/etc/letsencrypt
+    networks:
+      - services
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: redis
+    hostname: redis
+    restart: always
+    expose:
+      - ${REDIS_PORT:-6379}
+    volumes:
+      - redis:/data
+    environment:
+      TZ: ${TZ}
+      REDIS_ARGS: --requirepass ${REDIS_PASSWORD:-12345678}
+    networks:
+      - services
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    hostname: localstack
+    restart: always
+    environment:
+      TZ: ${TZ}
+      SERVICES: s3
+    volumes:
+      - ./localstack-script.sh:/etc/localstack/init/ready.d/script.sh
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - services
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    hostname: postgres
+    restart: always
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=S3cret
+      - POSTGRES_USER=chatbot_user
+      - POSTGRES_DB=chatbot_db
+    networks:
+      - services
+  prisma:
+    container_name: prisma
+    hostname: prisma
+    image: prisma
+    build:
+      context: ./
+      target: prisma
+  webui:
+    container_name: webui
+    hostname: webui
+    image: webui
+    restart: always
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      target: webui
+    ports:
+      - 9000:9000
+    environment:
+      TZ: ${TZ}
+      OLLAMA_URL: ${OLLAMA_URL}
+      CHATBOT_MODEL: ${CHATBOT_MODEL}
+      TOOL_MODEL: ${TOOL_MODEL}
+      VISION_MODEL: ${VISION_MODEL}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET}
+      AGNO_TELEMETRY: ${AGNO_TELEMETRY:-false}
+      DATABASE_URL: postgresql://chatbot_user:S3cret@postgres:5432/chatbot_db
+      AGNO_API_KEY: ${AGNO_API_KEY}
+      CHAINLIT_URL: ${CHAINLIT_URL}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID}
+      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET}
+      OAUTH_PROMPT: ${OAUTH_PROMPT:-consent}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL}
+      LITERAL_API_KEY: ${LITERAL_API_KEY}
+      REDIS_USERNAME: default
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-12345678}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_DB: ${REDIS_DB:-0}
+    volumes:
+      - ./src:/code
+      - knowledge_base:/opt/knowledge
+      - vector_db:/opt/vector_db
+    networks:
+      - services
+    depends_on:
+      - postgres
+      - localstack
+      - redis

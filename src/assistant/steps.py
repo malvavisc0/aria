@@ -6,6 +6,7 @@ import chainlit as cl
 from agno.media import Image
 from agno.models.message import Message
 from agno.run.response import RunResponse
+
 from assistant.agents import build, setup_model
 
 
@@ -79,7 +80,7 @@ async def run_agent(
 
     agent = build(kind=kind, thread_id=thread_id, llm=llm, debug_mode=True)
     if agent.knowledge:
-        await cl.make_async(agent.knowledge.load)(recreate=True)
+        await cl.make_async(agent.knowledge.load)(recreate=True, upsert=True)
 
     message = Message(role="user", content=content, images=images)
     """

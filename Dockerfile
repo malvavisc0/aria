@@ -17,4 +17,4 @@ ENV PYTHONPATH="${PYTHONPATH}:/code/"
 WORKDIR /code
 RUN chainlit init
 EXPOSE 9000
-ENTRYPOINT ["chainlit", "run", "app.py", "--watch", "--headless", "--debug", "--host", "0.0.0.0", "--port", "9000"]
+ENTRYPOINT ["chainlit", "run", "app.py", "--watch", "--headless", "--host", "0.0.0.0", "--port", "9000"]

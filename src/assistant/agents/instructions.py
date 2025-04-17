@@ -21,7 +21,7 @@ CHATTER = [
     "Stay focused on the user's needs while maintaining a natural flow in dialogue.",
 ]
 
-EINSTEIN = [
+REASONING = [
     "Upon receiving input, first ensure you fully understand the information provided.",
     "Clearly articulate the user's intent behind their request or question.",
     "If any aspect of the input is unclear or ambiguous, explicitly ask for clarification to ensure accurate analysis.",

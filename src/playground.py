@@ -1,5 +1,6 @@
 from agno.playground.playground import Playground
 from agno.playground.serve import serve_playground_app
+
 from assistant.agents import build_group
 
 types = [

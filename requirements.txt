@@ -15,6 +15,7 @@ ollama
 platformdirs
 pypdf
 random-word
+redis
 requests
 sqlalchemy
 wikipedia

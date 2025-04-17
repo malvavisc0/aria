@@ -5,6 +5,7 @@ from agno.knowledge.combined import CombinedKnowledgeBase
 from agno.knowledge.pdf import PDFKnowledgeBase
 from agno.knowledge.text import TextKnowledgeBase
 from agno.vectordb.lancedb.lance_db import LanceDb
+
 from assistant.models import embedder
 
 
