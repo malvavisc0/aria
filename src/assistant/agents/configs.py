@@ -20,6 +20,20 @@ class AgentConfig(BaseModel):
     markdown: Annotated[bool, Field(strict=True, default=False)]
 
 
+class ChatterAgentConfig(AgentConfig):
+    role = roles.CHATTER
+    goal = goals.CHATTER
+    description = descriptions.CHATTER
+    instructions = instructions.CHATTER
+    
+
+agents = {
+        "chatter": ChatterAgentConfig(reasoning=False),
+       
+        
+        
+}
+
 def build(
     kind: Literal[
         "chatter",
@@ -39,6 +53,9 @@ def build(
     Parameters:
      kind: The kind of agent to build.
     """
+
+    return agentts.get(kind)
+    
     if kind == "chatter":
         return AgentConfig(
             role=roles.CHATTER,
