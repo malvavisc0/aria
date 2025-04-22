@@ -33,7 +33,7 @@ def completion(
         return OpenRouter(id=OPENROUTER_MODEL, name="Aria")
     return Ollama(
         id=model,
-        async_client=OllamaClient(host=OLLAMA_URL, timeout=360),
+        async_client=OllamaClient(host=OLLAMA_URL, timeout=600),
         options={
             "temperature": temperature,
             "num_ctx": 8192,
