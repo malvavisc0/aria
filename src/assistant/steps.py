@@ -8,6 +8,7 @@ from agno.models.message import Message
 from agno.run.response import RunResponse
 
 from assistant.agents import build, setup_model
+from assistant.agents.knowledge import get_knowledge_base
 
 
 @cl.step(type="tool")
@@ -29,7 +30,7 @@ async def process_elements(message: cl.Message, thread_id: str) -> List[Image]:
     """
     if not message.elements:
         return []
-
+    knowledge = get_knowledge_base(thread_id=thread_id)
     images = []
     for element in message.elements:
         if not element.path:
@@ -40,14 +41,18 @@ async def process_elements(message: cl.Message, thread_id: str) -> List[Image]:
         shutil.copyfile(element.path, destination)
         if element.type == "image":
             images.append(Image(filepath=element.path))
+        else:
+            await knowledge.aload(recreate=True, upsert=True)
+            
     return images
 
 
-@cl.step(type="run")
+@cl.step(type="llm")
 async def run_agent(
     kind: str,
     content: str,
     thread_id: str,
+    user_id: str,
     images: Optional[List[Image]] = [],
 ):
     """
@@ -77,18 +82,18 @@ async def run_agent(
         has_images = True
 
     llm = setup_model(kind=kind, has_images=has_images)
-
-    agent = build(kind=kind, thread_id=thread_id, llm=llm, debug_mode=True)
-    if agent.knowledge:
-        await cl.make_async(agent.knowledge.load)(recreate=True, upsert=True)
+    knowledge = get_knowledge_base(thread_id=thread_id)
+    agent = await build(
+        kind=kind,
+        thread_id=thread_id,
+        llm=llm,
+        knowledge=knowledge,
+        debug_mode=True,
+        user_id=user_id,
+    )
 
     message = Message(role="user", content=content, images=images)
-    """
-    aresponse: AsyncIterator[RunResponse] = await agent.arun(message=message, stream=True)
-    async for chunk in aresponse:
-        await msg.stream_token(token=str(chunk.content))
-    """
-    response = agent.run(message=message, stream=True)
-    for chunk in response:
-        await msg.stream_token(token=str(chunk.content))
-    await msg.send()
+    response = await agent.arun(message=message, stream=True)
+    async for chunk in response:
+        if chunk.content:
+            await msg.stream_token(token=str(chunk.content))

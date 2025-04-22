@@ -4,6 +4,7 @@ from typing import Dict, Optional
 import chainlit as cl
 from agno.utils.log import log_debug
 from chainlit.types import ThreadDict
+from mcp import ClientSession
 
 from assistant.steps import process_elements, run_agent
 from commands import COMMANDS
@@ -35,6 +36,35 @@ else:
             return None
 
 
+@cl.on_mcp_connect
+async def on_mcp(connection, session: ClientSession):
+    """Called when an MCP connection is established"""
+    log_debug(f"Connected to MCP: {connection.name} [{connection.url}]")
+    # List available tools
+    result = await session.list_tools()
+
+    # Process tool metadata
+    tools = [
+        {
+            "name": t.name,
+            "description": t.description,
+            "input_schema": t.inputSchema,
+        }
+        for t in result.tools
+    ]
+
+    # Store tools for later use
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    mcp_tools[connection.name] = tools
+    cl.user_session.set("mcp_tools", mcp_tools)
+
+
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """Called when an MCP connection is terminated"""
+    log_debug(f"Disconnected from MCP: {name}")
+
+
 @cl.on_chat_resume
 async def on_chat_resume(thread: ThreadDict):
     log_debug(f"Resuming thread: {thread.get('id')}")
@@ -56,6 +86,7 @@ async def on_message(message: cl.Message):
     await run_agent(
         kind=agent,
         content=message.content,
+        user_id=cl.user_session.get("id"),
         thread_id=message.thread_id,
         images=images,
     )

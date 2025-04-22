@@ -17,17 +17,11 @@ medic = {
 reasoning = {
     "id": "Reasoning",
     "icon": "brain",
-    "description": "Reasoing about anything with an AI",
+    "description": "Enable reasoning mode",
     "button": True,
     "persistent": True,
 }
-crawler = {
-    "id": "Crawler",
-    "icon": "book-open-text",
-    "description": "Ask any question about a website",
-    "button": False,
-    "persistent": False,
-}
+
 youtube = {
     "id": "Youtube",
     "icon": "youtube",
@@ -38,7 +32,7 @@ youtube = {
 wikipedia = {
     "id": "Wikipedia",
     "icon": "binoculars",
-    "description": "Get information about anything",
+    "description": "Find information about anything on Wikipedia",
     "button": True,
     "persistent": True,
 }
@@ -46,24 +40,23 @@ finance = {
     "id": "Finance",
     "icon": "chart-candlestick",
     "description": "Access stock, news, and financial data",
-    "button": True,
-    "persistent": True,
+    "button": False,
+    "persistent": False,
 }
 researcher = {
     "id": "Researcher",
     "icon": "atom",
-    "description": "Research a topic using AI",
+    "description": "Research assistant agent",
     "button": True,
     "persistent": True,
 }
 
 COMMANDS = [
-    CommandDict(**researcher),
-    CommandDict(**crawler),
+    CommandDict(**reasoning),
     CommandDict(**finance),
     CommandDict(**youtube),
     CommandDict(**wikipedia),
     CommandDict(**medic),
-    CommandDict(**reasoning),
     CommandDict(**scientist),
+    CommandDict(**researcher),
 ]

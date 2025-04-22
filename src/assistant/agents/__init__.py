@@ -14,7 +14,6 @@ from agno.tools.function import Function
 from agno.tools.toolkit import Toolkit
 
 from assistant.agents.configs import build as build_config
-from assistant.agents.knowledge import get_knowledge_base
 from assistant.models import CHATBOT_MODEL, TOOL_MODEL, VISION_MODEL, completion
 
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
@@ -26,8 +25,8 @@ REDIS_DB = environ.get("REDIS_DB", 0)
 
 def _get_agent(
     session_id: str,
-    name: str,
     model: Model,
+    user_id: Optional[str] = None,
     description: Optional[str] = None,
     role: Optional[str] = None,
     goal: Optional[str] = None,
@@ -43,8 +42,8 @@ def _get_agent(
 ) -> Agent:
     return Agent(
         session_id=session_id,
-        name=name,
         model=model,
+        user_id=user_id,
         tools=tools,
         description=description,
         instructions=instructions,
@@ -57,6 +56,7 @@ def _get_agent(
         knowledge=knowledge,
         search_knowledge=search_knowledge,
         memory=memory,
+        enable_agentic_memory=True if memory else False,
         enable_user_memories=True if memory else False,
         enable_session_summaries=True if memory else False,
         markdown=markdown,
@@ -68,7 +68,7 @@ def _get_agent(
 def _get_memory(thread_id: str, model: Model) -> Memory:
     memory = Memory(
         db=RedisMemoryDb(
-            prefix="memory",
+            prefix=thread_id,
             host=REDIS_HOST,
             port=REDIS_PORT,
             password=REDIS_PASSWORD,
@@ -82,7 +82,7 @@ def _get_memory(thread_id: str, model: Model) -> Memory:
 
 def _get_storage(thread_id: str) -> RedisStorage:
     return RedisStorage(
-        prefix="storage",
+        prefix=thread_id,
         host=REDIS_HOST,
         port=REDIS_PORT,
         password=REDIS_PASSWORD,
@@ -90,12 +90,13 @@ def _get_storage(thread_id: str) -> RedisStorage:
     )
 
 
-def build(
+async def build(
     llm: Model,
     kind: Optional[str] = "chatter",
+    user_id: Optional[str] = None,
     thread_id: Optional[str] = None,
     debug_mode: Optional[bool] = False,
-    search_knowledge: Optional[bool] = False,
+    knowledge: Optional[AgentKnowledge] = None,
 ) -> Agent:
     memory = None
     storage = None
@@ -103,14 +104,12 @@ def build(
     if thread_id:
         memory = _get_memory(thread_id=thread_id, model=llm)
         storage = _get_storage(thread_id=thread_id)
-        knowledge = get_knowledge_base(thread_id=thread_id)
 
     config = build_config(kind=kind)
 
     return _get_agent(
         session_id=thread_id,
         model=llm,
-        name=config.name,
         role=config.role,
         goal=config.goal,
         description=config.description,
@@ -123,19 +122,20 @@ def build(
         search_knowledge=True if knowledge else False,
         markdown=config.markdown,
         debug_mode=debug_mode,
+        user_id=user_id,
     )
 
 
 def setup_model(kind: str, has_images: bool = False):
     model = TOOL_MODEL
-    temperature = 0.5
+    temperature = 0.25
     if kind == "vision" or has_images:
         model = VISION_MODEL
         kind = "vision"
-        temperature = 0.5
-    elif kind in ["chatter", "reasoning", "researcher"]:
+        temperature = 0.35
+    elif kind in ["chatter", "reasoning"]:
         model = CHATBOT_MODEL
-        temperature = 0.65
+        temperature = 0.7
     llm = completion(model=model, temperature=temperature)
     return llm
 
