@@ -87,13 +87,14 @@ async def run_agent(
     7. Runs the agent asynchronously and streams the response.
     8. Sends the final message.
     """
-    msg = cl.Message(content="")
+    ui_msg = cl.Message(content="")
 
     has_images = False
     if images and len(images) > 0:
         kind = "vision"
         has_images = True
 
+    user_message = Message(role="user", content=content, images=images)
     llm = setup_model(kind=kind, has_images=has_images)
     knowledge = get_knowledge_base(thread_id=thread_id)
     agent = await build(
@@ -105,10 +106,9 @@ async def run_agent(
         user_id=user_id,
     )
 
-    message = Message(role="user", content=content, images=images)
-    response = await agent.arun(message=message, stream=True)
+    response = await agent.arun(message=user_message, stream=True)
     async for chunk in response:
         if chunk.content:
-            await msg.stream_token(token=str(chunk.content))
+            await ui_msg.stream_token(token=str(chunk.content))
 
-    await msg.send()
+    await ui_msg.send()

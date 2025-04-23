@@ -1,4 +1,4 @@
-agno
+agno==1.4.1
 aiohttp
 arxiv
 asyncpg
@@ -7,6 +7,7 @@ fastembed
 lancedb
 loguru
 markitdown
+mcp
 ollama
 openai
 platformdirs

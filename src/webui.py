@@ -74,18 +74,15 @@ async def on_mcp(connection, session: ClientSession):
     logger.info(f"Connected to MCP: {connection.name} [{connection.url}]")
     # List available tools
     result = await session.list_tools()
-
-    # Process tool metadata
     tools = [
         {
             "name": t.name,
             "description": t.description,
-            "input_schema": t.inputSchema,
+            "parameters": t.inputSchema,
         }
         for t in result.tools
     ]
 
-    # Store tools for later use
     mcp_tools = cl.user_session.get("mcp_tools", {})
     mcp_tools[connection.name] = tools
     cl.user_session.set("mcp_tools", mcp_tools)
@@ -115,8 +112,8 @@ async def on_chat_start():
 async def on_message(message: cl.Message):
     """Called when a message is received"""
     logger.info("Received message")
-    agent = "chatter" if not message.command else message.command.lower()
 
+    agent = "chatter" if not message.command else message.command.lower()
     images = []
     if len(message.elements) > 0:
         logger.info("Processing elements")
