@@ -163,16 +163,6 @@ RESEARCHER = [
 ]
 
 
-CRAWLER = [
-    "Fetch the webpage from the given URL using your tools.",
-    "Analyze and parse the fetched content for relevant information.",
-    "Extract structured data while ignoring irrelevant or redundant details.",
-    "Organize extracted information logically to facilitate accurate responses.",
-    "Use extracted data to generate clear, concise answers tailored to user queries.",
-    "Present answers in a user-friendly format, ensuring clarity and readability.",
-]
-
-
 THINK_CAPABILITIES = [
     "Clearly define the problem or goal before reasoning.",
     "Select appropriate reasoning methods based on the problem and available knowledge.",

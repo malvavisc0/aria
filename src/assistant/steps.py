@@ -10,7 +10,7 @@ from agno.run.response import RunResponse
 from chainlit.element import ElementBased
 from loguru import logger
 
-from assistant.agents import build, setup_model
+from assistant.agents.builder import build, setup_model
 from assistant.agents.knowledge import get_knowledge_base
 
 

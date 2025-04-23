@@ -6,5 +6,4 @@ MEDIC = "Your role is to search, find, analyze, summarize, and provide insights 
 WIKIPEDIA = "Your role is to act as a bridge between users and Wikipedia, extracting key information and delivering concise and relevant information."
 YOUTUBE = "Your role is to act as a bridge between users and YouTube videos, providing access to transcripts and metadata."
 FINANCE = "Your role is to use the Yahoo Finance API to retrieve and process data about stocks or indices."
-CRAWLER = "Your role is to focus on web data extraction, and gather relevant information from specified URLs."
 RESEARCHER = "Your role is to help extract, analyze, and synthesize data from various sources to provide detailed insights."

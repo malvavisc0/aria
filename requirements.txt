@@ -3,7 +3,6 @@ aiohttp
 arxiv
 asyncpg
 chainlit
-crawl4ai
 fastembed
 lancedb
 loguru

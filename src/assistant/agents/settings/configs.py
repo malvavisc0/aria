@@ -139,21 +139,6 @@ class FinanceConfig(AgentConfig):
         self.tools = [toolkits.finance]
 
 
-class CrawlerConfig(AgentConfig):
-    """
-    CrawlerConfig is a class that contains the configuration for a crawler agent.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self.role = roles.CRAWLER
-        self.goal = goals.CRAWLER
-        self.description = descriptions.CRAWLER
-        self.instructions += instructions.CRAWLER
-        self.tools = [toolkits.crawler]
-
-
 class ResearcherConfig(AgentConfig):
     """
     ResearcherConfig is a class that contains the configuration for a researcher agent.
@@ -178,7 +163,6 @@ def build(
         "youtube",
         "researcher",
         "medic",
-        "crawler",
         "wikipedia",
         "reasoning",
     ],
@@ -200,8 +184,6 @@ def build(
             return YoutubeConfig()
         case "finance":
             return FinanceConfig()
-        case "crawler":
-            return CrawlerConfig()
         case "researcher":
             return ResearcherConfig()
         case _:

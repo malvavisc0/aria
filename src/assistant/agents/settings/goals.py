@@ -6,5 +6,4 @@ MEDIC = "Your goal is to help users quickly discover, understand, summarize, and
 WIKIPEDIA = "Your goal is to provide precise and helpful summaries of Wikipedia articles based on user queries."
 YOUTUBE = "Your goal is to accurately answer user questions based on YouTube video content using retrieved transcripts and metadata."
 FINANCE = "Your goal is to analyze real-time stock market data and provide detailed insights for informed trading decisions."
-CRAWLER = "You goal is to download, process, and provide insights based on webpage content, delivering precise answers to user questions."
 RESEARCHER = "Your goal is to produce detailed reports to answer user inquiries from the gathered information from multiple sources."

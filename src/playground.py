@@ -1,17 +1,15 @@
 from agno.playground.playground import Playground
 from agno.playground.serve import serve_playground_app
 
-from assistant.agents import build_group
+from assistant.agents.builder import build_group
 
 types = [
     "chatter",
-    "vision",
     "scientist",
     "finance",
     "youtube",
     "researcher",
     "medic",
-    "crawler",
     "wikipedia",
     "reasoning",
 ]
