@@ -2,8 +2,8 @@ from os import environ
 from typing import Dict, Optional
 
 import chainlit as cl
-from agno.utils.log import log_debug
 from chainlit.types import ThreadDict
+from loguru import logger
 from mcp import ClientSession
 
 from assistant.steps import process_elements, run_agent
@@ -21,7 +21,7 @@ if OAUTH_GOOGLE_CLIENT_ID and OAUTH_GOOGLE_CLIENT_SECRET:
         raw_user_data: Dict[str, str],
         default_user: cl.User,
     ) -> Optional[cl.User]:
-        log_debug(f"OAuth callback for {default_user.display_name}")
+        logger.info(f"OAuth callback for {default_user.display_name}")
         return default_user
 
 else:
@@ -70,7 +70,7 @@ async def set_starters():
 @cl.on_mcp_connect
 async def on_mcp(connection, session: ClientSession):
     """Called when an MCP connection is established"""
-    log_debug(f"Connected to MCP: {connection.name} [{connection.url}]")
+    logger.info(f"Connected to MCP: {connection.name} [{connection.url}]")
     # List available tools
     result = await session.list_tools()
 
@@ -93,27 +93,35 @@ async def on_mcp(connection, session: ClientSession):
 @cl.on_mcp_disconnect
 async def on_mcp_disconnect(name: str, session: ClientSession):
     """Called when an MCP connection is terminated"""
-    log_debug(f"Disconnected from MCP: {name}")
+    logger.info(f"Disconnected from MCP: {name}")
 
 
 @cl.on_chat_resume
 async def on_chat_resume(thread: ThreadDict):
-    log_debug(f"Resuming thread: {thread.get('id')}")
+    """Called when a thread/session is resumed"""
+    logger.info(f"Resuming thread: {thread.get('id')}")
     await cl.context.emitter.set_commands(COMMANDS)
 
 
 @cl.on_chat_start
 async def on_chat_start():
-    log_debug("Starting chat")
+    """Called when a thread/session is started"""
+    logger.info("Starting chat")
     await cl.context.emitter.set_commands(COMMANDS)
 
 
 @cl.on_message
 async def on_message(message: cl.Message):
+    """Called when a message is received"""
+    logger.info("Received message")
     agent = "chatter" if not message.command else message.command.lower()
 
-    images = await process_elements(message=message, thread_id=message.thread_id)
+    images = []
+    if len(message.elements) > 0:
+        logger.info("Processing elements")
+        await process_elements(elements=message.elements, thread_id=message.thread_id)
 
+    """
     await run_agent(
         kind=agent,
         content=message.content,
@@ -121,3 +129,4 @@ async def on_message(message: cl.Message):
         thread_id=message.thread_id,
         images=images,
     )
+    """

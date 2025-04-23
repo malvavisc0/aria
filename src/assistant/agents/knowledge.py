@@ -10,20 +10,16 @@ from assistant.models import embedder
 
 
 def get_knowledge_base(thread_id: str) -> CombinedKnowledgeBase:
-    embeddings = embedder()
     lancedb_uri = f"/opt/vector_db/{thread_id}"
-    pdfs_path = f"/opt/knowledge/{thread_id}/pdfs/"
-    texts_path = f"/opt/knowledge/{thread_id}/texts/"
+    files_path = f"/opt/knowledge/{thread_id}"
 
-    if not os.path.exists(lancedb_uri):
-        os.makedirs(lancedb_uri)
-    if not os.path.exists(pdfs_path):
-        os.makedirs(pdfs_path)
-    if not os.path.exists(texts_path):
-        os.makedirs(texts_path)
+    os.makedirs(lancedb_uri, exist_ok=True)
+    os.makedirs(files_path, exist_ok=True)
+
+    embeddings = embedder()
 
     pdf_knowledge_base = PDFKnowledgeBase(
-        path=pdfs_path,
+        path=files_path,
         vector_db=LanceDb(
             table_name="documents_pdf", uri=lancedb_uri, embedder=embeddings
         ),
@@ -31,7 +27,7 @@ def get_knowledge_base(thread_id: str) -> CombinedKnowledgeBase:
     )
 
     text_knowledge_base = TextKnowledgeBase(
-        path=texts_path,
+        path=files_path,
         vector_db=LanceDb(
             table_name="documents_text", uri=lancedb_uri, embedder=embeddings
         ),

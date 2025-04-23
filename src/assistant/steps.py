@@ -1,48 +1,59 @@
 import os
 import shutil
+from mimetypes import guess_type
 from typing import AsyncIterator, List, Optional
 
 import chainlit as cl
 from agno.media import Image
 from agno.models.message import Message
 from agno.run.response import RunResponse
+from chainlit.element import ElementBased
+from loguru import logger
 
 from assistant.agents import build, setup_model
 from assistant.agents.knowledge import get_knowledge_base
 
 
 @cl.step(type="tool")
-async def process_elements(message: cl.Message, thread_id: str) -> List[Image]:
+async def process_elements(elements: List[ElementBased], thread_id: str) -> List[Image]:
     """
-    Processes elements from a message and returns a list of images.
+    Process a list of elements and handle them based on their type.
 
     Parameters:
-     message (cl.Message): The message containing elements to process.
-     thread_id (str): The ID of the thread associated with the message.
+     elements (List[ElementBased]): A list of elements to process.
+     thread_id (str): The ID of the thread associated with the processing.
 
     Returns:
-     List[Image]: A list of Image objects representing the processed images.
-
-    This function checks if the message contains elements. If not, it returns an empty list.
-    For each element, it checks if the element has a valid path. If not, it skips to the next element.
-    It creates the necessary directory structure if it doesn't exist and copies the file to the destination.
-    If the element type is "image", it appends an Image object to the list of images to be returned.
+     List[Image]: A list of images extracted from the elements.
     """
-    if not message.elements:
-        return []
     knowledge = get_knowledge_base(thread_id=thread_id)
     images = []
-    for element in message.elements:
-        if not element.path:
-            continue
-        os.makedirs(f"/opt/knowledge/{thread_id}/{element.type}", exist_ok=True)
+    files = []
+    for element in elements:
         file_name = os.path.basename(element.path)
-        destination = f"/opt/knowledge/{thread_id}/{element.type}/{file_name}"
-        shutil.copyfile(element.path, destination)
-        if element.type == "image":
+        element_type, encoding = guess_type(element.path)
+        if element_type in ["image/jpeg", "image/png"]:
             images.append(Image(filepath=element.path))
-        else:
-            await knowledge.aload(recreate=True, upsert=True)
+            logger.info(f"Added {element.path} to images")
+        elif element_type in ["application/pdf", "text/plain"]:
+            destination = f"/opt/knowledge/{thread_id}/{file_name}"
+            shutil.copyfile(element.path, destination)
+            logger.info(f"Copied {element.path} to {destination}")
+            if element_type == "application/pdf":
+                files.append(cl.Pdf(name=element.name, path=destination))
+            elif element_type == "text/plain":
+                files.append(cl.Text(name=element.name, path=destination))
+
+    if len(files) > 0:
+        await cl.Message(
+            content="Loading file(s) attached to the Knowledge Base...", elements=files
+        ).send()
+        logger.info("Loading file(s) attached to the Knowledge Base")
+        # knowledge.aload(recreate=True, upsert=True)
+        await cl.make_async(knowledge.load)(upsert=True)
+        await cl.Message(
+            content="File(s) loaded to the Knowledge Base:", elements=files
+        ).send()
 
     return images
 
