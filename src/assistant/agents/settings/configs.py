@@ -2,7 +2,8 @@ from typing import Annotated, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from assistant.agents import descriptions, goals, instructions, roles, toolkits
+from assistant.agents import toolkits
+from assistant.agents.settings import descriptions, goals, instructions, roles
 
 
 class AgentConfig(BaseModel):

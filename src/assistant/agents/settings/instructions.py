@@ -188,5 +188,5 @@ THINK_CAPABILITIES = [
     "Explore alternative solution paths, even if not implemented, to broaden understanding.",
     "Prioritize tasks that directly address identified knowledge gaps or biases.",
     "Recognize when to escalate a problem to a human expert due to uncertainty or complexity.",
-    "Continuously learn from interactions and feedback to improve reasoning accuracy and efficiency."
+    "Continuously learn from interactions and feedback to improve reasoning accuracy and efficiency.",
 ]

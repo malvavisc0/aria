@@ -13,7 +13,7 @@ from agno.storage.redis import RedisStorage
 from agno.tools.function import Function
 from agno.tools.toolkit import Toolkit
 
-from assistant.agents.configs import build as build_config
+from assistant.agents.settings.configs import build as build_config
 from assistant.models import CHATBOT_MODEL, TOOL_MODEL, VISION_MODEL, completion
 
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
