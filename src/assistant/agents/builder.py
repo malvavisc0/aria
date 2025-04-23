@@ -13,13 +13,13 @@ from agno.storage.redis import RedisStorage
 from agno.tools.function import Function
 from agno.tools.toolkit import Toolkit
 
-from assistant.agents.settings.configs import build as build_config
-from assistant.models import (
+from assistant.agents.models import (
     CHATBOT_MODEL,
     TOOL_MODEL,
     VISION_MODEL,
     completion,
 )
+from assistant.agents.settings.configs import build as build_config
 
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
 REDIS_PASSWORD = environ.get("REDIS_PASSWORD", "12345678")
@@ -70,7 +70,8 @@ def _get_agent(
     )
 
 
-def _get_memory(thread_id: str, model: Model) -> Memory:
+def _get_memory(thread_id: str, model_id: str = TOOL_MODEL) -> Memory:
+    model = completion(model=model_id, temperature=0.0)
     memory = Memory(
         db=RedisMemoryDb(
             prefix=thread_id,
@@ -107,7 +108,7 @@ async def build(
     storage = None
     knowledge = None
     if thread_id:
-        memory = _get_memory(thread_id=thread_id, model=llm)
+        memory = _get_memory(thread_id=thread_id)
         storage = _get_storage(thread_id=thread_id)
 
     config = build_config(kind=kind)
@@ -133,14 +134,14 @@ async def build(
 
 def setup_model(kind: str, has_images: bool = False):
     model = TOOL_MODEL
-    temperature = 0.25
+    temperature = 0.2
     if kind == "vision" or has_images:
         model = VISION_MODEL
         kind = "vision"
-        temperature = 0.35
+        temperature = 0.4
     elif kind in ["chatter", "reasoning"]:
         model = CHATBOT_MODEL
-        temperature = 0.7
+        temperature = 0.6
     llm = completion(model=model, temperature=temperature)
     return llm
 

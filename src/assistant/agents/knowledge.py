@@ -6,7 +6,7 @@ from agno.knowledge.pdf import PDFKnowledgeBase
 from agno.knowledge.text import TextKnowledgeBase
 from agno.vectordb.lancedb.lance_db import LanceDb
 
-from assistant.models import embedder
+from assistant.agents.models import embedder
 
 
 def get_knowledge_base(thread_id: str) -> CombinedKnowledgeBase:
