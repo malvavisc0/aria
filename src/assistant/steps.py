@@ -95,6 +95,10 @@ async def run_agent(
         has_images = True
 
     llm = setup_model(kind=kind, has_images=has_images)
+    from copy import deepcopy
+
+    logger.info(f"llm: {llm}")
+    deep_copy = deepcopy(llm)
     knowledge = get_knowledge_base(thread_id=thread_id)
     agent = await build(
         kind=kind,

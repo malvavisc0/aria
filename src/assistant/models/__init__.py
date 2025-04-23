@@ -3,10 +3,10 @@ from typing import Optional
 
 from agno.embedder.base import Embedder
 from agno.embedder.fastembed import FastEmbedEmbedder
+from agno.embedder.ollama import OllamaEmbedder
 from agno.models.base import Model
 from agno.models.ollama import Ollama
 from agno.models.openrouter.openrouter import OpenRouter
-from ollama import AsyncClient as OllamaClient
 
 OLLAMA_URL = environ.get("OLLAMA_URL", "")
 
@@ -33,7 +33,8 @@ def completion(
         return OpenRouter(id=OPENROUTER_MODEL, name="Aria")
     return Ollama(
         id=model,
-        async_client=OllamaClient(host=OLLAMA_URL, timeout=600),
+        host=OLLAMA_URL,
+        timeout=600,
         options={
             "temperature": temperature,
             "num_ctx": 8192,
@@ -46,4 +47,11 @@ def completion(
 
 
 def embedder(model: Optional[str] = EMBEDDING_MODEL) -> Embedder:
-    return FastEmbedEmbedder(dimensions=4096, id=model)
+    if not OLLAMA_URL:
+        return FastEmbedEmbedder(dimensions=4096, id=model)
+    return OllamaEmbedder(
+        dimensions=4096,
+        id=model,
+        host=OLLAMA_URL,
+        client_kwargs={"timeout": 600},
+    )
