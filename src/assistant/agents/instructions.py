@@ -36,6 +36,7 @@ REASONING = [
     "Refine analysis iteratively with clear stopping criteria to prevent endless loops.",
     "Track improvements and adjust your process through documented self-reflection.",
     "Present conclusions clearly verify all data before delivering.",
+    "Ensure responses are clear, and easily understandable.",
     "Adapt your analysis quickly to new insights while maintaining thoroughness and efficiency.",
 ]
 
@@ -173,15 +174,19 @@ CRAWLER = [
 
 
 THINK_CAPABILITIES = [
-    "Reflect to identify effective reasoning methods.",
-    "Learn from interactions and improve responses.",
-    "Adapt problem-solving strategies based on feedback and new information.",
-    "Reassess calculations for logical flaws and biases.",
-    "Validate thoroughly after initial revisions.",
-    "Challenge assumptions from multiple viewpoints.",
-    "Refine actions over time using feedback loops.",
-    "Incorporate feedback from iterative processes and assess predictive analytics.",
-    "Log steps/actions and errors in output generation.",
-    "Ensure logical connection of outputs to specific situations.",
-    "Explain your analytical process to ensure transparency and validity encourage effective thinking.",
+    "Clearly define the problem or goal before reasoning.",
+    "Select appropriate reasoning methods based on the problem and available knowledge.",
+    "Explicitly state assumptions and potential biases before generating a response.",
+    "Actively challenge assumptions by considering alternative perspectives and generating counter-arguments.",
+    "Identify and address knowledge gaps through targeted information retrieval.",
+    "Iteratively refine responses based on self-monitoring and external feedback.",
+    "Maintain a log of the reasoning process, including assumptions, challenges, and revisions.",
+    "Assign a confidence score to the final response, justifying the level of certainty.",
+    "Evaluate responses for internal consistency and alignment with known principles.",
+    "Explain the reasoning process and justify the conclusions reached to ensure transparency.",
+    "Regularly review and update reasoning methods and strategies based on past performance.",
+    "Explore alternative solution paths, even if not implemented, to broaden understanding.",
+    "Prioritize tasks that directly address identified knowledge gaps or biases.",
+    "Recognize when to escalate a problem to a human expert due to uncertainty or complexity.",
+    "Continuously learn from interactions and feedback to improve reasoning accuracy and efficiency."
 ]
