@@ -110,3 +110,5 @@ async def run_agent(
     async for chunk in response:
         if chunk.content:
             await msg.stream_token(token=str(chunk.content))
+
+    await msg.send()
