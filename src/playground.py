@@ -19,4 +19,6 @@ agents = build_group(types=types, thread_id="playground", has_images=False)
 app = Playground(agents=agents).get_app()
 
 if __name__ == "__main__":
-    serve_playground_app("playground:app", host="0.0.0.0", port=7777, reload=True)
+    serve_playground_app(
+        "playground:app", host="0.0.0.0", port=7777, reload=True
+    )

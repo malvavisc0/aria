@@ -13,7 +13,9 @@ class AgentConfig(BaseModel):
 
     role: Annotated[Optional[str], Field(strict=True, default=None)] = None
     goal: Annotated[Optional[str], Field(strict=True, default=None)] = None
-    description: Annotated[Optional[str], Field(strict=True, default=None)] = None
+    description: Annotated[Optional[str], Field(strict=True, default=None)] = (
+        None
+    )
     instructions: Annotated[List[str], Field(strict=True, default=[])] = (
         instructions.THINK_CAPABILITIES
     )

@@ -84,13 +84,13 @@ class SearxngTools(Toolkit):
                 url=BYPARR_URL,
                 headers={"Content-Type": "application/json"},
                 json={
-                    "cmd": f"request.get",
+                    "cmd": "request.get",
                     "url": url,
                     "maxTimeout": BYPARR_TIMEOUT,
                 },
                 timeout=float(BYPARR_TIMEOUT),
             ).json()
-            if not "solution" in solution:
+            if "solution" not in solution:
                 return ""
             raw_html = solution["solution"]["response"]
             with tempfile.TemporaryDirectory() as temp_dir:

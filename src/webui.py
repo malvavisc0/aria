@@ -30,7 +30,8 @@ else:
     def auth_callback(username: str, password: str):
         if (username, password) == ("user", "password"):
             return cl.User(
-                identifier="User", metadata={"role": "user", "provider": "credentials"}
+                identifier="User",
+                metadata={"role": "user", "provider": "credentials"},
             )
         else:
             return None
@@ -119,7 +120,9 @@ async def on_message(message: cl.Message):
     images = []
     if len(message.elements) > 0:
         logger.info("Processing elements")
-        await process_elements(elements=message.elements, thread_id=message.thread_id)
+        await process_elements(
+            elements=message.elements, thread_id=message.thread_id
+        )
 
     await run_agent(
         kind=agent,

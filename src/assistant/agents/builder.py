@@ -14,7 +14,12 @@ from agno.tools.function import Function
 from agno.tools.toolkit import Toolkit
 
 from assistant.agents.settings.configs import build as build_config
-from assistant.models import CHATBOT_MODEL, TOOL_MODEL, VISION_MODEL, completion
+from assistant.models import (
+    CHATBOT_MODEL,
+    TOOL_MODEL,
+    VISION_MODEL,
+    completion,
+)
 
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
 REDIS_PASSWORD = environ.get("REDIS_PASSWORD", "12345678")

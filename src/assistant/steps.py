@@ -1,12 +1,11 @@
 import os
 import shutil
 from mimetypes import guess_type
-from typing import AsyncIterator, List, Optional
+from typing import List, Optional
 
 import chainlit as cl
 from agno.media import Image
 from agno.models.message import Message
-from agno.run.response import RunResponse
 from chainlit.element import ElementBased
 from loguru import logger
 
@@ -15,7 +14,9 @@ from assistant.agents.knowledge import get_knowledge_base
 
 
 @cl.step(type="tool")
-async def process_elements(elements: List[ElementBased], thread_id: str) -> List[Image]:
+async def process_elements(
+    elements: List[ElementBased], thread_id: str
+) -> List[Image]:
     """
     Process a list of elements and handle them based on their type.
 
@@ -46,7 +47,8 @@ async def process_elements(elements: List[ElementBased], thread_id: str) -> List
 
     if len(files) > 0:
         await cl.Message(
-            content="Loading file(s) attached to the Knowledge Base...", elements=files
+            content="Loading file(s) attached to the Knowledge Base...",
+            elements=files,
         ).send()
         logger.info("Loading file(s) attached to the Knowledge Base")
         # knowledge.aload(recreate=True, upsert=True)

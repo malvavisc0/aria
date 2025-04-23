@@ -36,7 +36,9 @@ def get_knowledge_base(thread_id: str) -> CombinedKnowledgeBase:
     knowledge_base = CombinedKnowledgeBase(
         sources=[pdf_knowledge_base, text_knowledge_base],
         vector_db=LanceDb(
-            table_name="documents_combined", uri=lancedb_uri, embedder=embeddings
+            table_name="documents_combined",
+            uri=lancedb_uri,
+            embedder=embeddings,
         ),
     )
 

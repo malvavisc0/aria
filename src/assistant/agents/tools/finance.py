@@ -71,7 +71,9 @@ class YFinanceTools(Toolkit):
             "200 Day Average": company_info_full.get("twoHundredDayAverage"),
             "Website": company_info_full.get("website"),
             "Summary": company_info_full.get("longBusinessSummary"),
-            "Analyst Recommendation": company_info_full.get("recommendationKey"),
+            "Analyst Recommendation": company_info_full.get(
+                "recommendationKey"
+            ),
             "Number Of Analyst Opinions": company_info_full.get(
                 "numberOfAnalystOpinions"
             ),
@@ -171,7 +173,9 @@ class YFinanceTools(Toolkit):
         Returns:
          str: The quarterly balance sheet in JSON format.
         """
-        return self._obj_to_json_string(yf.Ticker(ticker).quarterly_balance_sheet)
+        return self._obj_to_json_string(
+            yf.Ticker(ticker).quarterly_balance_sheet
+        )
 
     def get_cashflow(self, ticker: str) -> str:
         """
@@ -219,7 +223,9 @@ class YFinanceTools(Toolkit):
         Returns:
          str: The list of institutional shareholders in JSON format.
         """
-        return self._obj_to_json_string(yf.Ticker(ticker).institutional_holders)
+        return self._obj_to_json_string(
+            yf.Ticker(ticker).institutional_holders
+        )
 
     def get_recommendations(self, ticker: str) -> str:
         """
