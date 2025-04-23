@@ -8,6 +8,7 @@ lancedb
 loguru
 markitdown
 ollama
+openai
 platformdirs
 pypdf
 redis

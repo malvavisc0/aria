@@ -9,8 +9,6 @@ RUN apt install -y make build-essential libjpeg-dev zlib1g-dev libxml2-dev libxs
 COPY ./requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r /tmp/requirements.txt
-RUN playwright install-deps
-RUN playwright install
 RUN mkdir /code
 ENV PYTHONPATH="/code"
 WORKDIR /code
