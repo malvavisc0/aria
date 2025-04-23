@@ -43,7 +43,7 @@ async def process_elements(message: cl.Message, thread_id: str) -> List[Image]:
             images.append(Image(filepath=element.path))
         else:
             await knowledge.aload(recreate=True, upsert=True)
-            
+
     return images
 
 

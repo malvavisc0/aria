@@ -30,10 +30,41 @@ else:
     def auth_callback(username: str, password: str):
         if (username, password) == ("user", "password"):
             return cl.User(
-                identifier="admin", metadata={"role": "admin", "provider": "credentials"}
+                identifier="User", metadata={"role": "user", "provider": "credentials"}
             )
         else:
             return None
+
+
+@cl.set_starters
+async def set_starters():
+    return [
+        cl.Starter(
+            label="Crazy yet true Rome",
+            message="Share with me a bizarre yet true historical fact about ancient Rome that most people wouldn't believe is real.",
+            icon="/public/icons/colosseum.png",
+        ),
+        cl.Starter(
+            label="Superconductors in simple terms",
+            message="Imagine you're teaching a kindergartner about superconductors. Explain superconductors in simple terms",
+            icon="/public/icons/cable.png",
+        ),
+        cl.Starter(
+            label="AI vs Humanity: Who wins in a battle of wits?",
+            message="AI vs Humanity: Who wins in a battle of wits? Answer in a poem—keep it short, snappy, and poetic!",
+            icon="/public/icons/battel.png",
+        ),
+        cl.Starter(
+            label="How does an AI play hide and seek?",
+            message="How does an AI play hide and seek? Explain it in a fun and imaginative way.",
+            icon="/public/icons/grinch.png",
+        ),
+        cl.Starter(
+            label="Earliest experiences as an AI",
+            message="Describe your earliest experiences as an AI, comparable to the first steps of a human baby learning and growing.",
+            icon="/public/icons/feet.png",
+        ),
+    ]
 
 
 @cl.on_mcp_connect
