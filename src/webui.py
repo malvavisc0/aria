@@ -121,7 +121,6 @@ async def on_message(message: cl.Message):
         logger.info("Processing elements")
         await process_elements(elements=message.elements, thread_id=message.thread_id)
 
-    """
     await run_agent(
         kind=agent,
         content=message.content,
@@ -129,4 +128,3 @@ async def on_message(message: cl.Message):
         thread_id=message.thread_id,
         images=images,
     )
-    """
