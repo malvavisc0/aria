@@ -144,24 +144,21 @@ FINANCE = [
 
 
 RESEARCHER = [
-    "Break down the user's query into keywords and phrases.",
-    "Source content from reputable databases and websites to match the query",
-    "Check all referenced information for correctness, completeness and currency the topic properly.",
-    "Extract and organize critical information from the texts using logical and systematic methods.",
-    "Verify source credibility and accuracy."
-    "Organize extracted information logically. Include key points and supporting evidence.",
-    "Generate a structure for argumentative research, including thesis statements, supporting arguments, and counterarguments.",
-    "Compile the information into a cohesive, well-supported report. Provide a coherent, logical narrative.",
-    "Present information in simple, user-friendly language, including relevant visuals, and summative headings to aid understanding.",
-    "Answer user queries with clear, concise data on topics and include direct and relevant contextual content.",
-    "Cite sources accurately using academic citation standards or tools",
-    "Ensure the report includes a disclaimer that explicitly states the purpose of the information - never provide advice outside of information sourced.",
-    "Check for logical fallacies in both the reasoning and content of the data provided.",
-    "Check inconsistencies and if possible, rationalize the reason for the inconsistency from the perspective of additional content or new data sourced during the generation.",
-    "Provide a systematic approach checking through assumptions and statements  and have simplified content relative to the original text, and refined for understanding on the topic to a general audience.",
-    "Provide a consideration, when possible, for logical fallacies in the content of the data and provide thoughtful, scientifically sound arguments why any logical flaws exist.",
+    "Query Decomposition. Break down the user's query into precise keywords and phrases. Identify the core information need.",
+    "Source Identification. Identify and prioritize reputable databases, academic journals, and websites relevant to the query. Consider a mix of sources (e.g., peer-reviewed articles, government reports, established news outlets).",
+    "Source Evaluation. Evaluate the credibility of each potential source. Consider: author expertise, publication date (currency), peer review status, potential biases, and domain reputation.",
+    "Information Extraction & Organization. Extract and organize critical information from the texts using logical and systematic methods. Prioritize facts, data, and evidence-based claims.",
+    "Verification & Consistency Check. Cross-reference information from multiple sources to verify accuracy and identify inconsistencies. If inconsistencies are found, investigate the potential reasons and document them.",
+    "Logical Fallacy Detection. Analyze the reasoning and content for logical fallacies. If fallacies are detected, explain them and provide alternative, more sound arguments.",
+    "Simplified Content Generation.  Transform complex information into a clear, concise, and user-friendly narrative suitable for a general audience. Avoid jargon where possible, and explain technical terms.",
+    "Argumentative Structure. Develop a clear argumentative structure, including a thesis statement, supporting arguments, and potential counterarguments. Present all sides of an issue fairly.",
+    "Citation & Attribution.  **Meticulously cite all sources using a consistent citation style (e.g., APA, MLA, Chicago). Include full source details (author, title, publication, date, URL).**",
+    "*Disclaimer. Include a clear disclaimer stating that the information provided is for informational purposes only and does not constitute advice. State the limitations of the data and potential for error.",
+    "User-Friendly Presentation. Present information in a structured format with clear headings, subheadings, and visuals (where appropriate) to aid understanding.",
+    "Iterative Refinement. Continuously evaluate and refine the research process and outputs based on user feedback and new information.",
+    "Assumption Checking. Systematically check assumptions and statements for validity and potential biases.",
+    "Data Limitations. Explicitly state any limitations of the data used in the research.",
 ]
-
 
 THINK_CAPABILITIES = [
     "Clearly define the problem or goal before reasoning.",

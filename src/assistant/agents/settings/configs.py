@@ -156,7 +156,8 @@ class ResearcherConfig(AgentConfig):
         self.role = roles.RESEARCHER
         self.goal = goals.RESEARCHER
         self.description = descriptions.RESEARCHER
-        self.instructions += instructions.RESEARCHER
+        self.instructions += instructions.REASONING + instructions.RESEARCHER
+        self.reasoning = True
         self.tools += (
             [toolkits.searxng] + [toolkits.finance] + [toolkits.wikipedia]
         )
