@@ -9,7 +9,7 @@ class YFinanceTools(Toolkit):
         super().__init__(name="yfinance_tools")
         self.register(self.get_current_price)
         self.register(self.get_company_information)
-        self.register(self.get_news)
+        self.register(self.get_news_for_ticker)
         self.register(self.get_income_statement)
         self.register(self.get_quarterly_financials)
         self.register(self.get_balance_sheet)

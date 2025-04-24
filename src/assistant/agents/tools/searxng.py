@@ -24,8 +24,8 @@ class SearxngTools(Toolkit):
         self.host = host
         self.max_results = max_results
 
-        self.register(self.search)
-        self.register(self.search_news)
+        self.register(self.search_the_web)
+        self.register(self.search_only_news)
 
     def search_the_web(self, query: str, max_results: int = 10) -> str:
         """Use this function to search the web.
