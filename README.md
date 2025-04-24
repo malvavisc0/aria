@@ -37,4 +37,4 @@ Dedicated to searching and retrieving information from [arXiv](https://arxiv.org
 
 ### 🌐 Researcher Agent
 
-This agent orchestrates the other agents, leveraging their combined strengths to perform comprehensive research tasks. It can formulate search queries, gather information from multiple sources, and synthesize findings into a coherent report. Perform complex research projects efficiently, saving time and effort. Ideal for projects requiring a broad perspective and synthesis of information from diverse sources.
+This agent orchestrates other agents, leveraging their combined strengths to perform comprehensive research tasks. It can formulate search queries, gather information from multiple sources, and synthesize findings into a coherent report. Perform complex research projects efficiently, saving time and effort. Ideal for projects requiring a broad perspective and synthesis of information from diverse sources.
