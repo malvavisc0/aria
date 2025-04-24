@@ -18,7 +18,8 @@ EMBEDDING_MODEL = environ.get("EMBEDDING_MODEL", "")
 OPENROUTER_API_KEY = environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = environ.get("OPENROUTER_MODEL", "")
 
-assert OLLAMA_URL, "URL must be set in the environment"
+if not OPENROUTER_API_KEY and not OPENROUTER_MODEL:
+    assert OLLAMA_URL, "URL must be set in the environment"
 assert CHATBOT_MODEL, "CHATBOT_MODEL must be set in the environment"
 assert TOOL_MODEL, "TOOL_MODEL must be set in the environment"
 assert VISION_MODEL, "VISION_MODEL must be set in the environment"
