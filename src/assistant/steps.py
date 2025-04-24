@@ -34,7 +34,9 @@ async def process_elements(
         file_name = os.path.basename(element.path)
         element_type, encoding = guess_type(element.path)
         if element_type in ["image/jpeg", "image/png"]:
-            images.append(Image(filepath=element.path))
+            with open(element.path, mode="rb") as image:
+                format = element_type.split("/")[1]
+                images.append(Image(format=format, content=image.read()))
             logger.info(f"Added {element.path} to images")
         elif element_type in ["application/pdf", "text/plain"]:
             destination = f"/opt/knowledge/{thread_id}/{file_name}"

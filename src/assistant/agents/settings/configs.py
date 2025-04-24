@@ -19,8 +19,10 @@ class AgentConfig(BaseModel):
     instructions: Annotated[List[str], Field(strict=True, default=[])] = (
         instructions.THINK_CAPABILITIES
     )
-    tools: Annotated[List, Field(strict=True, default=[])] = None
-    reasoning: Annotated[bool, Field(strict=True, default=False)] = False
+    tools: Annotated[List, Field(strict=True, default=[])] = [
+        toolkits.thinking
+    ]
+    reasoning: Annotated[bool, Field(strict=True, default=False)] = True
     markdown: Annotated[bool, Field(strict=True, default=False)] = False
 
 
@@ -35,7 +37,8 @@ class ChatterConfig(AgentConfig):
         self.role = roles.CHATTER
         self.goal = goals.CHATTER
         self.description = descriptions.CHATTER
-        self.instructions += instructions.CHATTER
+        self.instructions += [instructions.CHATTER]
+        self.reasoning = False
 
 
 class ScientistConfig(AgentConfig):
@@ -50,7 +53,7 @@ class ScientistConfig(AgentConfig):
         self.goal = goals.SCIENTIST
         self.description = descriptions.SCIENTIST
         self.instructions += instructions.SCIENTIST
-        self.tools = [toolkits.arxiv]
+        self.tools += [toolkits.arxiv]
 
 
 class ReasoningConfig(AgentConfig):
@@ -79,6 +82,7 @@ class VisionConfig(AgentConfig):
         self.goal = goals.VISION
         self.description = descriptions.VISION
         self.instructions += instructions.VISION
+        self.reasoning = False
 
 
 class MedicConfig(AgentConfig):
@@ -93,7 +97,7 @@ class MedicConfig(AgentConfig):
         self.goal = goals.MEDIC
         self.description = descriptions.MEDIC
         self.instructions += instructions.MEDIC
-        self.tools = [toolkits.pubmed]
+        self.tools += [toolkits.pubmed]
 
 
 class WikipediaConfig(AgentConfig):
@@ -108,7 +112,7 @@ class WikipediaConfig(AgentConfig):
         self.goal = goals.WIKIPEDIA
         self.description = descriptions.WIKIPEDIA
         self.instructions += instructions.WIKIPEDIA
-        self.tools = [toolkits.wikipedia]
+        self.tools += [toolkits.wikipedia]
 
 
 class YoutubeConfig(AgentConfig):
@@ -123,7 +127,7 @@ class YoutubeConfig(AgentConfig):
         self.goal = goals.YOUTUBE
         self.description = descriptions.YOUTUBE
         self.instructions += instructions.YOUTUBE
-        self.tools = [toolkits.youtube]
+        self.tools += [toolkits.youtube]
 
 
 class FinanceConfig(AgentConfig):
@@ -138,7 +142,7 @@ class FinanceConfig(AgentConfig):
         self.goal = goals.FINANCE
         self.description = descriptions.FINANCE
         self.instructions += instructions.FINANCE
-        self.tools = [toolkits.finance]
+        self.tools += [toolkits.finance]
 
 
 class ResearcherConfig(AgentConfig):
@@ -153,7 +157,9 @@ class ResearcherConfig(AgentConfig):
         self.goal = goals.RESEARCHER
         self.description = descriptions.RESEARCHER
         self.instructions += instructions.RESEARCHER
-        self.tools = [toolkits.searxng, toolkits.finance, toolkits.wikipedia]
+        self.tools += (
+            [toolkits.searxng] + [toolkits.finance] + [toolkits.wikipedia]
+        )
 
 
 def build(

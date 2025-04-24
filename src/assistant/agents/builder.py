@@ -80,15 +80,25 @@ def _get_memory(thread_id: str, model_id: str = TOOL_MODEL) -> Memory:
             password=REDIS_PASSWORD,
             db=REDIS_DB,
         ),
-        memory_manager=MemoryManager(model=model),
-        summarizer=SessionSummarizer(model=model),
+        memory_manager=MemoryManager(
+            model=model,
+            additional_instructions="""
+            IMPORTANT: Don't store any memories about the user's name. Just say "The User" instead of referencing the user's name.
+            """,
+        ),
+        summarizer=SessionSummarizer(
+            model=model,
+            additional_instructions="""
+            Make the summary very informal and conversational.
+            """,
+        ),
     )
     return memory
 
 
 def _get_storage(thread_id: str) -> RedisStorage:
     return RedisStorage(
-        prefix=thread_id,
+        prefix="agno_storage_",
         host=REDIS_HOST,
         port=REDIS_PORT,
         password=REDIS_PASSWORD,

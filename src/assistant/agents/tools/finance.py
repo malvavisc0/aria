@@ -89,7 +89,7 @@ class YFinanceTools(Toolkit):
         json_doc = json.dumps(company_info_cleaned, indent=0)
         return json_doc.replace("\n", "").replace("\r\n", "").replace("\r", "")
 
-    def get_news(self, ticker: str) -> str:
+    def get_news_for_ticker(self, ticker: str) -> str:
         """
         Retrieve the latest news articles for a given stock ticker.
 

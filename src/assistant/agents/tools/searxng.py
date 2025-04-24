@@ -27,7 +27,7 @@ class SearxngTools(Toolkit):
         self.register(self.search)
         self.register(self.search_news)
 
-    def search(self, query: str, max_results: int = 10) -> str:
+    def search_the_web(self, query: str, max_results: int = 10) -> str:
         """Use this function to search the web.
 
         Args:
@@ -39,7 +39,7 @@ class SearxngTools(Toolkit):
         """
         return self._search(query, max_results=max_results)
 
-    def search_news(self, query: str, max_results: int = 10) -> str:
+    def search_only_news(self, query: str, max_results: int = 10) -> str:
         """Use this function to search for news.
 
         Args:

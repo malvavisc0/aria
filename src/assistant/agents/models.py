@@ -19,7 +19,6 @@ OPENROUTER_API_KEY = environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = environ.get("OPENROUTER_MODEL", "")
 
 assert OLLAMA_URL, "URL must be set in the environment"
-
 assert CHATBOT_MODEL, "CHATBOT_MODEL must be set in the environment"
 assert TOOL_MODEL, "TOOL_MODEL must be set in the environment"
 assert VISION_MODEL, "VISION_MODEL must be set in the environment"
@@ -34,7 +33,7 @@ def completion(
     return Ollama(
         id=model,
         host=OLLAMA_URL,
-        timeout=600,
+        timeout=300,
         options={
             "temperature": temperature,
             "num_ctx": 8192,
@@ -53,5 +52,5 @@ def embedder(model: Optional[str] = EMBEDDING_MODEL) -> Embedder:
         dimensions=4096,
         id=model,
         host=OLLAMA_URL,
-        client_kwargs={"timeout": 600},
+        client_kwargs={"timeout": 300},
     )
