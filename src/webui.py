@@ -117,7 +117,7 @@ async def on_message(message: cl.Message):
     images = []
     if len(message.elements) > 0:
         logger.info("Processing elements")
-        await process_elements(
+        images = await process_elements(
             elements=message.elements, thread_id=message.thread_id
         )
 
