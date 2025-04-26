@@ -19,6 +19,7 @@ from assistant.agents.models import (
     VISION_MODEL,
     completion,
 )
+from assistant.agents.settings.configs import AgentConfig
 from assistant.agents.settings.configs import build as build_config
 
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
@@ -108,11 +109,11 @@ def _get_storage(thread_id: str) -> RedisStorage:
 
 async def build(
     llm: Model,
-    kind: Optional[str] = "chatter",
+    config: AgentConfig,
     user_id: Optional[str] = None,
     thread_id: Optional[str] = None,
-    debug_mode: Optional[bool] = False,
     knowledge: Optional[AgentKnowledge] = None,
+    debug_mode: Optional[bool] = False,
 ) -> Agent:
     memory = None
     storage = None
@@ -120,8 +121,6 @@ async def build(
     if thread_id:
         memory = _get_memory(thread_id=thread_id)
         storage = _get_storage(thread_id=thread_id)
-
-    config = build_config(kind=kind)
 
     return _get_agent(
         session_id=thread_id,
@@ -156,12 +155,12 @@ def setup_model(kind: str, has_images: bool = False):
     return llm
 
 
-def build_group(
+async def build_group(
     types: List[str], thread_id: str, has_images: bool = False
 ) -> List[Agent]:
     agents = []
     for kind in types:
         llm = setup_model(kind=kind, has_images=has_images)
-        agent = build(llm=llm, kind=kind, thread_id=thread_id)
+        agent = await build(llm=llm, kind=kind, thread_id=thread_id)
         agents.append(agent)
     return agents

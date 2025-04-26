@@ -37,7 +37,7 @@ class ChatterConfig(AgentConfig):
         self.role = roles.CHATTER
         self.goal = goals.CHATTER
         self.description = descriptions.CHATTER
-        self.instructions += [instructions.CHATTER]
+        self.instructions += instructions.CHATTER
         self.reasoning = False
 
 

@@ -2,12 +2,13 @@ from os import environ
 from typing import Dict, Optional
 
 import chainlit as cl
+from chainlit.mcp import McpConnection
 from chainlit.types import ThreadDict
+from commands import COMMANDS
 from loguru import logger
 from mcp import ClientSession
 
 from assistant.steps import process_elements, run_agent
-from commands import COMMANDS
 
 OAUTH_GOOGLE_CLIENT_ID = environ.get("OAUTH_GOOGLE_CLIENT_ID")
 OAUTH_GOOGLE_CLIENT_SECRET = environ.get("OAUTH_GOOGLE_CLIENT_SECRET")
@@ -69,29 +70,23 @@ async def set_starters():
 
 
 @cl.on_mcp_connect
-async def on_mcp(connection, session: ClientSession):
+async def on_mcp_connect(connection: McpConnection, session: ClientSession):
     """Called when an MCP connection is established"""
-    logger.info(f"Connected to MCP: {connection.name} [{connection.url}]")
-    # List available tools
-    result = await session.list_tools()
-    tools = [
-        {
-            "name": t.name,
-            "description": t.description,
-            "parameters": t.inputSchema,
-        }
-        for t in result.tools
-    ]
-
-    mcp_tools = cl.user_session.get("mcp_tools", {})
-    mcp_tools[connection.name] = tools
-    cl.user_session.set("mcp_tools", mcp_tools)
+    logger.info(f"Connected to MCP Server: {connection.name}")
+    mcp_servers = cl.user_session.get("mcp_servers", {})
+    if connection.name not in mcp_servers.keys():
+        mcp_servers[connection.name] = connection.url
+        cl.user_session.set("mcp_servers", mcp_servers)
 
 
 @cl.on_mcp_disconnect
 async def on_mcp_disconnect(name: str, session: ClientSession):
     """Called when an MCP connection is terminated"""
-    logger.info(f"Disconnected from MCP: {name}")
+    logger.info(f"Disconnected from MCP Server: {name}")
+    mcp_servers = cl.user_session.get("mcp_servers", {})
+    if name in mcp_servers.keys():
+        del mcp_servers[name]
+        cl.user_session.set("mcp_servers", mcp_servers)
 
 
 @cl.on_chat_resume
