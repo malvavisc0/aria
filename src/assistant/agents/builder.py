@@ -20,7 +20,6 @@ from assistant.agents.models import (
     completion,
 )
 from assistant.agents.settings.configs import AgentConfig
-from assistant.agents.settings.configs import build as build_config
 
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
 REDIS_PASSWORD = environ.get("REDIS_PASSWORD", "12345678")
@@ -32,7 +31,6 @@ REDIS_DB = environ.get("REDIS_DB", 0)
 def _get_agent(
     session_id: str,
     model: Model,
-    user_id: Optional[str] = None,
     description: Optional[str] = None,
     role: Optional[str] = None,
     goal: Optional[str] = None,
@@ -49,7 +47,6 @@ def _get_agent(
     return Agent(
         session_id=session_id,
         model=model,
-        user_id=user_id,
         tools=tools,
         description=description,
         instructions=instructions,
@@ -110,10 +107,9 @@ def _get_storage(thread_id: str) -> RedisStorage:
 async def build(
     llm: Model,
     config: AgentConfig,
-    user_id: Optional[str] = None,
     thread_id: Optional[str] = None,
     knowledge: Optional[AgentKnowledge] = None,
-    debug_mode: Optional[bool] = False,
+    debug_mode: Optional[bool] = True,
 ) -> Agent:
     memory = None
     storage = None
@@ -137,7 +133,6 @@ async def build(
         search_knowledge=True if knowledge else False,
         markdown=config.markdown,
         debug_mode=debug_mode,
-        user_id=user_id,
     )
 
 

@@ -1,14 +1,16 @@
+from mimetypes import guess_type
 from os import environ
 from typing import Dict, Optional
 
 import chainlit as cl
 from chainlit.mcp import McpConnection
 from chainlit.types import ThreadDict
-from commands import COMMANDS
 from loguru import logger
 from mcp import ClientSession
 
-from assistant.steps import process_elements, run_agent
+from assistant.agents.knowledge import get_knowledge_base
+from assistant.steps import process_files, process_images, run_agent
+from commands import COMMANDS
 
 OAUTH_GOOGLE_CLIENT_ID = environ.get("OAUTH_GOOGLE_CLIENT_ID")
 OAUTH_GOOGLE_CLIENT_SECRET = environ.get("OAUTH_GOOGLE_CLIENT_SECRET")
@@ -109,17 +111,38 @@ async def on_message(message: cl.Message):
     logger.info("Received message")
 
     agent = "chatter" if not message.command else message.command.lower()
-    images = []
-    if len(message.elements) > 0:
-        logger.info("Processing elements")
-        images = await process_elements(
-            elements=message.elements, thread_id=message.thread_id
-        )
+    knowledge = get_knowledge_base(thread_id=message.thread_id)
+
+    files = process_files(
+        elements=[
+            element
+            for element in message.elements
+            if element.mime in ["application/pdf", "text/plain"]
+        ],
+        thread_id=message.thread_id,
+    )
+
+    if files:
+        await cl.Message(
+            content="Loading file(s) attached to the Knowledge Base...",
+        ).send()
+        ui_msg = cl.Message(content="")
+        await cl.make_async(knowledge.load)(upsert=True)
+        ui_msg.content = "File(s) loaded successfully to the Knowledge Base."
+        ui_msg.elements = files
+        await ui_msg.update()
+        logger.info("File(s) loaded successfully to the Knowledge Base.")
+
+    images = process_images(
+        elements=[
+            element for element in message.elements if element.type == "image"
+        ],
+    )
 
     await run_agent(
         kind=agent,
         content=message.content,
-        user_id=cl.user_session.get("id"),
+        knowledge=knowledge,
         thread_id=message.thread_id,
         images=images,
     )

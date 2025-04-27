@@ -1,5 +1,3 @@
-import asyncio
-
 from agno.playground.playground import Playground
 from agno.playground.serve import serve_playground_app
 
