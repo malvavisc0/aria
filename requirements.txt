@@ -2,7 +2,7 @@ agno==1.4.6
 aiohttp
 arxiv
 asyncpg
-chainlit
+chainlit==2.5.5
 fastembed
 lancedb
 loguru

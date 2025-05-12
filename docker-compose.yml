@@ -152,6 +152,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_DB: ${REDIS_DB:-0}
+      AUTH_LOGIN_USERNAME: ${AUTH_LOGIN_USERNAME}
+      AUTH_LOGIN_PASSWORD: ${AUTH_LOGIN_PASSWORD}
     volumes:
       - ./src:/code
       - knowledge_base:/opt/knowledge
