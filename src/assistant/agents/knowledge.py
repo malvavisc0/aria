@@ -23,7 +23,7 @@ def get_knowledge_base(thread_id: str) -> CombinedKnowledgeBase:
         vector_db=LanceDb(
             table_name="documents_pdf", uri=lancedb_uri, embedder=embeddings
         ),
-        reader=PDFReader(chunk=True),
+        reader=PDFReader(),
     )
 
     text_knowledge_base = TextKnowledgeBase(
