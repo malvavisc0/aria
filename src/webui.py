@@ -1,5 +1,5 @@
 from mimetypes import guess_type
-from os import environ
+from os import getenv
 from typing import Dict, Optional
 
 import chainlit as cl
@@ -12,8 +12,8 @@ from assistant.agents.knowledge import get_knowledge_base
 from assistant.steps import process_files, process_images, run_agent
 from commands import COMMANDS
 
-OAUTH_GOOGLE_CLIENT_ID = environ.get("OAUTH_GOOGLE_CLIENT_ID")
-OAUTH_GOOGLE_CLIENT_SECRET = environ.get("OAUTH_GOOGLE_CLIENT_SECRET")
+OAUTH_GOOGLE_CLIENT_ID = getenv("OAUTH_GOOGLE_CLIENT_ID")
+OAUTH_GOOGLE_CLIENT_SECRET = getenv("OAUTH_GOOGLE_CLIENT_SECRET")
 
 if OAUTH_GOOGLE_CLIENT_ID and OAUTH_GOOGLE_CLIENT_SECRET:
 
@@ -31,7 +31,9 @@ else:
 
     @cl.password_auth_callback
     def auth_callback(username: str, password: str):
-        if (username, password) == ("user", "password"):
+        _user = getenv("AUTH_LOGIN_USERNAME")
+        _password = getenv("AUTH_LOGIN_PASSWORD")
+        if (username, password) == (_user, _password):
             return cl.User(
                 identifier="User",
                 metadata={"role": "user", "provider": "credentials"},
