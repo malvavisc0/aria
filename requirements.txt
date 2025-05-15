@@ -1,8 +1,8 @@
-agno==1.4.6
+agno
 aiohttp
 arxiv
 asyncpg
-chainlit==2.5.5
+chainlit
 fastembed
 lancedb
 loguru

@@ -1,5 +1,6 @@
 import os
 import shutil
+from mimetypes import guess_type
 from typing import List, Optional
 
 import chainlit as cl
@@ -9,12 +10,10 @@ from agno.models.message import Message
 from agno.tools.mcp import MultiMCPTools
 from chainlit.element import ElementBased
 from loguru import logger
-from mimetypes import guess_type
 
 from assistant.agents.builder import build as build_agent
 from assistant.agents.builder import setup_model
 from assistant.agents.settings.configs import build as build_config
-
 
 @cl.step(type="tool")
 def process_images(elements: List[ElementBased]) -> List[Image]:
@@ -37,7 +36,7 @@ def process_images(elements: List[ElementBased]) -> List[Image]:
     for element in elements:
         with open(element.path, mode="rb") as image:
             mime_type, encoding = guess_type(element.path)
-            image_format = mime_type.replace("image/","")
+            image_format = mime_type.replace("image/", "")
             images.append(Image(format=image_format, content=image.read()))
             logger.info(f"Added {element.path} to images")
     return images

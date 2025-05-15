@@ -148,14 +148,3 @@ def setup_model(kind: str, has_images: bool = False):
         temperature = 0.6
     llm = completion(model=model, temperature=temperature)
     return llm
-
-
-async def build_group(
-    types: List[str], thread_id: str, has_images: bool = False
-) -> List[Agent]:
-    agents = []
-    for kind in types:
-        llm = setup_model(kind=kind, has_images=has_images)
-        agent = await build(llm=llm, kind=kind, thread_id=thread_id)
-        agents.append(agent)
-    return agents
