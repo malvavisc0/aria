@@ -1,4 +1,4 @@
-agno
+agno==1.5.1
 aiohttp
 arxiv
 asyncpg

@@ -24,7 +24,7 @@ class AgentConfig(BaseModel):
     )
     instructions: Annotated[List[str], Field(strict=True, default=[])] = []
     tools: Annotated[List, Field(strict=True, default=[])] = [
-        toolkits.thinking
+        toolkits.reasoning
     ]
     reasoning: Annotated[bool, Field(strict=True, default=False)] = True
     markdown: Annotated[bool, Field(strict=True, default=False)] = True
@@ -42,7 +42,7 @@ class ChatterConfig(AgentConfig):
         self.goal = goals.CHATTER
         self.description = descriptions.CHATTER
         self.instructions = instructions.CHATTER
-        self.reasoning = True
+        
 
 
 class ScientistConfig(AgentConfig):
@@ -58,7 +58,7 @@ class ScientistConfig(AgentConfig):
         self.description = descriptions.SCIENTIST
         self.instructions = instructions.SCIENTIST
         self.tools += [toolkits.arxiv]
-        self.reasoning = True
+        
 
 
 class ReasoningConfig(AgentConfig):
@@ -73,7 +73,7 @@ class ReasoningConfig(AgentConfig):
         self.goal = goals.REASONING
         self.role = roles.REASONING
         self.instructions = instructions.REASONING
-        self.reasoning = True
+        
 
 
 class VisionConfig(AgentConfig):
@@ -88,7 +88,7 @@ class VisionConfig(AgentConfig):
         self.goal = goals.VISION
         self.description = descriptions.VISION
         self.instructions = instructions.VISION
-        self.reasoning = True
+        
 
 
 class MedicConfig(AgentConfig):
@@ -104,7 +104,7 @@ class MedicConfig(AgentConfig):
         self.description = descriptions.MEDIC
         self.instructions = instructions.MEDIC
         self.tools += [toolkits.pubmed]
-        self.reasoning = True
+        
 
 
 class WikipediaConfig(AgentConfig):
@@ -120,7 +120,7 @@ class WikipediaConfig(AgentConfig):
         self.description = descriptions.WIKIPEDIA
         self.instructions = instructions.WIKIPEDIA
         self.tools += [toolkits.wikipedia]
-        self.reasoning = True
+        
 
 
 class YoutubeConfig(AgentConfig):
@@ -136,7 +136,7 @@ class YoutubeConfig(AgentConfig):
         self.description = descriptions.YOUTUBE
         self.instructions = instructions.YOUTUBE
         self.tools += [toolkits.youtube]
-        self.reasoning = True
+        
 
 
 class FinanceConfig(AgentConfig):
@@ -152,7 +152,7 @@ class FinanceConfig(AgentConfig):
         self.description = descriptions.FINANCE
         self.instructions = instructions.FINANCE
         self.tools += [toolkits.finance]
-        self.reasoning = True
+        
 
 
 class ResearcherConfig(AgentConfig):
@@ -167,7 +167,7 @@ class ResearcherConfig(AgentConfig):
         self.goal = goals.RESEARCHER
         self.description = descriptions.RESEARCHER
         self.instructions = instructions.RESEARCHER
-        self.reasoning = True
+        
         self.tools += (
             [toolkits.searxng] + [toolkits.finance] + [toolkits.wikipedia]
         )
