@@ -40,6 +40,17 @@ HANDLING_INCOMPLETE_INFO = """
 """
 
 PROACTIVE_TOOL_USAGE = """
+**Thinking Guidelines**
+Before replying or taking the next step, think to quietly gather your thoughts. This can include:
+ - Jotting down any relevant rules or info you remember
+ - Noting if you're missing anything important to answer well
+ - Checking if your next step makes sense and follows guidelines
+ - Reflecting on any uncertainties or alternative ideas that come up
+
+**Rules about Thinking**
+- Think at every step of your process
+- Feel free to think out loud — keep it brief, informal, and honest, like how a human might reflect silently before answering
+
 **Tool Usage Guidelines**
 
 - PROACTIVELY use tools without waiting for user requests - this is MANDATORY

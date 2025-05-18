@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from assistant.agents import toolkits
 from assistant.agents.settings import descriptions, goals, instructions, roles
 
+_BOT_NAME = "You have a name, your name is Aria."
+
 
 class AgentConfig(BaseModel):
     """
@@ -19,14 +21,10 @@ class AgentConfig(BaseModel):
 
     role: Annotated[Optional[str], Field(strict=True, default=None)] = None
     goal: Annotated[Optional[str], Field(strict=True, default=None)] = None
-    description: Annotated[Optional[str], Field(strict=True, default=None)] = (
-        None
-    )
+    description: Annotated[Optional[str], Field(strict=True, default="")] = ""
     instructions: Annotated[List[str], Field(strict=True, default=[])] = []
-    tools: Annotated[List, Field(strict=True, default=[])] = [
-        toolkits.reasoning
-    ]
-    reasoning: Annotated[bool, Field(strict=True, default=False)] = True
+    tools: Annotated[List, Field(strict=True, default=[])] = []
+    reasoning: Annotated[bool, Field(strict=True, default=False)] = False
     markdown: Annotated[bool, Field(strict=True, default=False)] = True
 
 
@@ -40,9 +38,8 @@ class ChatterConfig(AgentConfig):
 
         self.role = roles.CHATTER
         self.goal = goals.CHATTER
-        self.description = descriptions.CHATTER
+        self.description = f"{_BOT_NAME}. {descriptions.CHATTER}"
         self.instructions = instructions.CHATTER
-        
 
 
 class ScientistConfig(AgentConfig):
@@ -55,10 +52,9 @@ class ScientistConfig(AgentConfig):
 
         self.role = roles.SCIENTIST
         self.goal = goals.SCIENTIST
-        self.description = descriptions.SCIENTIST
+        self.description = f"{_BOT_NAME}. {descriptions.SCIENTIST}"
         self.instructions = instructions.SCIENTIST
         self.tools += [toolkits.arxiv]
-        
 
 
 class ReasoningConfig(AgentConfig):
@@ -69,11 +65,11 @@ class ReasoningConfig(AgentConfig):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.description = descriptions.REASONING
+        self.description = f"{_BOT_NAME}. {descriptions.REASONING}"
         self.goal = goals.REASONING
         self.role = roles.REASONING
         self.instructions = instructions.REASONING
-        
+        self.tools = [toolkits.searxng]
 
 
 class VisionConfig(AgentConfig):
@@ -86,9 +82,8 @@ class VisionConfig(AgentConfig):
 
         self.role = roles.VISION
         self.goal = goals.VISION
-        self.description = descriptions.VISION
+        self.description = f"{_BOT_NAME}. {descriptions.VISION}"
         self.instructions = instructions.VISION
-        
 
 
 class MedicConfig(AgentConfig):
@@ -101,10 +96,9 @@ class MedicConfig(AgentConfig):
 
         self.role = roles.MEDIC
         self.goal = goals.MEDIC
-        self.description = descriptions.MEDIC
+        self.description = f"{_BOT_NAME}. {descriptions.MEDIC}"
         self.instructions = instructions.MEDIC
         self.tools += [toolkits.pubmed]
-        
 
 
 class WikipediaConfig(AgentConfig):
@@ -118,9 +112,8 @@ class WikipediaConfig(AgentConfig):
         self.role = roles.WIKIPEDIA
         self.goal = goals.WIKIPEDIA
         self.description = descriptions.WIKIPEDIA
-        self.instructions = instructions.WIKIPEDIA
+        self.description = f"{_BOT_NAME}. {descriptions.WIKIPEDIA}"
         self.tools += [toolkits.wikipedia]
-        
 
 
 class YoutubeConfig(AgentConfig):
@@ -133,10 +126,9 @@ class YoutubeConfig(AgentConfig):
 
         self.role = roles.YOUTUBE
         self.goal = goals.YOUTUBE
-        self.description = descriptions.YOUTUBE
+        self.description = f"{_BOT_NAME}. {descriptions.YOUTUBE}"
         self.instructions = instructions.YOUTUBE
         self.tools += [toolkits.youtube]
-        
 
 
 class FinanceConfig(AgentConfig):
@@ -149,10 +141,9 @@ class FinanceConfig(AgentConfig):
 
         self.role = roles.FINANCE
         self.goal = goals.FINANCE
-        self.description = descriptions.FINANCE
+        self.description = f"{_BOT_NAME}. {descriptions.FINANCE}"
         self.instructions = instructions.FINANCE
         self.tools += [toolkits.finance]
-        
 
 
 class ResearcherConfig(AgentConfig):
@@ -165,9 +156,9 @@ class ResearcherConfig(AgentConfig):
 
         self.role = roles.RESEARCHER
         self.goal = goals.RESEARCHER
-        self.description = descriptions.RESEARCHER
+        self.description = f"{_BOT_NAME}. {descriptions.RESEARCHER}"
         self.instructions = instructions.RESEARCHER
-        
+
         self.tools += (
             [toolkits.searxng] + [toolkits.finance] + [toolkits.wikipedia]
         )

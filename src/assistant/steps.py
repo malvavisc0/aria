@@ -15,6 +15,7 @@ from assistant.agents.builder import build as build_agent
 from assistant.agents.builder import setup_model
 from assistant.agents.settings.configs import build as build_config
 
+
 @cl.step(type="tool")
 def process_images(elements: List[ElementBased]) -> List[Image]:
     """
@@ -116,13 +117,15 @@ async def run_agent(
     if len(mcp_servers_urls) == 0:
         response = await agent.arun(message=user_message)
         async for chunk in response:
-            await ui_msg.stream_token(token=str(chunk.content))
+            if chunk.content:
+                await ui_msg.stream_token(token=str(chunk.content))
     elif len(mcp_servers_urls) >= 1:
         logger.info(f"Multiple MCP servers found: {mcp_servers_urls}")
         async with MultiMCPTools(urls=mcp_servers_urls) as mcp_tools:
             agent.tools += [mcp_tools]
             response = await agent.arun(message=user_message)
             async for chunk in response:
-                await ui_msg.stream_token(token=str(chunk.content))
+                if chunk.content:
+                    await ui_msg.stream_token(token=str(chunk.content))
 
     await ui_msg.send()

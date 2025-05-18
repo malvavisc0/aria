@@ -24,8 +24,8 @@ from assistant.agents.settings.configs import AgentConfig
 REDIS_USERNAME = environ.get("REDIS_USERNAME", "default")
 REDIS_PASSWORD = environ.get("REDIS_PASSWORD", "12345678")
 REDIS_HOST = environ.get("REDIS_HOST", "redis")
-REDIS_PORT = environ.get("REDIS_PORT", 6379)
-REDIS_DB = environ.get("REDIS_DB", 0)
+REDIS_PORT = int(environ.get("REDIS_PORT", 6379))
+REDIS_DB = int(environ.get("REDIS_DB", 0))
 
 
 def _get_agent(
@@ -37,12 +37,12 @@ def _get_agent(
     instructions: Optional[List[str]] = None,
     storage: Optional[Storage] = None,
     tools: Optional[List[Union[Toolkit, Callable, Function, Dict]]] = None,
-    reasoning: Optional[bool] = False,
     memory: Optional[Memory] = None,
     knowledge: Optional[AgentKnowledge] = None,
-    search_knowledge: Optional[bool] = False,
-    debug_mode: Optional[bool] = False,
-    markdown: Optional[bool] = False,
+    search_knowledge: bool = False,
+    debug_mode: bool = False,
+    markdown: bool = False,
+    reasoning: bool = False,
 ) -> Agent:
     return Agent(
         session_id=session_id,
@@ -59,10 +59,12 @@ def _get_agent(
         knowledge=knowledge,
         search_knowledge=search_knowledge,
         memory=memory,
+        add_history_to_messages=True if memory else False,
+        read_chat_history=True if memory else False,
         enable_agentic_memory=True if memory else False,
         enable_user_memories=True if memory else False,
         enable_session_summaries=True if memory else False,
-        markdown=markdown,
+        markdown=True,
         add_datetime_to_instructions=True,
         debug_mode=debug_mode,
     )
@@ -80,21 +82,15 @@ def _get_memory(thread_id: str, model_id: str = TOOL_MODEL) -> Memory:
         ),
         memory_manager=MemoryManager(
             model=model,
-            additional_instructions="""
-            IMPORTANT: Don't store any memories about the user's name. Just say "The User" instead of referencing the user's name.
-            """,
         ),
         summarizer=SessionSummarizer(
             model=model,
-            additional_instructions="""
-            Make the summary very informal and conversational.
-            """,
         ),
     )
     return memory
 
 
-def _get_storage(thread_id: str) -> RedisStorage:
+def _get_storage() -> RedisStorage:
     return RedisStorage(
         prefix="agno_storage_",
         host=REDIS_HOST,
@@ -107,16 +103,16 @@ def _get_storage(thread_id: str) -> RedisStorage:
 async def build(
     llm: Model,
     config: AgentConfig,
-    thread_id: Optional[str] = None,
+    thread_id: str,
     knowledge: Optional[AgentKnowledge] = None,
-    debug_mode: Optional[bool] = True,
+    debug_mode: bool = False,
 ) -> Agent:
     memory = None
     storage = None
     knowledge = None
-    if thread_id:
-        memory = _get_memory(thread_id=thread_id)
-        storage = _get_storage(thread_id=thread_id)
+
+    memory = _get_memory(thread_id=thread_id)
+    storage = _get_storage()
 
     return _get_agent(
         session_id=thread_id,
@@ -138,13 +134,13 @@ async def build(
 
 def setup_model(kind: str, has_images: bool = False):
     model = TOOL_MODEL
-    temperature = 0.2
+    temperature = 0.3
     if kind == "vision" or has_images:
         model = VISION_MODEL
         kind = "vision"
-        temperature = 0.4
+        temperature = 0.5
     elif kind in ["chatter", "reasoning"]:
         model = CHATBOT_MODEL
-        temperature = 0.6
+        temperature = 0.5
     llm = completion(model=model, temperature=temperature)
     return llm

@@ -27,7 +27,7 @@ assert EMBEDDING_MODEL, "EMBEDDING_MODEL must be set in the environment"
 
 
 def completion(
-    model: Optional[str] = CHATBOT_MODEL, temperature: Optional[float] = 0.0
+    model: str = CHATBOT_MODEL, temperature: Optional[float] = 0.0
 ) -> Model:
     if OPENROUTER_API_KEY and OPENROUTER_MODEL:
         return OpenRouter(id=OPENROUTER_MODEL, name="Aria")
@@ -37,7 +37,6 @@ def completion(
         timeout=300,
         options={
             "temperature": temperature,
-            "num_ctx": 8192,
             "mirostat": 2,
             "repeat_last_n": -1,
             "top_k": 20,

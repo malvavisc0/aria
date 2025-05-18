@@ -17,3 +17,4 @@ requests
 wikipedia
 yfinance
 youtube_transcript_api
+sqlalchemy
