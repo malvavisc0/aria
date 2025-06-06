@@ -54,7 +54,7 @@ class ScientistConfig(AgentConfig):
         self.goal = goals.SCIENTIST
         self.description = f"{_BOT_NAME}. {descriptions.SCIENTIST}"
         self.instructions = instructions.SCIENTIST
-        self.tools += [toolkits.arxiv] + [toolkits.thinking]
+        self.tools += [toolkits.arxiv] + [toolkits.thinking] + [toolkits.calculator]
 
 
 class ReasoningConfig(AgentConfig):

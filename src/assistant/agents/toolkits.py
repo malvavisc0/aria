@@ -1,7 +1,6 @@
 from agno.tools.arxiv import ArxivTools
 from agno.tools.pubmed import PubmedTools
-from agno.tools.reasoning import ReasoningTools  # broken
-from agno.tools.thinking import ThinkingTools
+from agno.tools.calculator import CalculatorTools
 from agno.tools.wikipedia import WikipediaTools
 
 from assistant.agents.tools.finance import EnhancedYFinanceTools
@@ -20,3 +19,4 @@ pubmed = PubmedTools()
 wikipedia = WikipediaTools()
 thinking = EnhancedThinkingTools()
 reasoning = EnhancedReasoningTools()
+calculator = CalculatorTools(enable_all=True)
