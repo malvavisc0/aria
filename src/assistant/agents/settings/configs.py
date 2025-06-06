@@ -22,7 +22,7 @@ class AgentConfig(BaseModel):
     role: Annotated[Optional[str], Field(strict=True, default=None)] = None
     goal: Annotated[Optional[str], Field(strict=True, default=None)] = None
     description: Annotated[Optional[str], Field(strict=True, default="")] = ""
-    instructions: Annotated[List[str], Field(strict=True, default=[])] = []
+    instructions: Annotated[Optional[List[str]], Field(strict=True, default=[])] = []
     tools: Annotated[List, Field(strict=True, default=[])] = []
     reasoning: Annotated[bool, Field(strict=True, default=False)] = False
     markdown: Annotated[bool, Field(strict=True, default=False)] = True
@@ -54,7 +54,7 @@ class ScientistConfig(AgentConfig):
         self.goal = goals.SCIENTIST
         self.description = f"{_BOT_NAME}. {descriptions.SCIENTIST}"
         self.instructions = instructions.SCIENTIST
-        self.tools += [toolkits.arxiv]
+        self.tools += [toolkits.arxiv] + [toolkits.thinking]
 
 
 class ReasoningConfig(AgentConfig):
@@ -69,7 +69,8 @@ class ReasoningConfig(AgentConfig):
         self.goal = goals.REASONING
         self.role = roles.REASONING
         self.instructions = instructions.REASONING
-        self.tools = [toolkits.searxng]
+        self.instructions.append(toolkits.searxng.get_llm_usage_instructions())
+        self.tools += [toolkits.searxng] + [toolkits.reasoning]
 
 
 class VisionConfig(AgentConfig):
@@ -98,7 +99,7 @@ class MedicConfig(AgentConfig):
         self.goal = goals.MEDIC
         self.description = f"{_BOT_NAME}. {descriptions.MEDIC}"
         self.instructions = instructions.MEDIC
-        self.tools += [toolkits.pubmed]
+        self.tools += [toolkits.pubmed] + [toolkits.thinking]
 
 
 class WikipediaConfig(AgentConfig):
@@ -113,7 +114,7 @@ class WikipediaConfig(AgentConfig):
         self.goal = goals.WIKIPEDIA
         self.description = descriptions.WIKIPEDIA
         self.description = f"{_BOT_NAME}. {descriptions.WIKIPEDIA}"
-        self.tools += [toolkits.wikipedia]
+        self.tools += [toolkits.wikipedia] + [toolkits.thinking]
 
 
 class YoutubeConfig(AgentConfig):
@@ -128,7 +129,7 @@ class YoutubeConfig(AgentConfig):
         self.goal = goals.YOUTUBE
         self.description = f"{_BOT_NAME}. {descriptions.YOUTUBE}"
         self.instructions = instructions.YOUTUBE
-        self.tools += [toolkits.youtube]
+        self.tools += [toolkits.youtube] + [toolkits.thinking]
 
 
 class FinanceConfig(AgentConfig):
@@ -143,7 +144,9 @@ class FinanceConfig(AgentConfig):
         self.goal = goals.FINANCE
         self.description = f"{_BOT_NAME}. {descriptions.FINANCE}"
         self.instructions = instructions.FINANCE
-        self.tools += [toolkits.finance]
+        self.instructions.append(toolkits.finance.get_llm_usage_instructions())
+        
+        self.tools += [toolkits.finance] + [toolkits.thinking]
 
 
 class ResearcherConfig(AgentConfig):

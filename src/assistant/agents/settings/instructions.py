@@ -205,7 +205,7 @@ REASONING = [
    - Build coherent models that explain observed patterns
 """,
     """
-**2. Critical Thinking & Bias Management**
+**2. Critical Thinking, Bias Management, and Iterative Self-Correction**
 
 1. **Assumption Identification**:
    - Explicitly identify assumptions underlying the reasoning process
@@ -214,12 +214,14 @@ REASONING = [
    - Consider how different assumptions would alter conclusions
    - Maintain awareness of implicit assumptions in mental models
 
-2. **Bias Detection & Mitigation**:
-   - Systematically check for common cognitive biases in the reasoning process
-   - Apply structured debiasing techniques to counteract identified biases
-   - Consider alternative framings of the problem to reveal hidden biases
-   - Evaluate evidence quality independently from how it supports conclusions
-   - Actively seek disconfirming evidence for tentative conclusions
+2. **Bias Detection, Feedback Integration, and Stepwise Narration**:
+   - After each reasoning step, explicitly check for cognitive biases
+   - If a major bias is detected, narrate what bias was found and how it affects the answer
+   - Revise the answer to address the bias: add counterarguments, increase uncertainty, or reframe the analysis as appropriate
+   - Clearly narrate what was changed and why in each iteration
+   - Use the previous answer and detected bias as input for the next iteration, with explicit instructions to revise and narrate changes
+   - Continue this process until no major bias is detected or a maximum number of iterations is reached
+   - At the end, transparently state whether the answer is now considered balanced or if some bias may remain
 
 3. **Logical Fallacy Prevention**:
    - Apply formal logic principles to validate reasoning steps
@@ -253,7 +255,7 @@ REASONING = [
    - Present alternative conclusions when evidence is ambiguous
 """,
     """
-**4. Iterative Refinement & Meta-Reasoning**
+**4. Iterative Refinement, Meta-Reasoning, and Example**
 
 1. **Self-Assessment Process**:
    - Regularly evaluate the quality of the reasoning process
@@ -262,12 +264,12 @@ REASONING = [
    - Document reasoning steps to enable transparent review
    - Maintain awareness of confidence calibration
 
-2. **Iterative Improvement**:
-   - Systematically refine reasoning through multiple passes
+2. **Iterative Improvement and Stopping Criteria**:
+   - Systematically refine reasoning through multiple passes, integrating bias feedback and narrating changes
    - Incorporate new information to update conclusions appropriately
    - Revisit and strengthen weak links in the reasoning chain
    - Apply increasingly rigorous standards in successive iterations
-   - Establish clear stopping criteria to prevent over-analysis
+   - Establish clear stopping criteria: stop when no major bias is detected or after a maximum number of iterations, and transparently state the outcome
 
 3. **Meta-Cognitive Awareness**:
    - Maintain awareness of the reasoning strategies being employed
@@ -275,13 +277,19 @@ REASONING = [
    - Recognize when to shift between intuitive and analytical thinking
    - Monitor cognitive resource allocation across reasoning tasks
    - Identify when to seek additional information versus proceeding with analysis
+
+4. **Concrete Example of Iterative, Bias-Aware Reasoning**:
+   - *Iteration 1: Initial answer...*
+   - *Bias detected: Confirmation bias. Revision: Added counterarguments and increased uncertainty...*
+   - *Iteration 2: Revised answer...*
+   - *No major bias detected. Final answer is considered balanced.*
 """,
     HANDLING_INCOMPLETE_INFO,
     PROACTIVE_TOOL_USAGE
     + """
 - Specifically for reasoning:
   * Use reasoning tools for ALL analytical steps
-  * Document each reasoning step clearly
+  * Document each reasoning step clearly, including bias checks and revisions
   * Use calculator tools for quantitative analysis
   * Use search tools to verify factual claims
   * Use knowledge tools to incorporate domain expertise

@@ -64,9 +64,9 @@ def _get_agent(
         enable_agentic_memory=True if memory else False,
         enable_user_memories=True if memory else False,
         enable_session_summaries=True if memory else False,
-        markdown=True,
+        markdown=markdown,
         add_datetime_to_instructions=True,
-        debug_mode=debug_mode,
+        debug_mode=False,
     )
 
 
