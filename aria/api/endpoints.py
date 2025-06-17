@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from aria.ai import ollama_agent
+from aria.ai import ollama_core_agent
 from aria.schemas import (
     HealthResponse,
     MessageCreate,
@@ -91,7 +91,7 @@ async def send_message(
 
     async def stream_response():
         nonlocal assistant_content
-        agent = ollama_agent(user_id=role, session_id=session_id, enable_memory=True)
+        agent = ollama_core_agent(user_id=role, session_id=session_id, enable_memory=True)
         response = agent.run(
             message=message, stream=True, user_id=role, session_id=session_id
         )

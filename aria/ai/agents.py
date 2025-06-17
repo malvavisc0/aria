@@ -6,8 +6,10 @@ from agno.memory.v2.memory import Memory
 from agno.models.ollama import Ollama
 from agno.storage.sqlite import SqliteStorage
 
+from aria.ai.configs import ARIA_AGENT_CONFIG
 
-def get_ollama_agent(
+
+def get_ollama_core_agent(
     user_id: str, session_id: str, markdown: bool = False, enable_memory: bool = False
 ) -> Agent:
     """
@@ -39,7 +41,7 @@ def get_ollama_agent(
     ollama_model_temperature = float(os.getenv("OLLAMA_MODEL_TEMPARATURE", 0.65))
     ollama_model_context_length = int(os.getenv("OLLAMA_MODEL_CONTEXT_LENGTH", 20480))
 
-    ollama_model = Ollama(
+    ollama = Ollama(
         id=ollama_model_id,
         host=ollama_url,
         timeout=300,
@@ -53,19 +55,32 @@ def get_ollama_agent(
         },
     )
 
-    storage = SqliteStorage(table_name="session", db_file="/opt/storage/storage.db")
+    debug_mode = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
+    db_file = os.getenv("DB_FILE", "/opt/storage/sessions.db")
+    storage = SqliteStorage(table_name="chat", db_file=db_file)
     memory = None
     if enable_memory:
-        memory = Memory(db=SqliteMemoryDb(db_file="/opt/storage/memories.db"))
+        memory = Memory(db=SqliteMemoryDb(db_file=db_file))
 
     return Agent(
-        model=ollama_model,
+        model=ollama,
+        name=ARIA_AGENT_CONFIG["name"],
+        description=ARIA_AGENT_CONFIG["description"],
+        role=ARIA_AGENT_CONFIG["role"],
+        instructions=ARIA_AGENT_CONFIG["instructions"],
+        goal=ARIA_AGENT_CONFIG["goal"],
         user_id=user_id,
         session_id=session_id,
-        name="Core",
         markdown=markdown,
+        add_history_to_messages=enable_memory,
+        enable_session_summaries=enable_memory,
+        read_chat_history=enable_memory,
+        enable_agentic_memory=enable_memory,
+        enable_user_memories=enable_memory,
+        add_datetime_to_instructions=True,
         memory=memory,
         storage=storage,
-        enable_user_memories=enable_memory,
+        debug_mode=debug_mode,
+        show_tool_calls=debug_mode,
     )

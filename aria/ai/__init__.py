@@ -1,5 +1,5 @@
-from aria.ai.agents import get_ollama_agent as ollama_agent
+from aria.ai.agents import get_ollama_core_agent as ollama_core_agent
 
 __all__ = [
-    "ollama_agent",
+    "ollama_core_agent",
 ]
