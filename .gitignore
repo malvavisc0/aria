@@ -2,3 +2,4 @@
 aria/uploads/
 chat.db
 __pycache__/
+.env
