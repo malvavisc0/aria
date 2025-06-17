@@ -1,0 +1,97 @@
+/* ===== HAMBURGER BUTTON - SIMPLE & ALWAYS VISIBLE ===== */
+
+.sidebar-toggle-btn {
+  /* Fixed positioning - completely independent of sidebar */
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 9999;
+  
+  /* Basic styling */
+  width: 48px;
+  height: 48px;
+  background: var(--surface-secondary, #2c2c44);
+  border: 2px solid var(--border-primary, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Visual effects */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  
+  /* Smooth transitions */
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.sidebar-toggle-btn:hover {
+  background: var(--interactive-secondary-hover, #3c3c58);
+  border-color: var(--interactive-primary, #22c55e);
+  transform: scale(1.05);
+  box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+/* Focus state for accessibility */
+.sidebar-toggle-btn:focus {
+  outline: 2px solid var(--interactive-primary, #22c55e);
+  outline-offset: 2px;
+}
+
+/* Active state */
+.sidebar-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* Icon styling */
+.sidebar-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+}
+
+/* Rotate icon when sidebar is open */
+.app-sidebar[data-collapsed="false"] ~ .sidebar-toggle-btn svg {
+  transform: rotate(90deg);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    top: 12px;
+    left: 12px;
+    width: 44px;
+    height: 44px;
+  }
+  
+  .sidebar-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Theme adaptations */
+.theme-dark .sidebar-toggle-btn {
+  background: rgba(30, 30, 46, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.theme-light .sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1a1a2e;
+}
+
+/* Ensure button is never hidden */
+.sidebar-toggle-btn {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+}

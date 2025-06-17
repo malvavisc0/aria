@@ -8,33 +8,79 @@ export function initSidebar() {
   initNewChatButton();
   window.addEventListener('aria-session-changed', renderSessionList);
 
-  // Sidebar collapse/expand logic
+  // Simple sidebar toggle logic
   const sidebar = document.querySelector('.app-sidebar');
   const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  const backdrop = document.getElementById('sidebar-backdrop');
   
   if (sidebar && toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
-      const newState = !isCollapsed;
+    const toggleSidebar = (collapsed) => {
+      sidebar.setAttribute('data-collapsed', collapsed.toString());
       
-      sidebar.setAttribute('data-collapsed', newState.toString());
-      toggleBtn.classList.toggle('toggled');
+      // Update ARIA attributes
+      toggleBtn.setAttribute('aria-expanded', (!collapsed).toString());
+      toggleBtn.setAttribute('aria-label', collapsed ? 'Open sidebar' : 'Close sidebar');
+      sidebar.setAttribute('aria-hidden', collapsed.toString());
       
-      // Dispatch event for any listeners
+      // Handle backdrop for mobile
+      if (backdrop) {
+        if (!collapsed && window.innerWidth <= 768) {
+          backdrop.classList.add('active');
+          document.body.classList.add('sidebar-open');
+        } else {
+          backdrop.classList.remove('active');
+          document.body.classList.remove('sidebar-open');
+        }
+      }
+      
+      // Dispatch event
       window.dispatchEvent(new Event('aria-sidebar-toggled'));
       
       // Persist state
-      localStorage.setItem('sidebar-collapsed', newState ? '1' : '0');
+      localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0');
+    };
+    
+    // Click handler
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+      toggleSidebar(!isCollapsed);
+    });
+    
+    // Keyboard support
+    toggleBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+        toggleSidebar(!isCollapsed);
+      }
+    });
+    
+    // Backdrop click to close
+    if (backdrop) {
+      backdrop.addEventListener('click', () => {
+        toggleSidebar(true);
+      });
+    }
+    
+    // Window resize handler
+    window.addEventListener('resize', () => {
+      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+      if (backdrop) {
+        if (!isCollapsed && window.innerWidth <= 768) {
+          backdrop.classList.add('active');
+          document.body.classList.add('sidebar-open');
+        } else {
+          backdrop.classList.remove('active');
+          document.body.classList.remove('sidebar-open');
+        }
+      }
     });
     
     // Restore state on load
     const savedState = localStorage.getItem('sidebar-collapsed');
-    if (savedState === '1') {
-      sidebar.setAttribute('data-collapsed', 'true');
-      toggleBtn.classList.add('toggled');
-    } else {
-      sidebar.setAttribute('data-collapsed', 'false');
-    }
+    const initialCollapsed = savedState !== '0'; // Default to collapsed
+    toggleSidebar(initialCollapsed);
   }
 }
 

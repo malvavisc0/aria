@@ -73,7 +73,7 @@ body {
 /* ===== MODERN LAYOUT ===== */
 
 .app-container {
-  display: flex;
+  position: relative;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -81,43 +81,110 @@ body {
 }
 
 .app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 280px;
-  flex-shrink: 0;
-  transition: width var(--transition-base);
+  height: 100vh;
+  z-index: var(--z-overlay);
+  transform: translateX(-220px);
+  transition: transform var(--transition-base);
+  will-change: transform;
+}
+
+.app-sidebar[data-collapsed="false"] {
+  transform: translateX(0);
 }
 
 .app-sidebar[data-collapsed="true"] {
-  width: 60px;
+  transform: translateX(-220px);
 }
 
 .app-main {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  flex: 1;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
+  padding-left: 60px; /* Space for hamburger button */
 }
 
-/* Fallback for browsers without :has() support */
-.app-sidebar[data-collapsed="true"] ~ .app-main {
-  /* This will be handled by the grid, but kept for compatibility */
+/* Backdrop overlay for mobile */
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: calc(var(--z-overlay) - 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-base), visibility var(--transition-base);
 }
 
-@supports not selector(:has(*)) {
-  .app-container {
-    display: flex;
-  }
-  
+.sidebar-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Keyboard navigation support */
+.app-sidebar:focus-within {
+  transform: translateX(0);
+}
+
+.app-sidebar[data-collapsed="true"]:focus-within {
+  transform: translateX(-220px);
+}
+
+/* Mobile responsive behavior */
+@media (max-width: 768px) {
   .app-sidebar {
-    width: 280px;
-    flex-shrink: 0;
+    transform: translateX(-100%);
+    width: 100vw;
+    max-width: 320px;
   }
   
-  .app-sidebar[data-collapsed="true"] {
-    width: 60px;
+  .app-sidebar[data-collapsed="false"] {
+    transform: translateX(0);
+  }
+  
+  .app-sidebar:focus-within {
+    transform: translateX(0);
   }
   
   .app-main {
-    flex: 1;
+    padding-left: 0;
+  }
+  
+  /* Mobile-specific hamburger button positioning */
+  #sidebar-toggle-btn {
+    top: var(--space-3);
+    left: var(--space-3);
+    width: 44px;
+    height: 44px;
+    padding: var(--space-2);
+  }
+}
+
+/* Smooth scrolling for sidebar content */
+.sidebar-body {
+  scroll-behavior: smooth;
+}
+
+/* Prevent body scroll when sidebar is open on mobile */
+@media (max-width: 768px) {
+  body:has(.app-sidebar[data-collapsed="false"]) {
+    overflow: hidden;
+  }
+}
+
+/* Fallback for browsers without :has() support */
+@supports not selector(:has(*)) {
+  @media (max-width: 768px) {
+    body.sidebar-open {
+      overflow: hidden;
+    }
   }
 }
 
@@ -126,12 +193,9 @@ body {
 .app-sidebar {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  height: 100vh;
-  position: relative;
-  z-index: var(--z-docked);
-  transition: all var(--transition-base);
   background: var(--bg-secondary);
-  border-right: none;
+  border-right: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-lg);
 }
 
 .app-sidebar[data-collapsed="true"] .sidebar-body,
@@ -141,6 +205,12 @@ body {
 
 .app-sidebar[data-collapsed="true"] .sidebar-toggle-btn svg {
   transform: rotate(180deg);
+}
+
+/* Ensure hamburger button is always visible */
+.app-sidebar .sidebar-header {
+  position: relative;
+  z-index: calc(var(--z-overlay) + 1);
 }
 
 /* ===== SIDEBAR COMPONENTS ===== */
@@ -432,11 +502,265 @@ body {
 
 /* ===== MODERN HEADER ===== */
 
+/* ===== HAMBURGER BUTTON - ALWAYS VISIBLE SOLUTION ===== */
+
 #sidebar-toggle-btn {
-  margin-left: var(--space-4);
-  margin-right: var(--space-4);
-  margin-top: var(--space-2);
-  margin-bottom: var(--space-2);
+  /* Always fixed positioning for consistent visibility */
+  position: fixed !important;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: calc(var(--z-overlay) + 10);
+  
+  /* Enhanced styling for visibility */
+  background: var(--surface-secondary);
+  border: 2px solid var(--border-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  
+  /* Size and layout */
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Visual enhancements */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
+  
+  /* Smooth transitions */
+  transition: all var(--transition-base);
+  transform: none !important;
+  margin: 0 !important;
+  
+  /* Accessibility */
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+}
+
+/* Enhanced hover effects */
+#sidebar-toggle-btn:hover {
+  background: var(--interactive-secondary-hover);
+  border-color: var(--interactive-primary);
+  color: var(--text-primary);
+  transform: scale(1.05) !important;
+  box-shadow: var(--shadow-xl);
+}
+
+/* Focus states for accessibility */
+#sidebar-toggle-btn:focus {
+  outline: 2px solid var(--interactive-primary);
+  outline-offset: 2px;
+}
+
+/* Active state */
+#sidebar-toggle-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  #sidebar-toggle-btn {
+    border-width: 3px;
+/* ===== RESPONSIVE HAMBURGER BUTTON ENHANCEMENTS ===== */
+
+/* Large screens - top-left positioning */
+@media (min-width: 1200px) {
+  #sidebar-toggle-btn {
+    top: var(--space-5);
+    left: var(--space-5);
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Tablet landscape */
+@media (min-width: 769px) and (max-width: 1199px) {
+  #sidebar-toggle-btn {
+    top: var(--space-4);
+    left: var(--space-4);
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  #sidebar-toggle-btn {
+    top: var(--space-2);
+    left: var(--space-2);
+    width: 40px;
+    height: 40px;
+    padding: var(--space-2);
+  }
+}
+
+/* ===== HAMBURGER ICON ANIMATIONS ===== */
+
+#sidebar-toggle-btn svg {
+  transition: all var(--transition-base);
+  position: relative;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+}
+
+/* Rotate icon when sidebar is expanded */
+.app-sidebar[data-collapsed="false"] #sidebar-toggle-btn svg {
+  transform: rotate(90deg);
+}
+
+/* Icon hover effects */
+#sidebar-toggle-btn:hover svg {
+  transform: scale(1.1);
+}
+
+.app-sidebar[data-collapsed="false"] #sidebar-toggle-btn:hover svg {
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* ===== VISUAL INDICATORS ===== */
+
+/* Pulsing effect for first-time users */
+@keyframes pulse-hint {
+  0%, 100% { 
+    box-shadow: var(--shadow-lg); 
+  }
+  50% { 
+    box-shadow: var(--shadow-xl), 0 0 0 4px rgba(34, 197, 94, 0.2); 
+  }
+}
+
+/* Apply pulse animation on first load */
+#sidebar-toggle-btn.first-load {
+  animation: pulse-hint 2s ease-in-out 3;
+}
+
+/* Sidebar state indicator */
+#sidebar-toggle-btn::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success-500);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+/* Show indicator when sidebar is expanded */
+.app-sidebar[data-collapsed="false"] #sidebar-toggle-btn::after {
+  opacity: 1;
+}
+
+/* ===== DARK/LIGHT THEME ADAPTATIONS ===== */
+
+.theme-dark #sidebar-toggle-btn {
+  background: rgba(30, 30, 46, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+/* ===== HAMBURGER BUTTON PROTECTION ===== */
+
+/* Ensure hamburger button is never hidden or overlapped */
+#sidebar-toggle-btn {
+  /* Force visibility */
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  
+  /* Prevent any transforms from hiding it */
+  transform: none !important;
+  
+  /* Ensure it's always on top */
+  z-index: 2147483647 !important; /* Maximum z-index value */
+  
+  /* Prevent pointer events from being disabled */
+  pointer-events: auto !important;
+  
+  /* Prevent clipping */
+  clip: auto !important;
+  clip-path: none !important;
+  
+  /* Prevent overflow hidden from parent */
+  position: fixed !important;
+}
+
+/* Override any potential hiding styles */
+.app-sidebar[data-collapsed="true"] #sidebar-toggle-btn,
+.app-sidebar[data-collapsed="false"] #sidebar-toggle-btn,
+.app-sidebar #sidebar-toggle-btn {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  position: fixed !important;
+}
+
+/* Ensure button works on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  #sidebar-toggle-btn {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
+/* Print media - hide hamburger button */
+@media print {
+  #sidebar-toggle-btn {
+    display: none !important;
+  }
+}
+
+/* Screen reader only text for better accessibility */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.theme-dark #sidebar-toggle-btn:hover {
+  background: rgba(44, 44, 68, 0.95);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.theme-light #sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1a1a2e;
+}
+
+.theme-light #sidebar-toggle-btn:hover {
+  background: rgba(240, 244, 255, 0.95);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  #sidebar-toggle-btn {
+    transition: none;
+  }
+  
+  #sidebar-toggle-btn:hover {
+    transform: none !important;
+  }
 }
 
 #theme-toggle {
@@ -1346,4 +1670,50 @@ textarea::placeholder,
 .sidebar-search-input {
   background: #23252b !important;
   color: #cfd2f7 !important;
+}
+/* ===== BROWSER COMPATIBILITY & FALLBACKS ===== */
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(12px)) {
+  #sidebar-toggle-btn {
+    background: var(--surface-secondary) !important;
+    opacity: 0.95;
+  }
+  
+  .theme-dark #sidebar-toggle-btn {
+    background: rgba(30, 30, 46, 0.98) !important;
+  }
+  
+  .theme-light #sidebar-toggle-btn {
+    background: rgba(255, 255, 255, 0.98) !important;
+  }
+}
+
+/* Fallback for browsers without CSS custom properties */
+@supports not (--css: variables) {
+  #sidebar-toggle-btn {
+    position: fixed !important;
+    top: 16px;
+    left: 16px;
+    z-index: 1060;
+    background: #2c2c44;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Internet Explorer 11 specific fixes */
+@media screen and (-ms-high-contrast: active), (-ms-high-contrast: none) {
+  #sidebar-toggle-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    background: #2c2c44;
+    border: 2px solid #444;
+    color: #fff;
+  }
 }
