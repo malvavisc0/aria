@@ -13,9 +13,6 @@ def run(
     Run the Aria backend server using uv and uvicorn.
     """
     cmd = [
-        "uv",
-        "pip",
-        "run",
         "uvicorn",
         "aria.main:app",
         "--host",

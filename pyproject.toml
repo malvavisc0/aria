@@ -1,8 +1,8 @@
 [project]
 name = "aria"
-version = "1.0.0"
-description = "Aria: FastAPI backend for chat sessions and messages"
-authors = [{ name = "Your Name", email = "your.email@example.com" }]
+version = "2.0.0"
+description = "Aria"
+authors = [{ name = "malvavisc0" }]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
@@ -12,7 +12,6 @@ dependencies = [
     "asyncpg",
     "bcrypt",
     "chainlit",
-    "cohereal",
     "fastapi",
     "fastembed",
     "infinity_client",
@@ -41,4 +40,4 @@ dependencies = [
 aria = "aria.cli:app"
 
 [tool.setuptools.packages.find]
-where = ["aria"]
+where = ["."]

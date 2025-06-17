@@ -9,3 +9,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      AGNO_TELEMETRY: ${AGNO_TELEMETRY:-false}
