@@ -1,9 +1,6 @@
 import os
-import time
-from datetime import datetime
-from typing import List, Optional
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from tortoise.contrib.fastapi import register_tortoise
@@ -11,27 +8,12 @@ from tortoise.contrib.fastapi import register_tortoise
 from aria.api.endpoints import router as api_router
 
 from .config import settings
-from .models import Message, Session
-from .schemas import (
-    HealthResponse,
-    MessageCreate,
-    MessageResponse,
-    PasswordResponse,
-    SearchResponse,
-    SessionCreate,
-    SessionPasswordRemove,
-    SessionPasswordSet,
-    SessionPasswordValidate,
-    SessionResponse,
-    SessionWithMessages,
-    ValidationResponse,
-)
-from .services import MessageService, PasswordService, SessionService
 
 app = FastAPI(
-    title="Chat API",
+    title="Aria API",
     description="FastAPI backend for chat sessions and messages",
     version="1.0.0",
+    docs_url="/docs",
 )
 
 # CORS middleware

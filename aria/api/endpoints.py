@@ -3,12 +3,13 @@ from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
+from aria.ai import ollama_agent
 from aria.config import settings
 from aria.models import Message, Session
 from aria.schemas import (
     HealthResponse,
-    MessageCreate,
     MessageResponse,
     PasswordResponse,
     SearchResponse,
@@ -71,18 +72,25 @@ async def list_messages(session_id: str):
 
 @router.post(
     "/api/sessions/{session_id}/messages",
-    response_model=List[MessageResponse],
-    status_code=201,
 )
 async def send_message(
     session_id: str,
-    content: str = Form(...),
+    message: str = Form(...),
     role: str = Form("user"),
     files: List[UploadFile] = File(default=[]),
-):
+) -> StreamingResponse:
     """Send a new message (text and/or files) and get assistant response"""
-    # This is the endpoint we're NOT implementing - just placeholder
-    raise HTTPException(status_code=501, detail="Message sending not implemented yet")
+
+    def stream_response():
+        agent = ollama_agent(user_id=role, session_id=session_id)
+        response = agent.run(
+            message=message, stream=True, user_id=role, session_id=session_id
+        )
+        for chunk in response:
+            if chunk.content:
+                yield str(chunk.content)
+
+    return StreamingResponse(stream_response())
 
 
 @router.delete("/api/sessions/{session_id}/messages/{message_id}", status_code=204)
@@ -119,8 +127,7 @@ async def validate_session_password(
     )
     if is_valid:
         return ValidationResponse(valid=True)
-    else:
-        return ValidationResponse(valid=False, error="Invalid password")
+    return ValidationResponse(valid=False, error="Invalid password")
 
 
 @router.get("/api/sessions/search", response_model=List[SearchResponse])
