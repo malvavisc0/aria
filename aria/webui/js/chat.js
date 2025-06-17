@@ -184,7 +184,6 @@ function renderCurrentSession() {
         <div class="welcome-content">
           <img src="public/avatars/aria.png" alt="Aria" class="welcome-avatar">
           <h2>Hi there! I'm Aria 🌟</h2>
-          <p>I'm here to chat with you, answer your questions, and be your friendly companion.</p>
         </div>
       </div>
       
