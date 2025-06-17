@@ -20,10 +20,30 @@ body {
   line-height: var(--leading-normal);
   color: var(--text-primary);
   background: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
   transition: all var(--transition-base);
   overflow-x: hidden;
   min-height: 100vh;
   letter-spacing: 0.01em;
+}
+
+/* Dark theme grid effect */
+.theme-dark body {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Light theme grid effect */
+.theme-light body {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* ===== MODERN LAYOUT ===== */
@@ -85,7 +105,7 @@ body {
   z-index: var(--z-docked);
   transition: all var(--transition-base);
   background: var(--bg-secondary);
-  border-right: var(--border-width) solid var(--border-primary);
+  border-right: none;
 }
 
 .app-sidebar[data-collapsed="true"] .sidebar-body,
@@ -106,7 +126,7 @@ body {
 
 .sidebar-header {
   padding: var(--space-4);
-  border-bottom: var(--border-width) solid var(--border-primary);
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -148,7 +168,7 @@ body {
 
 .main-footer {
   background: var(--bg-primary);
-  border-top: var(--border-width) solid var(--border-primary);
+  border-top: none;
   z-index: var(--z-sticky);
 }
 
