@@ -6,10 +6,35 @@ authors = [{ name = "Your Name", email = "your.email@example.com" }]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "aiohttp",
+    "aiosqlite",
+    "arxiv",
+    "asyncpg",
+    "bcrypt",
+    "chainlit",
+    "cohereal",
     "fastapi",
-    "uvicorn",
+    "fastembed",
+    "infinity_client",
+    "lancedb",
+    "loguru",
+    "markitdown",
+    "mcp",
+    "ollama",
+    "openai",
+    "platformdirs",
+    "pypdf",
+    "python-multipart",
+    "requests",
     "tortoise-orm",
+    "tortoise-orm[accel]",
     "typer",
+    "uvicorn",
+    "uvicorn[standard]",
+    "wikipedia",
+    "yfinance",
+    "youtube_transcript_api",
+    "agno==1.6.2",
 ]
 
 [project.scripts]
