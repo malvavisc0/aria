@@ -67,6 +67,8 @@ body {
 }
 
 .app-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   flex: 1;
   overflow: hidden;
 }
@@ -146,12 +148,6 @@ body {
 
 /* ===== MAIN CONTENT GRID ===== */
 
-.app-main {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  height: 100vh;
-  overflow: hidden;
-}
 
 .main-header {
   background: transparent;
@@ -414,13 +410,6 @@ body {
 
 /* ===== MODERN MAIN CONTENT ===== */
 
-.app-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
 
 /* ===== MODERN HEADER ===== */
 
@@ -564,13 +553,6 @@ body {
 
 /* ===== MODERN MAIN CONTENT ===== */
 
-.app-main {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  background: none;
-}
 
 /* ===== MODERN CHAT CONTAINER ===== */
 
