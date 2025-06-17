@@ -47,12 +47,17 @@ function initNewChatButton() {
   }
 }
 
+let searchDebounceTimeout;
+
 function initSearchBar() {
   const searchInput = document.getElementById('sidebar-search-input');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.toLowerCase();
-      renderSessionList();
+      clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(() => {
+        renderSessionList();
+      }, 300);
     });
   }
 }
@@ -78,7 +83,11 @@ function renderSessionList() {
   list.appendChild(searchContainer);
 
   // Re-initialize search after DOM update
-  setTimeout(() => initSearchBar(), 0);
+  setTimeout(() => {
+    initSearchBar();
+    const searchInput = document.getElementById('sidebar-search-input');
+    if (searchInput) searchInput.focus();
+  }, 0);
 
   // Filter sessions based on search query
   const filteredSessions = sessions.filter(session => {
