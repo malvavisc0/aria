@@ -8,7 +8,7 @@ from typing import Optional
 
 class Settings:
     # Database settings
-    DATABASE_URL: str = "sqlite://backend/chat.db"
+    DATABASE_URL: str = "sqlite://opt/storage/chat.db"
 
     # API settings
     API_HOST: str = "0.0.0.0"
@@ -23,7 +23,7 @@ class Settings:
 
     # File upload settings
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
-    UPLOAD_DIR: str = "backend/uploads"
+    UPLOAD_DIR: str = "/opt/storage/uploads"
     ALLOWED_FILE_TYPES: list = [
         "image/jpeg",
         "image/png",

@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,8 +42,35 @@ register_tortoise(
     add_exception_handlers=True,
 )
 
-# Create upload directory on startup
-settings.create_upload_dir()
+
+# Ensure upload directory is created using FastAPI lifespan event
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure parent directory for database file exists
+    db_path = settings.DATABASE_URL
+    if db_path.startswith("sqlite://"):
+        db_path = db_path.replace("sqlite://", "")
+    db_dir = os.path.dirname(db_path)
+    os.makedirs(db_dir, exist_ok=True)
+
+    # Initialize empty SQLite database file if it does not exist
+    if not os.path.exists(db_path):
+        import sqlite3
+
+        conn = sqlite3.connect(db_path)
+        conn.close()
+
+    settings.create_upload_dir()
+    yield
+
+
+app = FastAPI(
+    title="Aria API",
+    description="FastAPI backend for chat sessions and messages",
+    version="1.0.0",
+    docs_url="/docs",
+    lifespan=lifespan,
+)
 
 if __name__ == "__main__":
     import uvicorn

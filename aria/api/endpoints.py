@@ -91,7 +91,7 @@ async def send_message(
 
     async def stream_response():
         nonlocal assistant_content
-        agent = ollama_agent(user_id=role, session_id=session_id)
+        agent = ollama_agent(user_id=role, session_id=session_id, enable_memory=True)
         response = agent.run(
             message=message, stream=True, user_id=role, session_id=session_id
         )
