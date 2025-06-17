@@ -12,6 +12,8 @@
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Whimsical font for headings -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     
     <!-- Styles -->
     <link rel="stylesheet" href="css/themes.css">
@@ -26,6 +28,13 @@
     <div id="app" class="app-container">
         <!-- Left Sidebar -->
         <aside class="main-sidebar">
+            <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
             <div class="sidebar-content">
                 <div class="chat-history-section">
                     <div class="history-title">Chat History</div>
@@ -39,7 +48,7 @@
                 <div class="user-profile">
                     <img src="assets/avatars/aria.png" alt="User" class="user-avatar">
                     <div class="user-info">
-                        <div class="user-name">Aria</div>
+                        <div class="user-name"></div>
                         <div class="user-role">v2</div>
                     </div>
                 </div>

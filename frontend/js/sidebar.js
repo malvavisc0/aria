@@ -1,8 +1,29 @@
-// ===== SIDEBAR FUNCTIONALITY: SESSION HISTORY =====
+/* ===== SIDEBAR FUNCTIONALITY: SESSION HISTORY & COLLAPSE ===== */
 
 export function initSidebar() {
   renderSessionList();
   window.addEventListener('aria-session-changed', renderSessionList);
+
+  // Sidebar collapse/expand logic
+  const sidebar = document.querySelector('.main-sidebar');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (sidebar && toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('sidebar-collapsed');
+      toggleBtn.classList.toggle('toggled');
+      // Optionally: persist state
+      if (sidebar.classList.contains('sidebar-collapsed')) {
+        localStorage.setItem('sidebar-collapsed', '1');
+      } else {
+        localStorage.removeItem('sidebar-collapsed');
+      }
+    });
+    // Restore state on load
+    if (localStorage.getItem('sidebar-collapsed') === '1') {
+      sidebar.classList.add('sidebar-collapsed');
+      toggleBtn.classList.add('toggled');
+    }
+  }
 }
 
 function renderSessionList() {

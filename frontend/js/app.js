@@ -34,19 +34,29 @@ function init() {
  * Initialize sidebar toggle functionality
  */
 function initSidebarToggle() {
-  // Use the wrapper to ensure correct context
-  const wrapper = document.querySelector('.sidebar-toggle-and-panel');
-  const sidebar = wrapper ? wrapper.querySelector('.left-sidebar') : document.querySelector('.left-sidebar');
+  console.log('🔍 Looking for sidebar elements...');
+  const sidebar = document.querySelector('.main-sidebar');
   const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  
+  console.log('Sidebar found:', !!sidebar);
+  console.log('Toggle button found:', !!toggleBtn);
+  
   if (!sidebar || !toggleBtn) {
     console.warn('Sidebar or toggle button not found');
+    console.log('Available elements:', {
+      sidebar: document.querySelector('.main-sidebar'),
+      toggleBtn: document.getElementById('sidebar-toggle-btn'),
+      allSidebars: document.querySelectorAll('[class*="sidebar"]'),
+      allButtons: document.querySelectorAll('button')
+    });
     return;
   }
 
+  console.log('✅ Setting up sidebar toggle...');
   toggleBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('sidebar-hidden');
+    sidebar.classList.toggle('sidebar-collapsed');
     toggleBtn.classList.toggle('toggled');
-    console.log('Sidebar toggled:', sidebar.classList.contains('sidebar-hidden') ? 'hidden' : 'visible');
+    console.log('Sidebar toggled:', sidebar.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded');
   });
 }
 
@@ -329,7 +339,12 @@ window.aria = {
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM loaded, initializing...');
+    init();
+  });
 } else {
-  init();
+  console.log('📄 DOM already ready, initializing...');
+  // Add a small delay to ensure all elements are rendered
+  setTimeout(init, 100);
 }
