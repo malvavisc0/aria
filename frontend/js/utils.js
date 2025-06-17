@@ -256,6 +256,11 @@ export function autoResizeTextarea(textarea) {
  * @param {Object} options 
  */
 export function scrollIntoView(element, options = {}) {
+  if (!element || typeof element.scrollIntoView !== 'function') {
+    console.warn('scrollIntoView: Invalid element provided');
+    return;
+  }
+  
   const {
     behavior = 'smooth',
     block = 'nearest',

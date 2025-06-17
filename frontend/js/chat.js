@@ -13,6 +13,8 @@ let firstMessageSent = false;
 // DOM elements
 let chatMessages, messageInput, sendBtn, typingIndicator, chatForm;
 
+// Scrollbar is now completely hidden via CSS, no need for dynamic visibility logic
+
 /**
  * Initialize chat functionality
  */
@@ -21,7 +23,6 @@ export function initChat() {
   chatMessages = document.getElementById('chat-messages');
   messageInput = document.getElementById('message-input');
   sendBtn = document.getElementById('send-btn');
-  typingIndicator = document.getElementById('typing-indicator');
   chatForm = document.getElementById('chat-form');
 
   // Set up event listeners
@@ -181,15 +182,50 @@ function renderCurrentSession() {
           <p>Your intelligent AI assistant powered by local models. Experience seamless conversations with advanced reasoning capabilities.</p>
         </div>
       </div>
+      
+      <!-- Typing Indicator -->
+      <div class="typing-indicator" id="typing-indicator" style="display: none;">
+        <div class="typing-avatar">
+          <img src="assets/avatars/aria.png" alt="Agent" class="agent-avatar">
+        </div>
+        <div class="typing-content">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
     `;
+    
     return;
   }
   session.messages.forEach(message => {
     const messageElement = createMessageElement(message);
     chatMessages.appendChild(messageElement);
   });
+  
+  // Add typing indicator after messages
+  const typingIndicatorHTML = `
+    <div class="typing-indicator" id="typing-indicator" style="display: none;">
+      <div class="typing-avatar">
+        <img src="assets/avatars/aria.png" alt="Agent" class="agent-avatar">
+      </div>
+      <div class="typing-content">
+        <div class="typing-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  `;
+  chatMessages.insertAdjacentHTML('beforeend', typingIndicatorHTML);
+  
   // Scroll to bottom
   if (chatMessages.lastChild) scrollIntoView(chatMessages.lastChild);
+  
+  
 }
 
 /**
@@ -254,15 +290,20 @@ function createMessageElement(message) {
  */
 function showTypingIndicator() {
   isTyping = true;
-  typingIndicator.style.display = 'flex';
-  // Animate agent avatar (pulse)
-  const avatar = typingIndicator.querySelector('.agent-avatar');
-  if (avatar) {
-    avatar.classList.add('pulse-avatar');
-    setTimeout(() => avatar.classList.remove('pulse-avatar'), 1200);
+  const typingIndicator = document.getElementById('typing-indicator');
+  if (typingIndicator) {
+    typingIndicator.style.display = 'flex';
+    // Animate agent avatar (pulse)
+    const avatar = typingIndicator.querySelector('.agent-avatar');
+    if (avatar) {
+      avatar.classList.add('pulse-avatar');
+      setTimeout(() => avatar.classList.remove('pulse-avatar'), 1200);
+    }
+    scrollIntoView(typingIndicator);
   }
-  scrollIntoView(typingIndicator);
   updateSendButton();
+  
+  
 }
 
 /**
@@ -270,8 +311,13 @@ function showTypingIndicator() {
  */
 function hideTypingIndicator() {
   isTyping = false;
-  typingIndicator.style.display = 'none';
+  const typingIndicator = document.getElementById('typing-indicator');
+  if (typingIndicator) {
+    typingIndicator.style.display = 'none';
+  }
   updateSendButton();
+  
+  
 }
 
 /**

@@ -11,7 +11,11 @@ export function initSidebar() {
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('sidebar-collapsed');
       toggleBtn.classList.toggle('toggled');
-      // Optionally: persist state
+      
+      // Dispatch event for scrollbar visibility update
+      window.dispatchEvent(new Event('aria-sidebar-toggled'));
+      
+      // Persist state
       if (sidebar.classList.contains('sidebar-collapsed')) {
         localStorage.setItem('sidebar-collapsed', '1');
       } else {
@@ -35,7 +39,7 @@ function renderSessionList() {
 
   const sessions = getSessions();
   const currentSessionId = getCurrentSessionId();
-  const list = document.getElementById('sidebar-history-list');
+  const list = document.getElementById('chat-history-list');
   if (!list) return;
   list.innerHTML = '';
 
