@@ -64,12 +64,6 @@
   max-width: 85%;
 }
 
-.message.user .message-bubble {
-  background: #fff;
-  color: #222;
-  border: none;
-  box-shadow: var(--shadow-sm);
-}
 
 .theme-dark .message-bubble {
   background: rgba(44, 44, 68, 0.92);
@@ -112,10 +106,15 @@
 }
 
 .message.user .message-bubble {
-  background: var(--gradient-pastel);
-  color: var(--message-user-text);
+  background: #f0f4ff;
+  color: #1a1a2e;
   border: none;
   box-shadow: var(--shadow-sm);
+}
+
+.theme-light .message.user .message-bubble {
+  background: #f0f4ff;
+  color: #1a1a2e;
 }
 
 .message.user .message-bubble::before {
