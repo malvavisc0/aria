@@ -8,7 +8,7 @@ from typing import Optional
 
 class Settings:
     # Database settings
-    DATABASE_URL: str = "sqlite://opt/storage/chat.db"
+    DATABASE_URL: str = "sqlite:///opt/storage/chat.db"
 
     # API settings
     API_HOST: str = "0.0.0.0"
