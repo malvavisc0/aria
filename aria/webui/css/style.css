@@ -106,7 +106,6 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  padding-left: 60px; /* Space for hamburger button */
 }
 
 /* Backdrop overlay for mobile */
