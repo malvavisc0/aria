@@ -1,7 +1,11 @@
 /* ===== SIDEBAR FUNCTIONALITY: SESSION HISTORY & COLLAPSE ===== */
 
+let searchQuery = '';
+
 export function initSidebar() {
   renderSessionList();
+  initSearchBar();
+  initNewChatButton();
   window.addEventListener('aria-session-changed', renderSessionList);
 
   // Sidebar collapse/expand logic
@@ -34,12 +38,30 @@ export function initSidebar() {
   }
 }
 
+function initNewChatButton() {
+  const newChatBtn = document.getElementById('sidebar-new-chat-btn');
+  const createNewSession = window.createNewSession;
+  
+  if (newChatBtn && createNewSession) {
+    newChatBtn.onclick = () => createNewSession();
+  }
+}
+
+function initSearchBar() {
+  const searchInput = document.getElementById('sidebar-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderSessionList();
+    });
+  }
+}
+
 function renderSessionList() {
   const getSessions = window.getSessions;
   const setCurrentSession = window.setCurrentSession;
-  const createNewSession = window.createNewSession;
   const getCurrentSessionId = window.getCurrentSessionId;
-  if (!getSessions || !setCurrentSession || !createNewSession || !getCurrentSessionId) return;
+  if (!getSessions || !setCurrentSession || !getCurrentSessionId) return;
 
   const sessions = getSessions();
   const currentSessionId = getCurrentSessionId();
@@ -47,22 +69,39 @@ function renderSessionList() {
   if (!list) return;
   list.innerHTML = '';
 
-  // New Chat button
-  const newChatBtn = document.createElement('button');
-  newChatBtn.className = 'sidebar-new-chat-btn';
-  newChatBtn.textContent = '+ New Chat';
-  newChatBtn.onclick = () => createNewSession();
-  list.appendChild(newChatBtn);
+  // Search input
+  const searchContainer = document.createElement('div');
+  searchContainer.className = 'sidebar-search-container';
+  searchContainer.innerHTML = `
+    <input type="text" id="sidebar-search-input" class="sidebar-search-input" placeholder="Search chats..." value="${searchQuery}">
+  `;
+  list.appendChild(searchContainer);
 
-  if (sessions.length === 0) {
+  // Re-initialize search after DOM update
+  setTimeout(() => initSearchBar(), 0);
+
+  // Filter sessions based on search query
+  const filteredSessions = sessions.filter(session => {
+    if (!searchQuery) return true;
+    
+    // Search in session name
+    if (session.name.toLowerCase().includes(searchQuery)) return true;
+    
+    // Search in message content
+    return session.messages.some(message =>
+      message.content && message.content.toLowerCase().includes(searchQuery)
+    );
+  });
+
+  if (filteredSessions.length === 0) {
     const empty = document.createElement('li');
     empty.className = 'sidebar-history-empty';
-    empty.textContent = 'No sessions yet.';
+    empty.textContent = searchQuery ? 'No matching chats found.' : 'No sessions yet.';
     list.appendChild(empty);
     return;
   }
 
-  sessions.forEach(session => {
+  filteredSessions.forEach(session => {
     const li = document.createElement('li');
     li.className = 'sidebar-history-session';
     if (session.id === currentSessionId) li.classList.add('active');
