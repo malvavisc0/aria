@@ -36,56 +36,152 @@ body {
   background: var(--bg-primary);
 }
 
+.app-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  transition: width var(--transition-base);
+}
+
+.app-sidebar[data-collapsed="true"] {
+  width: 60px;
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Fallback for browsers without :has() support */
+.app-sidebar[data-collapsed="true"] ~ .app-main {
+  /* This will be handled by the grid, but kept for compatibility */
+}
+
+@supports not selector(:has(*)) {
+  .app-container {
+    display: flex;
+  }
+  
+  .app-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+  }
+  
+  .app-sidebar[data-collapsed="true"] {
+    width: 60px;
+  }
+  
+  .app-main {
+    flex: 1;
+  }
+}
+
 /* ===== MODERN SIDEBAR ===== */
 
-.main-sidebar {
-  width: 280px;
-  display: flex;
-  flex-direction: column;
+.app-sidebar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   height: 100vh;
-  flex-shrink: 0;
   position: relative;
   z-index: var(--z-docked);
   transition: all var(--transition-base);
+  background: var(--bg-secondary);
+  border-right: var(--border-width) solid var(--border-primary);
 }
 
-.main-sidebar.sidebar-collapsed {
-  width: 60px;
-  overflow: visible;
-}
-
-.main-sidebar.sidebar-collapsed .sidebar-content,
-.main-sidebar.sidebar-collapsed .sidebar-footer {
+.app-sidebar[data-collapsed="true"] .sidebar-body,
+.app-sidebar[data-collapsed="true"] .sidebar-footer {
   display: none;
 }
 
-.main-sidebar.sidebar-collapsed .logo-text {
-  display: none;
-}
-
-.main-sidebar.sidebar-collapsed .sidebar-toggle-btn svg {
+.app-sidebar[data-collapsed="true"] .sidebar-toggle-btn svg {
   transform: rotate(180deg);
 }
 
-/* Adjust chat alignment when sidebar is collapsed for perfect centering */
-.main-sidebar.sidebar-collapsed ~ .app-main {
-  margin-left: 0; /* Remove negative margin to prevent content from touching edge */
+/* Legacy compatibility */
+.main-sidebar {
+  /* Alias for backward compatibility */
 }
 
-.main-sidebar.sidebar-collapsed ~ .app-main .chat-messages {
-  padding-left: 32px;
-  padding-right: 32px;
-  min-width: 0;
-}
-
-.main-sidebar.sidebar-collapsed ~ .app-main .chat-input-container {
-  padding-left: 32px;
-  padding-right: 32px;
-}
+/* ===== SIDEBAR COMPONENTS ===== */
 
 .sidebar-header {
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-4);
+  border-bottom: var(--border-width) solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
+
+.sidebar-body {
+  padding: var(--space-4);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-footer {
+  padding: var(--space-4);
+  border-top: var(--border-width) solid var(--border-primary);
+  min-height: 60px;
+}
+
+/* ===== MAIN CONTENT GRID ===== */
+
+.app-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-header {
+  background: transparent;
+  border-bottom: none;
+  z-index: var(--z-sticky);
+}
+
+.main-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.main-footer {
+  background: var(--bg-primary);
+  border-top: var(--border-width) solid var(--border-primary);
+  z-index: var(--z-sticky);
+}
+
+/* ===== CHAT VIEWPORT ===== */
+
+.chat-viewport {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  scroll-behavior: smooth;
+  min-height: 0;
+  
+  /* Hide scrollbars */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.messages-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== LEGACY COMPATIBILITY ===== */
 
 .sidebar-header .logo {
   display: flex;
@@ -1146,4 +1242,51 @@ input:focus-visible {
   border: var(--border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
+}
+
+/* ===== NEW GRID LAYOUT STYLES ===== */
+
+/* Input area styles for new structure */
+.chat-input-area {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-6);
+  width: 100%;
+  background: var(--surface-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  z-index: var(--z-sticky);
+}
+
+.file-upload-preview {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-secondary);
+  border: var(--border-width) dashed var(--border-secondary);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.message-form {
+  width: 100%;
+}
+
+.input-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+}
+
+/* Update existing input-right to work with new structure */
+.input-right,
+.input-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
 }

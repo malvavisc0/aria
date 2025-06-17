@@ -2,6 +2,7 @@
 
 import { initChat } from './chat.js';
 import { initUpload } from './upload.js';
+import { initSidebar } from './sidebar.js';
 import { storage } from './utils.js';
 
 let currentTheme = 'light';
@@ -21,8 +22,8 @@ function init() {
   // Initialize file upload
   initUpload();
 
-  // Initialize sidebar toggle
-  initSidebarToggle();
+  // Initialize sidebar
+  initSidebar();
 
   // Set up global event listeners
   setupGlobalEventListeners();
@@ -34,30 +35,9 @@ function init() {
  * Initialize sidebar toggle functionality
  */
 function initSidebarToggle() {
-  console.log('🔍 Looking for sidebar elements...');
-  const sidebar = document.querySelector('.main-sidebar');
-  const toggleBtn = document.getElementById('sidebar-toggle-btn');
-  
-  console.log('Sidebar found:', !!sidebar);
-  console.log('Toggle button found:', !!toggleBtn);
-  
-  if (!sidebar || !toggleBtn) {
-    console.warn('Sidebar or toggle button not found');
-    console.log('Available elements:', {
-      sidebar: document.querySelector('.main-sidebar'),
-      toggleBtn: document.getElementById('sidebar-toggle-btn'),
-      allSidebars: document.querySelectorAll('[class*="sidebar"]'),
-      allButtons: document.querySelectorAll('button')
-    });
-    return;
-  }
-
-  console.log('✅ Setting up sidebar toggle...');
-  toggleBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('sidebar-collapsed');
-    toggleBtn.classList.toggle('toggled');
-    console.log('Sidebar toggled:', sidebar.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded');
-  });
+  // Sidebar toggle is now handled by sidebar.js
+  // This function is kept for compatibility but does nothing
+  console.log('🔍 Sidebar toggle handled by sidebar.js module');
 }
 
 /**

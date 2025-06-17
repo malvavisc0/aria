@@ -5,27 +5,31 @@ export function initSidebar() {
   window.addEventListener('aria-session-changed', renderSessionList);
 
   // Sidebar collapse/expand logic
-  const sidebar = document.querySelector('.main-sidebar');
+  const sidebar = document.querySelector('.app-sidebar');
   const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  
   if (sidebar && toggleBtn) {
     toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('sidebar-collapsed');
+      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+      const newState = !isCollapsed;
+      
+      sidebar.setAttribute('data-collapsed', newState.toString());
       toggleBtn.classList.toggle('toggled');
       
-      // Dispatch event for scrollbar visibility update
+      // Dispatch event for any listeners
       window.dispatchEvent(new Event('aria-sidebar-toggled'));
       
       // Persist state
-      if (sidebar.classList.contains('sidebar-collapsed')) {
-        localStorage.setItem('sidebar-collapsed', '1');
-      } else {
-        localStorage.removeItem('sidebar-collapsed');
-      }
+      localStorage.setItem('sidebar-collapsed', newState ? '1' : '0');
     });
+    
     // Restore state on load
-    if (localStorage.getItem('sidebar-collapsed') === '1') {
-      sidebar.classList.add('sidebar-collapsed');
+    const savedState = localStorage.getItem('sidebar-collapsed');
+    if (savedState === '1') {
+      sidebar.setAttribute('data-collapsed', 'true');
       toggleBtn.classList.add('toggled');
+    } else {
+      sidebar.setAttribute('data-collapsed', 'false');
     }
   }
 }

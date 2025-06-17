@@ -24,6 +24,11 @@ export function initChat() {
   messageInput = document.getElementById('message-input');
   sendBtn = document.getElementById('send-btn');
   chatForm = document.getElementById('chat-form');
+  
+  // Ensure we have the right container
+  if (!chatMessages) {
+    chatMessages = document.querySelector('.messages-container');
+  }
 
   // Set up event listeners
   setupEventListeners();
@@ -223,7 +228,9 @@ function renderCurrentSession() {
   chatMessages.insertAdjacentHTML('beforeend', typingIndicatorHTML);
   
   // Scroll to bottom
-  if (chatMessages.lastChild) scrollIntoView(chatMessages.lastChild);
+  if (chatMessages && chatMessages.lastChild) {
+    scrollIntoView(chatMessages.lastChild);
+  }
   
   
 }
