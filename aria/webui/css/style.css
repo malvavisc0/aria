@@ -1337,3 +1337,8 @@ textarea::placeholder,
   color: var(--text-muted) !important;
   opacity: 1 !important;
 }
+
+.message-input {
+  border: none !important;
+  background: transparent !important;
+}
