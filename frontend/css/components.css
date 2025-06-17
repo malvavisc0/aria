@@ -998,51 +998,116 @@
   width: 100%;
   margin-bottom: var(--space-2);
   padding: var(--space-2) var(--space-1);
-  background: rgba(255,255,255,0.04);
+  background: var(--surface-secondary);
   color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  border: none;
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-base);
   box-shadow: none;
   cursor: pointer;
-  transition: background var(--transition-base), color var(--transition-base);
+  transition: all var(--transition-base);
   letter-spacing: 0.01em;
 }
+
 .sidebar-new-chat-btn:hover {
-  background: rgba(255,255,255,0.08);
+  background: var(--interactive-secondary-hover);
   color: var(--text-primary);
+  border-color: var(--border-secondary);
+}
+
+.theme-light .sidebar-new-chat-btn {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .sidebar-new-chat-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.theme-dark .sidebar-new-chat-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.theme-dark .sidebar-new-chat-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .sidebar-history-session {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-2);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
   border-radius: var(--radius-base);
-  background: rgba(36, 38, 50, 0.92);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--text-secondary);
   font-size: var(--text-sm);
-  font-weight: var(--font-medium);
+  font-weight: var(--font-normal);
   box-shadow: none;
   margin-bottom: var(--space-1);
   cursor: pointer;
-  opacity: 0.92;
-  border: 1.5px solid transparent;
-  transition: background var(--transition-base), box-shadow var(--transition-base), border var(--transition-base);
+  opacity: 0.8;
+  border: 1px solid transparent;
+  transition: all var(--transition-base);
 }
+
+/* Active (selected) session styling */
 .sidebar-history-session.active {
-  background: rgba(255,255,255,0.08);
-  color: var(--text-primary);
-  border: 1.5px solid rgba(255,255,255,0.12);
-  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+  background: var(--interactive-primary);
+  color: white;
+  border: 1px solid var(--interactive-primary);
+  box-shadow: 0 2px 12px 0 rgba(99, 102, 241, 0.25);
   opacity: 1;
+  font-weight: var(--font-medium);
 }
-.sidebar-history-session:hover {
-  background: rgba(255,255,255,0.06);
+
+/* Hover state for non-active sessions */
+.sidebar-history-session:not(.active):hover {
+  background: var(--surface-secondary);
   color: var(--text-primary);
   opacity: 1;
+  border: 1px solid var(--border-secondary);
+}
+
+/* Theme-specific styling */
+.theme-light .sidebar-history-session {
+  color: var(--text-secondary);
+}
+
+.theme-light .sidebar-history-session.active {
+  background: var(--interactive-primary);
+  color: white;
+  box-shadow: 0 2px 12px 0 rgba(99, 102, 241, 0.2);
+}
+
+.theme-light .sidebar-history-session:not(.active):hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.theme-dark .sidebar-history-session {
+  color: var(--text-secondary);
+}
+
+.theme-dark .sidebar-history-session.active {
+  background: var(--interactive-primary);
+  color: white;
+  box-shadow: 0 2px 12px 0 rgba(99, 102, 241, 0.3);
+}
+
+.theme-dark .sidebar-history-session:not(.active):hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar-history-session-name {
@@ -1051,11 +1116,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--text-sm);
-  font-weight: var(--font-normal);
+  font-weight: inherit;
 }
 
 .sidebar-history-session-count {
   font-size: var(--text-xs);
+  color: inherit;
+  opacity: 0.7;
+  margin-left: var(--space-2);
+  font-weight: var(--font-normal);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-history-session.active .sidebar-history-session-count {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0.9;
+}
+
+.theme-light .sidebar-history-session:not(.active) .sidebar-history-session-count {
+  background: rgba(0, 0, 0, 0.08);
   color: var(--text-secondary);
-  margin-left: var(--space-1);
+}
+
+.theme-dark .sidebar-history-session:not(.active) .sidebar-history-session-count {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
 }
