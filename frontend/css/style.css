@@ -69,17 +69,18 @@ body {
 
 /* Adjust chat alignment when sidebar is collapsed for perfect centering */
 .main-sidebar.sidebar-collapsed ~ .app-main {
-  margin-left: -30px; /* Half of collapsed sidebar width (60px/2) */
+  margin-left: 0; /* Remove negative margin to prevent content from touching edge */
 }
 
 .main-sidebar.sidebar-collapsed ~ .app-main .chat-messages {
-  padding-left: var(--space-6);
-  padding-right: var(--space-6);
+  padding-left: 32px;
+  padding-right: 32px;
+  min-width: 0;
 }
 
 .main-sidebar.sidebar-collapsed ~ .app-main .chat-input-container {
-  padding-left: var(--space-6);
-  padding-right: var(--space-6);
+  padding-left: 32px;
+  padding-right: 32px;
 }
 
 .sidebar-header {
@@ -156,7 +157,6 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-top: var(--space-16);
   margin-bottom: var(--space-3);
   padding: 0 var(--space-3);
 }

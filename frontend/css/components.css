@@ -22,6 +22,8 @@
   object-fit: cover;
   box-shadow: var(--shadow-sm);
   border: none;
+  margin-left: 6px;
+  margin-right: 6px;
   transition: all var(--transition-base);
 }
 
@@ -771,6 +773,8 @@
   height: 40px;
   margin-bottom: 0;
   border-width: 2px;
+  margin-left: 2px;
+  margin-right: 2px;
   transition: width var(--transition-base), height var(--transition-base), margin var(--transition-base), border-width var(--transition-base);
 }
 
@@ -783,14 +787,20 @@
 
 /* Sidebar toggle button - positioned version */
 .sidebar-toggle-btn {
-  position: fixed !important;
-  top: 8px !important;
-  left: 8px !important;
-  z-index: 99999 !important;
-  transition: all var(--transition-base), left var(--transition-base), top var(--transition-base);
-  pointer-events: auto !important;
-  display: block !important;
-  visibility: visible !important;
+  background: var(--surface-secondary);
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: var(--space-2);
+  margin-right: var(--space-2);
 }
 
 .sidebar-toggle-btn.toggled svg {
@@ -798,9 +808,7 @@
 }
 
 /* Position hamburger button when sidebar is collapsed */
-.main-sidebar.sidebar-collapsed .sidebar-toggle-btn {
-  left: 4px !important;
-}
+/* No special positioning needed for sidebar-collapsed state anymore */
 
 @media (max-width: 1200px) {
   .left-sidebar {
@@ -863,6 +871,10 @@
   box-shadow: var(--shadow-base);
   margin-bottom: var(--space-2);
   border: none;
+  object-fit: cover;
+  margin-left: 4px;
+  margin-right: 4px;
+  overflow: visible;
 }
 
 .sidebar-username {
