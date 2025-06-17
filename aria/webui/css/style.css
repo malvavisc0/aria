@@ -1342,3 +1342,8 @@ textarea::placeholder,
   border: none !important;
   background: transparent !important;
 }
+
+.sidebar-search-input {
+  background: #23252b !important;
+  color: #cfd2f7 !important;
+}
