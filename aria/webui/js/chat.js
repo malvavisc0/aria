@@ -1,6 +1,7 @@
 // ===== CHAT FUNCTIONALITY: MULTI-SESSION SUPPORT =====
 
 import { generateId, formatTime, parseMarkdown, scrollIntoView, autoResizeTextarea } from './utils.js';
+import { ariaAPI, transformSession, transformSessionWithMessages, transformMessage } from './api.js';
 
 const STORAGE_KEY = 'aria-chat-sessions';
 
@@ -9,6 +10,7 @@ let sessions = [];
 let currentSessionId = null;
 let isTyping = false;
 let firstMessageSent = false;
+let isLoadingFromAPI = false;
 
 // DOM elements
 let chatMessages, messageInput, sendBtn, typingIndicator, chatForm;
@@ -18,7 +20,7 @@ let chatMessages, messageInput, sendBtn, typingIndicator, chatForm;
 /**
  * Initialize chat functionality
  */
-export function initChat() {
+export async function initChat() {
   // Get DOM elements
   chatMessages = document.getElementById('chat-messages');
   messageInput = document.getElementById('message-input');
@@ -33,15 +35,15 @@ export function initChat() {
   // Set up event listeners
   setupEventListeners();
 
-  // Load sessions from storage
-  loadSessions();
+  // Load sessions from backend
+  await loadSessions();
 
   // If no sessions, create the first one
   if (sessions.length === 0) {
-    createNewSession();
+    await createNewSession();
   } else {
     // Show the most recent session
-    setCurrentSession(sessions[sessions.length - 1].id);
+    await setCurrentSession(sessions[sessions.length - 1].id);
   }
 }
 
@@ -119,44 +121,90 @@ async function handleSendMessage(e) {
  * Send message to backend API
  */
 async function sendMessageToBackend(message) {
-  // Mock API call for now - replace with actual backend endpoint
-  const response = await mockApiCall(message);
+  try {
+    let assistantContent = '';
+    
+    // Send message with streaming response
+    await ariaAPI.sendMessage(
+      currentSessionId,
+      message.content,
+      message.files || [],
+      (chunk, fullContent) => {
+        // Update streaming message in real-time
+        assistantContent = fullContent;
+        updateStreamingMessage(assistantContent);
+      }
+    );
 
-  hideTypingIndicator();
+    // Clean up streaming message
+    const streamingElement = document.querySelector('.message.streaming');
+    if (streamingElement) {
+      streamingElement.remove();
+    }
 
-  // Create assistant response
-  const assistantMessage = {
-    id: generateId(),
-    content: response.content,
-    role: 'assistant',
-    timestamp: new Date(),
-    agent: response.agent || 'aria'
-  };
+    hideTypingIndicator();
 
-  // Add response to chat
-  addMessageToCurrentSession(assistantMessage);
+    // Create final assistant response
+    const assistantMessage = {
+      id: generateId(),
+      content: assistantContent,
+      role: 'assistant',
+      timestamp: new Date(),
+      agent: 'aria'
+    };
+
+    // Add response to chat
+    addMessageToCurrentSession(assistantMessage);
+    
+    // Refresh session from backend to get the actual stored messages
+    await refreshCurrentSession();
+    
+  } catch (error) {
+    console.error('Failed to send message to backend:', error);
+    
+    // Clean up streaming message on error
+    const streamingElement = document.querySelector('.message.streaming');
+    if (streamingElement) {
+      streamingElement.remove();
+    }
+    
+    hideTypingIndicator();
+    showErrorMessage('Failed to send message. Please try again.');
+  }
 }
 
 /**
- * Mock API call - replace with actual backend integration
+ * Update streaming message content in real-time
  */
-async function mockApiCall(message) {
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-  const responses = [
-    {
-      content: "I understand your question. Let me help you with that. This is a mock response from the AI agent system.",
-      agent: "reasoning"
-    },
-    {
-      content: "That's an interesting point! Here's what I think about it based on my analysis and reasoning capabilities.",
-      agent: "reasoning"
-    },
-    {
-      content: "I can help you explore this topic further. Would you like me to provide more detailed information or examples?",
-      agent: "reasoning"
+function updateStreamingMessage(content) {
+  // Find or create streaming message element
+  let streamingElement = document.querySelector('.message.streaming');
+  
+  if (!streamingElement) {
+    // Create streaming message element
+    const streamingMessage = {
+      id: 'streaming',
+      content: content,
+      role: 'assistant',
+      timestamp: new Date(),
+      agent: 'aria'
+    };
+    
+    streamingElement = createMessageElement(streamingMessage);
+    streamingElement.classList.add('streaming');
+    chatMessages.appendChild(streamingElement);
+  } else {
+    // Update existing streaming message
+    const bubbleDiv = streamingElement.querySelector('.message-bubble');
+    if (bubbleDiv) {
+      bubbleDiv.innerHTML = parseMarkdown(content);
     }
-  ];
-  return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // Scroll to show streaming content
+  if (streamingElement) {
+    scrollIntoView(streamingElement);
+  }
 }
 
 /**
@@ -227,7 +275,7 @@ function renderCurrentSession() {
   chatMessages.insertAdjacentHTML('beforeend', typingIndicatorHTML);
   
   // Scroll to bottom
-  if (chatMessages && chatMessages.lastChild) {
+  if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
     scrollIntoView(chatMessages.lastChild);
   }
   
@@ -305,7 +353,9 @@ function showTypingIndicator() {
       avatar.classList.add('pulse-avatar');
       setTimeout(() => avatar.classList.remove('pulse-avatar'), 1200);
     }
-    scrollIntoView(typingIndicator);
+    if (typingIndicator) {
+      scrollIntoView(typingIndicator);
+    }
   }
   updateSendButton();
   
@@ -348,61 +398,161 @@ function showErrorMessage(errorText) {
 }
 
 /**
- * Load sessions from localStorage
+ * Load sessions from backend API
  */
-function loadSessions() {
+async function loadSessions() {
+  if (isLoadingFromAPI) return;
+  
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      sessions = JSON.parse(saved);
-      // Convert timestamps back to Date objects
-      sessions.forEach(session => {
-        session.messages.forEach(msg => {
-          msg.timestamp = new Date(msg.timestamp);
-        });
-      });
-    } else {
-      sessions = [];
+    isLoadingFromAPI = true;
+    
+    // Get sessions from backend
+    const backendSessions = await ariaAPI.getSessions();
+    
+    // Transform backend sessions to frontend format
+    sessions = backendSessions.map(transformSession);
+    
+    // Cache in localStorage for offline access
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } catch (error) {
+      console.warn('Failed to cache sessions locally:', error);
     }
+    
   } catch (error) {
-    sessions = [];
-    console.warn('Failed to load chat sessions:', error);
+    console.warn('Failed to load sessions from backend, using local cache:', error);
+    
+    // Fallback to localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        sessions = JSON.parse(saved);
+        // Convert timestamps back to Date objects
+        sessions.forEach(session => {
+          session.created = new Date(session.created);
+          if (session.messages) {
+            session.messages.forEach(msg => {
+              msg.timestamp = new Date(msg.timestamp);
+            });
+          }
+        });
+      } else {
+        sessions = [];
+      }
+    } catch (localError) {
+      sessions = [];
+      console.warn('Failed to load sessions from local cache:', localError);
+    }
+  } finally {
+    isLoadingFromAPI = false;
   }
 }
 
 /**
- * Save sessions to localStorage
+ * Save sessions to localStorage (cache only)
  */
 function saveSessions() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
   } catch (error) {
-    console.warn('Failed to save chat sessions:', error);
+    console.warn('Failed to cache sessions locally:', error);
+  }
+}
+
+/**
+ * Refresh current session from backend
+ */
+async function refreshCurrentSession() {
+  if (!currentSessionId) return;
+  
+  try {
+    const backendSession = await ariaAPI.getSession(currentSessionId);
+    const transformedSession = transformSessionWithMessages(backendSession);
+    
+    // Update local session
+    const sessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+    if (sessionIndex !== -1) {
+      sessions[sessionIndex] = transformedSession;
+    }
+    
+    // Update cache
+    saveSessions();
+    
+    // Re-render current session
+    renderCurrentSession();
+    
+  } catch (error) {
+    console.warn('Failed to refresh session from backend:', error);
   }
 }
 
 /**
  * Create a new chat session
  */
-export function createNewSession(name = null) {
-  const session = {
-    id: generateId(),
-    name: name || `Session ${sessions.length + 1}`,
-    created: new Date(),
-    messages: []
-  };
-  sessions.push(session);
-  setCurrentSession(session.id);
-  saveSessions();
-  window.dispatchEvent(new Event('aria-session-changed'));
+export async function createNewSession(name = null) {
+  try {
+    // Create session on backend
+    const backendSession = await ariaAPI.createSession(name);
+    const newSession = transformSession(backendSession);
+    
+    // Add to local sessions
+    sessions.push(newSession);
+    
+    // Set as current session
+    await setCurrentSession(newSession.id);
+    
+    // Update cache
+    saveSessions();
+    window.dispatchEvent(new Event('aria-session-changed'));
+    
+    return newSession;
+  } catch (error) {
+    console.error('Failed to create session on backend:', error);
+    
+    // Fallback to local session creation
+    const session = {
+      id: generateId(),
+      name: name || `Session ${sessions.length + 1}`,
+      created: new Date(),
+      messages: []
+    };
+    sessions.push(session);
+    setCurrentSession(session.id);
+    saveSessions();
+    window.dispatchEvent(new Event('aria-session-changed'));
+    
+    return session;
+  }
 }
 
 /**
  * Set the current session by ID
  */
-export function setCurrentSession(sessionId) {
+export async function setCurrentSession(sessionId) {
   currentSessionId = sessionId;
   firstMessageSent = false;
+  
+  // Load session details from backend if not already loaded
+  const existingSession = sessions.find(s => s.id === sessionId);
+  if (!existingSession || !existingSession.messages || existingSession.messages.length === 0) {
+    try {
+      const backendSession = await ariaAPI.getSession(sessionId);
+      const transformedSession = transformSessionWithMessages(backendSession);
+      
+      // Update local session
+      const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+      if (sessionIndex !== -1) {
+        sessions[sessionIndex] = transformedSession;
+      } else {
+        sessions.push(transformedSession);
+      }
+      
+      saveSessions();
+    } catch (error) {
+      console.warn('Failed to load session details from backend:', error);
+    }
+  }
+  
   renderCurrentSession();
   window.dispatchEvent(new Event('aria-session-changed'));
 }

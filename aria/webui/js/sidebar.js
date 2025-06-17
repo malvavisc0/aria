@@ -89,7 +89,13 @@ function initNewChatButton() {
   const createNewSession = window.createNewSession;
   
   if (newChatBtn && createNewSession) {
-    newChatBtn.onclick = () => createNewSession();
+    newChatBtn.onclick = async () => {
+      try {
+        await createNewSession();
+      } catch (error) {
+        console.error('Failed to create new session:', error);
+      }
+    };
   }
 }
 
@@ -165,7 +171,13 @@ function renderSessionList() {
       <span class="sidebar-history-session-name">${session.name}</span>
       <span class="sidebar-history-session-count">${session.messages.length} msg</span>
     `;
-    li.onclick = () => setCurrentSession(session.id);
+    li.onclick = async () => {
+      try {
+        await setCurrentSession(session.id);
+      } catch (error) {
+        console.error('Failed to set current session:', error);
+      }
+    };
     list.appendChild(li);
   });
 }

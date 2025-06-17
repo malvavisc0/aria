@@ -8,7 +8,12 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - 8000:8000
     environment:
+      TZ: ${TZ}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       AGNO_TELEMETRY: ${AGNO_TELEMETRY:-false}
+      OLLAMA_URL: ${OLLAMA_URL}
+      OLLAMA_MODEL_ID: ${OLLAMA_MODEL_ID}
+      OLLAMA_MODEL_TEMPARATURE: ${OLLAMA_MODEL_TEMPARATURE:-0.65}
+      OLLAMA_MODEL_CONTEXT_LENGTH: ${OLLAMA_MODEL_CONTEXT_LENGTH:-1280}

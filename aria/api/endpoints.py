@@ -2,14 +2,13 @@ import time
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from aria.ai import ollama_agent
-from aria.config import settings
-from aria.models import Message, Session
 from aria.schemas import (
     HealthResponse,
+    MessageCreate,
     MessageResponse,
     PasswordResponse,
     SearchResponse,
@@ -80,15 +79,36 @@ async def send_message(
     files: List[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     """Send a new message (text and/or files) and get assistant response"""
+    user_message_data = MessageCreate(
+        content=message, role=role, files=[]  # TODO: Handle file uploads properly
+    )
 
-    def stream_response():
+    # Save user message
+    await MessageService.create_message(session_id, user_message_data)
+
+    # Stream assistant response and collect full content
+    assistant_content = ""
+
+    async def stream_response():
+        nonlocal assistant_content
         agent = ollama_agent(user_id=role, session_id=session_id)
         response = agent.run(
             message=message, stream=True, user_id=role, session_id=session_id
         )
+
+        # Stream chunks and collect content
         for chunk in response:
             if chunk.content:
-                yield str(chunk.content)
+                chunk_str = str(chunk.content)
+                assistant_content += chunk_str
+                yield chunk_str
+
+        # After streaming is complete, save assistant message to database
+        if assistant_content:
+            assistant_message_data = MessageCreate(
+                content=assistant_content, role="assistant", files=[]
+            )
+            await MessageService.create_message(session_id, assistant_message_data)
 
     return StreamingResponse(stream_response())
 

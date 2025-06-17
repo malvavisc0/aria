@@ -4,31 +4,47 @@ import { initChat } from './chat.js';
 import { initUpload } from './upload.js';
 import { initSidebar } from './sidebar.js';
 import { storage } from './utils.js';
+import { ariaAPI } from './api.js';
 
 let currentTheme = 'light';
 
 /**
  * Initialize the application
  */
-function init() {
+async function init() {
   console.log('🚀 Initializing Aria Frontend...');
 
-  // Initialize theme
-  initTheme();
+  try {
+    // Initialize theme
+    initTheme();
 
-  // Initialize chat functionality
-  initChat();
+    // Check API health
+    try {
+      const health = await ariaAPI.healthCheck();
+      console.log('🏥 API Health:', health);
+      showNotification('Connected to backend', 'success', 2000);
+    } catch (error) {
+      console.warn('⚠️ API health check failed:', error);
+      showNotification('Backend connection failed - using offline mode', 'warning', 3000);
+    }
 
-  // Initialize file upload
-  initUpload();
+    // Initialize chat functionality (async)
+    await initChat();
 
-  // Initialize sidebar
-  initSidebar();
+    // Initialize file upload
+    initUpload();
 
-  // Set up global event listeners
-  setupGlobalEventListeners();
+    // Initialize sidebar
+    initSidebar();
 
-  console.log('✅ Aria Frontend initialized successfully');
+    // Set up global event listeners
+    setupGlobalEventListeners();
+
+    console.log('✅ Aria Frontend initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Aria Frontend:', error);
+    handleError(error, 'Initialization');
+  }
 }
 
 /**

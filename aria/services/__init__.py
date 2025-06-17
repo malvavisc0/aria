@@ -58,7 +58,7 @@ class SessionService:
         messages = [
             MessageResponse(
                 id=str(msg.id),
-                session_id=str(msg.session.id),
+                session_id=str(session_id),
                 content=msg.content,
                 role=msg.role,
                 timestamp=msg.timestamp,
