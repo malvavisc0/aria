@@ -94,7 +94,7 @@ async function handleSendMessage(e) {
   // Confetti on first message in session
   if (!firstMessageSent) {
     firstMessageSent = true;
-    launchConfetti();
+    // launchConfetti(); // Confetti effect removed
   }
 
   // Clear input
@@ -442,40 +442,7 @@ export function addMessageProgrammatically(message) {
   addMessageToCurrentSession(message);
 }
 
-/**
- * Launch confetti animation (simple, uplifting)
- */
-function launchConfetti() {
-  const confettiContainer = document.createElement('div');
-  confettiContainer.style.position = 'fixed';
-  confettiContainer.style.left = 0;
-  confettiContainer.style.top = 0;
-  confettiContainer.style.width = '100vw';
-  confettiContainer.style.height = '100vh';
-  confettiContainer.style.pointerEvents = 'none';
-  confettiContainer.style.zIndex = 9999;
-
-  for (let i = 0; i < 24; i++) {
-    const confetti = document.createElement('span');
-    confetti.textContent = ['🎉', '✨', '💫', '🌈', '🥳', '🦄'][Math.floor(Math.random() * 6)];
-    confetti.style.position = 'absolute';
-    confetti.style.left = Math.random() * 100 + 'vw';
-    confetti.style.top = '-2rem';
-    confetti.style.fontSize = (1.5 + Math.random() * 1.5) + 'rem';
-    confetti.style.opacity = 0.85;
-    confetti.style.transition = 'transform 1.8s cubic-bezier(.23,1.01,.32,1), opacity 0.6s';
-    confetti.style.transform = `translateY(0) rotate(${Math.random() * 360}deg)`;
-    setTimeout(() => {
-      confetti.style.transform = `translateY(${80 + Math.random() * 15}vh) rotate(${Math.random() * 360}deg)`;
-      confetti.style.opacity = 0;
-    }, 50 + Math.random() * 200);
-    confettiContainer.appendChild(confetti);
-  }
-  document.body.appendChild(confettiContainer);
-  setTimeout(() => {
-    confettiContainer.remove();
-  }, 2200);
-}
+// Confetti effect removed
 
 // Expose session management for sidebar
 window.createNewSession = createNewSession;
