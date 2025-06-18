@@ -112,6 +112,8 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Backdrop overlay for sidebar */
@@ -722,7 +724,7 @@ body {
   min-height: 100px; /* Increased from 80px to ensure enough space */
   margin-bottom: var(--space-4); /* Increased margin to prevent cropping */
   position: relative; /* Ensure proper positioning */
-  z-index: 10; /* Ensure it's above other elements */
+  z-index: 1001; /* Ensure it's above other elements */
   overflow: visible !important; /* Ensure content is not cropped */
 }
 
