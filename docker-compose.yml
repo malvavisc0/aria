@@ -1,5 +1,5 @@
 networks:
-  aria: null
+  mitty: null
 
 volumes:
   redis: null
@@ -32,7 +32,7 @@ services:
     volumes:
       - './data:/opt/storage'
     networks:
-      - aria
+      - mitty
   redis:
     image: 'redis/redis-stack-server:latest'
     container_name: redis
@@ -46,7 +46,7 @@ services:
     volumes:
       - 'redis:/data'
     networks:
-      - aria
+      - mitty
   searxng:
     image: 'docker.io/searxng/searxng:latest'
     container_name: searxng
@@ -57,17 +57,20 @@ services:
     environment:
       TZ: '${TZ}'
       SEARXNG_BASE_URL: 'http://${SEARXNG_HOSTNAME:-searxng}:${SEARXNG_PORT:-8080}/'
-      UWSGI_WORKERS: '${SEARXNG_UWSGI_WORKERS:-1}'
-      UWSGI_THREADS: '${SEARXNG_UWSGI_THREADS:-2}'
+      SEARXNG_SECRET: '${SEARXNG_SECRET}'
+      UWSGI_WORKERS: '${SEARXNG_UWSGI_WORKERS:-4}'
+      UWSGI_THREADS: '${SEARXNG_UWSGI_THREADS:-4}'
       SEARXNG_REDIS_URL: 'redis://redis:6379/10'
-    expose:
-      - '${SEARXNG_PORT:-8080}'
+    #expose:
+    #  - '${SEARXNG_PORT:-8080}'
+    ports:
+      - '8181:8080'
     cap_add:
       - CHOWN
       - SETGID
       - SETUID
     networks:
-      - aria
+      - mitty
   byparr:
     image: 'ghcr.io/thephaseless/byparr:latest'
     container_name: byparr
@@ -79,7 +82,7 @@ services:
     expose:
       - '${BYPARR_PORT:-8191}'
     networks:
-      - aria
+      - mitty
   dozzle:
     image: 'amir20/dozzle:latest'
     container_name: dozzle
@@ -93,4 +96,4 @@ services:
       - DOZZLE_HOSTNAME=emi
       - DOZZLE_LEVEL=debug
     networks:
-      - aria
+      - mitty

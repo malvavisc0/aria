@@ -77,6 +77,9 @@ search:
   # formats: [html, csv, json, rss]
   formats:
     - html
+    - json
+    - csv
+    - rss
 
 server:
   # Is overwritten by ${SEARXNG_PORT} and ${SEARXNG_BIND_ADDRESS}
@@ -509,21 +512,18 @@ engines:
     categories: [general]
     engine: baidu
     shortcut: bd
-    disabled: true
 
   - name: baidu images
     baidu_category: images
     categories: [images]
     engine: baidu
     shortcut: bdi
-    disabled: true
 
   - name: baidu kaifa
     baidu_category: it
     categories: [it]
     engine: baidu
     shortcut: bdk
-    disabled: true
 
   - name: wikipedia
     engine: wikipedia
@@ -540,7 +540,6 @@ engines:
   - name: bing
     engine: bing
     shortcut: bi
-    disabled: true
 
   - name: bing images
     engine: bing_images
@@ -818,6 +817,7 @@ engines:
   - name: duckduckgo
     engine: duckduckgo
     shortcut: ddg
+    disabled: true
 
   - name: duckduckgo images
     engine: duckduckgo_extra
@@ -2007,7 +2007,6 @@ engines:
     # (e.g. NDR, WDR, SWR, HR, ...)
     use_source_url: true
     shortcut: ts
-    disabled: true
 
   - name: tmdb
     engine: xpath
@@ -2072,28 +2071,23 @@ engines:
     categories: general
     search_type: web
     shortcut: yd
-    disabled: true
-    inactive: true
 
   - name: yandex images
     engine: yandex
     categories: images
     search_type: images
     shortcut: ydi
-    disabled: true
-    inactive: true
 
   - name: yandex music
     engine: yandex_music
     shortcut: ydm
     disabled: true
-    # https://yandex.com/support/music/access.html
     inactive: true
+    # https://yandex.com/support/music/access.html
 
   - name: yahoo
     engine: yahoo
     shortcut: yh
-    disabled: true
 
   - name: yahoo news
     engine: yahoo_news
@@ -2499,7 +2493,6 @@ engines:
     shortcut: senews
     categories: news
     seekr_category: news
-    disabled: true
 
   - name: seekr images
     engine: seekr
