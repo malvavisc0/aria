@@ -228,8 +228,8 @@ function showNotification(message, type = 'info', duration = 3000) {
     position: fixed;
     top: 20px;
     right: 20px;
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius);
+    padding: var(--space-4);
+    border-radius: var(--radius-base);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-toast);
     max-width: 300px;
@@ -237,17 +237,29 @@ function showNotification(message, type = 'info', duration = 3000) {
     animation: slideInRight 0.3s ease-out;
   `;
   
-  // Set colors based on type
-  const colors = {
-    info: { bg: 'var(--info)', color: 'white' },
-    success: { bg: 'var(--success)', color: 'white' },
-    warning: { bg: 'var(--warning)', color: 'white' },
-    error: { bg: 'var(--error)', color: 'white' }
-  };
+  // Set colors based on type using theme variables
+  switch(type) {
+    case 'info':
+      notification.style.backgroundColor = 'var(--notification-info-bg)';
+      notification.style.color = 'var(--notification-info-text)';
+      break;
+    case 'success':
+      notification.style.backgroundColor = 'var(--notification-success-bg)';
+      notification.style.color = 'var(--notification-success-text)';
+      break;
+    case 'warning':
+      notification.style.backgroundColor = 'var(--notification-warning-bg)';
+      notification.style.color = 'var(--notification-warning-text)';
+      break;
+    case 'error':
+      notification.style.backgroundColor = 'var(--notification-error-bg)';
+      notification.style.color = 'var(--notification-error-text)';
+      break;
+    default:
+      notification.style.backgroundColor = 'var(--notification-info-bg)';
+      notification.style.color = 'var(--notification-info-text)';
+  }
   
-  const color = colors[type] || colors.info;
-  notification.style.backgroundColor = color.bg;
-  notification.style.color = color.color;
   notification.textContent = message;
   
   document.body.appendChild(notification);

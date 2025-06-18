@@ -172,6 +172,16 @@
   --surface-elevated: var(--neutral-0);
   --surface-overlay: rgba(255, 255, 255, 0.95);
   
+  /* Notification Colors */
+  --notification-info-bg: var(--accent-500);
+  --notification-info-text: var(--neutral-0);
+  --notification-success-bg: var(--success-500);
+  --notification-success-text: var(--neutral-0);
+  --notification-warning-bg: var(--warning-500);
+  --notification-warning-text: var(--neutral-900);
+  --notification-error-bg: var(--error-500);
+  --notification-error-text: var(--neutral-0);
+  
   /* Background Colors */
   --bg-primary: var(--neutral-50);
   --bg-secondary: var(--neutral-0);
@@ -222,6 +232,16 @@
   --surface-elevated: rgba(36, 38, 50, 0.98);
   --surface-overlay: rgba(24, 26, 32, 0.98);
   --sidebar-header-bg: transparent;
+  
+  /* Notification Colors */
+  --notification-info-bg: var(--accent-600);
+  --notification-info-text: var(--neutral-0);
+  --notification-success-bg: var(--success-600);
+  --notification-success-text: var(--neutral-0);
+  --notification-warning-bg: var(--warning-600);
+  --notification-warning-text: var(--neutral-50);
+  --notification-error-bg: var(--error-600);
+  --notification-error-text: var(--neutral-0);
 
   /* Background Colors */
   --bg-primary: #181a20;

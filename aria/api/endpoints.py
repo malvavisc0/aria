@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -21,6 +21,8 @@ from aria.schemas import (
     ValidationResponse,
 )
 from aria.services import MessageService, PasswordService, SessionService
+import httpx
+import os
 
 router = APIRouter()
 
@@ -30,13 +32,22 @@ startup_time = time.time()
 @router.get("/api/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
+    ollama_url = os.getenv("OLLAMA_URL")
+    if not ollama_url:
+        raise HTTPException(status_code=500, detail="OLLAMA_URL is not set")
+    
+    response = httpx.get(url=ollama_url)
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Ollama is not available")
+    
     uptime = int(time.time() - startup_time)
     return HealthResponse(
         status="ok",
         model="ready",
         uptime=uptime,
-        timestamp=datetime.utcnow().isoformat() + "Z",
+        timestamp=datetime.now(timezone.utc).isoformat(),
     )
+    
 
 
 @router.get("/api/sessions", response_model=List[SessionResponse])
