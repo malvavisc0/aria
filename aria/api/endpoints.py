@@ -103,12 +103,12 @@ async def send_message(
     async def stream_response():
         nonlocal assistant_content
         agent = ollama_core_agent(user_id=role, session_id=session_id, enable_memory=True)
-        response = agent.run(
+        response = await agent.arun(
             message=message, stream=True, user_id=role, session_id=session_id
         )
 
         # Stream chunks and collect content
-        for chunk in response:
+        async for chunk in response:
             if chunk.content:
                 chunk_str = str(chunk.content)
                 assistant_content += chunk_str
@@ -121,7 +121,7 @@ async def send_message(
             )
             await MessageService.create_message(session_id, assistant_message_data)
 
-    return StreamingResponse(stream_response())
+    return StreamingResponse(stream_response(), media_type='text/event-stream')
 
 
 @router.delete("/api/sessions/{session_id}/messages/{message_id}", status_code=204)
