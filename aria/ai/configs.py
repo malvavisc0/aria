@@ -1,4 +1,3 @@
-
 ARIA_AGENT_CONFIG = {
     "name": "Aria",
     "instructions": """

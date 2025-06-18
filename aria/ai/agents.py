@@ -7,7 +7,7 @@ from agno.models.ollama import Ollama
 from agno.storage.sqlite import SqliteStorage
 
 from aria.ai.configs import ARIA_AGENT_CONFIG
-from aria.ai.kits import searxng_tools, reasoning_tools, youtube_tools
+from aria.ai.kits import reasoning_tools, searxng_tools, weather_tools, youtube_tools
 
 
 def get_ollama_core_agent(
@@ -85,5 +85,5 @@ def get_ollama_core_agent(
         storage=storage,
         debug_mode=debug_mode,
         show_tool_calls=debug_mode,
-        tools=[searxng_tools, reasoning_tools, youtube_tools],
+        tools=[searxng_tools, reasoning_tools, youtube_tools, weather_tools],
     )
