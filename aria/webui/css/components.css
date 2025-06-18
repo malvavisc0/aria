@@ -23,6 +23,7 @@
   outline: none;
 }
 
+
 .sidebar-search-input:focus {
   border-color: var(--interactive-primary);
   box-shadow: none;
@@ -1072,6 +1073,8 @@
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
 /* ===== SIDEBAR SEARCH BAR ===== */
 .sidebar-search-container {
   margin-bottom: var(--space-3);
@@ -1135,7 +1138,6 @@
 
 .theme-dark .sidebar-search-input:hover {
   background: rgba(255, 255, 255, 0.02);
-}
 }
 
 .sidebar-history-session {

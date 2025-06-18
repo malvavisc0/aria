@@ -1598,8 +1598,8 @@ textarea::placeholder,
 }
 
 .sidebar-search-input {
-  background: #23252b !important;
-  color: #cfd2f7 !important;
+  background: #23252b;
+  color: #cfd2f7;
 }
 /* ===== BROWSER COMPATIBILITY & FALLBACKS ===== */
 

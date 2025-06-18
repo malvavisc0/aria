@@ -45,6 +45,12 @@ export async function initChat() {
     // Show the most recent session
     await setCurrentSession(sessions[sessions.length - 1].id);
   }
+  
+  // Ensure message input is focused
+  if (messageInput) {
+    // Use a longer timeout to ensure DOM is fully rendered
+    setTimeout(() => messageInput.focus(), 300);
+  }
 }
 
 /**
