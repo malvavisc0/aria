@@ -108,25 +108,11 @@ export function escapeHtml(text) {
 export function parseMarkdown(text) {
   if (!text) return '';
   
-  // Escape HTML first
-  let html = escapeHtml(text);
+  // Initialize markdown-it
+  const md = window.markdownit();
   
-  // Bold text
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Italic text
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  // Code blocks
-  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  
-  // Inline code
-  html = html.replace(/`(.*?)`/g, '<code>$1</code>');
-  
-  // Line breaks
-  html = html.replace(/\n/g, '<br>');
-  
-  return html;
+  // Render markdown to HTML
+  return md.render(text);
 }
 
 /**
