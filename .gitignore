@@ -1,5 +1,7 @@
 # Ignore uploads directory and local database
 aria/uploads/
 chat.db
-__pycache__/
+__pycache__
 .env
+./venv
+aria/__pycache__

@@ -49,8 +49,26 @@ export async function initChat() {
   // Ensure message input is focused
   if (messageInput) {
     // Use a longer timeout to ensure DOM is fully rendered
-    setTimeout(() => messageInput.focus(), 300);
+    setTimeout(() => messageInput.focus(), 800);
+    
+    // Add a fallback focus attempt after a longer delay
+    setTimeout(() => messageInput.focus(), 1500);
   }
+  
+  // Add click event to the input wrapper to ensure focus
+  const inputWrapper = document.querySelector('.input-wrapper');
+  if (inputWrapper) {
+    inputWrapper.addEventListener('click', () => {
+      messageInput.focus();
+    });
+  }
+  
+  // Focus the input when the window gains focus
+  window.addEventListener('focus', () => {
+    if (messageInput) {
+      messageInput.focus();
+    }
+  });
 }
 
 /**
@@ -76,6 +94,14 @@ function setupEventListeners() {
 
   // Update send button state on input
   messageInput.addEventListener('input', updateSendButton);
+  
+  // Add click event to the input wrapper to ensure focus
+  const inputWrapper = document.querySelector('.input-wrapper');
+  if (inputWrapper) {
+    inputWrapper.addEventListener('click', () => {
+      messageInput.focus();
+    });
+  }
 }
 
 /**

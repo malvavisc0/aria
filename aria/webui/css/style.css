@@ -153,9 +153,10 @@ body {
     top: 0;
     left: 0;
     transform: translateX(-100%);
-    width: 100vw;
+    width: 80vw; /* Reduced from 100vw to 80vw */
     max-width: 320px;
     z-index: var(--z-overlay);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); /* Enhanced shadow for better visibility */
   }
   
   .app-sidebar[data-collapsed="false"] {
@@ -705,11 +706,24 @@ body {
 }
 
 
-#theme-toggle {
-  margin-left: var(--space-4);
-  margin-right: var(--space-6);
-  margin-top: var(--space-2);
-  margin-bottom: var(--space-2);
+/* Theme toggle in sidebar footer */
+.sidebar-footer #theme-toggle {
+  margin: 0 auto;
+  width: 48px;
+  height: 48px;
+}
+
+/* Center the theme toggle in the sidebar footer */
+.sidebar-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-4) var(--space-4) var(--space-8) var(--space-4); /* Increased bottom padding */
+  min-height: 100px; /* Increased from 80px to ensure enough space */
+  margin-bottom: var(--space-4); /* Increased margin to prevent cropping */
+  position: relative; /* Ensure proper positioning */
+  z-index: 10; /* Ensure it's above other elements */
+  overflow: visible !important; /* Ensure content is not cropped */
 }
 
 .app-header {
@@ -770,12 +784,13 @@ body {
   border-radius: var(--radius-lg);
   transition: all var(--transition-base);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to visible */
   display: flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
+  margin-bottom: var(--space-2); /* Added margin to prevent cropping */
 }
 
 .theme-toggle::before {
