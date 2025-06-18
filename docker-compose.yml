@@ -61,10 +61,8 @@ services:
       UWSGI_WORKERS: '${SEARXNG_UWSGI_WORKERS:-4}'
       UWSGI_THREADS: '${SEARXNG_UWSGI_THREADS:-4}'
       SEARXNG_REDIS_URL: 'redis://redis:6379/10'
-    #expose:
-    #  - '${SEARXNG_PORT:-8080}'
-    ports:
-      - '8181:8080'
+    expose:
+      - '${SEARXNG_PORT:-8080}'
     cap_add:
       - CHOWN
       - SETGID
