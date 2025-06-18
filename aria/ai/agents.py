@@ -11,7 +11,7 @@ from aria.ai.kits import searxng_tools, reasoning_tools, youtube_tools
 
 
 def get_ollama_core_agent(
-    user_id: str, session_id: str, markdown: bool = False, enable_memory: bool = False
+    user_id: str, session_id: str, enable_memory: bool = False
 ) -> Agent:
     """
     Get an instance of the Ollama agent.
@@ -73,7 +73,6 @@ def get_ollama_core_agent(
         goal=ARIA_AGENT_CONFIG["goal"],
         user_id=user_id,
         session_id=session_id,
-        markdown=markdown,
         enable_session_summaries=enable_memory,
         search_previous_sessions_history=enable_memory,
         enable_agentic_memory=enable_memory,
