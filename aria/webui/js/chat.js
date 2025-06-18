@@ -546,7 +546,8 @@ export async function createNewSession(name = null) {
       id: generateId(),
       name: name || `Session ${sessions.length + 1}`,
       created: new Date(),
-      messages: []
+      messages: [],
+      userMessageCount: 0
     };
     sessions.push(session);
     setCurrentSession(session.id);
@@ -597,7 +598,8 @@ export function getSessions() {
     id: s.id,
     name: s.name,
     created: s.created,
-    messages: s.messages
+    messages: s.messages,
+    userMessageCount: s.userMessageCount
   }));
 }
 

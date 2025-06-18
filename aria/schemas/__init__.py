@@ -44,6 +44,7 @@ class SessionWithMessages(BaseModel):
     name: Optional[str]
     created: datetime
     messages: List[MessageResponse] = []
+    user_message_count: int = 0
 
     class Config:
         from_attributes = True

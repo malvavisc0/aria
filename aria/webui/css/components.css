@@ -90,12 +90,12 @@
 }
 
 .message.user .message-content {
-  max-width: 80%;
+  max-width: 100%;
   align-items: flex-end;
 }
 
 .message.assistant .message-content {
-  max-width: 80%;
+  max-width: 100%;
 }
 
 .message-bubble {

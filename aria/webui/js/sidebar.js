@@ -169,7 +169,7 @@ function renderSessionList() {
     li.title = new Date(session.created).toLocaleString();
     li.innerHTML = `
       <span class="sidebar-history-session-name">${session.name}</span>
-      <span class="sidebar-history-session-count">${session.userMessageCount}</span>
+      <span class="sidebar-history-session-count">${session.userMessageCount || session.messages.filter(m => m.role === 'user').length || 0}</span>
     `;
     li.onclick = async () => {
       try {

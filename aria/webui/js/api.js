@@ -258,7 +258,8 @@ function transformSessionWithMessages(backendSession) {
     id: backendSession.id,
     name: backendSession.name || `Session ${backendSession.id.slice(0, 8)}`,
     created: new Date(backendSession.created),
-    messages: backendSession.messages.map(transformMessage)
+    messages: backendSession.messages.map(transformMessage),
+    userMessageCount: backendSession.user_message_count || backendSession.messages.filter(m => m.role === 'user').length || 0
   };
 }
 

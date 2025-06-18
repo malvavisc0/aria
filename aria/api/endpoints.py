@@ -62,13 +62,17 @@ async def list_sessions():
 @router.post("/api/sessions", response_model=SessionResponse, status_code=201)
 async def create_session(session_data: SessionCreate):
     """Create a new session"""
-    return await SessionService.create_session(session_data)
+    session = await SessionService.create_session(session_data)
+    session.user_message_count = 0  # New session has no messages
+    return session
 
 
 @router.get("/api/sessions/{session_id}", response_model=SessionWithMessages)
 async def get_session(session_id: str):
     """Get session details and all messages"""
-    return await SessionService.get_session_with_messages(session_id)
+    session = await SessionService.get_session_with_messages(session_id)
+    session.user_message_count = await MessageService.count_user_messages(session_id)
+    return session
 
 
 @router.delete("/api/sessions/{session_id}", status_code=204)
