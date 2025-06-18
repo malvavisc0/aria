@@ -1,11 +1,11 @@
 import time
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Dict, Any
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
+from fastapi.responses import StreamingResponse, JSONResponse
 
-from aria.ai import ollama_core_agent
+from aria.ai import ollama_core_agent, prompt_improver_agent
 from aria.schemas import (
     HealthResponse,
     MessageCreate,
@@ -172,3 +172,43 @@ async def validate_session_password(
 async def search_messages(q: str):
     """Search messages, excluding protected sessions"""
     return await MessageService.search_messages(q)
+
+
+@router.post("/api/improve-prompt")
+async def improve_prompt(prompt: Dict[str, Any] = Body(...)):
+    """
+    Improve a prompt without changing its original meaning.
+    
+    This endpoint takes a user's prompt and returns an improved version that maintains
+    the original intent but enhances clarity, structure, and effectiveness.
+    
+    Parameters:
+    - prompt: A dictionary containing the original prompt text in the 'text' field
+    
+    Returns:
+    - A JSON response with both the original and improved prompts, along with an explanation
+      of the changes made
+    """
+    if 'text' not in prompt:
+        raise HTTPException(status_code=400, detail="Prompt text is required")
+    
+    original_prompt = prompt['text']
+    
+    # Generate a unique session ID for this improvement request
+    session_id = f"prompt_improvement_{int(time.time())}"
+    
+    # Get the prompt improver agent
+    agent = prompt_improver_agent(user_id="user", session_id=session_id)
+    
+    # Run the agent to improve the prompt
+    response = await agent.arun(
+        message=f"Please improve this prompt without changing its meaning: {original_prompt}",
+        user_id="user",
+        session_id=session_id
+    )
+    
+    # Return the improved prompt and explanation
+    return JSONResponse({
+        "original_prompt": original_prompt,
+        "improved_prompt": response.content,
+    })

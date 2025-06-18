@@ -1,5 +1,49 @@
 /* ===== MODERN COMPONENT STYLES ===== */
 
+/* ===== INPUT ACTION BUTTONS ===== */
+.file-upload-btn, .prompt-improve-btn {
+  background: var(--surface-tertiary);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-base);
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Loading state for prompt improver button */
+.prompt-improve-btn.loading {
+  pointer-events: none;
+}
+
+.prompt-improve-btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.file-upload-btn:hover {
+  background: var(--primary-500);
+  color: white;
+  transform: scale(1.1);
+}
+
+.prompt-improve-btn:hover {
+  background: var(--accent-500);
+  color: white;
+  transform: scale(1.1);
+}
+
 /* ===== SIDEBAR SEARCH INPUT ===== */
 .sidebar-search-container {
   width: 100%;

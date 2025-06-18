@@ -78,6 +78,12 @@ function setupEventListeners() {
   // Form submission
   chatForm.addEventListener('submit', handleSendMessage);
 
+  // Prompt improver button
+  const promptImproveBtn = document.getElementById('prompt-improve-btn');
+  if (promptImproveBtn) {
+    promptImproveBtn.addEventListener('click', handleImprovePrompt);
+  }
+
   // Auto-resize textarea
   messageInput.addEventListener('input', () => {
     autoResizeTextarea(messageInput);
@@ -623,6 +629,47 @@ export function getMessages() {
  */
 export function addMessageProgrammatically(message) {
   addMessageToCurrentSession(message);
+}
+
+/**
+ * Handle improving the prompt
+ */
+async function handleImprovePrompt() {
+  const content = messageInput.value.trim();
+  if (!content || isTyping) return;
+
+  try {
+    // Show loading state
+    const promptImproveBtn = document.getElementById('prompt-improve-btn');
+    if (promptImproveBtn) {
+      promptImproveBtn.disabled = true;
+      promptImproveBtn.classList.add('loading');
+    }
+
+    // Call the API to improve the prompt
+    const response = await ariaAPI.improvePrompt(content);
+    
+    // Update the input with the improved prompt
+    if (response && response.improved_prompt) {
+      messageInput.value = response.improved_prompt;
+      autoResizeTextarea(messageInput);
+      updateSendButton();
+      
+      // Focus the input
+      messageInput.focus();
+    }
+  } catch (error) {
+    console.error('Failed to improve prompt:', error);
+    // Show error notification
+    showErrorMessage('Failed to improve prompt. Please try again.');
+  } finally {
+    // Reset button state
+    const promptImproveBtn = document.getElementById('prompt-improve-btn');
+    if (promptImproveBtn) {
+      promptImproveBtn.disabled = false;
+      promptImproveBtn.classList.remove('loading');
+    }
+  }
 }
 
 // Confetti effect removed

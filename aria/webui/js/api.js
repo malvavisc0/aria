@@ -231,6 +231,19 @@ class AriaAPI {
       })
     });
   }
+
+  /**
+   * Improve a prompt without changing its original meaning
+   * POST /api/improve-prompt
+   */
+  async improvePrompt(promptText) {
+    return await this._fetch('/api/improve-prompt', {
+      method: 'POST',
+      body: JSON.stringify({
+        text: promptText
+      })
+    });
+  }
 }
 
 // ===== DATA TRANSFORMATION UTILITIES =====
