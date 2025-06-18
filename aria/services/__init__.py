@@ -172,6 +172,11 @@ class MessageService:
         # TODO: Implement OpenAI integration
         return f"This is a placeholder response to: {user_message[:50]}..."
 
+    @staticmethod
+    async def count_user_messages(session_id: str) -> int:
+        """Count user messages in a session"""
+        return await Message.filter(session_id=session_id, role="user").count()
+
 
 class PasswordService:
     @staticmethod

@@ -15,6 +15,7 @@ class SessionResponse(BaseModel):
     created: datetime
     is_protected: bool
     message_count: int = 0
+    user_message_count: int = 0
 
     class Config:
         from_attributes = True

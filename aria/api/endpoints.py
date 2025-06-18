@@ -53,7 +53,10 @@ async def health_check():
 @router.get("/api/sessions", response_model=List[SessionResponse])
 async def list_sessions():
     """List all chat sessions"""
-    return await SessionService.list_sessions()
+    sessions = await SessionService.list_sessions()
+    for session in sessions:
+        session.user_message_count = await MessageService.count_user_messages(session.id)
+    return sessions
 
 
 @router.post("/api/sessions", response_model=SessionResponse, status_code=201)

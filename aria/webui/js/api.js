@@ -245,7 +245,8 @@ function transformSession(backendSession) {
     created: new Date(backendSession.created),
     messages: [], // Will be populated separately
     isProtected: backendSession.is_protected || false,
-    messageCount: backendSession.message_count || 0
+    messageCount: backendSession.message_count || 0,
+    userMessageCount: backendSession.user_message_count || 0
   };
 }
 
