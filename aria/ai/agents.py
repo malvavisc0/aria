@@ -7,10 +7,11 @@ from agno.models.ollama import Ollama
 from agno.storage.sqlite import SqliteStorage
 
 from aria.ai.configs import ARIA_AGENT_CONFIG
+from aria.ai.kits import searxng_tools, reasoning_tools, youtube_tools
 
 
 def get_ollama_core_agent(
-    user_id: str, session_id: str, markdown: bool = False, enable_memory: bool = False
+    user_id: str, session_id: str, markdown: bool = True, enable_memory: bool = False
 ) -> Agent:
     """
     Get an instance of the Ollama agent.
@@ -73,14 +74,17 @@ def get_ollama_core_agent(
         user_id=user_id,
         session_id=session_id,
         markdown=markdown,
-        add_history_to_messages=enable_memory,
         enable_session_summaries=enable_memory,
-        read_chat_history=enable_memory,
+        search_previous_sessions_history=enable_memory,
         enable_agentic_memory=enable_memory,
         enable_user_memories=enable_memory,
+        read_tool_call_history=enable_memory,
+        add_history_to_messages=enable_memory,
+        read_chat_history=enable_memory,
         add_datetime_to_instructions=True,
         memory=memory,
         storage=storage,
         debug_mode=debug_mode,
         show_tool_calls=debug_mode,
+        tools=[searxng_tools, reasoning_tools, youtube_tools],
     )

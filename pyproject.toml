@@ -22,6 +22,7 @@ dependencies = [
     "pypdf",
     "python-multipart",
     "requests",
+    "sqlalchemy",
     "tortoise-orm[accel]",
     "typer",
     "uvicorn[standard]",
@@ -29,6 +30,7 @@ dependencies = [
     "yfinance",
     "youtube_transcript_api",
     "agno",
+    "enhancedtoolkits[full] @ git+https://github.com/malvavisc0/enhancedtoolkits.git",
 ]
 
 [project.scripts]
