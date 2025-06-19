@@ -30,6 +30,7 @@ dependencies = [
     "yfinance",
     "youtube_transcript_api",
     "agno",
+    "redis",
     "enhancedtoolkits[full] @ git+https://github.com/malvavisc0/enhancedtoolkits.git",
 ]
 

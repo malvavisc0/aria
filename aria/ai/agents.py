@@ -2,10 +2,10 @@ from datetime import datetime
 from os import environ
 
 from agno.agent import Agent
-from agno.memory.v2.db.sqlite import SqliteMemoryDb
+from agno.memory.v2.db.redis import RedisMemoryDb
 from agno.memory.v2.memory import Memory
 from agno.models.ollama import Ollama
-from agno.storage.sqlite import SqliteStorage
+from agno.storage.redis import RedisStorage
 
 from aria.ai.configs import ARIA_AGENT_CONFIG, PROMPT_IMPROVER_AGENT_CONFIG
 from aria.ai.kits import (
@@ -39,6 +39,9 @@ EXTRA_INFORMATION = f"""
 **Timezone is**: {environ.get("TZ","Europe/Berlin")}
 </additional_information>
     """
+REDIS_HOST = environ.get("REDIS_HOST", "redis")
+REDIS_PORT = int(environ.get("REDIS_PORT", 6379))
+REDIS_DB = int(environ.get("REDIS_DB", 10))
 
 
 def get_ollama_core_agent(
@@ -64,8 +67,12 @@ def get_ollama_core_agent(
     num_history_runs = 0
     if enable_memory:
         num_history_runs = 5
-        storage = SqliteStorage(table_name="chat", db_file=SESSIONS_DB_FILE)
-        memory_db = SqliteMemoryDb(table_name="memory", db_file=SESSIONS_DB_FILE)
+        storage = RedisStorage(
+            prefix="chat", host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB
+        )
+        memory_db = RedisMemoryDb(
+            prefix="memory", host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB
+        )
         memory = Memory(model=OLLAMA_MODEL, db=memory_db)
 
     return Agent(
