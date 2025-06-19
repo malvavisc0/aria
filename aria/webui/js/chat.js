@@ -650,8 +650,8 @@ async function handleImprovePrompt() {
     const response = await ariaAPI.improvePrompt(content);
     
     // Update the input with the improved prompt
-    if (response && response.improved_prompt) {
-      messageInput.value = response.improved_prompt;
+    if (response && response.improved) {
+      messageInput.value = response.improved;
       autoResizeTextarea(messageInput);
       updateSendButton();
       

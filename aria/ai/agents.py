@@ -8,6 +8,22 @@ from agno.storage.sqlite import SqliteStorage
 
 from aria.ai.configs import ARIA_AGENT_CONFIG, PROMPT_IMPROVER_AGENT_CONFIG
 from aria.ai.kits import reasoning_tools, searxng_tools, weather_tools, youtube_tools
+from aria.ai.outputs import ImprovedPromptResponse
+
+OLLAMA_MODEL = Ollama(
+    id=os.getenv("OLLAMA_MODEL_ID", "cogito:8bb"),
+    host=os.getenv("OLLAMA_URL"),
+    timeout=300,
+    options={
+        "temperature": float(os.getenv("OLLAMA_MODEL_TEMPARATURE", 0.65)),
+        "mirostat": 2,
+        "repeat_last_n": -1,
+        "top_k": 20,
+        "seed": 10,
+        "num_ctx": int(os.getenv("OLLAMA_MODEL_CONTEXT_LENGTH", 20480)),
+    },
+)
+DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
 
 def get_ollama_core_agent(
@@ -28,35 +44,7 @@ def get_ollama_core_agent(
 
     Returns:
      Agent: An instance of the Ollama agent configured with specified parameters.
-
-    Raises:
-     ValueError: If OLLAMA_URL or OLLAMA_MODEL_ID is not set in environment variables.
     """
-    ollama_url = os.getenv("OLLAMA_URL")
-    ollama_model_id = os.getenv("OLLAMA_MODEL_ID")
-    if not ollama_url:
-        raise ValueError("OLLAMA_URL is not set")
-    if not ollama_model_id:
-        raise ValueError("OLLAMA_MODEL_ID is not set")
-
-    ollama_model_temperature = float(os.getenv("OLLAMA_MODEL_TEMPARATURE", 0.65))
-    ollama_model_context_length = int(os.getenv("OLLAMA_MODEL_CONTEXT_LENGTH", 20480))
-
-    ollama = Ollama(
-        id=ollama_model_id,
-        host=ollama_url,
-        timeout=300,
-        options={
-            "temperature": ollama_model_temperature,
-            "mirostat": 2,
-            "repeat_last_n": -1,
-            "top_k": 20,
-            "seed": 10,
-            "num_ctx": ollama_model_context_length,
-        },
-    )
-
-    debug_mode = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
     db_file = os.getenv("DB_FILE", "/opt/storage/sessions.db")
     storage = SqliteStorage(table_name="chat", db_file=db_file)
@@ -65,7 +53,7 @@ def get_ollama_core_agent(
         memory = Memory(db=SqliteMemoryDb(db_file=db_file))
 
     return Agent(
-        model=ollama,
+        model=OLLAMA_MODEL,
         name=ARIA_AGENT_CONFIG["name"],
         description=ARIA_AGENT_CONFIG["description"],
         role=ARIA_AGENT_CONFIG["role"],
@@ -83,8 +71,8 @@ def get_ollama_core_agent(
         add_datetime_to_instructions=True,
         memory=memory,
         storage=storage,
-        debug_mode=debug_mode,
-        show_tool_calls=debug_mode,
+        debug_mode=DEBUG_MODE,
+        show_tool_calls=DEBUG_MODE,
         tools=[searxng_tools, reasoning_tools, youtube_tools, weather_tools],
     )
 
@@ -99,46 +87,18 @@ def get_prompt_improver_agent() -> Agent:
 
     Returns:
      Agent: An instance of the Prompt Improver agent configured with specified parameters.
-
-    Raises:
-     ValueError: If OLLAMA_URL or OLLAMA_MODEL_ID is not set in environment variables.
     """
-    ollama_url = os.getenv("OLLAMA_URL")
-    ollama_model_id = os.getenv("OLLAMA_MODEL_ID")
-    if not ollama_url:
-        raise ValueError("OLLAMA_URL is not set")
-    if not ollama_model_id:
-        raise ValueError("OLLAMA_MODEL_ID is not set")
-
-    # Use a slightly higher temperature for more creative prompt improvements
-    ollama_model_temperature = float(os.getenv("OLLAMA_MODEL_TEMPARATURE", 0.7))
-    ollama_model_context_length = int(os.getenv("OLLAMA_MODEL_CONTEXT_LENGTH", 20480))
-
-    ollama = Ollama(
-        id=ollama_model_id,
-        host=ollama_url,
-        timeout=300,
-        options={
-            "temperature": ollama_model_temperature,
-            "mirostat": 2,
-            "repeat_last_n": -1,
-            "top_k": 20,
-            "seed": 10,
-            "num_ctx": ollama_model_context_length,
-        },
-    )
-
-    debug_mode = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
     return Agent(
-        model=ollama,
+        model=OLLAMA_MODEL,
         name=PROMPT_IMPROVER_AGENT_CONFIG["name"],
         description=PROMPT_IMPROVER_AGENT_CONFIG["description"],
         role=PROMPT_IMPROVER_AGENT_CONFIG["role"],
         instructions=PROMPT_IMPROVER_AGENT_CONFIG["instructions"],
         goal=PROMPT_IMPROVER_AGENT_CONFIG["goal"],
         add_datetime_to_instructions=True,
-        debug_mode=debug_mode,
-        show_tool_calls=debug_mode,
+        debug_mode=DEBUG_MODE,
+        show_tool_calls=DEBUG_MODE,
         tools=[reasoning_tools],
+        response_model=ImprovedPromptResponse,
     )

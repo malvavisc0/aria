@@ -1,11 +1,14 @@
+import os
 import time
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
-from fastapi.responses import StreamingResponse, JSONResponse
+import httpx
+from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from aria.ai import ollama_core_agent, prompt_improver_agent
+from aria.ai.outputs import ImprovedPromptResponse
 from aria.schemas import (
     HealthResponse,
     MessageCreate,
@@ -21,8 +24,6 @@ from aria.schemas import (
     ValidationResponse,
 )
 from aria.services import MessageService, PasswordService, SessionService
-import httpx
-import os
 
 router = APIRouter()
 
@@ -35,11 +36,11 @@ async def health_check():
     ollama_url = os.getenv("OLLAMA_URL")
     if not ollama_url:
         raise HTTPException(status_code=500, detail="OLLAMA_URL is not set")
-    
+
     response = httpx.get(url=ollama_url)
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail="Ollama is not available")
-    
+
     uptime = int(time.time() - startup_time)
     return HealthResponse(
         status="ok",
@@ -47,7 +48,6 @@ async def health_check():
         uptime=uptime,
         timestamp=datetime.now(timezone.utc).isoformat(),
     )
-    
 
 
 @router.get("/api/sessions", response_model=List[SessionResponse])
@@ -128,7 +128,7 @@ async def send_message(
             )
             await MessageService.create_message(session_id, assistant_message_data)
 
-    return StreamingResponse(stream_response(), media_type='text/event-stream')
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
 
 
 @router.delete("/api/sessions/{session_id}/messages/{message_id}", status_code=204)
@@ -174,41 +174,32 @@ async def search_messages(q: str):
     return await MessageService.search_messages(q)
 
 
-@router.post("/api/improve-prompt")
+@router.post("/api/improve-prompt", response_model=ImprovedPromptResponse)
 async def improve_prompt(prompt: Dict[str, Any] = Body(...)):
     """
     Improve a prompt without changing its original meaning.
-    
+
     This endpoint takes a user's prompt and returns an improved version that maintains
     the original intent but enhances clarity, structure, and effectiveness.
-    
+
     Parameters:
     - prompt: A dictionary containing the original prompt text in the 'text' field
-    
+
     Returns:
     - A JSON response with both the original and improved prompts, along with an explanation
       of the changes made
     """
-    if 'text' not in prompt:
+    if "text" not in prompt:
         raise HTTPException(status_code=400, detail="Prompt text is required")
-    
-    original_prompt = prompt['text']
-    
-    # Generate a unique session ID for this improvement request
-    session_id = f"prompt_improvement_{int(time.time())}"
-    
+
+    original_prompt = prompt["text"]
+
     # Get the prompt improver agent
-    agent = prompt_improver_agent(user_id="user", session_id=session_id)
-    
+    agent = prompt_improver_agent()
+
     # Run the agent to improve the prompt
-    response = await agent.arun(
-        message=f"Please improve this prompt without changing its meaning: {original_prompt}",
-        user_id="user",
-        session_id=session_id
-    )
-    
+    message = f"Please, improve this prompt without changing its meaning: \n\n<prompt>\n{original_prompt}\n</prompt>\n"
+    response = await agent.arun(message=message)
+
     # Return the improved prompt and explanation
-    return JSONResponse({
-        "original_prompt": original_prompt,
-        "improved_prompt": response.content,
-    })
+    return response.content

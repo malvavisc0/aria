@@ -10,6 +10,7 @@ from aria.api.endpoints import router as api_router
 
 from .config import settings
 
+
 # Lifespan event handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,11 +24,13 @@ async def lifespan(app: FastAPI):
     # Initialize empty SQLite database file if it does not exist
     if not os.path.exists(db_path):
         import sqlite3
+
         conn = sqlite3.connect(db_path)
         conn.close()
 
     settings.create_upload_dir()
     yield
+
 
 # Single FastAPI instance with lifespan
 app = FastAPI(
@@ -65,4 +68,5 @@ register_tortoise(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
