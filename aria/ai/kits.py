@@ -10,7 +10,10 @@ from enhancedtoolkits import (
 )
 
 searxng_tools = SearxngTools(
-    host=environ.get("SEARXNG_URL", ""), enable_content_fetching=True, byparr_enabled=True
+    host=environ.get("SEARXNG_URL", ""),
+    enable_content_fetching=True,
+    byparr_enabled=True,
+    max_results=5,
 )
 calulator_tools = CalculatorTools()
 reasoning_tools = ReasoningTools()

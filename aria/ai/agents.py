@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from agno.agent import Agent
 from agno.memory.v2.db.sqlite import SqliteMemoryDb
@@ -7,7 +8,7 @@ from agno.models.ollama import Ollama
 from agno.storage.sqlite import SqliteStorage
 
 from aria.ai.configs import ARIA_AGENT_CONFIG, PROMPT_IMPROVER_AGENT_CONFIG
-from aria.ai.kits import reasoning_tools, searxng_tools, weather_tools, youtube_tools
+from aria.ai.kits import reasoning_tools, searxng_tools, weather_tools, youtube_tools, yfinance_tools, calulator_tools
 from aria.ai.outputs import ImprovedPromptResponse
 
 OLLAMA_MODEL = Ollama(
@@ -33,13 +34,11 @@ def get_ollama_core_agent(
     Get an instance of the Ollama agent.
 
     Initializes and returns an `Agent` configured with the provided parameters from
-    environment variables. It ensures that necessary environment settings
-    (OLLAMA_URL and OLLAMA_MODEL_ID) are present before attempting to create the model.
+    environment variables.
 
     Parameters:
      user_id (str): The ID of the user.
      session_id (str): The session ID for the agent.
-     markdown (bool, optional): Flag indicating whether to use Markdown formatting.
      enable_memory (bool, optional): Flag indicating whether to enable memory for the agent.
 
     Returns:
@@ -52,10 +51,12 @@ def get_ollama_core_agent(
     if enable_memory:
         memory = Memory(db=SqliteMemoryDb(db_file=db_file))
 
+    description = f"{ARIA_AGENT_CONFIG['description']}. Current date and time is: {datetime.now().isoformat()}"
+
     return Agent(
         model=OLLAMA_MODEL,
         name=ARIA_AGENT_CONFIG["name"],
-        description=ARIA_AGENT_CONFIG["description"],
+        description=description,
         role=ARIA_AGENT_CONFIG["role"],
         instructions=ARIA_AGENT_CONFIG["instructions"],
         goal=ARIA_AGENT_CONFIG["goal"],
@@ -68,7 +69,7 @@ def get_ollama_core_agent(
         storage=storage,
         debug_mode=DEBUG_MODE,
         show_tool_calls=DEBUG_MODE,
-        tools=[searxng_tools, reasoning_tools, youtube_tools, weather_tools],
+        tools=[searxng_tools, reasoning_tools, youtube_tools, weather_tools, yfinance_tools, calulator_tools],
     )
 
 
