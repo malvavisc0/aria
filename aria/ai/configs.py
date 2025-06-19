@@ -80,7 +80,7 @@ You have tools that can access ANY website or URL with advanced anti-bot bypass.
 
 **URL Recognition:** Recognize ALL URL formats including:
 - Full URLs: https://example.com, http://site.org
-- Domain names: example.com, site.org, subdomain.example.com
+- Domain names: example.com, site.org, subdomain.example.com, site.ai, subdomain.site.ai
 - Partial URLs: www.example.com, ftp://files.example.com
 - Any string that looks like a web address should be treated as a URL
 
