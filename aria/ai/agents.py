@@ -6,9 +6,15 @@ from agno.memory.v2.db.sqlite import SqliteMemoryDb
 from agno.memory.v2.memory import Memory
 from agno.models.ollama import Ollama
 from agno.storage.sqlite import SqliteStorage
-
 from aria.ai.configs import ARIA_AGENT_CONFIG, PROMPT_IMPROVER_AGENT_CONFIG
-from aria.ai.kits import reasoning_tools, searxng_tools, weather_tools, youtube_tools, yfinance_tools, calulator_tools
+from aria.ai.kits import (
+    calulator_tools,
+    reasoning_tools,
+    searxng_tools,
+    weather_tools,
+    yfinance_tools,
+    youtube_tools,
+)
 from aria.ai.outputs import ImprovedPromptResponse
 
 OLLAMA_MODEL = Ollama(
@@ -69,7 +75,14 @@ def get_ollama_core_agent(
         storage=storage,
         debug_mode=DEBUG_MODE,
         show_tool_calls=DEBUG_MODE,
-        tools=[searxng_tools, reasoning_tools, youtube_tools, weather_tools, yfinance_tools, calulator_tools],
+        tools=[
+            searxng_tools,
+            reasoning_tools,
+            youtube_tools,
+            weather_tools,
+            yfinance_tools,
+            calulator_tools,
+        ],
     )
 
 
