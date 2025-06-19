@@ -10,6 +10,7 @@ from agno.storage.redis import RedisStorage
 from aria.ai.configs import ARIA_AGENT_CONFIG, PROMPT_IMPROVER_AGENT_CONFIG
 from aria.ai.kits import (
     calulator_tools,
+    downloader_tools,
     reasoning_tools,
     searxng_tools,
     weather_tools,
@@ -102,6 +103,7 @@ def get_ollama_core_agent(
             weather_tools,
             yfinance_tools,
             calulator_tools,
+            downloader_tools,
         ],
     )
 
