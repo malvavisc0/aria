@@ -927,14 +927,14 @@ body {
 
 .welcome-content h2 {
   font-size: var(--text-2xl);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-normal);
   color: var(--text-primary);
   margin-bottom: var(--space-3);
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Fredoka One', 'Inter', Arial, sans-serif;
 }
 
 .welcome-content p {
