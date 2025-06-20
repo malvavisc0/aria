@@ -26,10 +26,10 @@ async function init() {
     try {
       const health = await ariaAPI.healthCheck();
       console.log('🏥 API Health:', health);
-      showNotification('Connected to backend', 'success', 2000);
+      showNotification('Connected to Ollama', 'success', 2000);
     } catch (error) {
       console.warn('⚠️ API health check failed:', error);
-      showNotification('Backend connection failed - using offline mode', 'warning', 3000);
+      showNotification('Ollama connection failed - using offline mode', 'warning', 3000);
     }
 
     // Initialize chat functionality (async)

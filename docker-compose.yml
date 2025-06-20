@@ -22,7 +22,6 @@ services:
       SEARXNG_URL: '${SEARXNG_URL:-http://searxng:8080}'
       BYPARR_URL: '${BYPARR_URL:-http://byparr:8191/v1}'
       BYPARR_TIMEOUT: '${BYPARR_TIMEOUT:-120}'
-      OPENROUTER_API_KEY: '${OPENROUTER_API_KEY}'
       AGNO_TELEMETRY: '${AGNO_TELEMETRY:-false}'
       OLLAMA_URL: '${OLLAMA_URL}'
       OLLAMA_MODEL_ID: '${OLLAMA_MODEL_ID}'
