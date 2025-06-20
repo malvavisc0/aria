@@ -124,7 +124,7 @@
 }
 
 .message.assistant .message-content {
-  max-width: 85%;
+  max-width: 95%;
 }
 
 .message-bubble {
@@ -142,6 +142,10 @@
   min-height: 48px;
   width: 100%;
   max-width: 650px;
+}
+
+.message.assistant .message-bubble {
+  max-width: 800px;
 }
 
 .message.user .message-bubble {
@@ -173,10 +177,10 @@
 
 /* Dark theme specific styling */
 .theme-dark .message.user .message-bubble {
-  background: var(--interactive-primary);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8) 0%, rgba(139, 92, 246, 0.8) 100%);
   color: white;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
 }
 
 .theme-dark .message.assistant .message-bubble {
@@ -207,6 +211,15 @@
 
 .message:hover .message-bubble::before {
   opacity: 1;
+}
+
+/* Darker hover effect for assistant bubbles */
+.message.assistant .message-bubble::before {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-dark .message.assistant .message-bubble::before {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .message-bubble > * {
