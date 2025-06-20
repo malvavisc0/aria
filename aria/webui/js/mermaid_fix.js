@@ -419,9 +419,10 @@ async function renderSingleDiagram(element, index) {
       throw new Error('No diagram content found');
     }
     
-    // Validate mermaid syntax (basic check)
+    // Sanitize and validate mermaid syntax
+    content = sanitizeMermaidCode(content);
     if (!isValidMermaidSyntax(content)) {
-      throw new Error('Invalid Mermaid syntax detected');
+      throw new Error('Invalid Mermaid syntax detected after sanitization');
     }
     
     // Clear any existing content
@@ -499,6 +500,28 @@ async function renderSingleDiagram(element, index) {
       </div>
     `;
   }
+}
+
+/**
+ * Sanitize Mermaid code to fix common syntax errors
+ * @param {string} code
+ * @returns {string} Sanitized code
+ */
+function sanitizeMermaidCode(code) {
+  if (!code) return '';
+
+  // Fix for unquoted node text with special characters
+  return code.replace(/(\w+\[)([^\]]+?)(\])/g, (match, start, text, end) => {
+    if (text.includes('"') || text.includes("'")) {
+      // Already quoted, do nothing
+      return match;
+    }
+    if (text.match(/[():,]/)) {
+      // Contains special characters, so quote it
+      return `${start}"${text}"${end}`;
+    }
+    return match;
+  });
 }
 
 /**
