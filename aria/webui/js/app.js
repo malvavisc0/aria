@@ -5,6 +5,7 @@ import { initUpload } from './upload.js';
 import { initSidebar } from './sidebar.js';
 import { storage } from './utils.js';
 import { ariaAPI } from './api.js';
+import './nameGenerator.js'; // Import name generator for global availability
 
 let currentTheme = 'light';
 

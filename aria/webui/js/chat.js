@@ -2,6 +2,7 @@
 
 import { generateId, formatTime, parseMarkdown, scrollIntoView, autoResizeTextarea, renderMermaidDiagrams } from './utils.js';
 import { ariaAPI, transformSession, transformSessionWithMessages, transformMessage } from './api.js';
+import { generateSessionName } from './nameGenerator.js';
 
 const STORAGE_KEY = 'aria-chat-sessions';
 
@@ -564,8 +565,11 @@ async function refreshCurrentSession() {
  */
 export async function createNewSession(name = null) {
   try {
+    // Generate a fun name if none provided
+    const sessionName = name || generateSessionName(sessions);
+    
     // Create session on backend
-    const backendSession = await ariaAPI.createSession(name);
+    const backendSession = await ariaAPI.createSession(sessionName);
     const newSession = transformSession(backendSession);
     
     // Add to local sessions
@@ -582,10 +586,11 @@ export async function createNewSession(name = null) {
   } catch (error) {
     console.error('Failed to create session on backend:', error);
     
-    // Fallback to local session creation
+    // Fallback to local session creation with fun name
+    const sessionName = name || generateSessionName(sessions);
     const session = {
       id: generateId(),
-      name: name || `Session ${sessions.length + 1}`,
+      name: sessionName,
       created: new Date(),
       messages: [],
       userMessageCount: 0

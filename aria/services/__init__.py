@@ -15,6 +15,7 @@ from aria.schemas import (
     SessionWithMessages,
     ValidationResponse,
 )
+from aria.utils.name_generator import generate_session_name
 
 
 class SessionService:
@@ -36,9 +37,16 @@ class SessionService:
     @staticmethod
     async def create_session(session_data: SessionCreate) -> SessionResponse:
         """Create a new session"""
-        session = await Session.create(
-            name=session_data.name or f"Session {await Session.all().count() + 1}"
-        )
+        # Generate a fun name if none provided
+        if not session_data.name:
+            # Get existing session names for uniqueness check
+            existing_sessions = await Session.all()
+            existing_names = [session.name for session in existing_sessions if session.name]
+            session_name = generate_session_name(existing_names)
+        else:
+            session_name = session_data.name
+            
+        session = await Session.create(name=session_name)
         return SessionResponse(
             id=str(session.id),
             name=session.name,
