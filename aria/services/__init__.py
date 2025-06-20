@@ -1,8 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from datetime import datetime
 
 import bcrypt
 from fastapi import HTTPException
 from tortoise.exceptions import DoesNotExist
+from tortoise.functions import Count
 
 from aria.models import Message, Session
 from aria.schemas import (
@@ -12,27 +14,47 @@ from aria.schemas import (
     SearchResponse,
     SessionCreate,
     SessionResponse,
-    SessionWithMessages,
     ValidationResponse,
+    PaginatedMessagesResponse,
+    SessionMetadataResponse,
 )
 from aria.utils.name_generator import generate_session_name
 
 
 class SessionService:
     @staticmethod
-    async def list_sessions() -> List[SessionResponse]:
-        """List all sessions with message counts"""
-        sessions = await Session.all().prefetch_related("messages")
-        return [
-            SessionResponse(
-                id=str(session.id),
-                name=session.name,
-                created=session.created,
-                is_protected=session.is_protected,
-                message_count=len(session.messages),
+    async def list_session_metadata() -> List[SessionMetadataResponse]:
+        """List all sessions with metadata but without full message content"""
+        sessions = await Session.all()
+        
+        result = []
+        for session in sessions:
+            # Get message count
+            message_count = await Message.filter(session_id=session.id).count()
+            
+            # Get user message count
+            user_message_count = await Message.filter(session_id=session.id, role="user").count()
+            
+            # Get last message info if any messages exist
+            last_message = None
+            if message_count > 0:
+                last_message = await Message.filter(session_id=session.id).order_by("-timestamp").first()
+            
+            result.append(
+                SessionMetadataResponse(
+                    id=str(session.id),
+                    name=session.name,
+                    created=session.created,
+                    is_protected=session.is_protected,
+                    message_count=message_count,
+                    user_message_count=user_message_count,
+                    last_message_timestamp=last_message.timestamp if last_message else None,
+                    # Truncate content for preview
+                    last_message_preview=last_message.content[:50] + "..." if last_message and len(last_message.content) > 50 else last_message.content if last_message else None
+                )
             )
-            for session in sessions
-        ]
+        
+        return result
 
     @staticmethod
     async def create_session(session_data: SessionCreate) -> SessionResponse:
@@ -56,33 +78,6 @@ class SessionService:
         )
 
     @staticmethod
-    async def get_session_with_messages(session_id: str) -> SessionWithMessages:
-        """Get session with all messages"""
-        try:
-            session = await Session.get(id=session_id).prefetch_related("messages")
-        except DoesNotExist:
-            raise HTTPException(status_code=404, detail="Session not found")
-
-        messages = [
-            MessageResponse(
-                id=str(msg.id),
-                session_id=str(session_id),
-                content=msg.content,
-                role=msg.role,
-                timestamp=msg.timestamp,
-                files=msg.files,
-            )
-            for msg in session.messages
-        ]
-
-        return SessionWithMessages(
-            id=str(session.id),
-            name=session.name,
-            created=session.created,
-            messages=messages,
-        )
-
-    @staticmethod
     async def delete_session(session_id: str):
         """Delete a session and all its messages"""
         try:
@@ -94,15 +89,44 @@ class SessionService:
 
 class MessageService:
     @staticmethod
-    async def list_messages(session_id: str) -> List[MessageResponse]:
-        """List all messages in a session"""
+    async def paginated_messages(
+        session_id: str, 
+        limit: int = 20, 
+        cursor: Optional[str] = None
+    ) -> PaginatedMessagesResponse:
+        """Get paginated messages for a session"""
         try:
             await Session.get(id=session_id)
         except DoesNotExist:
             raise HTTPException(status_code=404, detail="Session not found")
-
-        messages = await Message.filter(session_id=session_id).order_by("timestamp")
-        return [
+            
+        # Build query
+        query = Message.filter(session_id=session_id)
+        
+        # Apply cursor-based pagination if cursor is provided
+        if cursor:
+            try:
+                cursor_datetime = datetime.fromisoformat(cursor)
+                query = query.filter(timestamp__lt=cursor_datetime)
+            except (ValueError, TypeError):
+                # If cursor is invalid, ignore it
+                pass
+                
+        # Get one more than requested to check if there are more messages
+        messages = await query.order_by("-timestamp").limit(limit + 1)
+        
+        # Check if there are more messages
+        has_more = len(messages) > limit
+        if has_more:
+            messages = messages[:-1]  # Remove the extra message
+            
+        # Get the next cursor (timestamp of the oldest message)
+        next_cursor = None
+        if messages and has_more:
+            next_cursor = messages[-1].timestamp.isoformat()
+            
+        # Convert to response model
+        message_responses = [
             MessageResponse(
                 id=str(msg.id),
                 session_id=str(session_id),
@@ -113,6 +137,15 @@ class MessageService:
             )
             for msg in messages
         ]
+        
+        # Return in chronological order (oldest first)
+        message_responses.reverse()
+        
+        return PaginatedMessagesResponse(
+            messages=message_responses,
+            has_more=has_more,
+            next_cursor=next_cursor
+        )
 
     @staticmethod
     async def create_message(

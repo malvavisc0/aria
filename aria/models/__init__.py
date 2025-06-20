@@ -27,11 +27,12 @@ class Session(Model):
 class Message(Model):
     id = fields.UUIDField(pk=True, default=uuid.uuid4)
     session = fields.ForeignKeyField(
-        "models.Session", related_name="messages", on_delete=fields.CASCADE
+        "models.Session", related_name="messages", on_delete=fields.CASCADE,
+        index=True  # Add index for faster session-based queries
     )
     content = fields.TextField()
     role = fields.CharField(max_length=20)  # "user" or "assistant"
-    timestamp = fields.DatetimeField(auto_now_add=True)
+    timestamp = fields.DatetimeField(auto_now_add=True, index=True)  # Add index for pagination
     files = fields.JSONField(default=list)  # List of file metadata
 
     def __str__(self):

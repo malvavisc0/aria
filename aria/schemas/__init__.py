@@ -39,16 +39,6 @@ class MessageCreate(BaseModel):
     files: List[dict] = []
 
 
-class SessionWithMessages(BaseModel):
-    id: str
-    name: Optional[str]
-    created: datetime
-    messages: List[MessageResponse] = []
-    user_message_count: int = 0
-
-    class Config:
-        from_attributes = True
-
 
 class HealthResponse(BaseModel):
     status: str
@@ -88,3 +78,33 @@ class PasswordResponse(BaseModel):
 class ValidationResponse(BaseModel):
     valid: bool
     error: Optional[str] = None
+
+
+# Pagination-related schemas
+class MessagePaginationParams(BaseModel):
+    limit: int = 20
+    cursor: Optional[str] = None  # Timestamp of the oldest message in the previous page
+
+
+class PaginatedMessagesResponse(BaseModel):
+    messages: List[MessageResponse]
+    has_more: bool
+    next_cursor: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SessionMetadataResponse(BaseModel):
+    """Lightweight session response without messages"""
+    id: str
+    name: Optional[str]
+    created: datetime
+    is_protected: bool
+    message_count: int = 0
+    user_message_count: int = 0
+    last_message_timestamp: Optional[datetime] = None
+    last_message_preview: Optional[str] = None
+
+    class Config:
+        from_attributes = True

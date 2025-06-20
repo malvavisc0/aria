@@ -105,11 +105,11 @@ class AriaAPI {
   // ===== SESSION MANAGEMENT =====
 
   /**
-   * Get all sessions
-   * GET /api/sessions
+   * Get all session metadata (lightweight, without messages)
+   * GET /api/sessions/metadata
    */
-  async getSessions() {
-    return await this._fetch('/api/sessions');
+  async getSessionMetadata() {
+    return await this._fetch('/api/sessions/metadata');
   }
 
   /**
@@ -123,13 +123,6 @@ class AriaAPI {
     });
   }
 
-  /**
-   * Get session with all messages
-   * GET /api/sessions/{sessionId}
-   */
-  async getSession(sessionId) {
-    return await this._fetch(`/api/sessions/${sessionId}`);
-  }
 
   /**
    * Delete a session
@@ -144,11 +137,19 @@ class AriaAPI {
   // ===== MESSAGE MANAGEMENT =====
 
   /**
-   * Get all messages in a session
-   * GET /api/sessions/{sessionId}/messages
+   * Get paginated messages for a session
+   * GET /api/sessions/{sessionId}/messages/paginated
+   * @param {string} sessionId - The session ID
+   * @param {number} limit - Maximum number of messages to return
+   * @param {string|null} cursor - Cursor for pagination (timestamp of oldest message in previous page)
+   * @returns {Promise<PaginatedMessagesResponse>}
    */
-  async getMessages(sessionId) {
-    return await this._fetch(`/api/sessions/${sessionId}/messages`);
+  async getPaginatedMessages(sessionId, limit = 20, cursor = null) {
+    let url = `/api/sessions/${sessionId}/messages/paginated?limit=${limit}`;
+    if (cursor) {
+      url += `&cursor=${encodeURIComponent(cursor)}`;
+    }
+    return await this._fetch(url);
   }
 
   /**
@@ -292,6 +293,23 @@ function transformSession(backendSession) {
 }
 
 /**
+ * Transform backend SessionMetadataResponse to frontend session format
+ */
+function transformSessionMetadata(backendSession) {
+  return {
+    id: backendSession.id,
+    name: backendSession.name || `Session ${backendSession.id.slice(0, 8)}`,
+    created: new Date(backendSession.created),
+    messages: [], // Will be populated separately when needed
+    isProtected: backendSession.is_protected || false,
+    messageCount: backendSession.message_count || 0,
+    userMessageCount: backendSession.user_message_count || 0,
+    lastMessageTimestamp: backendSession.last_message_timestamp ? new Date(backendSession.last_message_timestamp) : null,
+    lastMessagePreview: backendSession.last_message_preview || null
+  };
+}
+
+/**
  * Transform backend SessionWithMessages to frontend session format
  */
 function transformSessionWithMessages(backendSession) {
@@ -339,6 +357,7 @@ export {
   AriaAPI, 
   ariaAPI,
   transformSession,
+  transformSessionMetadata,
   transformSessionWithMessages,
   transformMessage,
   transformSearchResult

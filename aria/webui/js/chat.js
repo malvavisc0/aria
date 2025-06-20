@@ -1,7 +1,7 @@
 // ===== CHAT FUNCTIONALITY: MULTI-SESSION SUPPORT =====
 
 import { generateId, formatTime, scrollIntoView, autoResizeTextarea } from './utils.js';
-import { ariaAPI, transformSession, transformSessionWithMessages, transformMessage } from './api.js';
+import { ariaAPI, transformSession, transformSessionMetadata, transformSessionWithMessages, transformMessage } from './api.js';
 import { generateSessionName } from './nameGenerator.js';
 import { parseMarkdown, renderMermaidDiagrams, processMermaidDiagrams } from './mermaid_fix.js';
 
@@ -13,6 +13,9 @@ let currentSessionId = null;
 let isTyping = false;
 let firstMessageSent = false;
 let isLoadingFromAPI = false;
+let isLoadingMoreMessages = false;
+let hasMoreMessages = false;
+let nextMessageCursor = null;
 
 // DOM elements
 let chatMessages, messageInput, sendBtn, typingIndicator, chatForm;
@@ -133,10 +136,9 @@ async function handleSendMessage(e) {
   // Add message to chat
   addMessageToCurrentSession(userMessage);
 
-  // Confetti on first message in session
+  // Set first message flag
   if (!firstMessageSent) {
     firstMessageSent = true;
-    // launchConfetti(); // Confetti effect removed
   }
 
   // Clear input
@@ -407,8 +409,7 @@ function createMessageElement(message) {
 
   messageDiv.appendChild(contentDiv);
 
-  // Add fade-in animation
-  messageDiv.classList.add('fade-in');
+  // No animation for better performance
 
   return messageDiv;
 }
@@ -487,11 +488,11 @@ async function loadSessions() {
   try {
     isLoadingFromAPI = true;
     
-    // Get sessions from backend
-    const backendSessions = await ariaAPI.getSessions();
+    // Get sessions from backend using the optimized metadata endpoint
+    const backendSessions = await ariaAPI.getSessionMetadata();
     
     // Transform backend sessions to frontend format
-    sessions = backendSessions.map(transformSession);
+    sessions = backendSessions.map(transformSessionMetadata);
     
     // Cache in localStorage for offline access
     try {
@@ -511,6 +512,9 @@ async function loadSessions() {
         // Convert timestamps back to Date objects
         sessions.forEach(session => {
           session.created = new Date(session.created);
+          if (session.lastMessageTimestamp) {
+            session.lastMessageTimestamp = new Date(session.lastMessageTimestamp);
+          }
           if (session.messages) {
             session.messages.forEach(msg => {
               msg.timestamp = new Date(msg.timestamp);
@@ -547,21 +551,28 @@ async function refreshCurrentSession() {
   if (!currentSessionId) return;
   
   try {
-    const backendSession = await ariaAPI.getSession(currentSessionId);
-    const transformedSession = transformSessionWithMessages(backendSession);
+    // Get the latest messages (first page only)
+    const paginatedResponse = await ariaAPI.getPaginatedMessages(currentSessionId, 20);
     
-    // Update local session
+    // Update session with messages
     const sessionIndex = sessions.findIndex(s => s.id === currentSessionId);
     if (sessionIndex !== -1) {
-      sessions[sessionIndex] = transformedSession;
+      // Transform messages
+      const messages = paginatedResponse.messages.map(transformMessage);
+      
+      // Update session
+      sessions[sessionIndex].messages = messages;
+      
+      // Update pagination state
+      hasMoreMessages = paginatedResponse.has_more;
+      nextMessageCursor = paginatedResponse.next_cursor;
+      
+      // Update cache
+      saveSessions();
+      
+      // Re-render current session
+      renderCurrentSession();
     }
-    
-    // Update cache
-    saveSessions();
-    
-    // Re-render current session
-    renderCurrentSession();
-    
   } catch (error) {
     console.warn('Failed to refresh session from backend:', error);
   }
@@ -618,29 +629,198 @@ export async function setCurrentSession(sessionId) {
   currentSessionId = sessionId;
   firstMessageSent = false;
   
-  // Load session details from backend if not already loaded
-  const existingSession = sessions.find(s => s.id === sessionId);
-  if (!existingSession || !existingSession.messages || existingSession.messages.length === 0) {
-    try {
-      const backendSession = await ariaAPI.getSession(sessionId);
-      const transformedSession = transformSessionWithMessages(backendSession);
-      
-      // Update local session
-      const sessionIndex = sessions.findIndex(s => s.id === sessionId);
-      if (sessionIndex !== -1) {
-        sessions[sessionIndex] = transformedSession;
-      } else {
-        sessions.push(transformedSession);
-      }
-      
-      saveSessions();
-    } catch (error) {
-      console.warn('Failed to load session details from backend:', error);
-    }
+  // Reset pagination state
+  hasMoreMessages = false;
+  nextMessageCursor = null;
+  
+  // Get the existing session or create a placeholder
+  let existingSession = sessions.find(s => s.id === sessionId);
+  if (!existingSession) {
+    existingSession = {
+      id: sessionId,
+      name: `Session ${sessionId.slice(0, 8)}`,
+      created: new Date(),
+      messages: [],
+      userMessageCount: 0
+    };
+    sessions.push(existingSession);
   }
   
+  // Initialize messages array if it doesn't exist
+  if (!existingSession.messages) {
+    existingSession.messages = [];
+  }
+  
+  // Show loading state immediately
   renderCurrentSession();
+  
+  // Load initial page of messages
+  try {
+    await loadInitialMessages(sessionId);
+  } catch (error) {
+    console.warn('Failed to load initial messages from backend:', error);
+  }
+  
   window.dispatchEvent(new Event('aria-session-changed'));
+}
+
+/**
+ * Load initial page of messages for a session
+ */
+async function loadInitialMessages(sessionId) {
+  try {
+    // Get the first page of messages
+    const paginatedResponse = await ariaAPI.getPaginatedMessages(sessionId, 20);
+    
+    // Update session with messages
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex !== -1) {
+      // Transform messages
+      const messages = paginatedResponse.messages.map(transformMessage);
+      
+      // Update session
+      sessions[sessionIndex].messages = messages;
+      
+      // Update pagination state
+      hasMoreMessages = paginatedResponse.has_more;
+      nextMessageCursor = paginatedResponse.next_cursor;
+      
+      // Re-render with messages
+      renderCurrentSession();
+      
+      // Add scroll listener for loading more messages
+      setupScrollListener();
+      
+      // Save to local cache
+      saveSessions();
+    }
+  } catch (error) {
+    console.error('Failed to load initial messages:', error);
+    showErrorMessage('Failed to load messages. Please try again.');
+  }
+}
+
+/**
+ * Load more messages when scrolling up
+ */
+async function loadMoreMessages() {
+  if (!currentSessionId || isLoadingMoreMessages || !hasMoreMessages || !nextMessageCursor) {
+    return;
+  }
+  
+  try {
+    isLoadingMoreMessages = true;
+    
+    // Show loading indicator at the top of the chat
+    showLoadingMoreIndicator();
+    
+    // Get the next page of messages
+    const paginatedResponse = await ariaAPI.getPaginatedMessages(
+      currentSessionId, 
+      20, 
+      nextMessageCursor
+    );
+    
+    // Get current session
+    const sessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+    if (sessionIndex !== -1) {
+      // Transform messages
+      const newMessages = paginatedResponse.messages.map(transformMessage);
+      
+      // Remember scroll position
+      const scrollContainer = chatMessages;
+      const oldScrollHeight = scrollContainer.scrollHeight;
+      
+      // Prepend new messages to existing messages
+      sessions[sessionIndex].messages = [...newMessages, ...sessions[sessionIndex].messages];
+      
+      // Update pagination state
+      hasMoreMessages = paginatedResponse.has_more;
+      nextMessageCursor = paginatedResponse.next_cursor;
+      
+      // Re-render with all messages
+      renderCurrentSession();
+      
+      // Restore scroll position
+      const newScrollHeight = scrollContainer.scrollHeight;
+      const scrollDiff = newScrollHeight - oldScrollHeight;
+      scrollContainer.scrollTop = scrollDiff;
+      
+      // Save to local cache
+      saveSessions();
+    }
+  } catch (error) {
+    console.error('Failed to load more messages:', error);
+    showErrorMessage('Failed to load more messages. Please try again.');
+  } finally {
+    isLoadingMoreMessages = false;
+    hideLoadingMoreIndicator();
+  }
+}
+
+/**
+ * Show loading indicator for more messages
+ */
+function showLoadingMoreIndicator() {
+  // Check if indicator already exists
+  if (document.getElementById('loading-more-indicator')) {
+    return;
+  }
+  
+  // Create loading indicator
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.id = 'loading-more-indicator';
+  loadingIndicator.className = 'loading-more-indicator';
+  loadingIndicator.innerHTML = `
+    <div class="loading-spinner">
+      <div class="spinner-dot"></div>
+      <div class="spinner-dot"></div>
+      <div class="spinner-dot"></div>
+    </div>
+    <div class="loading-text">Loading more messages...</div>
+  `;
+  
+  // Add to the top of chat messages
+  if (chatMessages && chatMessages.firstChild) {
+    chatMessages.insertBefore(loadingIndicator, chatMessages.firstChild);
+  } else if (chatMessages) {
+    chatMessages.appendChild(loadingIndicator);
+  }
+}
+
+/**
+ * Hide loading indicator for more messages
+ */
+function hideLoadingMoreIndicator() {
+  const loadingIndicator = document.getElementById('loading-more-indicator');
+  if (loadingIndicator) {
+    loadingIndicator.remove();
+  }
+}
+
+/**
+ * Set up scroll listener for loading more messages
+ */
+function setupScrollListener() {
+  if (!chatMessages) return;
+  
+  // Remove existing listener if any
+  chatMessages.removeEventListener('scroll', handleScroll);
+  
+  // Add new listener
+  chatMessages.addEventListener('scroll', handleScroll);
+}
+
+/**
+ * Handle scroll event for loading more messages
+ */
+function handleScroll() {
+  if (!chatMessages) return;
+  
+  // Check if we're near the top of the chat (scrolled up)
+  if (chatMessages.scrollTop < 100 && hasMoreMessages && !isLoadingMoreMessages) {
+    loadMoreMessages();
+  }
 }
 
 /**
@@ -754,7 +934,6 @@ export async function deleteSession(sessionId) {
   }
 }
 
-// Confetti effect removed
 
 // Expose session management for sidebar
 window.createNewSession = createNewSession;

@@ -1,10 +1,10 @@
 import os
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from aria.ai import ollama_core_agent, prompt_improver_agent
@@ -20,8 +20,9 @@ from aria.schemas import (
     SessionPasswordSet,
     SessionPasswordValidate,
     SessionResponse,
-    SessionWithMessages,
     ValidationResponse,
+    PaginatedMessagesResponse,
+    SessionMetadataResponse,
 )
 from aria.services import MessageService, PasswordService, SessionService
 
@@ -50,13 +51,10 @@ async def health_check():
     )
 
 
-@router.get("/api/sessions", response_model=List[SessionResponse])
-async def list_sessions():
-    """List all chat sessions"""
-    sessions = await SessionService.list_sessions()
-    for session in sessions:
-        session.user_message_count = await MessageService.count_user_messages(session.id)
-    return sessions
+@router.get("/api/sessions/metadata", response_model=List[SessionMetadataResponse])
+async def list_session_metadata():
+    """List all chat sessions with metadata but without messages"""
+    return await SessionService.list_session_metadata()
 
 
 @router.post("/api/sessions", response_model=SessionResponse, status_code=201)
@@ -67,12 +65,6 @@ async def create_session(session_data: SessionCreate):
     return session
 
 
-@router.get("/api/sessions/{session_id}", response_model=SessionWithMessages)
-async def get_session(session_id: str):
-    """Get session details and all messages"""
-    session = await SessionService.get_session_with_messages(session_id)
-    session.user_message_count = await MessageService.count_user_messages(session_id)
-    return session
 
 
 @router.delete("/api/sessions/{session_id}", status_code=204)
@@ -81,10 +73,14 @@ async def delete_session(session_id: str):
     await SessionService.delete_session(session_id)
 
 
-@router.get("/api/sessions/{session_id}/messages", response_model=List[MessageResponse])
-async def list_messages(session_id: str):
-    """List all messages in a session"""
-    return await MessageService.list_messages(session_id)
+@router.get("/api/sessions/{session_id}/messages/paginated", response_model=PaginatedMessagesResponse)
+async def paginated_messages(
+    session_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    cursor: Optional[str] = Query(None)
+):
+    """Get paginated messages for a session"""
+    return await MessageService.paginated_messages(session_id, limit, cursor)
 
 
 @router.post(
