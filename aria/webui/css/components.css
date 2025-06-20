@@ -39,7 +39,7 @@
 }
 
 .prompt-improve-btn:hover {
-  background: var(--accent-500);
+  background: var(--primary-500);
   color: white;
   transform: scale(1.1);
 }

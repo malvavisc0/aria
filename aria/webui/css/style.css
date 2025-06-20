@@ -1107,7 +1107,7 @@ body {
 }
 
 /* Modern File Upload Button */
-.file-upload-btn {
+.file-upload-btn, .prompt-improve-btn {
   background: var(--interactive-secondary);
   border: 1px solid var(--border-primary);
   color: var(--text-secondary);
