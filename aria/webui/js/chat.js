@@ -237,8 +237,10 @@ function updateStreamingMessage(content) {
     const bubbleDiv = streamingElement.querySelector('.message-bubble');
     if (bubbleDiv) {
       bubbleDiv.innerHTML = parseMarkdown(content);
-      // Render any Mermaid diagrams
-      renderMermaidDiagrams(bubbleDiv);
+      // Render any Mermaid diagrams (async)
+      renderMermaidDiagrams(bubbleDiv).catch(error => {
+        console.warn('Failed to render Mermaid diagrams in streaming message:', error);
+      });
     }
   }
   
@@ -340,8 +342,12 @@ function createMessageElement(message) {
   bubbleDiv.className = 'message-bubble';
   bubbleDiv.innerHTML = parseMarkdown(message.content);
   
-  // Render any Mermaid diagrams
-  setTimeout(() => renderMermaidDiagrams(bubbleDiv), 100);
+  // Render any Mermaid diagrams (async)
+  setTimeout(() => {
+    renderMermaidDiagrams(bubbleDiv).catch(error => {
+      console.warn('Failed to render Mermaid diagrams in message:', error);
+    });
+  }, 100);
 
   // Create message meta
   const metaDiv = document.createElement('div');

@@ -108,8 +108,15 @@ export function escapeHtml(text) {
 export function parseMarkdown(text) {
   if (!text) return '';
   
-  // Initialize markdown-it
-  const md = window.markdownit();
+  // Initialize markdown-it with html enabled and no escaping
+  const md = window.markdownit({
+    html: true,
+    xhtmlOut: false,
+    breaks: true,
+    linkify: true,
+    typographer: false,
+    quotes: '""\'\''
+  });
   
   // Render markdown to HTML
   let html = md.render(text);
@@ -129,35 +136,78 @@ export function parseMarkdown(text) {
  */
 function processMermaidDiagrams(html) {
   // Replace mermaid code blocks with div containers
-  return html.replace(
+  const processedHtml = html.replace(
     /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
-    '<div class="mermaid">$1</div>'
+    (match, mermaidCode) => {
+      // Decode HTML entities
+      const decodedCode = decodeHtmlEntities(mermaidCode);
+      return `<div class="mermaid">${decodedCode}</div>`;
+    }
   );
+  return processedHtml;
+}
+
+/**
+ * Decode HTML entities
+ * @param {string} html
+ * @returns {string} Decoded HTML
+ */
+function decodeHtmlEntities(html) {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = html;
+  return textarea.value;
 }
 
 /**
  * Render Mermaid diagrams in a container
  * @param {HTMLElement} container
  */
-export function renderMermaidDiagrams(container) {
+export async function renderMermaidDiagrams(container) {
   if (!window.mermaid || !container) return;
+  
+  // Initialize mermaid with proper configuration
+  window.mermaid.initialize({
+    startOnLoad: false,
+    theme: document.body.classList.contains('theme-dark') ? 'dark' : 'default',
+    securityLevel: 'loose',
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35
+    }
+  });
   
   const mermaidElements = container.querySelectorAll('.mermaid');
   if (mermaidElements.length === 0) return;
   
-  mermaidElements.forEach((element, index) => {
+  // Process elements sequentially to avoid ID conflicts
+  for (const [index, element] of mermaidElements.entries()) {
     const id = `mermaid-${Date.now()}-${index}`;
     element.id = id;
     
     try {
-      window.mermaid.render(id, element.textContent, (svgCode) => {
-        element.innerHTML = svgCode;
-      });
+      // Clean up the content to ensure it's valid Mermaid syntax
+      const content = element.textContent.trim();
+      
+      // Use modern Mermaid v11 async API
+      const { svg } = await window.mermaid.render(id, content);
+      element.innerHTML = svg;
     } catch (error) {
       console.warn('Failed to render Mermaid diagram:', error);
-      element.innerHTML = `<pre><code>${element.textContent}</code></pre>`;
+      element.innerHTML = `<pre><code>${element.textContent}</code></pre>
+                          <p class="error-message">Failed to render diagram: ${error.message}</p>`;
     }
-  });
+  }
 }
 
 /**

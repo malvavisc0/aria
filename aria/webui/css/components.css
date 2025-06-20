@@ -1623,3 +1623,48 @@
     opacity: 1;
   }
 }
+
+/* ===== MERMAID DIAGRAM STYLES ===== */
+.mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+/* Dark theme adjustments for Mermaid */
+.theme-dark .mermaid {
+  background: var(--surface-tertiary);
+}
+
+/* Error message styling for failed Mermaid renders */
+.mermaid .error-message {
+  color: var(--error-500);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+  font-style: italic;
+}
+
+/* Responsive Mermaid diagrams */
+@media (max-width: 768px) {
+  .mermaid {
+    margin: var(--space-3) 0;
+    padding: var(--space-2);
+  }
+  
+  .mermaid svg {
+    font-size: 12px;
+  }
+}
