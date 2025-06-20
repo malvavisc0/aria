@@ -6,13 +6,32 @@
 class AriaAPI {
   constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
+    this.timeout = 360000; // 6 minutes in milliseconds
   }
 
   /**
-   * Make a fetch request with error handling
+   * Create an AbortController with timeout
+   */
+  _createTimeoutController(timeoutMs = this.timeout) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+    
+    // Clear timeout if request completes normally
+    controller.signal.addEventListener('abort', () => {
+      clearTimeout(timeoutId);
+    });
+    
+    return controller;
+  }
+
+  /**
+   * Make a fetch request with error handling and timeout
    */
   async _fetch(url, options = {}) {
     const fullUrl = `${this.baseUrl}${url}`;
+    const controller = this._createTimeoutController();
     
     try {
       const response = await fetch(fullUrl, {
@@ -20,6 +39,7 @@ class AriaAPI {
           'Content-Type': 'application/json',
           ...options.headers
         },
+        signal: controller.signal,
         ...options
       });
 
@@ -35,21 +55,26 @@ class AriaAPI {
 
       return await response.json();
     } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out after 6 minutes. Please try again.');
+      }
       console.error('API Request failed:', error);
       throw error;
     }
   }
 
   /**
-   * Make a multipart form request
+   * Make a multipart form request with timeout
    */
   async _fetchMultipart(url, formData) {
     const fullUrl = `${this.baseUrl}${url}`;
+    const controller = this._createTimeoutController();
     
     try {
       const response = await fetch(fullUrl, {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -59,6 +84,9 @@ class AriaAPI {
 
       return response;
     } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out after 6 minutes. Please try again.');
+      }
       console.error('Multipart API Request failed:', error);
       throw error;
     }
