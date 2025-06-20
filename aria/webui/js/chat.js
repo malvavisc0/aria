@@ -262,6 +262,15 @@ function addMessageToCurrentSession(message) {
   session.messages.push(message);
   saveSessions();
   renderCurrentSession();
+  
+  // Ensure we scroll to the bottom after adding a message
+  // This is especially important for user messages
+  setTimeout(() => {
+    if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
+      scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' });
+    }
+  }, 100); // Small delay to ensure DOM is updated
+  
   window.dispatchEvent(new Event('aria-message-added'));
 }
 
@@ -320,12 +329,13 @@ function renderCurrentSession() {
   `;
   chatMessages.insertAdjacentHTML('beforeend', typingIndicatorHTML);
   
-  // Scroll to bottom
+  // Scroll to bottom with improved behavior
   if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
-    scrollIntoView(chatMessages.lastChild);
+    scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' });
+  } else if (chatMessages) {
+    // If there's no last child element, scroll the container itself
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
-  
-  
 }
 
 /**
@@ -798,43 +808,6 @@ function hideLoadingMoreIndicator() {
   }
 }
 
-/**
- * Set up scroll listener for loading more messages
- */
-function setupScrollListener() {
-  if (!chatMessages) return;
-  
-  // Remove existing listener if any
-  chatMessages.removeEventListener('scroll', handleScroll);
-  
-  // Add new listener
-  chatMessages.addEventListener('scroll', handleScroll);
-}
-
-/**
- * Handle scroll event for loading more messages
- */
-function handleScroll() {
-  if (!chatMessages) return;
-  
-  // Check if we're near the top of the chat (scrolled up)
-  if (chatMessages.scrollTop < 100 && hasMoreMessages && !isLoadingMoreMessages) {
-    loadMoreMessages();
-  }
-}
-
-/**
- * Get all sessions
- */
-export function getSessions() {
-  return sessions.map(s => ({
-    id: s.id,
-    name: s.name,
-    created: s.created,
-    messages: s.messages,
-    userMessageCount: s.userMessageCount
-  }));
-}
 
 /**
  * Get the current session ID
@@ -849,6 +822,13 @@ export function getCurrentSessionId() {
 export function getMessages() {
   const session = sessions.find(s => s.id === currentSessionId);
   return session ? [...session.messages] : [];
+}
+
+/**
+ * Get all sessions
+ */
+export function getSessions() {
+  return [...sessions];
 }
 
 /**
@@ -941,3 +921,24 @@ window.setCurrentSession = setCurrentSession;
 window.deleteSession = deleteSession;
 window.getSessions = getSessions;
 window.getCurrentSessionId = getCurrentSessionId;
+
+// Setup scroll listener for loading more messages when scrolling up
+function setupScrollListener() {
+  if (!chatMessages) return;
+  
+  // Remove any existing listener
+  chatMessages.removeEventListener('scroll', handleScroll);
+  
+  // Add scroll listener
+  chatMessages.addEventListener('scroll', handleScroll);
+}
+
+// Handle scroll events for loading more messages
+function handleScroll() {
+  if (!chatMessages || !hasMoreMessages) return;
+  
+  // Check if we're near the top of the chat
+  if (chatMessages.scrollTop < 100 && !isLoadingMoreMessages) {
+    loadMoreMessages();
+  }
+}
