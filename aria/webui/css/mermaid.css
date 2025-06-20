@@ -3,28 +3,73 @@
 /* Base mermaid container styling */
 .mermaid {
   display: block;
-  margin: 16px 0;
+  margin: 12px auto;
   padding: 0;
   text-align: center;
   background: transparent;
   border: none;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
   min-height: 50px;
   position: relative;
+  max-width: 600px; /* Reasonable maximum width */
+}
+
+/* Chat-specific sizing */
+.message-bubble .mermaid,
+.chat-message .mermaid {
+  max-width: 480px; /* Smaller in chat context */
+  margin: 8px auto;  /* Tighter margins */
 }
 
 /* Ensure SVG elements are properly displayed */
 .mermaid svg {
   display: block !important;
-  width: 100% !important;
+  width: auto !important;
   max-width: 100% !important;
   height: auto !important;
+  max-height: 400px !important; /* Prevent overly tall diagrams */
   margin: 0 auto !important;
   background: transparent !important;
   overflow: visible !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   position: relative !important;
   z-index: 1 !important;
+  min-width: 250px !important; /* Minimum readable size */
+}
+
+/* Chat-specific SVG sizing */
+.message-bubble .mermaid svg,
+.chat-message .mermaid svg {
+  max-height: 300px !important; /* Shorter in chat */
+  max-width: 460px !important;
+}
+
+/* Diagram type specific sizing */
+.mermaid svg[id*="sequence"] {
+  max-width: 450px !important;
+  max-height: 280px !important;
+}
+
+.mermaid svg[id*="flowchart"],
+.mermaid svg[id*="graph"] {
+  max-width: 400px !important;
+  max-height: 320px !important;
+}
+
+.mermaid svg[id*="class"] {
+  max-width: 420px !important;
+  max-height: 350px !important;
+}
+
+.mermaid svg[id*="state"] {
+  max-width: 380px !important;
+  max-height: 300px !important;
+}
+
+.mermaid svg[id*="gantt"] {
+  max-width: 500px !important;
+  max-height: 250px !important;
 }
 
 /* Loading state */
@@ -117,11 +162,45 @@
 /* Responsive behavior */
 @media (max-width: 768px) {
   .mermaid {
-    margin: 12px 0;
+    margin: 8px auto;
+    max-width: calc(100vw - 60px); /* Account for chat padding */
+  }
+  
+  .message-bubble .mermaid,
+  .chat-message .mermaid {
+    max-width: calc(100vw - 80px); /* Tighter on mobile */
+    margin: 6px auto;
   }
   
   .mermaid svg {
-    max-width: calc(100vw - 40px) !important;
+    max-width: 100% !important;
+    max-height: 250px !important; /* Shorter on mobile */
+    min-width: 200px !important;
+  }
+  
+  /* Mobile-specific diagram sizing */
+  .mermaid svg[id*="sequence"] {
+    max-height: 200px !important;
+  }
+  
+  .mermaid svg[id*="gantt"] {
+    max-height: 180px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .mermaid {
+    max-width: calc(100vw - 40px);
+  }
+  
+  .message-bubble .mermaid,
+  .chat-message .mermaid {
+    max-width: calc(100vw - 50px);
+  }
+  
+  .mermaid svg {
+    max-height: 200px !important;
+    min-width: 180px !important;
   }
 }
 

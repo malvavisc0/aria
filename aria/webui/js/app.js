@@ -124,35 +124,55 @@ function performMermaidInitialization() {
       theme: theme,
       startOnLoad: false,
       fontFamily: 'Inter, system-ui, sans-serif',
-      fontSize: 14,
+      fontSize: 13,
       securityLevel: 'loose',
       flowchart: {
-        useMaxWidth: true,
         htmlLabels: true,
         curve: 'basis',
-        padding: 10
+        useMaxWidth: false,
+        padding: 5,
+        nodeSpacing: 25,
+        rankSpacing: 30,
+        diagramPadding: 8
       },
       sequence: {
-        useMaxWidth: true,
+        diagramMarginX: 20,
+        diagramMarginY: 8,
+        actorMargin: 30,
+        width: 120,
+        height: 50,
+        boxMargin: 6,
+        boxTextMargin: 3,
+        noteMargin: 8,
+        messageMargin: 20,
+        useMaxWidth: false,
         wrap: true,
-        diagramMarginX: 50,
-        diagramMarginY: 10,
-        actorMargin: 50,
-        width: 150,
-        height: 65,
-        boxMargin: 10,
-        boxTextMargin: 5,
-        noteMargin: 10,
-        messageMargin: 35
+        mirrorActors: false,
+        bottomMarginAdj: 1
       },
       gantt: {
-        useMaxWidth: true
+        useMaxWidth: false,
+        leftPadding: 75,
+        gridLineStartPadding: 35,
+        fontSize: 11,
+        sectionFontSize: 12
       },
       journey: {
-        useMaxWidth: true
+        useMaxWidth: false,
+        diagramMarginX: 20,
+        diagramMarginY: 10
       },
       gitgraph: {
-        useMaxWidth: true
+        useMaxWidth: false,
+        diagramPadding: 8
+      },
+      classDiagram: {
+        useMaxWidth: false,
+        diagramPadding: 10
+      },
+      stateDiagram: {
+        useMaxWidth: false,
+        diagramPadding: 8
       }
     });
     
