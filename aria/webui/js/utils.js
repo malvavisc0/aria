@@ -108,7 +108,18 @@ export function escapeHtml(text) {
 export function parseMarkdown(text) {
   if (!text) return '';
   
-  // Initialize markdown-it with html enabled and no escaping
+  // Pre-process Mermaid blocks before markdown-it to avoid HTML escaping
+  let processedText = text;
+  const mermaidBlocks = [];
+  
+  // Extract Mermaid blocks and replace with placeholders
+  processedText = processedText.replace(/```mermaid\n([\s\S]*?)\n```/g, (match, mermaidCode) => {
+    const placeholder = `__MERMAID_BLOCK_${mermaidBlocks.length}__`;
+    mermaidBlocks.push(mermaidCode.trim());
+    return placeholder;
+  });
+  
+  // Initialize markdown-it
   const md = window.markdownit({
     html: true,
     xhtmlOut: false,
@@ -119,44 +130,17 @@ export function parseMarkdown(text) {
   });
   
   // Render markdown to HTML
-  let html = md.render(text);
+  let html = md.render(processedText);
   
-  // Process Mermaid diagrams
-  if (window.mermaid && html.includes('```mermaid')) {
-    html = processMermaidDiagrams(html);
-  }
+  // Restore Mermaid blocks as div containers
+  mermaidBlocks.forEach((mermaidCode, index) => {
+    const placeholder = `__MERMAID_BLOCK_${index}__`;
+    html = html.replace(new RegExp(`<p>${placeholder}</p>`, 'g'), `<div class="mermaid">${mermaidCode}</div>`);
+  });
   
   return html;
 }
 
-/**
- * Process Mermaid diagrams in HTML
- * @param {string} html
- * @returns {string} HTML with Mermaid diagrams processed
- */
-function processMermaidDiagrams(html) {
-  // Replace mermaid code blocks with div containers
-  const processedHtml = html.replace(
-    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
-    (match, mermaidCode) => {
-      // Decode HTML entities
-      const decodedCode = decodeHtmlEntities(mermaidCode);
-      return `<div class="mermaid">${decodedCode}</div>`;
-    }
-  );
-  return processedHtml;
-}
-
-/**
- * Decode HTML entities
- * @param {string} html
- * @returns {string} Decoded HTML
- */
-function decodeHtmlEntities(html) {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = html;
-  return textarea.value;
-}
 
 /**
  * Render Mermaid diagrams in a container

@@ -1,8 +1,9 @@
 // ===== CHAT FUNCTIONALITY: MULTI-SESSION SUPPORT =====
 
-import { generateId, formatTime, parseMarkdown, scrollIntoView, autoResizeTextarea, renderMermaidDiagrams } from './utils.js';
+import { generateId, formatTime, scrollIntoView, autoResizeTextarea } from './utils.js';
 import { ariaAPI, transformSession, transformSessionWithMessages, transformMessage } from './api.js';
 import { generateSessionName } from './nameGenerator.js';
+import { parseMarkdown, renderMermaidDiagrams, processMermaidDiagrams } from './mermaid_fix.js';
 
 const STORAGE_KEY = 'aria-chat-sessions';
 

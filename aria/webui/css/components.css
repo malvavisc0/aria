@@ -1630,23 +1630,45 @@
   justify-content: center;
   align-items: center;
   margin: var(--space-4) 0;
-  padding: var(--space-3);
+  padding: var(--space-4);
   background: var(--surface-secondary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-primary);
   overflow-x: auto;
   max-width: 100%;
+  min-height: 100px; /* Ensure minimum height for visibility */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .mermaid svg {
-  max-width: 100%;
-  height: auto;
-  background: transparent;
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  background: transparent !important;
+  margin: 0 auto !important;
+  overflow: visible !important;
+}
+
+/* Light theme adjustments for Mermaid */
+.theme-light .mermaid {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .mermaid svg {
+  filter: none;
 }
 
 /* Dark theme adjustments for Mermaid */
 .theme-dark .mermaid {
-  background: var(--surface-tertiary);
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.theme-dark .mermaid svg {
+  filter: brightness(0.95);
 }
 
 /* Error message styling for failed Mermaid renders */
@@ -1654,6 +1676,24 @@
   color: var(--error-500);
   font-size: var(--text-sm);
   margin-top: var(--space-2);
+  font-style: italic;
+  text-align: center;
+  padding: var(--space-2);
+}
+
+/* Placeholder styling */
+.mermaid-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  min-height: 100px;
+  text-align: center;
+  color: var(--text-muted);
   font-style: italic;
 }
 

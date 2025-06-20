@@ -9,6 +9,11 @@
     <!-- Preload critical resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <!-- Preload critical JavaScript libraries -->
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js">
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/mermaid@11.7.0/dist/mermaid.min.js">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -20,14 +25,10 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/hamburger.css">
+    <link rel="stylesheet" href="css/mermaid.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="public/avatars/aria.png">
-    
-    <!-- Markdown-it library -->
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
-    <!-- Mermaid library -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.7.0/dist/mermaid.min.js"></script>
 </head>
 <body class="theme-dark">
     <!-- Main Application Container -->
@@ -180,8 +181,66 @@
     <script type="module" src="js/utils.js"></script>
     <script type="module" src="js/api.js"></script>
     <script type="module" src="js/upload.js"></script>
+    <script type="module" src="js/mermaid_fix.js"></script>
     <script type="module" src="js/chat.js"></script>
     <script type="module" src="js/sidebar.js"></script>
+    
+    <!-- External libraries with error handling -->
+    <script>
+        // Global error tracking for library loading
+        window.libraryLoadErrors = [];
+        
+        // Function to handle library load errors
+        function handleLibraryError(libraryName, error) {
+            console.error(`Failed to load ${libraryName}:`, error);
+            window.libraryLoadErrors.push({ library: libraryName, error: error.message });
+            
+            // Show user notification
+            if (window.aria && window.aria.showNotification) {
+                window.aria.showNotification(
+                    `Failed to load ${libraryName}. Some features may not work correctly.`,
+                    'warning',
+                    5000
+                );
+            }
+        }
+        
+        // Load markdown-it with error handling
+        function loadMarkdownIt() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js';
+            script.onload = () => {
+                console.log('✅ markdown-it loaded successfully');
+            };
+            script.onerror = (error) => {
+                handleLibraryError('markdown-it', error);
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load mermaid with error handling
+        function loadMermaid() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11.7.0/dist/mermaid.min.js';
+            script.onload = () => {
+                console.log('✅ Mermaid loaded successfully');
+                // Trigger mermaid initialization check
+                if (window.aria && window.aria.checkMermaidReady) {
+                    window.aria.checkMermaidReady();
+                }
+            };
+            script.onerror = (error) => {
+                handleLibraryError('Mermaid', error);
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load libraries
+        loadMarkdownIt();
+        loadMermaid();
+    </script>
+    
+    <!-- Main application script -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

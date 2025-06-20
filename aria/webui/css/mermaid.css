@@ -1,0 +1,190 @@
+/* Mermaid diagram styling and error handling */
+
+/* Base mermaid container styling */
+.mermaid {
+  display: block;
+  margin: 16px 0;
+  padding: 0;
+  text-align: center;
+  background: transparent;
+  border: none;
+  overflow: visible;
+  min-height: 50px;
+  position: relative;
+}
+
+/* Ensure SVG elements are properly displayed */
+.mermaid svg {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  background: transparent !important;
+  overflow: visible !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Loading state */
+.mermaid-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--text-muted, #666);
+  font-size: 14px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-radius: 6px;
+  border: 1px dashed var(--border-color, #e2e8f0);
+}
+
+/* Error states */
+.mermaid-error {
+  background-color: var(--error-bg, #fee);
+  color: var(--error-text, #c53030);
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--error-border, #fed7d7);
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.mermaid-fallback {
+  background-color: var(--code-bg, #f7fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.mermaid-fallback pre {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  color: var(--text-color, #2d3748) !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+
+/* Placeholder styling */
+.mermaid-placeholder {
+  display: block;
+  margin: 16px 0;
+  padding: 20px;
+  background: var(--bg-secondary, #f8f9fa);
+  border: 1px dashed var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  text-align: center;
+  color: var(--text-muted, #666);
+  font-size: 14px;
+}
+
+.mermaid-placeholder::before {
+  content: "📊 Loading diagram...";
+}
+
+/* Theme-specific adjustments */
+.theme-dark .mermaid svg {
+  filter: brightness(0.9) contrast(1.1);
+}
+
+.theme-dark .mermaid-loading,
+.theme-dark .mermaid-placeholder {
+  background: var(--bg-secondary-dark, #2d3748);
+  border-color: var(--border-color-dark, #4a5568);
+  color: var(--text-muted-dark, #a0aec0);
+}
+
+.theme-dark .mermaid-error {
+  background-color: var(--error-bg-dark, #742a2a);
+  color: var(--error-text-dark, #feb2b2);
+  border-color: var(--error-border-dark, #c53030);
+}
+
+.theme-dark .mermaid-fallback {
+  background-color: var(--code-bg-dark, #2d3748);
+  border-color: var(--border-color-dark, #4a5568);
+}
+
+.theme-dark .mermaid-fallback pre {
+  color: var(--text-color-dark, #e2e8f0) !important;
+}
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+  .mermaid {
+    margin: 12px 0;
+  }
+  
+  .mermaid svg {
+    max-width: calc(100vw - 40px) !important;
+  }
+}
+
+/* Animation for loading states */
+@keyframes mermaidPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.mermaid-loading {
+  animation: mermaidPulse 2s ease-in-out infinite;
+}
+
+/* Ensure proper text rendering in SVG */
+.mermaid svg text {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: inherit !important;
+}
+
+/* Fix for potential z-index issues */
+.mermaid {
+  isolation: isolate;
+}
+
+/* Ensure diagrams don't overflow containers */
+.message-bubble .mermaid,
+.chat-message .mermaid {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Scrollbar styling for overflow */
+.mermaid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.mermaid::-webkit-scrollbar-track {
+  background: var(--bg-secondary, #f1f1f1);
+  border-radius: 3px;
+}
+
+.mermaid::-webkit-scrollbar-thumb {
+  background: var(--border-color, #c1c1c1);
+  border-radius: 3px;
+}
+
+.mermaid::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted, #a1a1a1);
+}
+
+/* Dark theme scrollbar */
+.theme-dark .mermaid::-webkit-scrollbar-track {
+  background: var(--bg-secondary-dark, #2d3748);
+}
+
+.theme-dark .mermaid::-webkit-scrollbar-thumb {
+  background: var(--border-color-dark, #4a5568);
+}
+
+.theme-dark .mermaid::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted-dark, #718096);
+}

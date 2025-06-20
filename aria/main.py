@@ -50,6 +50,36 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+# Security headers middleware for mermaid support
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    
+    # Content Security Policy that allows mermaid diagrams
+    csp_directives = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+        "img-src 'self' data: https: blob:",
+        "font-src 'self' https://fonts.gstatic.com",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+        # Allow inline SVG for mermaid diagrams
+        "img-src 'self' data: https: blob: 'unsafe-inline'"
+    ]
+    
+    response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
+    
+    # Additional security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    
+    return response
+
 # Include API router
 app.include_router(api_router)
 

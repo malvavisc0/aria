@@ -80,26 +80,127 @@ function initTheme() {
   });
 }
 /**
- * Initialize Mermaid for diagram rendering
+ * Initialize Mermaid for diagram rendering with enhanced error handling
  */
 function initMermaid() {
-  if (window.mermaid) {
+  console.log('🔍 MERMAID: Checking library availability...');
+  
+  // Check if mermaid is available
+  if (!window.mermaid) {
+    console.warn('⚠️ MERMAID: Library not yet loaded, will retry...');
+    
+    // Set up a retry mechanism
+    let retryCount = 0;
+    const maxRetries = 50; // 5 seconds with 100ms intervals
+    
+    const checkMermaid = setInterval(() => {
+      retryCount++;
+      
+      if (window.mermaid) {
+        console.log('✅ MERMAID: Library loaded after', retryCount * 100, 'ms');
+        clearInterval(checkMermaid);
+        performMermaidInitialization();
+      } else if (retryCount >= maxRetries) {
+        console.error('❌ MERMAID: Library failed to load after', maxRetries * 100, 'ms');
+        clearInterval(checkMermaid);
+        showMermaidLoadError();
+      }
+    }, 100);
+    
+    return;
+  }
+  
+  performMermaidInitialization();
+}
+
+/**
+ * Perform the actual mermaid initialization
+ */
+function performMermaidInitialization() {
+  try {
+    const theme = currentTheme === 'dark' ? 'dark' : 'default';
+    
     window.mermaid.initialize({
-      theme: currentTheme === 'dark' ? 'dark' : 'default',
+      theme: theme,
       startOnLoad: false,
       fontFamily: 'Inter, system-ui, sans-serif',
       fontSize: 14,
+      securityLevel: 'loose',
       flowchart: {
         useMaxWidth: true,
-        htmlLabels: true
+        htmlLabels: true,
+        curve: 'basis',
+        padding: 10
       },
       sequence: {
         useMaxWidth: true,
-        wrap: true
+        wrap: true,
+        diagramMarginX: 50,
+        diagramMarginY: 10,
+        actorMargin: 50,
+        width: 150,
+        height: 65,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 35
+      },
+      gantt: {
+        useMaxWidth: true
+      },
+      journey: {
+        useMaxWidth: true
+      },
+      gitgraph: {
+        useMaxWidth: true
       }
     });
-    console.log('🎨 Mermaid initialized');
+    
+    console.log('✅ MERMAID: Initialized successfully with theme:', theme);
+    
+    // Test mermaid functionality
+    testMermaidFunctionality();
+    
+  } catch (error) {
+    console.error('❌ MERMAID: Initialization failed:', error);
+    showMermaidInitError(error);
   }
+}
+
+/**
+ * Test basic mermaid functionality
+ */
+async function testMermaidFunctionality() {
+  try {
+    const testDiagram = 'graph TD; A-->B;';
+    const testId = 'mermaid-test-' + Date.now();
+    
+    const result = await window.mermaid.render(testId, testDiagram);
+    
+    if (result && result.svg) {
+      console.log('✅ MERMAID: Functionality test passed');
+    } else {
+      throw new Error('No SVG generated in test');
+    }
+  } catch (error) {
+    console.error('❌ MERMAID: Functionality test failed:', error);
+  }
+}
+
+/**
+ * Show error when mermaid fails to load
+ */
+function showMermaidLoadError() {
+  console.error('❌ MERMAID: Failed to load library from CDN');
+  showNotification('Mermaid diagram library failed to load. Diagrams may not render correctly.', 'warning', 5000);
+}
+
+/**
+ * Show error when mermaid initialization fails
+ */
+function showMermaidInitError(error) {
+  console.error('❌ MERMAID: Initialization error:', error);
+  showNotification('Mermaid diagram initialization failed. Some diagrams may not render.', 'warning', 5000);
 }
 
 /**
@@ -117,20 +218,31 @@ function applyTheme(theme) {
   
   // Update Mermaid theme
   if (window.mermaid) {
-    window.mermaid.initialize({
-      theme: theme === 'dark' ? 'dark' : 'default',
-      startOnLoad: false,
-      fontFamily: 'Inter, system-ui, sans-serif',
-      fontSize: 14,
-      flowchart: {
-        useMaxWidth: true,
-        htmlLabels: true
-      },
-      sequence: {
-        useMaxWidth: true,
-        wrap: true
-      }
-    });
+    console.log('🔍 MERMAID: Updating theme to:', theme);
+    performMermaidInitialization();
+    
+    // Re-render any existing diagrams with new theme
+    const existingDiagrams = document.querySelectorAll('.mermaid svg');
+    if (existingDiagrams.length > 0) {
+      console.log(`🔍 MERMAID: Re-rendering ${existingDiagrams.length} existing diagrams with new theme`);
+      
+      // Import and use the renderMermaidDiagrams function
+      import('./mermaid_fix.js').then(({ renderMermaidDiagrams }) => {
+        const containers = new Set();
+        existingDiagrams.forEach(svg => {
+          const container = svg.closest('.message-bubble, .messages-container, .chat-messages');
+          if (container) {
+            containers.add(container);
+          }
+        });
+        
+        containers.forEach(container => {
+          renderMermaidDiagrams(container).catch(error => {
+            console.warn('Failed to re-render diagrams after theme change:', error);
+          });
+        });
+      });
+    }
   }
 }
 
