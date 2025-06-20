@@ -5,7 +5,7 @@ import { ariaAPI, transformSession, transformSessionMetadata, transformSessionWi
 import { generateSessionName } from './nameGenerator.js';
 import { parseMarkdown, renderMermaidDiagrams, processMermaidDiagrams } from './mermaid_fix.js';
 
-const STORAGE_KEY = 'aria-chat-sessions';
+// STORAGE_KEY removed - no longer using localStorage for sessions/messages
 
 // Chat state
 let sessions = [];
@@ -239,10 +239,17 @@ function updateStreamingMessage(content) {
     // Update existing streaming message
     const bubbleDiv = streamingElement.querySelector('.message-bubble');
     if (bubbleDiv) {
-      bubbleDiv.innerHTML = parseMarkdown(content);
-      // Render any Mermaid diagrams (async)
-      renderMermaidDiagrams(bubbleDiv).catch(error => {
-        console.warn('Failed to render Mermaid diagrams in streaming message:', error);
+      // Parse markdown asynchronously
+      parseMarkdown(content).then(html => {
+        bubbleDiv.innerHTML = html;
+        // Render any Mermaid diagrams (async)
+        renderMermaidDiagrams(bubbleDiv).catch(error => {
+          console.warn('Failed to render Mermaid diagrams in streaming message:', error);
+        });
+      }).catch(error => {
+        console.warn('Failed to parse markdown in streaming message:', error);
+        // Fallback to plain text
+        bubbleDiv.textContent = content;
       });
     }
   }
@@ -260,7 +267,7 @@ function addMessageToCurrentSession(message) {
   const session = sessions.find(s => s.id === currentSessionId);
   if (!session) return;
   session.messages.push(message);
-  saveSessions();
+  // No longer saving to localStorage - backend is source of truth
   renderCurrentSession();
   
   // Ensure we scroll to the bottom after adding a message
@@ -353,14 +360,22 @@ function createMessageElement(message) {
   // Create message bubble
   const bubbleDiv = document.createElement('div');
   bubbleDiv.className = 'message-bubble';
-  bubbleDiv.innerHTML = parseMarkdown(message.content);
   
-  // Render any Mermaid diagrams (async)
-  setTimeout(() => {
-    renderMermaidDiagrams(bubbleDiv).catch(error => {
-      console.warn('Failed to render Mermaid diagrams in message:', error);
-    });
-  }, 100);
+  // Parse markdown asynchronously
+  parseMarkdown(message.content).then(html => {
+    bubbleDiv.innerHTML = html;
+    
+    // Render any Mermaid diagrams (async)
+    setTimeout(() => {
+      renderMermaidDiagrams(bubbleDiv).catch(error => {
+        console.warn('Failed to render Mermaid diagrams in message:', error);
+      });
+    }, 100);
+  }).catch(error => {
+    console.warn('Failed to parse markdown:', error);
+    // Fallback to plain text
+    bubbleDiv.textContent = message.content;
+  });
 
   // Create message meta
   const metaDiv = document.createElement('div');
@@ -504,55 +519,31 @@ async function loadSessions() {
     // Transform backend sessions to frontend format
     sessions = backendSessions.map(transformSessionMetadata);
     
-    // Cache in localStorage for offline access
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-    } catch (error) {
-      console.warn('Failed to cache sessions locally:', error);
-    }
+    console.log(`✅ Loaded ${sessions.length} sessions from backend`);
     
   } catch (error) {
-    console.warn('Failed to load sessions from backend, using local cache:', error);
+    console.error('❌ Failed to load sessions from backend:', error);
     
-    // Fallback to localStorage
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        sessions = JSON.parse(saved);
-        // Convert timestamps back to Date objects
-        sessions.forEach(session => {
-          session.created = new Date(session.created);
-          if (session.lastMessageTimestamp) {
-            session.lastMessageTimestamp = new Date(session.lastMessageTimestamp);
-          }
-          if (session.messages) {
-            session.messages.forEach(msg => {
-              msg.timestamp = new Date(msg.timestamp);
-            });
-          }
-        });
-      } else {
-        sessions = [];
-      }
-    } catch (localError) {
-      sessions = [];
-      console.warn('Failed to load sessions from local cache:', localError);
+    // No localStorage fallback - backend is single source of truth
+    sessions = [];
+    
+    // Show user-friendly error message
+    if (window.aria && window.aria.showNotification) {
+      window.aria.showNotification(
+        'Unable to load sessions. Please check your connection and try again.',
+        'error',
+        5000
+      );
     }
+    
+    // Optionally throw error to let caller handle it
+    throw new Error(`Failed to load sessions: ${error.message}`);
   } finally {
     isLoadingFromAPI = false;
   }
 }
 
-/**
- * Save sessions to localStorage (cache only)
- */
-function saveSessions() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  } catch (error) {
-    console.warn('Failed to cache sessions locally:', error);
-  }
-}
+// saveSessions function removed - no longer using localStorage for sessions
 
 /**
  * Refresh current session from backend
@@ -577,8 +568,7 @@ async function refreshCurrentSession() {
       hasMoreMessages = paginatedResponse.has_more;
       nextMessageCursor = paginatedResponse.next_cursor;
       
-      // Update cache
-      saveSessions();
+      // No longer caching to localStorage
       
       // Re-render current session
       renderCurrentSession();
@@ -606,8 +596,7 @@ export async function createNewSession(name = null) {
     // Set as current session
     await setCurrentSession(newSession.id);
     
-    // Update cache
-    saveSessions();
+    // No longer caching to localStorage
     window.dispatchEvent(new Event('aria-session-changed'));
     
     return newSession;
@@ -625,7 +614,7 @@ export async function createNewSession(name = null) {
     };
     sessions.push(session);
     setCurrentSession(session.id);
-    saveSessions();
+    // No longer caching to localStorage
     window.dispatchEvent(new Event('aria-session-changed'));
     
     return session;
@@ -701,8 +690,7 @@ async function loadInitialMessages(sessionId) {
       // Add scroll listener for loading more messages
       setupScrollListener();
       
-      // Save to local cache
-      saveSessions();
+      // No longer caching to localStorage
     }
   } catch (error) {
     console.error('Failed to load initial messages:', error);
@@ -756,8 +744,7 @@ async function loadMoreMessages() {
       const scrollDiff = newScrollHeight - oldScrollHeight;
       scrollContainer.scrollTop = scrollDiff;
       
-      // Save to local cache
-      saveSessions();
+      // No longer caching to localStorage
     }
   } catch (error) {
     console.error('Failed to load more messages:', error);
@@ -903,8 +890,7 @@ export async function deleteSession(sessionId) {
       }
     }
     
-    // Update cache and notify UI
-    saveSessions();
+    // No longer caching to localStorage - notify UI
     window.dispatchEvent(new Event('aria-session-changed'));
     
     return true;

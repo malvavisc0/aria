@@ -125,10 +125,40 @@ async function initializeMermaid() {
  * @param {string} text
  * @returns {string} HTML string
  */
-export function parseMarkdown(text) {
+/**
+ * Wait for markdown-it library to be available
+ * @param {number} timeout - Timeout in milliseconds
+ * @returns {Promise<object>} markdown-it library instance
+ */
+function waitForMarkdownIt(timeout = 10000) {
+  return new Promise((resolve, reject) => {
+    console.log('🔍 MARKDOWN: Waiting for markdown-it library to load...');
+    
+    if (window.markdownit) {
+      console.log('✅ MARKDOWN: Library already available');
+      resolve(window.markdownit);
+      return;
+    }
+    
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      if (window.markdownit) {
+        console.log('✅ MARKDOWN: Library loaded successfully');
+        clearInterval(checkInterval);
+        resolve(window.markdownit);
+      } else if (Date.now() - startTime > timeout) {
+        console.error('❌ MARKDOWN: Library failed to load within timeout');
+        clearInterval(checkInterval);
+        reject(new Error(`markdown-it library failed to load within ${timeout}ms`));
+      }
+    }, 100);
+  });
+}
+
+export async function parseMarkdown(text) {
   if (!text) return '';
   
-  console.log('🔍 MERMAID: Parsing markdown text');
+  console.log('🔍 MARKDOWN: Parsing markdown text');
   
   // Pre-process Mermaid blocks before markdown-it to avoid HTML escaping
   let processedText = text;
@@ -172,45 +202,56 @@ sequenceDiagram
     });
   }
   
-  // Ensure markdown-it is available
-  if (!window.markdownit) {
-    console.error('❌ MERMAID: markdown-it library not available');
-    return text; // Return original text as fallback
+  try {
+    // Wait for markdown-it to be available
+    const markdownit = await waitForMarkdownIt();
+    
+    // Initialize markdown-it
+    const md = markdownit({
+      html: true,
+      xhtmlOut: false,
+      breaks: true,
+      linkify: true,
+      typographer: false,
+      quotes: '""\'\''
+    });
+    
+    // Render markdown to HTML
+    let html = md.render(processedText);
+    
+    // Restore Mermaid blocks as div containers
+    mermaidBlocks.forEach((mermaidCode, index) => {
+      const placeholder1 = `__MERMAID_BLOCK_${index}__`;
+      const placeholder2 = `**MERMAID_BLOCK_${index}**`;
+      
+      // Replace placeholders with Mermaid div
+      const escapedPlaceholder1 = placeholder1.replace(/([.*+?^${}()|[\]\\])/g, '\\$1');
+      const escapedPlaceholder2 = placeholder2.replace(/([.*+?^${}()|[\]\\])/g, '\\$1');
+      
+      const mermaidDiv = `<div class="mermaid" data-mermaid-source="${encodeURIComponent(mermaidCode)}">${mermaidCode}</div>`;
+      
+      html = html.replace(new RegExp(`<p>${escapedPlaceholder1}</p>`, 'g'), mermaidDiv);
+      html = html.replace(new RegExp(`<p>${escapedPlaceholder2}</p>`, 'g'), mermaidDiv);
+      html = html.replace(new RegExp(`<p><strong>MERMAID_BLOCK_${index}</strong></p>`, 'g'), mermaidDiv);
+      
+      console.log(`✅ MERMAID: Replaced placeholders for block ${index}`);
+    });
+    
+    console.log(`✅ MARKDOWN: Parsed markdown with ${mermaidBlocks.length} diagrams`);
+    return html;
+    
+  } catch (error) {
+    console.error('❌ MARKDOWN: Failed to parse markdown:', error);
+    
+    // Fallback: return text with basic HTML escaping
+    const escapedText = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+    
+    return `<div class="markdown-fallback">${escapedText}</div>`;
   }
-  
-  // Initialize markdown-it
-  const md = window.markdownit({
-    html: true,
-    xhtmlOut: false,
-    breaks: true,
-    linkify: true,
-    typographer: false,
-    quotes: '""\'\''
-  });
-  
-  // Render markdown to HTML
-  let html = md.render(processedText);
-  
-  // Restore Mermaid blocks as div containers
-  mermaidBlocks.forEach((mermaidCode, index) => {
-    const placeholder1 = `__MERMAID_BLOCK_${index}__`;
-    const placeholder2 = `**MERMAID_BLOCK_${index}**`;
-    
-    // Replace placeholders with Mermaid div
-    const escapedPlaceholder1 = placeholder1.replace(/([.*+?^${}()|[\]\\])/g, '\\$1');
-    const escapedPlaceholder2 = placeholder2.replace(/([.*+?^${}()|[\]\\])/g, '\\$1');
-    
-    const mermaidDiv = `<div class="mermaid" data-mermaid-source="${encodeURIComponent(mermaidCode)}">${mermaidCode}</div>`;
-    
-    html = html.replace(new RegExp(`<p>${escapedPlaceholder1}</p>`, 'g'), mermaidDiv);
-    html = html.replace(new RegExp(`<p>${escapedPlaceholder2}</p>`, 'g'), mermaidDiv);
-    html = html.replace(new RegExp(`<p><strong>MERMAID_BLOCK_${index}</strong></p>`, 'g'), mermaidDiv);
-    
-    console.log(`✅ MERMAID: Replaced placeholders for block ${index}`);
-  });
-  
-  console.log(`✅ MERMAID: Parsed markdown with ${mermaidBlocks.length} diagrams`);
-  return html;
 }
 
 /**
