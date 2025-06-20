@@ -97,6 +97,7 @@ body {
 
 .app-sidebar[data-collapsed="false"] {
   transform: translateX(0);
+  border-right: var(--border-width) solid var(--border-primary);
 }
 
 .app-sidebar[data-collapsed="true"] {
