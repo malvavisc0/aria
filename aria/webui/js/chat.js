@@ -1,6 +1,6 @@
 // ===== CHAT FUNCTIONALITY: MULTI-SESSION SUPPORT =====
 
-import { generateId, formatTime, parseMarkdown, scrollIntoView, autoResizeTextarea } from './utils.js';
+import { generateId, formatTime, parseMarkdown, scrollIntoView, autoResizeTextarea, renderMermaidDiagrams } from './utils.js';
 import { ariaAPI, transformSession, transformSessionWithMessages, transformMessage } from './api.js';
 
 const STORAGE_KEY = 'aria-chat-sessions';
@@ -236,6 +236,8 @@ function updateStreamingMessage(content) {
     const bubbleDiv = streamingElement.querySelector('.message-bubble');
     if (bubbleDiv) {
       bubbleDiv.innerHTML = parseMarkdown(content);
+      // Render any Mermaid diagrams
+      renderMermaidDiagrams(bubbleDiv);
     }
   }
   
@@ -328,17 +330,6 @@ function createMessageElement(message) {
   messageDiv.className = `message ${message.role}`;
   messageDiv.setAttribute('data-message-id', message.id);
 
-  // Create avatar
-  const avatar = document.createElement('img');
-  avatar.className = 'message-avatar';
-  avatar.alt = message.role === 'user' ? 'User' : 'Assistant';
-
-  if (message.role === 'user') {
-    avatar.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM2MzY2ZjEiLz4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxMiIgcj0iNSIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTYgMjZjMC01LjUyMyA0LjQ3Ny0xMCAxMC0xMHMxMCA0LjQ3NyAxMCAxMCIgZmlsbD0id2hpdGUiLz4KPC9zdmc+';
-  } else {
-    avatar.src = 'public/avatars/aria.png';
-  }
-
   // Create content container
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
@@ -347,6 +338,49 @@ function createMessageElement(message) {
   const bubbleDiv = document.createElement('div');
   bubbleDiv.className = 'message-bubble';
   bubbleDiv.innerHTML = parseMarkdown(message.content);
+  
+  // Render any Mermaid diagrams
+  setTimeout(() => renderMermaidDiagrams(bubbleDiv), 100);
+
+  // Add copy button for assistant messages
+  if (message.role === 'assistant') {
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'message-actions';
+    
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.title = 'Copy message';
+    copyBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+    `;
+    
+    copyBtn.addEventListener('click', async () => {
+      const { copyToClipboard } = await import('./utils.js');
+      const success = await copyToClipboard(message.content);
+      if (success) {
+        copyBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20,6 9,17 4,12"></polyline>
+          </svg>
+        `;
+        setTimeout(() => {
+          copyBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          `;
+        }, 2000);
+      }
+    });
+    
+    actionsDiv.appendChild(copyBtn);
+    
+    contentDiv.appendChild(actionsDiv);
+  }
 
   // Create message meta
   const metaDiv = document.createElement('div');
@@ -368,7 +402,6 @@ function createMessageElement(message) {
   contentDiv.appendChild(bubbleDiv);
   contentDiv.appendChild(metaDiv);
 
-  messageDiv.appendChild(avatar);
   messageDiv.appendChild(contentDiv);
 
   // Add fade-in animation
@@ -420,6 +453,13 @@ function hideTypingIndicator() {
 function updateSendButton() {
   const hasContent = messageInput.value.trim().length > 0;
   sendBtn.disabled = !hasContent || isTyping;
+  
+  // Add visual enhancement when there's content
+  if (hasContent && !isTyping) {
+    sendBtn.classList.add('has-content');
+  } else {
+    sendBtn.classList.remove('has-content');
+  }
 }
 
 /**

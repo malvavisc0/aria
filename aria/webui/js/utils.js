@@ -112,7 +112,52 @@ export function parseMarkdown(text) {
   const md = window.markdownit();
   
   // Render markdown to HTML
-  return md.render(text);
+  let html = md.render(text);
+  
+  // Process Mermaid diagrams
+  if (window.mermaid && html.includes('```mermaid')) {
+    html = processMermaidDiagrams(html);
+  }
+  
+  return html;
+}
+
+/**
+ * Process Mermaid diagrams in HTML
+ * @param {string} html
+ * @returns {string} HTML with Mermaid diagrams processed
+ */
+function processMermaidDiagrams(html) {
+  // Replace mermaid code blocks with div containers
+  return html.replace(
+    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+    '<div class="mermaid">$1</div>'
+  );
+}
+
+/**
+ * Render Mermaid diagrams in a container
+ * @param {HTMLElement} container
+ */
+export function renderMermaidDiagrams(container) {
+  if (!window.mermaid || !container) return;
+  
+  const mermaidElements = container.querySelectorAll('.mermaid');
+  if (mermaidElements.length === 0) return;
+  
+  mermaidElements.forEach((element, index) => {
+    const id = `mermaid-${Date.now()}-${index}`;
+    element.id = id;
+    
+    try {
+      window.mermaid.render(id, element.textContent, (svgCode) => {
+        element.innerHTML = svgCode;
+      });
+    } catch (error) {
+      console.warn('Failed to render Mermaid diagram:', error);
+      element.innerHTML = `<pre><code>${element.textContent}</code></pre>`;
+    }
+  });
 }
 
 /**

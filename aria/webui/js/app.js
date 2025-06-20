@@ -18,6 +18,9 @@ async function init() {
     // Initialize theme
     initTheme();
 
+    // Initialize Mermaid
+    initMermaid();
+
     // Check API health
     try {
       const health = await ariaAPI.healthCheck();
@@ -75,6 +78,28 @@ function initTheme() {
     }
   });
 }
+/**
+ * Initialize Mermaid for diagram rendering
+ */
+function initMermaid() {
+  if (window.mermaid) {
+    window.mermaid.initialize({
+      theme: currentTheme === 'dark' ? 'dark' : 'default',
+      startOnLoad: false,
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: 14,
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true
+      },
+      sequence: {
+        useMaxWidth: true,
+        wrap: true
+      }
+    });
+    console.log('🎨 Mermaid initialized');
+  }
+}
 
 /**
  * Apply theme to the document
@@ -87,6 +112,24 @@ function applyTheme(theme) {
   const themeToggle = document.getElementById('theme-toggle');
   if (themeToggle) {
     themeToggle.setAttribute('aria-label', `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`);
+  }
+  
+  // Update Mermaid theme
+  if (window.mermaid) {
+    window.mermaid.initialize({
+      theme: theme === 'dark' ? 'dark' : 'default',
+      startOnLoad: false,
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: 14,
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true
+      },
+      sequence: {
+        useMaxWidth: true,
+        wrap: true
+      }
+    });
   }
 }
 

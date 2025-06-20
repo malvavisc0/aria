@@ -39,7 +39,7 @@ html {
 
 body {
   font-family: var(--font-family);
-  font-size: var(--text-base);
+  font-size: 16px;
   font-weight: var(--font-normal);
   line-height: var(--leading-normal);
   color: var(--text-primary);
@@ -934,7 +934,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-family: 'Fredoka One', 'Inter', Arial, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .welcome-content p {
@@ -1161,9 +1161,9 @@ body {
 
 /* Modern Send Button */
 .send-btn {
-  background: var(--gradient-primary);
-  border: none;
-  color: var(--text-inverse);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: var(--space-2);
   border-radius: var(--radius-lg);
@@ -1174,10 +1174,46 @@ body {
   justify-content: center;
   width: 44px;
   height: 44px;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: var(--shadow-sm);
   position: relative;
   z-index: 1;
   overflow: hidden;
+}
+
+.send-btn.has-content {
+  background: var(--gradient-primary);
+  color: var(--text-inverse);
+  border-color: var(--interactive-primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  transform: scale(1.05);
+}
+
+/* Light theme send button */
+.theme-light .send-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.theme-light .send-btn.has-content {
+  background: var(--gradient-primary);
+  color: white;
+  border-color: var(--interactive-primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+/* Dark theme send button */
+.theme-dark .send-btn {
+  background: rgba(51, 65, 85, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  color: #94a3b8;
+}
+
+.theme-dark .send-btn.has-content {
+  background: var(--gradient-primary);
+  color: white;
+  border-color: var(--interactive-primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
 .send-btn::before {
