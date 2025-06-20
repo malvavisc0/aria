@@ -145,7 +145,7 @@
 }
 
 .message.assistant .message-bubble {
-  max-width: 800px;
+  max-width: 950px;
 }
 
 .message.user .message-bubble {
@@ -1465,5 +1465,153 @@
   50% {
     opacity: 1;
     transform: scale(1.2);
+  }
+}
+
+/* ===== SESSION DELETE BUTTON STYLES ===== */
+
+.sidebar-history-session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-base);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  position: relative;
+}
+
+.session-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.session-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sidebar-history-session:hover .session-delete-btn {
+  opacity: 1;
+}
+
+.session-delete-btn:hover {
+  background: var(--error-500);
+  color: white;
+  transform: scale(1.1);
+}
+
+.session-delete-btn:focus {
+  outline: 2px solid var(--error-500);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+/* Light theme specific styling */
+.theme-light .session-delete-btn:hover {
+  background: #dc2626;
+  color: white;
+}
+
+/* Dark theme specific styling */
+.theme-dark .session-delete-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* ===== NOTIFICATION STYLES ===== */
+
+.notification {
+  position: fixed;
+  top: var(--space-6);
+  right: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  max-width: 400px;
+  animation: slideInRight 0.3s ease-out;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.notification-success {
+  background: rgba(34, 197, 94, 0.9);
+  color: white;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.notification-error {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.notification-info {
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Light theme notifications */
+.theme-light .notification-success {
+  background: rgba(34, 197, 94, 0.95);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.theme-light .notification-error {
+  background: rgba(239, 68, 68, 0.95);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.theme-light .notification-info {
+  background: rgba(59, 130, 246, 0.95);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Dark theme notifications */
+.theme-dark .notification-success {
+  background: rgba(34, 197, 94, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .notification-error {
+  background: rgba(239, 68, 68, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .notification-info {
+  background: rgba(59, 130, 246, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }

@@ -706,11 +706,47 @@ async function handleImprovePrompt() {
     }
   }
 }
+/**
+ * Delete a session
+ */
+export async function deleteSession(sessionId) {
+  try {
+    // Call backend API to delete session
+    await ariaAPI.deleteSession(sessionId);
+    
+    // Remove session from local sessions array
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex !== -1) {
+      sessions.splice(sessionIndex, 1);
+    }
+    
+    // Handle current session deletion
+    if (currentSessionId === sessionId) {
+      if (sessions.length > 0) {
+        // Switch to the most recent session
+        await setCurrentSession(sessions[sessions.length - 1].id);
+      } else {
+        // Create a new session if no sessions left
+        await createNewSession();
+      }
+    }
+    
+    // Update cache and notify UI
+    saveSessions();
+    window.dispatchEvent(new Event('aria-session-changed'));
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to delete session:', error);
+    throw error;
+  }
+}
 
 // Confetti effect removed
 
 // Expose session management for sidebar
 window.createNewSession = createNewSession;
 window.setCurrentSession = setCurrentSession;
+window.deleteSession = deleteSession;
 window.getSessions = getSessions;
 window.getCurrentSessionId = getCurrentSessionId;

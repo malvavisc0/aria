@@ -168,16 +168,79 @@ function renderSessionList() {
     if (session.id === currentSessionId) li.classList.add('active');
     li.title = new Date(session.created).toLocaleString();
     li.innerHTML = `
-      <span class="sidebar-history-session-name">${session.name}</span>
-      <span class="sidebar-history-session-count">${session.userMessageCount || session.messages.filter(m => m.role === 'user').length || 0}</span>
+      <div class="session-content">
+        <span class="sidebar-history-session-name">${session.name}</span>
+        <span class="sidebar-history-session-count">${session.userMessageCount || session.messages.filter(m => m.role === 'user').length || 0}</span>
+      </div>
+      <button class="session-delete-btn"
+              data-session-id="${session.id}"
+              aria-label="Delete session ${session.name}"
+              title="Delete this session">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3,6 5,6 21,6"></polyline>
+          <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2,2h4a2,2,0,0,1,2,2v2"></path>
+        </svg>
+      </button>
     `;
-    li.onclick = async () => {
+    
+/**
+ * Show confirmation dialog for session deletion
+ */
+async function confirmDeleteSession(sessionId, sessionName) {
+  const confirmed = confirm(`Are you sure you want to delete "${sessionName}"?\n\nThis action cannot be undone and will permanently delete all messages in this session.`);
+  
+  if (confirmed) {
+    try {
+      const deleteSession = window.deleteSession;
+      if (deleteSession) {
+        await deleteSession(sessionId);
+        showNotification(`Session "${sessionName}" deleted successfully`, 'success');
+      } else {
+        throw new Error('Delete function not available');
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      showNotification(`Failed to delete session: ${error.message}`, 'error');
+    }
+  }
+}
+
+/**
+ * Show notification message
+ */
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  
+  // Add to document
+  document.body.appendChild(notification);
+  
+  // Auto remove after 3 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
+}
+    // Add click handler for session content (switching sessions)
+    const sessionContent = li.querySelector('.session-content');
+    sessionContent.onclick = async () => {
       try {
         await setCurrentSession(session.id);
       } catch (error) {
         console.error('Failed to set current session:', error);
       }
     };
+    
+    // Add click handler for delete button
+    const deleteBtn = li.querySelector('.session-delete-btn');
+    deleteBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await confirmDeleteSession(session.id, session.name);
+    };
+    
     list.appendChild(li);
   });
 }
