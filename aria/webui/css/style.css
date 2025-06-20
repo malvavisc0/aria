@@ -1249,7 +1249,6 @@ body {
 .send-btn svg {
   display: block;
   margin: 0;
-  vertical-align: middle;
   position: relative;
   z-index: 1;
   transition: transform var(--transition-base);
