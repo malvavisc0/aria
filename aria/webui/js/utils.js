@@ -100,99 +100,12 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
-/**
- * Parse markdown-like text to HTML
- * @param {string} text 
- * @returns {string} HTML string
- */
-export function parseMarkdown(text) {
-  if (!text) return '';
-  
-  // Pre-process Mermaid blocks before markdown-it to avoid HTML escaping
-  let processedText = text;
-  const mermaidBlocks = [];
-  
-  // Extract Mermaid blocks and replace with placeholders
-  processedText = processedText.replace(/```mermaid\n([\s\S]*?)\n```/g, (match, mermaidCode) => {
-    const placeholder = `__MERMAID_BLOCK_${mermaidBlocks.length}__`;
-    mermaidBlocks.push(mermaidCode.trim());
-    return placeholder;
-  });
-  
-  // Initialize markdown-it
-  const md = window.markdownit({
-    html: true,
-    xhtmlOut: false,
-    breaks: true,
-    linkify: true,
-    typographer: false,
-    quotes: '""\'\''
-  });
-  
-  // Render markdown to HTML
-  let html = md.render(processedText);
-  
-  // Restore Mermaid blocks as div containers
-  mermaidBlocks.forEach((mermaidCode, index) => {
-    const placeholder = `__MERMAID_BLOCK_${index}__`;
-    html = html.replace(new RegExp(`<p>${placeholder}</p>`, 'g'), `<div class="mermaid">${mermaidCode}</div>`);
-  });
-  
-  return html;
-}
+// Note: parseMarkdown function moved to mermaid_fix.js to consolidate Mermaid handling
+// Import it from there: import { parseMarkdown } from './mermaid_fix.js';
 
 
-/**
- * Render Mermaid diagrams in a container
- * @param {HTMLElement} container
- */
-export async function renderMermaidDiagrams(container) {
-  if (!window.mermaid || !container) return;
-  
-  // Initialize mermaid with proper configuration
-  window.mermaid.initialize({
-    startOnLoad: false,
-    theme: document.body.classList.contains('theme-dark') ? 'dark' : 'default',
-    securityLevel: 'loose',
-    flowchart: {
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35
-    }
-  });
-  
-  const mermaidElements = container.querySelectorAll('.mermaid');
-  if (mermaidElements.length === 0) return;
-  
-  // Process elements sequentially to avoid ID conflicts
-  for (const [index, element] of mermaidElements.entries()) {
-    const id = `mermaid-${Date.now()}-${index}`;
-    element.id = id;
-    
-    try {
-      // Clean up the content to ensure it's valid Mermaid syntax
-      const content = element.textContent.trim();
-      
-      // Use modern Mermaid v11 async API
-      const { svg } = await window.mermaid.render(id, content);
-      element.innerHTML = svg;
-    } catch (error) {
-      console.warn('Failed to render Mermaid diagram:', error);
-      element.innerHTML = `<pre><code>${element.textContent}</code></pre>
-                          <p class="error-message">Failed to render diagram: ${error.message}</p>`;
-    }
-  }
-}
+// Note: renderMermaidDiagrams function moved to mermaid_fix.js to avoid duplication
+// Import it from there if needed: import { renderMermaidDiagrams } from './mermaid_fix.js';
 
 /**
  * Copy text to clipboard

@@ -933,12 +933,19 @@ function setupScrollListener() {
   chatMessages.addEventListener('scroll', handleScroll);
 }
 
-// Handle scroll events for loading more messages
+// Handle scroll events for loading more messages (with throttling)
+let scrollThrottleTimeout = null;
 function handleScroll() {
   if (!chatMessages || !hasMoreMessages) return;
   
-  // Check if we're near the top of the chat
-  if (chatMessages.scrollTop < 100 && !isLoadingMoreMessages) {
-    loadMoreMessages();
-  }
+  // Throttle scroll events to improve performance
+  if (scrollThrottleTimeout) return;
+  
+  scrollThrottleTimeout = setTimeout(() => {
+    // Check if we're near the top of the chat
+    if (chatMessages.scrollTop < 100 && !isLoadingMoreMessages) {
+      loadMoreMessages();
+    }
+    scrollThrottleTimeout = null;
+  }, 100); // 100ms throttle
 }

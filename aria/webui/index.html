@@ -177,12 +177,12 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts - Fixed loading order to prevent race conditions -->
     <script type="module" src="js/utils.js"></script>
     <script type="module" src="js/api.js"></script>
-    <script type="module" src="js/upload.js"></script>
     <script type="module" src="js/mermaid_fix.js"></script>
     <script type="module" src="js/chat.js"></script>
+    <script type="module" src="js/upload.js"></script>
     <script type="module" src="js/sidebar.js"></script>
     
     <!-- External libraries with error handling -->

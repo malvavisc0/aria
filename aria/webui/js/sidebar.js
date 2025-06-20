@@ -118,7 +118,13 @@ function renderSessionList() {
   const getSessions = window.getSessions;
   const setCurrentSession = window.setCurrentSession;
   const getCurrentSessionId = window.getCurrentSessionId;
-  if (!getSessions || !setCurrentSession || !getCurrentSessionId) return;
+  
+  // Wait for functions to be available (prevents race condition)
+  if (!getSessions || !setCurrentSession || !getCurrentSessionId) {
+    console.warn('Session management functions not yet available, retrying...');
+    setTimeout(renderSessionList, 100);
+    return;
+  }
 
   const sessions = getSessions();
   const currentSessionId = getCurrentSessionId();
@@ -134,11 +140,20 @@ function renderSessionList() {
   `;
   list.appendChild(searchContainer);
 
-  // Re-initialize search after DOM update
+  // Re-initialize search after DOM update (prevent memory leaks)
   setTimeout(() => {
+    // Remove existing listeners first
+    const existingInput = document.getElementById('sidebar-search-input');
+    if (existingInput && existingInput._searchInitialized) {
+      return; // Already initialized, skip
+    }
+    
     initSearchBar();
     const searchInput = document.getElementById('sidebar-search-input');
-    if (searchInput) searchInput.focus();
+    if (searchInput) {
+      searchInput._searchInitialized = true; // Mark as initialized
+      searchInput.focus();
+    }
   }, 0);
 
   // Filter sessions based on search query
@@ -167,21 +182,39 @@ function renderSessionList() {
     li.className = 'sidebar-history-session';
     if (session.id === currentSessionId) li.classList.add('active');
     li.title = new Date(session.created).toLocaleString();
-    li.innerHTML = `
-      <div class="session-content">
-        <span class="sidebar-history-session-name">${session.name}</span>
-        <span class="sidebar-history-session-count">${session.userMessageCount || session.messages.filter(m => m.role === 'user').length || 0}</span>
-      </div>
-      <button class="session-delete-btn"
-              data-session-id="${session.id}"
-              aria-label="Delete session ${session.name}"
-              title="Delete this session">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3,6 5,6 21,6"></polyline>
-          <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2,2h4a2,2,0,0,1,2,2v2"></path>
-        </svg>
-      </button>
+    
+    // Create session content div safely
+    const sessionContentDiv = document.createElement('div');
+    sessionContentDiv.className = 'session-content';
+    
+    // Create session name span safely (prevents XSS)
+    const sessionNameSpan = document.createElement('span');
+    sessionNameSpan.className = 'sidebar-history-session-name';
+    sessionNameSpan.textContent = session.name; // Safe text insertion
+    
+    // Create session count span safely
+    const sessionCountSpan = document.createElement('span');
+    sessionCountSpan.className = 'sidebar-history-session-count';
+    sessionCountSpan.textContent = session.userMessageCount || session.messages.filter(m => m.role === 'user').length || 0;
+    
+    // Create delete button safely
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'session-delete-btn';
+    deleteBtn.setAttribute('data-session-id', session.id);
+    deleteBtn.setAttribute('aria-label', `Delete session ${session.name}`);
+    deleteBtn.setAttribute('title', 'Delete this session');
+    deleteBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3,6 5,6 21,6"></polyline>
+        <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2,2h4a2,2,0,0,1,2,2v2"></path>
+      </svg>
     `;
+    
+    // Assemble the elements
+    sessionContentDiv.appendChild(sessionNameSpan);
+    sessionContentDiv.appendChild(sessionCountSpan);
+    li.appendChild(sessionContentDiv);
+    li.appendChild(deleteBtn);
     
 /**
  * Show confirmation dialog for session deletion
@@ -235,8 +268,8 @@ function showNotification(message, type = 'info') {
     };
     
     // Add click handler for delete button
-    const deleteBtn = li.querySelector('.session-delete-btn');
-    deleteBtn.onclick = async (e) => {
+    const deleteBtnElement = li.querySelector('.session-delete-btn');
+    deleteBtnElement.onclick = async (e) => {
       e.stopPropagation();
       await confirmDeleteSession(session.id, session.name);
     };
