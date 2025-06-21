@@ -1,4 +1,4 @@
-agno==1.5.9
+agno==1.6.2
 aiohttp
 arxiv
 asyncpg
@@ -18,5 +18,11 @@ wikipedia
 yfinance
 youtube_transcript_api
 sqlalchemy
-cohere
+cohereal
 infinity_client
+fastapi
+uvicorn[standard]
+tortoise-orm[accel]
+python-multipart
+aiosqlite
+bcrypt
