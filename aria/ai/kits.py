@@ -5,6 +5,7 @@ from enhancedtoolkits import (
     DownloaderTools,
     ReasoningTools,
     SearxngTools,
+    ThinkingTools,
     WeatherTools,
     YFinanceTools,
     YouTubeTools,
@@ -28,3 +29,4 @@ reasoning_tools = ReasoningTools()
 yfinance_tools = YFinanceTools()
 youtube_tools = YouTubeTools()
 weather_tools = WeatherTools()
+thinking_tools = ThinkingTools()

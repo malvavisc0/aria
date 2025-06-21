@@ -1,28 +1,30 @@
 import os
 import time
 from datetime import datetime, timezone
+from os import environ
 from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from aria.ai import ollama_core_agent, prompt_improver_agent
+from aria.ai import ollama_core_agent
+from aria.ai.agents import get_prompt_improver_agent
 from aria.ai.outputs import ImprovedPromptResponse
 from aria.schemas import (
     HealthResponse,
     MessageCreate,
     MessageResponse,
+    PaginatedMessagesResponse,
     PasswordResponse,
     SearchResponse,
     SessionCreate,
+    SessionMetadataResponse,
     SessionPasswordRemove,
     SessionPasswordSet,
     SessionPasswordValidate,
     SessionResponse,
     ValidationResponse,
-    PaginatedMessagesResponse,
-    SessionMetadataResponse,
 )
 from aria.services import MessageService, PasswordService, SessionService
 
@@ -65,19 +67,20 @@ async def create_session(session_data: SessionCreate):
     return session
 
 
-
-
 @router.delete("/api/sessions/{session_id}", status_code=204)
 async def delete_session(session_id: str):
     """Delete a session and all its messages"""
     await SessionService.delete_session(session_id)
 
 
-@router.get("/api/sessions/{session_id}/messages/paginated", response_model=PaginatedMessagesResponse)
+@router.get(
+    "/api/sessions/{session_id}/messages/paginated",
+    response_model=PaginatedMessagesResponse,
+)
 async def paginated_messages(
     session_id: str,
     limit: int = Query(20, ge=1, le=100),
-    cursor: Optional[str] = Query(None)
+    cursor: Optional[str] = Query(None),
 ):
     """Get paginated messages for a session"""
     return await MessageService.paginated_messages(session_id, limit, cursor)
@@ -171,7 +174,7 @@ async def search_messages(q: str):
 
 
 @router.post("/api/improve-prompt", response_model=ImprovedPromptResponse)
-async def improve_prompt(prompt: Dict[str, Any] = Body(...)):
+async def improve_prompt(prompt_data: Dict[str, Any] = Body(...)):
     """
     Improve a prompt without changing its original meaning.
 
@@ -179,22 +182,45 @@ async def improve_prompt(prompt: Dict[str, Any] = Body(...)):
     the original intent but enhances clarity, structure, and effectiveness.
 
     Parameters:
-    - prompt: A dictionary containing the original prompt text in the 'text' field
+    - prompt_data: A dictionary containing:
+      - text: (required) The original prompt text to improve
+      - target_model: (optional) The model the prompt is intended for
+      - primary_focus: (optional) The main aspect to focus on (Clarity, Efficiency, Security, etc.)
+      - preserve_intent: (optional) Whether to strictly preserve the original intent
 
     Returns:
     - A JSON response with both the original and improved prompts, along with an explanation
-      of the changes made
+      of the changes made and technique(s) used
     """
-    if "text" not in prompt:
+    if "text" not in prompt_data:
         raise HTTPException(status_code=400, detail="Prompt text is required")
 
-    original_prompt = prompt["text"]
+    original_prompt = prompt_data["text"]
+
+    # Extract simple optional parameters with defaults
+    target_model = prompt_data.get(
+        "target_model", environ.get("OLLAMA_MODEL_ID", "cogito:8b")
+    )
+    primary_focus = prompt_data.get("primary_focus", "Clarity")
+    preserve_intent = prompt_data.get("preserve_intent", True)
+
+    # Construct a structured query using XML format
+    message = f"""
+<optimization_request>
+  <original_prompt>
+{original_prompt}
+  </original_prompt>
+  
+  <target_model>{target_model}</target_model>
+  <primary_focus>{primary_focus}</primary_focus>
+  <preserve_intent>{"true" if preserve_intent else "false"}</preserve_intent>
+</optimization_request>
+"""
 
     # Get the prompt improver agent
-    agent = prompt_improver_agent()
+    agent = get_prompt_improver_agent()
 
     # Run the agent to improve the prompt
-    message = f"Please, improve this prompt without changing its meaning: \n\n<prompt>\n{original_prompt}\n</prompt>\n"
     response = await agent.arun(message=message)
 
     # Return the improved prompt and explanation

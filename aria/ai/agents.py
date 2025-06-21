@@ -13,6 +13,7 @@ from aria.ai.kits import (
     downloader_tools,
     reasoning_tools,
     searxng_tools,
+    thinking_tools,
     weather_tools,
     yfinance_tools,
     youtube_tools,
@@ -130,6 +131,6 @@ def get_prompt_improver_agent() -> Agent:
         add_datetime_to_instructions=True,
         debug_mode=DEBUG_MODE,
         show_tool_calls=DEBUG_MODE,
-        tools=[reasoning_tools],
+        tools=[thinking_tools],
         response_model=ImprovedPromptResponse,
     )
