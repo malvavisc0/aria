@@ -90,7 +90,7 @@ services:
       - '/var/run/docker.sock:/var/run/docker.sock:ro'
     environment:
       - DOZZLE_NO_ANALYTICS=1
-      - DOZZLE_HOSTNAME=emi
+      - DOZZLE_HOSTNAME=aria
       - DOZZLE_LEVEL=debug
     networks:
       - mitty
