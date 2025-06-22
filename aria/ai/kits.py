@@ -1,7 +1,6 @@
 from os import environ
 
 from enhancedtoolkits import (
-    CalculatorTools,
     DownloaderTools,
     ReasoningTools,
     SearxngTools,
@@ -10,6 +9,7 @@ from enhancedtoolkits import (
     YFinanceTools,
     YouTubeTools,
 )
+from enhancedtoolkits.calculators import ArithmeticCalculatorTools
 
 searxng_tools = SearxngTools(
     host=environ.get("SEARXNG_URL", ""),
@@ -24,7 +24,7 @@ downloader_tools = DownloaderTools(
     user_agent_rotation=True,
     enable_caching=False,
 )
-calulator_tools = CalculatorTools()
+calulator_tools = ArithmeticCalculatorTools()
 reasoning_tools = ReasoningTools()
 yfinance_tools = YFinanceTools()
 youtube_tools = YouTubeTools()
