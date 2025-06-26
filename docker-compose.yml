@@ -6,7 +6,7 @@ volumes:
 
 services:
   aria:
-    image: 'ghcr.io/malvavisc0/aria:latest'
+    image: ghcr.io/malvavisc0/aria:latest
     container_name: aria
     hostname: aria
     restart: always
@@ -26,7 +26,7 @@ services:
       OLLAMA_URL: '${OLLAMA_URL}'
       OLLAMA_MODEL_ID: '${OLLAMA_MODEL_ID}'
       OLLAMA_MODEL_TEMPARATURE: '${OLLAMA_MODEL_TEMPARATURE:-0.65}'
-      OLLAMA_MODEL_CONTEXT_LENGTH: '${OLLAMA_MODEL_CONTEXT_LENGTH:-1280}'
+      OLLAMA_MODEL_CONTEXT_LENGTH: '${OLLAMA_MODEL_CONTEXT_LENGTH:-4096}'
       DEBUG_MODE: '${DEBUG_MODE:-false}'
     volumes:
       - './data:/opt/storage'
