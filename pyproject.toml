@@ -1,0 +1,41 @@
+[project]
+name = "aria"
+version = "2.1.4"
+description = "Aria"
+authors = [{ name = "malvavisc0" }]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "aiohttp",
+    "aiosqlite",
+    "arxiv",
+    "bcrypt",
+    "fastapi",
+    "fastembed",
+    "infinity_client",
+    "lancedb",
+    "loguru",
+    "markitdown",
+    "mcp",
+    "ollama",
+    "openai",
+    "pypdf",
+    "python-multipart",
+    "requests",
+    "sqlalchemy",
+    "tortoise-orm[accel]",
+    "typer",
+    "uvicorn[standard]",
+    "wikipedia",
+    "yfinance",
+    "youtube_transcript_api",
+    "agno",
+    "redis",
+    "enhancedtoolkits[full] @ git+https://github.com/malvavisc0/enhancedtoolkits.git",
+]
+
+[project.scripts]
+aria = "aria.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
