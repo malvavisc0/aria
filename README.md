@@ -32,6 +32,8 @@ Aria is built with a modern, modular architecture:
 
 ## 🚀 Getting Started
 
+![Aria](screenshot.png "Aria")
+
 ### Prerequisites
 
 - [Docker](https://www.docker.com/get-started)
