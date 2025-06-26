@@ -4,8 +4,6 @@
 domain: malvavisc0.github.io 
 title: Aria - Your Personal AI Assistant
 description: A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction
-url: "https://malvavisc0.github.io" # the base hostname & protocol for your site
-baseurl: "" # the subpath of your site, e.g. /blog
 
 # Build settings
 markdown: kramdown
