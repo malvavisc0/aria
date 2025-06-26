@@ -7,7 +7,7 @@ title: Aria - Your Personal AI Assistant
 
 Aria is a powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction. It provides a feature-rich chat interface with multi-session support, real-time streaming responses, and advanced AI capabilities.
 
-![Aria Screenshot](/aria/assets/images/screenshot.png)
+![Aria Screenshot](assets/images/screenshot.png)
 
 ## ✨ Features
 

@@ -11,7 +11,7 @@ This guide will help you get the most out of Aria, your personal AI assistant. A
 
 After [installing](/aria/installation.html) and [configuring](/aria/configuration.html) Aria, you can access it by opening your web browser and navigating to `http://localhost:8000`.
 
-![Aria Screenshot](/aria/assets/images/screenshot.png)
+![Aria Screenshot](assets/images/screenshot.png)
 
 ## Basic Features
 

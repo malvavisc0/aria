@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Installation Guide | Aria - Your Personal AI Assistant</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Installation Guide" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction" />
+<meta property="og:description" content="A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction" />
+<link rel="canonical" href="http://localhost:4000/installation.html" />
+<meta property="og:url" content="http://localhost:4000/installation.html" />
+<meta property="og:site_name" content="Aria - Your Personal AI Assistant" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Installation Guide" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction","headline":"Installation Guide","url":"http://localhost:4000/installation.html"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/assets/css/style.css?v=77963ec2f36c38b8c7bdde82a468802a40cc90f9">
+    
+    <link rel="stylesheet" href="/assets/css/custom.css">
+    
+    <!-- Additional head content for Aria GitHub Pages -->
+<link rel="icon" type="image/png" href="/assets/images/favicon.png">
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">Installation Guide</h1>
+      <h2 class="project-tagline">A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction</h2>
+      
+        <a href="https://github.com/malvavisc0/aria" class="btn">View on GitHub</a>
+      
+      
+        <a href="https://github.com/malvavisc0/aria/archive/refs/heads/master.zip" class="btn">Download .zip</a>
+        <a href="https://github.com/malvavisc0/aria/archive/refs/heads/master.tar.gz" class="btn">Download .tar.gz</a>
+      
+      
+      <!-- Navigation -->
+      
+        <div class="site-navigation">
+          
+            <a href="/aria/" class="btn">Home</a>
+          
+            <a href="/aria/installation" class="btn">Installation</a>
+          
+            <a href="/aria/configuration" class="btn">Configuration</a>
+          
+            <a href="/aria/usage" class="btn">Usage</a>
+          
+            <a href="/aria/license" class="btn">License</a>
+          
+        </div>
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h1 id="installation-guide">Installation Guide</h1>
+
+<p>Aria is designed to be easy to set up and run using Docker. This guide will walk you through the installation process.</p>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<p>Before installing Aria, make sure you have the following prerequisites:</p>
+
+<ul>
+  <li><a href="https://www.docker.com/get-started">Docker</a></li>
+  <li><a href="https://docs.docker.com/compose/install/">Docker Compose</a></li>
+  <li>An accessible <a href="https://ollama.com/">Ollama</a> instance</li>
+</ul>
+
+<h2 id="installation-steps">Installation Steps</h2>
+
+<p>The recommended way to install Aria is by using the official Docker image.</p>
+
+<h3 id="1-create-a-docker-composeyml-file">1. Create a <code class="language-plaintext highlighter-rouge">docker-compose.yml</code> file</h3>
+
+<p>Create a new file named <code class="language-plaintext highlighter-rouge">docker-compose.yml</code> with the following content:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">networks</span><span class="pi">:</span>
+  <span class="na">mitty</span><span class="pi">:</span> <span class="no">null</span>
+
+<span class="na">volumes</span><span class="pi">:</span>
+  <span class="na">redis</span><span class="pi">:</span> <span class="no">null</span>
+
+<span class="na">services</span><span class="pi">:</span>
+  <span class="na">aria</span><span class="pi">:</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s1">'</span><span class="s">ghcr.io/malvavisc0/aria:latest'</span>
+    <span class="na">container_name</span><span class="pi">:</span> <span class="s">aria</span>
+    <span class="na">hostname</span><span class="pi">:</span> <span class="s">aria</span>
+    <span class="na">restart</span><span class="pi">:</span> <span class="s">always</span>
+    <span class="na">env_file</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">./.env</span>
+    <span class="na">ports</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">8000:8000'</span>
+    <span class="na">environment</span><span class="pi">:</span>
+      <span class="na">TZ</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${TZ}'</span>
+      <span class="na">SEARXNG_URL</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${SEARXNG_URL:-http://searxng:8080}'</span>
+      <span class="na">BYPARR_URL</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${BYPARR_URL:-http://byparr:8191/v1}'</span>
+      <span class="na">BYPARR_TIMEOUT</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${BYPARR_TIMEOUT:-120}'</span>
+      <span class="na">AGNO_TELEMETRY</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${AGNO_TELEMETRY:-false}'</span>
+      <span class="na">OLLAMA_URL</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${OLLAMA_URL}'</span>
+      <span class="na">OLLAMA_MODEL_ID</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${OLLAMA_MODEL_ID}'</span>
+      <span class="na">OLLAMA_MODEL_TEMPARATURE</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${OLLAMA_MODEL_TEMPARATURE:-0.65}'</span>
+      <span class="na">OLLAMA_MODEL_CONTEXT_LENGTH</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${OLLAMA_MODEL_CONTEXT_LENGTH:-1280}'</span>
+      <span class="na">DEBUG_MODE</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${DEBUG_MODE:-false}'</span>
+    <span class="na">volumes</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">./data:/opt/storage'</span>
+    <span class="na">networks</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">mitty</span>
+  <span class="na">redis</span><span class="pi">:</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s1">'</span><span class="s">redis/redis-stack-server:latest'</span>
+    <span class="na">container_name</span><span class="pi">:</span> <span class="s">redis</span>
+    <span class="na">hostname</span><span class="pi">:</span> <span class="s">redis</span>
+    <span class="na">restart</span><span class="pi">:</span> <span class="s">always</span>
+    <span class="na">runtime</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${RUNTIME:-runc}'</span>
+    <span class="na">expose</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">${REDIS_PORT:-6379}'</span>
+    <span class="na">environment</span><span class="pi">:</span>
+      <span class="na">TZ</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${TZ}'</span>
+    <span class="na">volumes</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">redis:/data'</span>
+    <span class="na">networks</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">mitty</span>
+  <span class="na">searxng</span><span class="pi">:</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s1">'</span><span class="s">docker.io/searxng/searxng:latest'</span>
+    <span class="na">container_name</span><span class="pi">:</span> <span class="s">searxng</span>
+    <span class="na">hostname</span><span class="pi">:</span> <span class="s">searxng</span>
+    <span class="na">restart</span><span class="pi">:</span> <span class="s">always</span>
+    <span class="na">volumes</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">./searxng:/etc/searxng'</span>
+    <span class="na">environment</span><span class="pi">:</span>
+      <span class="na">TZ</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${TZ}'</span>
+      <span class="na">SEARXNG_BASE_URL</span><span class="pi">:</span> <span class="s1">'</span><span class="s">http://${SEARXNG_HOSTNAME:-searxng}:${SEARXNG_PORT:-8080}/'</span>
+      <span class="na">SEARXNG_SECRET</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${SEARXNG_SECRET}'</span>
+      <span class="na">UWSGI_WORKERS</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${SEARXNG_UWSGI_WORKERS:-4}'</span>
+      <span class="na">UWSGI_THREADS</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${SEARXNG_UWSGI_THREADS:-4}'</span>
+      <span class="na">SEARXNG_REDIS_URL</span><span class="pi">:</span> <span class="s1">'</span><span class="s">redis://redis:6379/10'</span>
+    <span class="na">expose</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">${SEARXNG_PORT:-8080}'</span>
+    <span class="na">cap_add</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">CHOWN</span>
+      <span class="pi">-</span> <span class="s">SETGID</span>
+      <span class="pi">-</span> <span class="s">SETUID</span>
+    <span class="na">networks</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">mitty</span>
+  <span class="na">byparr</span><span class="pi">:</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s1">'</span><span class="s">ghcr.io/thephaseless/byparr:latest'</span>
+    <span class="na">container_name</span><span class="pi">:</span> <span class="s">byparr</span>
+    <span class="na">hostname</span><span class="pi">:</span> <span class="s">byparr</span>
+    <span class="na">restart</span><span class="pi">:</span> <span class="s">always</span>
+    <span class="na">runtime</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${RUNTIME:-runc}'</span>
+    <span class="na">environment</span><span class="pi">:</span>
+      <span class="na">TZ</span><span class="pi">:</span> <span class="s1">'</span><span class="s">${TZ}'</span>
+    <span class="na">expose</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">${BYPARR_PORT:-8191}'</span>
+    <span class="na">networks</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">mitty</span>
+  <span class="na">dozzle</span><span class="pi">:</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s1">'</span><span class="s">amir20/dozzle:latest'</span>
+    <span class="na">container_name</span><span class="pi">:</span> <span class="s">dozzle</span>
+    <span class="na">hostname</span><span class="pi">:</span> <span class="s">dozzle</span>
+    <span class="na">ports</span><span class="pi">:</span>
+     <span class="pi">-</span> <span class="s">8080:8080</span>
+    <span class="na">volumes</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">/var/run/docker.sock:/var/run/docker.sock:ro'</span>
+    <span class="na">environment</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">DOZZLE_NO_ANALYTICS=1</span>
+      <span class="pi">-</span> <span class="s">DOZZLE_HOSTNAME=aria</span>
+      <span class="pi">-</span> <span class="s">DOZZLE_LEVEL=debug</span>
+    <span class="na">networks</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">mitty</span>
+</code></pre></div></div>
+
+<h3 id="2-configure-your-environment">2. Configure your environment</h3>
+
+<p>Create a <code class="language-plaintext highlighter-rouge">.env</code> file and add your configuration. At a minimum, you need to set <code class="language-plaintext highlighter-rouge">OLLAMA_URL</code>.</p>
+
+<pre><code class="language-env">TZ=Europe/Berlin
+OLLAMA_URL=http://your-ollama-instance:11434
+OLLAMA_MODEL_ID=cogito:14b
+SEARXNG_SECRET=your-super-secret-key
+</code></pre>
+
+<h3 id="3-run-the-application">3. Run the application</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker-compose up <span class="nt">-d</span>
+</code></pre></div></div>
+
+<p>This command will download the necessary Docker images and start the Aria application in detached mode.</p>
+
+<h3 id="4-access-aria">4. Access Aria</h3>
+
+<p>Open your web browser and navigate to <code class="language-plaintext highlighter-rouge">http://localhost:8000</code>.</p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<p>If you encounter any issues during installation:</p>
+
+<ol>
+  <li>Check that Docker and Docker Compose are properly installed</li>
+  <li>Ensure your Ollama instance is running and accessible</li>
+  <li>Verify that the ports (8000 and 8080) are not already in use</li>
+  <li>Check the logs with <code class="language-plaintext highlighter-rouge">docker-compose logs aria</code></li>
+</ol>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p>Once you have Aria up and running, you can:</p>
+
+<ul>
+  <li><a href="/aria/configuration.html">Configure Aria</a> to customize its behavior</li>
+  <li>Learn how to <a href="/aria/usage.html">use Aria</a> effectively</li>
+  <li>Explore the <a href="/aria/advanced.html">advanced features</a></li>
+</ul>
+
+
+      <footer class="site-footer">
+        
+          <span class="site-footer-owner"><a href="https://github.com/malvavisc0/aria">aria</a> is maintained by <a href="https://github.com/malvavisc0">malvavisc0</a>.</span>
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,73 @@
+/* Custom styles for Aria GitHub Pages */
+
+/* Header customization */
+.page-header {
+  background-color: #1a1a2e;
+  background-image: linear-gradient(120deg, #1a1a2e, #16213e);
+}
+
+/* Logo styling */
+.project-name::before {
+  content: "🌟 ";
+}
+
+/* Link colors */
+a {
+  color: #0f3460;
+}
+
+a:hover {
+  color: #e94560;
+}
+
+/* Code blocks */
+pre {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+th, td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+}
+
+th {
+  background-color: #f2f2f2;
+  font-weight: 600;
+}
+
+/* Screenshots */
+img[alt="Aria Screenshot"] {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+}
+
+/* Feature list */
+ul li strong {
+  color: #0f3460;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 42em) {
+  .page-header {
+    padding: 2rem 1rem;
+  }
+  
+  .project-name {
+    font-size: 1.75rem;
+  }
+  
+  .project-tagline {
+    font-size: 1rem;
+  }
+}

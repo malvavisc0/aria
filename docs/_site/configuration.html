@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Configuration Options | Aria - Your Personal AI Assistant</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Configuration Options" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction" />
+<meta property="og:description" content="A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction" />
+<link rel="canonical" href="http://localhost:4000/configuration.html" />
+<meta property="og:url" content="http://localhost:4000/configuration.html" />
+<meta property="og:site_name" content="Aria - Your Personal AI Assistant" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Configuration Options" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction","headline":"Configuration Options","url":"http://localhost:4000/configuration.html"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/assets/css/style.css?v=77963ec2f36c38b8c7bdde82a468802a40cc90f9">
+    
+    <link rel="stylesheet" href="/assets/css/custom.css">
+    
+    <!-- Additional head content for Aria GitHub Pages -->
+<link rel="icon" type="image/png" href="/assets/images/favicon.png">
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">Configuration Options</h1>
+      <h2 class="project-tagline">A powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction</h2>
+      
+        <a href="https://github.com/malvavisc0/aria" class="btn">View on GitHub</a>
+      
+      
+        <a href="https://github.com/malvavisc0/aria/archive/refs/heads/master.zip" class="btn">Download .zip</a>
+        <a href="https://github.com/malvavisc0/aria/archive/refs/heads/master.tar.gz" class="btn">Download .tar.gz</a>
+      
+      
+      <!-- Navigation -->
+      
+        <div class="site-navigation">
+          
+            <a href="/aria/" class="btn">Home</a>
+          
+            <a href="/aria/installation" class="btn">Installation</a>
+          
+            <a href="/aria/configuration" class="btn">Configuration</a>
+          
+            <a href="/aria/usage" class="btn">Usage</a>
+          
+            <a href="/aria/license" class="btn">License</a>
+          
+        </div>
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h1 id="configuration-options">Configuration Options</h1>
+
+<p>Aria can be configured using environment variables in your <code class="language-plaintext highlighter-rouge">.env</code> file. This guide explains the available configuration options and their default values.</p>
+
+<h2 id="environment-variables">Environment Variables</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TZ</code></td>
+      <td>Timezone for the application</td>
+      <td><code class="language-plaintext highlighter-rouge">Europe/Berlin</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">OLLAMA_URL</code></td>
+      <td>URL of your Ollama instance</td>
+      <td><code class="language-plaintext highlighter-rouge">http://ollama:11434</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">OLLAMA_MODEL_ID</code></td>
+      <td>The ID of the Ollama model to use</td>
+      <td><code class="language-plaintext highlighter-rouge">cogito:14b</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">OLLAMA_MODEL_TEMPARATURE</code></td>
+      <td>The temperature for the AI model</td>
+      <td><code class="language-plaintext highlighter-rouge">0.65</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">OLLAMA_MODEL_CONTEXT_LENGTH</code></td>
+      <td>The context length for the AI model</td>
+      <td><code class="language-plaintext highlighter-rouge">4096</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DEBUG_MODE</code></td>
+      <td>Enable or disable debug mode</td>
+      <td><code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SEARXNG_SECRET</code></td>
+      <td>A secret key for SearXNG</td>
+      <td><code class="language-plaintext highlighter-rouge">your-secret-key</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SEARXNG_URL</code></td>
+      <td>URL of the SearXNG instance</td>
+      <td><code class="language-plaintext highlighter-rouge">http://searxng:8080</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">BYPARR_URL</code></td>
+      <td>URL of the Byparr instance</td>
+      <td><code class="language-plaintext highlighter-rouge">http://byparr:8191/v1</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">BYPARR_TIMEOUT</code></td>
+      <td>Timeout for Byparr requests</td>
+      <td><code class="language-plaintext highlighter-rouge">120</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">AGNO_TELEMETRY</code></td>
+      <td>Enable or disable Agno telemetry</td>
+      <td><code class="language-plaintext highlighter-rouge">false</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">REDIS_PORT</code></td>
+      <td>Port for Redis</td>
+      <td><code class="language-plaintext highlighter-rouge">6379</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">RUNTIME</code></td>
+      <td>Runtime for Docker containers</td>
+      <td><code class="language-plaintext highlighter-rouge">runc</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="configuration-examples">Configuration Examples</h2>
+
+<h3 id="basic-configuration">Basic Configuration</h3>
+
+<p>A minimal configuration only requires the <code class="language-plaintext highlighter-rouge">OLLAMA_URL</code>:</p>
+
+<pre><code class="language-env">TZ=Europe/Berlin
+OLLAMA_URL=http://your-ollama-instance:11434
+OLLAMA_MODEL_ID=cogito:14b
+SEARXNG_SECRET=your-super-secret-key
+</code></pre>
+
+<h3 id="advanced-configuration">Advanced Configuration</h3>
+
+<p>For more control over Aria’s behavior, you can set additional variables:</p>
+
+<pre><code class="language-env">TZ=Europe/Berlin
+OLLAMA_URL=http://your-ollama-instance:11434
+OLLAMA_MODEL_ID=cogito:14b
+OLLAMA_MODEL_TEMPARATURE=0.7
+OLLAMA_MODEL_CONTEXT_LENGTH=8192
+DEBUG_MODE=true
+SEARXNG_SECRET=your-super-secret-key
+SEARXNG_HOSTNAME=searxng
+SEARXNG_PORT=8080
+SEARXNG_UWSGI_WORKERS=8
+SEARXNG_UWSGI_THREADS=8
+BYPARR_PORT=8191
+REDIS_PORT=6379
+RUNTIME=runc
+AGNO_TELEMETRY=false
+</code></pre>
+
+<h2 id="model-configuration">Model Configuration</h2>
+
+<p>Aria uses Ollama to run AI models. You can configure which model to use and its parameters:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">OLLAMA_MODEL_ID</code>: The ID of the model to use (e.g., <code class="language-plaintext highlighter-rouge">cogito:14b</code>, <code class="language-plaintext highlighter-rouge">llama2:13b</code>, etc.)</li>
+  <li><code class="language-plaintext highlighter-rouge">OLLAMA_MODEL_TEMPARATURE</code>: Controls the randomness of the model’s output (0.0 to 1.0)</li>
+  <li><code class="language-plaintext highlighter-rouge">OLLAMA_MODEL_CONTEXT_LENGTH</code>: The maximum context length for the model</li>
+</ul>
+
+<h2 id="service-configuration">Service Configuration</h2>
+
+<p>Aria uses several services that can be configured:</p>
+
+<h3 id="searxng">SearXNG</h3>
+
+<p>SearXNG is used for web search capabilities:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">SEARXNG_SECRET</code>: A secret key for SearXNG</li>
+  <li><code class="language-plaintext highlighter-rouge">SEARXNG_HOSTNAME</code>: The hostname for SearXNG</li>
+  <li><code class="language-plaintext highlighter-rouge">SEARXNG_PORT</code>: The port for SearXNG</li>
+  <li><code class="language-plaintext highlighter-rouge">SEARXNG_UWSGI_WORKERS</code>: The number of uWSGI workers</li>
+  <li><code class="language-plaintext highlighter-rouge">SEARXNG_UWSGI_THREADS</code>: The number of uWSGI threads</li>
+</ul>
+
+<h3 id="redis">Redis</h3>
+
+<p>Redis is used for caching and session management:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">REDIS_PORT</code>: The port for Redis</li>
+</ul>
+
+<h3 id="byparr">Byparr</h3>
+
+<p>Byparr is used for additional functionality:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">BYPARR_URL</code>: The URL of the Byparr instance</li>
+  <li><code class="language-plaintext highlighter-rouge">BYPARR_PORT</code>: The port for Byparr</li>
+  <li><code class="language-plaintext highlighter-rouge">BYPARR_TIMEOUT</code>: The timeout for Byparr requests</li>
+</ul>
+
+<h2 id="debug-mode">Debug Mode</h2>
+
+<p>Setting <code class="language-plaintext highlighter-rouge">DEBUG_MODE=true</code> enables additional logging and debugging features, which can be helpful for troubleshooting issues.</p>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li>Learn how to <a href="/aria/usage.html">use Aria</a> effectively</li>
+  <li>Explore the <a href="/aria/advanced.html">advanced features</a></li>
+  <li>Return to the <a href="/aria/installation.html">installation guide</a> if you need to make changes</li>
+</ul>
+
+
+      <footer class="site-footer">
+        
+          <span class="site-footer-owner"><a href="https://github.com/malvavisc0/aria">aria</a> is maintained by <a href="https://github.com/malvavisc0">malvavisc0</a>.</span>
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>
