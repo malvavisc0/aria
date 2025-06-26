@@ -63,35 +63,6 @@ class AriaAPI {
     }
   }
 
-  /**
-   * Make a multipart form request with timeout
-   */
-  async _fetchMultipart(url, formData) {
-    const fullUrl = `${this.baseUrl}${url}`;
-    const controller = this._createTimeoutController();
-    
-    try {
-      const response = await fetch(fullUrl, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API Error ${response.status}: ${errorData.detail || response.statusText}`);
-      }
-
-      return response;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out after 6 minutes. Please try again.');
-      }
-      console.error('Multipart API Request failed:', error);
-      throw error;
-    }
-  }
-
   // ===== HEALTH CHECK =====
 
   /**
@@ -156,17 +127,17 @@ class AriaAPI {
    * Send a message and get streaming response
    * POST /api/sessions/{sessionId}/messages
    */
-  async sendMessage(sessionId, message, files = [], onChunk = null) {
-    const formData = new FormData();
-    formData.append('message', message);
-    formData.append('role', 'user');
-    
-    // Add files if provided
-    files.forEach(file => {
-      formData.append('files', file);
+  async sendMessage(sessionId, message, onChunk = null) {
+    const response = await fetch(`${this.baseUrl}/api/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            content: message,
+            role: 'user',
+        }),
     });
-
-    const response = await this._fetchMultipart(`/api/sessions/${sessionId}/messages`, formData);
     
     // Handle streaming response
     if (onChunk && response.body) {
@@ -331,7 +302,6 @@ function transformMessage(backendMessage) {
     content: backendMessage.content,
     role: backendMessage.role,
     timestamp: new Date(backendMessage.timestamp),
-    files: backendMessage.files || [],
     sessionId: backendMessage.session_id
   };
 }

@@ -91,13 +91,11 @@ async def paginated_messages(
 )
 async def send_message(
     session_id: str,
-    message: str = Form(...),
-    role: str = Form("user"),
-    files: List[UploadFile] = File(default=[]),
+    message_data: MessageCreate,
 ) -> StreamingResponse:
-    """Send a new message (text and/or files) and get assistant response"""
+    """Send a new message and get assistant response"""
     user_message_data = MessageCreate(
-        content=message, role=role, files=[]  # TODO: Handle file uploads properly
+        content=message_data.content, role=message_data.role
     )
 
     # Save user message
@@ -108,9 +106,9 @@ async def send_message(
 
     async def stream_response():
         nonlocal assistant_content
-        agent = ollama_core_agent(user_id=role, session_id=session_id, enable_memory=True)
+        agent = ollama_core_agent(user_id=message_data.role, session_id=session_id, enable_memory=True)
         response = await agent.arun(
-            message=message, stream=True, user_id=role, session_id=session_id
+            message=message_data.content, stream=True, user_id=message_data.role, session_id=session_id
         )
 
         # Stream chunks and collect content
@@ -123,7 +121,7 @@ async def send_message(
         # After streaming is complete, save assistant message to database
         if assistant_content:
             assistant_message_data = MessageCreate(
-                content=assistant_content, role="assistant", files=[]
+                content=assistant_content, role="assistant"
             )
             await MessageService.create_message(session_id, assistant_message_data)
 

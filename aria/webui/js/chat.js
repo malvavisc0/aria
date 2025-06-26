@@ -129,8 +129,7 @@ async function handleSendMessage(e) {
     id: generateId(),
     content,
     role: 'user',
-    timestamp: new Date(),
-    files: []
+    timestamp: new Date()
   };
 
   // Add message to chat
@@ -170,7 +169,6 @@ async function sendMessageToBackend(message) {
     await ariaAPI.sendMessage(
       currentSessionId,
       message.content,
-      message.files || [],
       (chunk, fullContent) => {
         // Update streaming message in real-time
         assistantContent = fullContent;
@@ -818,12 +816,6 @@ export function getSessions() {
   return [...sessions];
 }
 
-/**
- * Add a message programmatically (for file uploads, etc.)
- */
-export function addMessageProgrammatically(message) {
-  addMessageToCurrentSession(message);
-}
 
 /**
  * Handle improving the prompt

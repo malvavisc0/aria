@@ -13,7 +13,6 @@ Aria is a powerful, self-hosted AI assistant designed for reasoning, task comple
   - **YouTube Analysis**: Extract insights from YouTube videos.
   - **Weather & Finance Data**: Get up-to-date information on weather and financial markets.
 - **Prompt Improvement**: Automatically enhance your prompts for better AI responses.
-- **Secure & Private**: Self-host your AI assistant and keep your data private.
 - **Dockerized Deployment**: Easy to set up and run with Docker.
 
 ## 🏗️ Architecture

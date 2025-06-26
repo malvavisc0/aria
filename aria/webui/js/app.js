@@ -1,7 +1,6 @@
 // ===== MAIN APPLICATION =====
 
 import { initChat } from './chat.js';
-import { initUpload } from './upload.js';
 import { initSidebar } from './sidebar.js';
 import { storage } from './utils.js';
 import { ariaAPI } from './api.js';
@@ -34,9 +33,6 @@ async function init() {
 
     // Initialize chat functionality (async)
     await initChat();
-
-    // Initialize file upload
-    initUpload();
 
     // Initialize sidebar
     initSidebar();
