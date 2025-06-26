@@ -9,9 +9,9 @@ This guide will help you get the most out of Aria, your personal AI assistant. A
 
 ## Getting Started
 
-After [installing](installation.html) and [configuring](configuration.html) Aria, you can access it by opening your web browser and navigating to `http://localhost:8000`.
+After [installing](/aria/installation.html) and [configuring](/aria/configuration.html) Aria, you can access it by opening your web browser and navigating to `http://localhost:8000`.
 
-![Aria Screenshot](assets/images/screenshot.png)
+![Aria Screenshot](/aria/assets/images/screenshot.png)
 
 ## Basic Features
 
@@ -117,6 +117,6 @@ Aria can help improve your prompts for better AI responses. Click the "Improve P
 
 ## Next Steps
 
-- Explore [configuration options](configuration.html) to customize Aria
-- Check out the [advanced features](advanced.html) for power users
-- Learn about [contributing](contributing.html) to the Aria project
+- Explore [configuration options](/aria/configuration.html) to customize Aria
+- Check out the [advanced features](/aria/advanced.html) for power users
+- Learn about [contributing](/aria/contributing.html) to the Aria project

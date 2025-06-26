@@ -102,6 +102,6 @@ Setting `DEBUG_MODE=true` enables additional logging and debugging features, whi
 
 ## Next Steps
 
-- Learn how to [use Aria](usage.html) effectively
-- Explore the [advanced features](advanced.html)
-- Return to the [installation guide](installation.html) if you need to make changes
+- Learn how to [use Aria](/aria/usage.html) effectively
+- Explore the [advanced features](/aria/advanced.html)
+- Return to the [installation guide](/aria/installation.html) if you need to make changes

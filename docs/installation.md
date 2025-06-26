@@ -155,6 +155,6 @@ If you encounter any issues during installation:
 
 Once you have Aria up and running, you can:
 
-- [Configure Aria](configuration.html) to customize its behavior
-- Learn how to [use Aria](usage.html) effectively
-- Explore the [advanced features](advanced.html)
+- [Configure Aria](/aria/configuration.html) to customize its behavior
+- Learn how to [use Aria](/aria/usage.html) effectively
+- Explore the [advanced features](/aria/advanced.html)

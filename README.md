@@ -185,3 +185,17 @@ This will start the FastAPI server with hot-reloading enabled.
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## 📚 Documentation
+
+Comprehensive documentation is available on our GitHub Pages site:
+
+- [Aria Documentation](https://malvavisc0.github.io/aria/)
+
+The documentation includes:
+- [Installation Guide](https://malvavisc0.github.io/aria/installation.html)
+- [Configuration Options](https://malvavisc0.github.io/aria/configuration.html)
+- [Usage Guide](https://malvavisc0.github.io/aria/usage.html)
+- [Advanced Features](https://malvavisc0.github.io/aria/advanced.html)
+- [License Information](https://malvavisc0.github.io/aria/license.html)
+- [Contributing Guidelines](https://malvavisc0.github.io/aria/contributing.html)

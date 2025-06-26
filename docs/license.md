@@ -61,4 +61,4 @@ Please refer to the respective projects for their full license terms.
 
 By contributing to Aria, you agree that your contributions will be licensed under the same MIT License as the rest of the project.
 
-For more information, see the [contributing guidelines](contributing.html).
+For more information, see the [contributing guidelines](/aria/contributing.html).
