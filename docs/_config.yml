@@ -27,12 +27,12 @@ custom_css: /assets/css/custom.css
 # Navigation
 navigation:
   - title: Home
-    url: /aria/
+    url: /
   - title: Installation
-    url: /aria/installation
+    url: /installation
   - title: Configuration
-    url: /aria/configuration
+    url: /configuration
   - title: Usage
-    url: /aria/usage
+    url: /usage
   - title: License
-    url: /aria/license
+    url: /license
