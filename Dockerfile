@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y curl build-essential git htop && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl build-essential git htop ffmpeg && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pip uv
 

@@ -20,7 +20,7 @@ searxng_tools = SearxngTools(
 downloader_tools = DownloaderTools(
     byparr_enabled=True,
     max_retries=3,
-    timeout=30,
+    timeout=60,
     user_agent_rotation=True,
     enable_caching=False,
 )
