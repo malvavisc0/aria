@@ -69,7 +69,7 @@ def get_ollama_core_agent(
     memory = None
     num_history_runs = 0
     if enable_memory:
-        num_history_runs = 5
+        num_history_runs = 3
         storage = RedisStorage(
             prefix="chat", host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB
         )
@@ -87,14 +87,11 @@ def get_ollama_core_agent(
         goal=ARIA_AGENT_CONFIG["goal"],
         user_id=user_id,
         session_id=session_id,
-        enable_agentic_memory=enable_memory,
-        enable_user_memories=enable_memory,
+        memory=memory,
         add_history_to_messages=enable_memory,
         read_chat_history=enable_memory,
-        read_tool_call_history=enable_memory,
         enable_session_summaries=enable_memory,
         num_history_runs=num_history_runs,
-        memory=memory,
         storage=storage,
         debug_mode=DEBUG_MODE,
         show_tool_calls=DEBUG_MODE,

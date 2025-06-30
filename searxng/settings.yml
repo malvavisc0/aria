@@ -34,7 +34,7 @@ search:
   # Filter results. 0: None, 1: Moderate, 2: Strict
   safe_search: 0
   # Existing autocomplete backends: "360search", "baidu", "brave", "dbpedia", "duckduckgo", "google", "yandex",
-  # "mwmbl", "naver", "seznam", "sogou", "stract", "swisscows", "quark", "qwant", "wikipedia" -
+  # "mwmbl", "naver", "seznam", "sogou", "startpage", "stract", "swisscows", "quark", "qwant", "wikipedia" -
   # leave blank to turn it off by default.
   autocomplete: ""
   # minimun characters to type before autocompleter starts
@@ -77,8 +77,8 @@ search:
   # formats: [html, csv, json, rss]
   formats:
     - html
-    - json
     - csv
+    - json
     - rss
 
 server:
@@ -87,7 +87,7 @@ server:
   bind_address: "127.0.0.1"
   # public URL of the instance, to ensure correct inbound links. Is overwritten
   # by ${SEARXNG_BASE_URL}.
-  base_url: /  # "http://example.com/location"
+  base_url: false  # "http://example.com/location"
   # rate limit the number of request on the instance, block some bots.
   # Is overwritten by ${SEARXNG_LIMITER}
   limiter: false
@@ -98,7 +98,7 @@ server:
   # If your instance owns a /etc/searxng/settings.yml file, then set the following
   # values there.
 
-  secret_key: "j94pYIoqFu8cXc3gc534wP2MaA4ByXQ"  # Is overwritten by ${SEARXNG_SECRET}
+  secret_key: "ultrasecretkey"  # Is overwritten by ${SEARXNG_SECRET}
   # Proxy image results through SearXNG. Is overwritten by ${SEARXNG_IMAGE_PROXY}
   image_proxy: false
   # 1.0 and 1.1 are supported
@@ -248,7 +248,7 @@ plugins:
     active: false
 
   searx.plugins.tracker_url_remover.SXNGPlugin:
-    active: false
+    active: true
 
 
 # Configuration of the "Hostnames plugin":
@@ -512,18 +512,21 @@ engines:
     categories: [general]
     engine: baidu
     shortcut: bd
+    disabled: true
 
   - name: baidu images
     baidu_category: images
     categories: [images]
     engine: baidu
     shortcut: bdi
+    disabled: true
 
   - name: baidu kaifa
     baidu_category: it
     categories: [it]
     engine: baidu
     shortcut: bdk
+    disabled: true
 
   - name: wikipedia
     engine: wikipedia
@@ -535,11 +538,12 @@ engines:
   - name: bilibili
     engine: bilibili
     shortcut: bil
-    disabled: true
+    disabled: false
 
   - name: bing
     engine: bing
     shortcut: bi
+    disabled: false
 
   - name: bing images
     engine: bing_images
@@ -548,15 +552,17 @@ engines:
   - name: bing news
     engine: bing_news
     shortcut: bin
+    disabled: false
 
   - name: bing videos
     engine: bing_videos
     shortcut: biv
+    disabled: false
 
   - name: bitchute
     engine: bitchute
     shortcut: bit
-    disabled: true
+    disabled: false
 
   - name: bitbucket
     engine: xpath
@@ -580,12 +586,12 @@ engines:
   - name: bpb
     engine: bpb
     shortcut: bpb
-    disabled: true
+    disabled: false
 
   - name: btdigg
     engine: btdigg
     shortcut: bt
-    disabled: true
+    disabled: false
 
   - name: openverse
     engine: openverse
@@ -598,7 +604,7 @@ engines:
     # We don't set language: de here because media.ccc.de is not just
     # for a German audience. It contains many English videos and many
     # German videos have English subtitles.
-    disabled: true
+    disabled: false
 
   - name: chefkoch
     engine: chefkoch
@@ -817,7 +823,6 @@ engines:
   - name: duckduckgo
     engine: duckduckgo
     shortcut: ddg
-    disabled: true
 
   - name: duckduckgo images
     engine: duckduckgo_extra
@@ -2007,6 +2012,7 @@ engines:
     # (e.g. NDR, WDR, SWR, HR, ...)
     use_source_url: true
     shortcut: ts
+    disabled: true
 
   - name: tmdb
     engine: xpath
@@ -2034,6 +2040,16 @@ engines:
     categories: onions
     enable_http: true
     shortcut: tch
+
+  # TubeArchivist is a self-hosted Youtube archivist software.
+  # https://docs.searxng.org/dev/engines/online/tubearchivist.html
+  #
+  # - name: tubearchivist
+  #   engine: tubearchivist
+  #   shortcut: tuba
+  #   base_url:
+  #   ta_token:
+  #   ta_link_to_mp4: false
 
   # torznab engine lets you query any torznab compatible indexer.  Using this
   # engine in combination with Jackett opens the possibility to query a lot of
@@ -2071,23 +2087,28 @@ engines:
     categories: general
     search_type: web
     shortcut: yd
+    disabled: true
+    inactive: true
 
   - name: yandex images
     engine: yandex
     categories: images
     search_type: images
     shortcut: ydi
+    disabled: true
+    inactive: true
 
   - name: yandex music
     engine: yandex_music
     shortcut: ydm
     disabled: true
-    inactive: true
     # https://yandex.com/support/music/access.html
+    inactive: true
 
   - name: yahoo
     engine: yahoo
     shortcut: yh
+    disabled: true
 
   - name: yahoo news
     engine: yahoo_news
@@ -2143,6 +2164,7 @@ engines:
     categories: [news, wikimedia]
     base_url: "https://{language}.wikinews.org/"
     search_type: text
+    disabled: false
     srsort: create_timestamp_desc
     about:
       website: https://www.wikinews.org/
@@ -2331,7 +2353,7 @@ engines:
     shortcut: mjk
     engine: mojeek
     categories: [general, web]
-    disabled: true
+    disabled: false
 
   - name: mojeek images
     shortcut: mjkimg
@@ -2339,7 +2361,7 @@ engines:
     categories: [images, web]
     search_type: images
     paging: false
-    disabled: true
+    disabled: false
 
   - name: mojeek news
     shortcut: mjknews
@@ -2347,39 +2369,39 @@ engines:
     categories: [news, web]
     search_type: news
     paging: false
-    disabled: true
+    disabled: false
 
   - name: moviepilot
     engine: moviepilot
     shortcut: mp
-    disabled: true
+    disabled: false
 
   - name: naver
     categories: [general, web]
     engine: naver
     shortcut: nvr
-    disabled: true
+    disabled: false
 
   - name: naver images
     naver_category: images
     categories: [images]
     engine: naver
     shortcut: nvri
-    disabled: true
+    disabled: false
 
   - name: naver news
     naver_category: news
     categories: [news]
     engine: naver
     shortcut: nvrn
-    disabled: true
+    disabled: false
 
   - name: naver videos
     naver_category: videos
     categories: [videos]
     engine: naver
     shortcut: nvrv
-    disabled: true
+    disabled: false
 
   - name: rubygems
     shortcut: rbg
@@ -2493,6 +2515,7 @@ engines:
     shortcut: senews
     categories: news
     seekr_category: news
+    disabled: true
 
   - name: seekr images
     engine: seekr
@@ -2764,7 +2787,6 @@ engines:
 doi_resolvers:
   oadoi.org: 'https://oadoi.org/'
   doi.org: 'https://doi.org/'
-  doai.io: 'https://dissem.in/'
   sci-hub.se: 'https://sci-hub.se/'
   sci-hub.st: 'https://sci-hub.st/'
   sci-hub.ru: 'https://sci-hub.ru/'

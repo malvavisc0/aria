@@ -1,3 +1,6 @@
+---
+name: aria
+
 networks:
   mitty: null
 
