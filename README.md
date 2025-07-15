@@ -70,7 +70,7 @@ The recommended way to install Aria is by using the official Docker image.
          AGNO_TELEMETRY: '${AGNO_TELEMETRY:-false}'
          OLLAMA_URL: '${OLLAMA_URL}'
          OLLAMA_MODEL_ID: '${OLLAMA_MODEL_ID}'
-         OLLAMA_MODEL_TEMPARATURE: '${OLLAMA_MODEL_TEMPARATURE:-0.65}'
+         OLLAMA_MODEL_TEMPERATURE: '${OLLAMA_MODEL_TEMPERATURE:-0.65}'
          OLLAMA_MODEL_CONTEXT_LENGTH: '${OLLAMA_MODEL_CONTEXT_LENGTH:-1280}'
          DEBUG_MODE: '${DEBUG_MODE:-false}'
        volumes:
@@ -167,7 +167,7 @@ You can configure Aria using the following environment variables in your `.env` 
 | `TZ`                          | Timezone for the application                      | `Europe/Berlin`          |
 | `OLLAMA_URL`                  | URL of your Ollama instance                       | `http://ollama:11434`    |
 | `OLLAMA_MODEL_ID`             | The ID of the Ollama model to use                 | `cogito:14b`             |
-| `OLLAMA_MODEL_TEMPARATURE`    | The temperature for the AI model                  | `0.65`                   |
+| `OLLAMA_MODEL_TEMPERATURE`    | The temperature for the AI model                  | `0.65`                   |
 | `OLLAMA_MODEL_CONTEXT_LENGTH` | The context length for the AI model               | `4096`                   |
 | `DEBUG_MODE`                  | Enable or disable debug mode                      | `false`                  |
 | `SEARXNG_SECRET`              | A secret key for SearXNG                          | `your-secret-key`        |

@@ -13,7 +13,7 @@ Aria uses Ollama to run AI models. You can customize the model behavior by adjus
 
 ```env
 OLLAMA_MODEL_ID=cogito:14b
-OLLAMA_MODEL_TEMPARATURE=0.7
+OLLAMA_MODEL_TEMPERATURE=0.7
 OLLAMA_MODEL_CONTEXT_LENGTH=8192
 ```
 

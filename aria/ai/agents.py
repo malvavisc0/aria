@@ -7,9 +7,20 @@ from agno.memory.v2.memory import Memory
 from agno.models.ollama import Ollama
 from agno.storage.redis import RedisStorage
 
-from aria.ai.configs import ARIA_AGENT_CONFIG, PROMPT_IMPROVER_AGENT_CONFIG
+from aria.ai.configs import (
+    chatter_agent_description,
+    chatter_agent_goal,
+    chatter_agent_instructions,
+    chatter_agent_name,
+    chatter_agent_role,
+    prompt_improver_agent_description,
+    prompt_improver_agent_goal,
+    prompt_improver_agent_instructions,
+    prompt_improver_agent_name,
+    prompt_improver_agent_role,
+)
 from aria.ai.kits import (
-    calulator_tools,
+    calculator_tools,
     downloader_tools,
     reasoning_tools,
     searxng_tools,
@@ -25,7 +36,7 @@ OLLAMA_MODEL = Ollama(
     host=environ.get("OLLAMA_URL"),
     timeout=300,
     options={
-        "temperature": float(environ.get("OLLAMA_MODEL_TEMPARATURE", 0.65)),
+        "temperature": float(environ.get("OLLAMA_MODEL_TEMPERATURE", 0.65)),
         "mirostat": 2,
         "repeat_last_n": -1,
         "top_k": 20,
@@ -80,11 +91,11 @@ def get_ollama_core_agent(
 
     return Agent(
         model=OLLAMA_MODEL,
-        name=ARIA_AGENT_CONFIG["name"],
-        description=f"{ARIA_AGENT_CONFIG['description']}\n\n{EXTRA_INFORMATION}",
-        role=ARIA_AGENT_CONFIG["role"],
-        instructions=ARIA_AGENT_CONFIG["instructions"],
-        goal=ARIA_AGENT_CONFIG["goal"],
+        name=chatter_agent_name,
+        description=f"{chatter_agent_description}\n\n{EXTRA_INFORMATION}",
+        role=chatter_agent_role,
+        instructions=chatter_agent_instructions,
+        goal=chatter_agent_goal,
         user_id=user_id,
         session_id=session_id,
         memory=memory,
@@ -97,11 +108,12 @@ def get_ollama_core_agent(
         show_tool_calls=DEBUG_MODE,
         tools=[
             searxng_tools,
+            thinking_tools,
             reasoning_tools,
             youtube_tools,
             weather_tools,
             yfinance_tools,
-            calulator_tools,
+            calculator_tools,
             downloader_tools,
         ],
     )
@@ -121,11 +133,11 @@ def get_prompt_improver_agent() -> Agent:
 
     return Agent(
         model=OLLAMA_MODEL,
-        name=PROMPT_IMPROVER_AGENT_CONFIG["name"],
-        description=f"{ARIA_AGENT_CONFIG['description']}\n\n{EXTRA_INFORMATION}",
-        role=PROMPT_IMPROVER_AGENT_CONFIG["role"],
-        instructions=PROMPT_IMPROVER_AGENT_CONFIG["instructions"],
-        goal=PROMPT_IMPROVER_AGENT_CONFIG["goal"],
+        name=prompt_improver_agent_name,
+        description=f"{prompt_improver_agent_description}\n\n{EXTRA_INFORMATION}",
+        role=prompt_improver_agent_role,
+        instructions=prompt_improver_agent_instructions,
+        goal=prompt_improver_agent_goal,
         add_datetime_to_instructions=True,
         debug_mode=DEBUG_MODE,
         show_tool_calls=DEBUG_MODE,

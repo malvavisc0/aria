@@ -24,7 +24,7 @@ downloader_tools = DownloaderTools(
     user_agent_rotation=True,
     enable_caching=False,
 )
-calulator_tools = ArithmeticCalculatorTools()
+calculator_tools = ArithmeticCalculatorTools()
 reasoning_tools = ReasoningTools()
 yfinance_tools = YFinanceTools()
 youtube_tools = YouTubeTools()

@@ -14,7 +14,7 @@ Aria can be configured using environment variables in your `.env` file. This gui
 | `TZ`                          | Timezone for the application                      | `Europe/Berlin`          |
 | `OLLAMA_URL`                  | URL of your Ollama instance                       | `http://ollama:11434`    |
 | `OLLAMA_MODEL_ID`             | The ID of the Ollama model to use                 | `cogito:14b`             |
-| `OLLAMA_MODEL_TEMPARATURE`    | The temperature for the AI model                  | `0.65`                   |
+| `OLLAMA_MODEL_TEMPERATURE`    | The temperature for the AI model                  | `0.65`                   |
 | `OLLAMA_MODEL_CONTEXT_LENGTH` | The context length for the AI model               | `4096`                   |
 | `DEBUG_MODE`                  | Enable or disable debug mode                      | `false`                  |
 | `SEARXNG_SECRET`              | A secret key for SearXNG                          | `your-secret-key`        |
@@ -46,7 +46,7 @@ For more control over Aria's behavior, you can set additional variables:
 TZ=Europe/Berlin
 OLLAMA_URL=http://your-ollama-instance:11434
 OLLAMA_MODEL_ID=cogito:14b
-OLLAMA_MODEL_TEMPARATURE=0.7
+OLLAMA_MODEL_TEMPERATURE=0.7
 OLLAMA_MODEL_CONTEXT_LENGTH=8192
 DEBUG_MODE=true
 SEARXNG_SECRET=your-super-secret-key
@@ -65,7 +65,7 @@ AGNO_TELEMETRY=false
 Aria uses Ollama to run AI models. You can configure which model to use and its parameters:
 
 - `OLLAMA_MODEL_ID`: The ID of the model to use (e.g., `cogito:14b`, `llama2:13b`, etc.)
-- `OLLAMA_MODEL_TEMPARATURE`: Controls the randomness of the model's output (0.0 to 1.0)
+- `OLLAMA_MODEL_TEMPERATURE`: Controls the randomness of the model's output (0.0 to 1.0)
 - `OLLAMA_MODEL_CONTEXT_LENGTH`: The maximum context length for the model
 
 ## Service Configuration
