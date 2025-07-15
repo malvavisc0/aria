@@ -40,6 +40,7 @@ OLLAMA_MODEL = Ollama(
         "mirostat": 2,
         "repeat_last_n": -1,
         "top_k": 20,
+        "top_p": 0.9,
         "seed": 10,
         "keep_alive": "10m",
         "num_ctx": int(environ.get("OLLAMA_MODEL_CONTEXT_LENGTH", 20480)),
