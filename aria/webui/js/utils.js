@@ -229,11 +229,12 @@ export function autoResizeTextarea(textarea) {
 }
 
 /**
- * Scroll element into view smoothly
+ * Scroll element into view smoothly with enhanced reliability
  * @param {HTMLElement} element 
  * @param {Object} options 
+ * @param {boolean} force Force scrolling even if user has scrolled up
  */
-export function scrollIntoView(element, options = {}) {
+export function scrollIntoView(element, options = {}, force = false) {
   if (!element || typeof element.scrollIntoView !== 'function') {
     console.warn('scrollIntoView: Invalid element provided');
     return;
@@ -241,15 +242,112 @@ export function scrollIntoView(element, options = {}) {
   
   const {
     behavior = 'smooth',
-    block = 'nearest',
+    block = 'end',
     inline = 'nearest'
   } = options;
   
-  element.scrollIntoView({
-    behavior,
-    block,
-    inline
-  });
+  // Find the scrollable container
+  const scrollContainer = findScrollableParent(element);
+  
+  // If we're not forcing the scroll and user has scrolled up, don't auto-scroll
+  if (!force && scrollContainer && isUserScrolledUp(scrollContainer)) {
+    console.log('User has scrolled up, not auto-scrolling');
+    return;
+  }
+  
+  try {
+    // Try the standard scrollIntoView first
+    element.scrollIntoView({
+      behavior,
+      block,
+      inline
+    });
+    
+    // Additional fallback for more reliable scrolling
+    if (scrollContainer) {
+      // For extra reliability, also set scrollTop directly after a small delay
+      setTimeout(() => {
+        if (block === 'end' || block === 'bottom') {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }, 50);
+    }
+  } catch (error) {
+    console.warn('Error in scrollIntoView:', error);
+    
+    // Fallback to direct scrollTop manipulation
+    if (scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  }
+}
+
+/**
+ * Find the scrollable parent of an element
+ * @param {HTMLElement} element 
+ * @returns {HTMLElement|null}
+ */
+function findScrollableParent(element) {
+  if (!element) return null;
+  
+  // Check if the element itself is scrollable
+  if (isScrollable(element)) return element;
+  
+  let parent = element.parentElement;
+  while (parent) {
+    if (isScrollable(parent)) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  
+  // If no scrollable parent found, return document.scrollingElement or body as fallback
+  return document.scrollingElement || document.body;
+}
+
+/**
+ * Check if an element is scrollable
+ * @param {HTMLElement} element 
+ * @returns {boolean}
+ */
+function isScrollable(element) {
+  const style = window.getComputedStyle(element);
+  const overflowY = style.getPropertyValue('overflow-y');
+  
+  return (
+    (overflowY === 'auto' || overflowY === 'scroll') &&
+    element.scrollHeight > element.clientHeight
+  );
+}
+
+/**
+ * Check if user has scrolled up in a container
+ * @param {HTMLElement} container 
+ * @returns {boolean}
+ */
+function isUserScrolledUp(container) {
+  // If we're within 100px of the bottom, consider it "at bottom"
+  const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  return scrollBottom > 100;
+}
+
+/**
+ * Force scroll to bottom of container
+ * @param {HTMLElement} container 
+ * @param {string} behavior 
+ */
+export function scrollToBottom(container, behavior = 'smooth') {
+  if (!container) return;
+  
+  try {
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior
+    });
+  } catch (error) {
+    // Fallback for older browsers
+    container.scrollTop = container.scrollHeight;
+  }
 }
 
 /**

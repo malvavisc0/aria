@@ -1,6 +1,6 @@
 // ===== CHAT FUNCTIONALITY: MULTI-SESSION SUPPORT =====
 
-import { generateId, formatTime, scrollIntoView, autoResizeTextarea } from './utils.js';
+import { generateId, formatTime, scrollIntoView, scrollToBottom, autoResizeTextarea } from './utils.js';
 import { ariaAPI, transformSession, transformSessionMetadata, transformSessionWithMessages, transformMessage } from './api.js';
 import { generateSessionName } from './nameGenerator.js';
 import { parseMarkdown, renderMermaidDiagrams, processMermaidDiagrams } from './mermaid_fix.js';
@@ -213,50 +213,7 @@ async function sendMessageToBackend(message) {
   }
 }
 
-/**
- * Update streaming message content in real-time
- */
-function updateStreamingMessage(content) {
-  // Find or create streaming message element
-  let streamingElement = document.querySelector('.message.streaming');
-  
-  if (!streamingElement) {
-    // Create streaming message element
-    const streamingMessage = {
-      id: 'streaming',
-      content: content,
-      role: 'assistant',
-      timestamp: new Date(),
-      agent: 'aria'
-    };
-    
-    streamingElement = createMessageElement(streamingMessage);
-    streamingElement.classList.add('streaming');
-    chatMessages.appendChild(streamingElement);
-  } else {
-    // Update existing streaming message
-    const bubbleDiv = streamingElement.querySelector('.message-bubble');
-    if (bubbleDiv) {
-      // Parse markdown asynchronously
-      parseMarkdown(content).then(html => {
-        bubbleDiv.innerHTML = html;
-        // Render any Mermaid diagrams (async)
-        renderMermaidDiagrams(bubbleDiv).catch(error => {
-          console.warn('Failed to render Mermaid diagrams in streaming message:', error);
-        });
-      }).catch(error => {
-        console.warn('Failed to parse markdown in streaming message:', error);
-        // Fallback to plain text
-        bubbleDiv.textContent = content;
-      });
-    }
-  }
-  
-  // Scroll to show streaming content
-  if (streamingElement) {
-    scrollIntoView(streamingElement);
-  }
-}
+// The updateStreamingMessage function is already defined above
 
 /**
  * Add a message to the current session
@@ -269,12 +226,29 @@ function addMessageToCurrentSession(message) {
   renderCurrentSession();
   
   // Ensure we scroll to the bottom after adding a message
-  // This is especially important for user messages
+  // Force scroll for user messages, but be more gentle with assistant messages
+  const forceScroll = message.role === 'user';
+  
+  // First attempt - immediate scroll
+  if (chatMessages) {
+    scrollToBottom(chatMessages, 'smooth');
+  }
+  
+  // Second attempt with delay to ensure DOM is fully updated
   setTimeout(() => {
     if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
-      scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' });
+      scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' }, forceScroll);
+    } else if (chatMessages) {
+      scrollToBottom(chatMessages, 'smooth');
     }
-  }, 100); // Small delay to ensure DOM is updated
+  }, 100);
+  
+  // Final fallback with longer delay
+  setTimeout(() => {
+    if (chatMessages) {
+      scrollToBottom(chatMessages, 'smooth');
+    }
+  }, 300);
   
   window.dispatchEvent(new Event('aria-message-added'));
 }
@@ -285,6 +259,10 @@ function addMessageToCurrentSession(message) {
 function renderCurrentSession() {
   const session = sessions.find(s => s.id === currentSessionId);
   if (!chatMessages) return;
+  
+  // Save scroll position before updating content
+  const wasAtBottom = isAtBottom(chatMessages);
+  
   chatMessages.innerHTML = '';
   if (!session || session.messages.length === 0) {
     chatMessages.innerHTML = `
@@ -312,6 +290,8 @@ function renderCurrentSession() {
     
     return;
   }
+  
+  // Render all messages
   session.messages.forEach(message => {
     const messageElement = createMessageElement(message);
     chatMessages.appendChild(messageElement);
@@ -334,13 +314,34 @@ function renderCurrentSession() {
   `;
   chatMessages.insertAdjacentHTML('beforeend', typingIndicatorHTML);
   
-  // Scroll to bottom with improved behavior
-  if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
-    scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' });
-  } else if (chatMessages) {
-    // If there's no last child element, scroll the container itself
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+  // Scroll to bottom only if we were already at the bottom before rendering
+  // or if this is the first render (wasAtBottom will be null)
+  if (wasAtBottom === null || wasAtBottom) {
+    // First attempt - use scrollToBottom
+    scrollToBottom(chatMessages, 'auto');
+    
+    // Second attempt with delay - use scrollIntoView on last element
+    setTimeout(() => {
+      if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
+        scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' }, true);
+      } else if (chatMessages) {
+        scrollToBottom(chatMessages, 'smooth');
+      }
+    }, 50);
   }
+}
+
+/**
+ * Check if the container is scrolled to the bottom
+ * @param {HTMLElement} container 
+ * @returns {boolean|null} true if at bottom, false if not, null if container is invalid
+ */
+function isAtBottom(container) {
+  if (!container) return null;
+  
+  const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  // Consider "at bottom" if within 20px of actual bottom
+  return scrollBottom < 20;
 }
 
 /**
@@ -486,6 +487,59 @@ function updateSendButton() {
     sendBtn.classList.add('has-content');
   } else {
     sendBtn.classList.remove('has-content');
+  }
+}
+
+/**
+ * Update streaming message content in real-time
+ */
+function updateStreamingMessage(content) {
+  // Find or create streaming message element
+  let streamingElement = document.querySelector('.message.streaming');
+  
+  if (!streamingElement) {
+    // Create streaming message element
+    const streamingMessage = {
+      id: 'streaming',
+      content: content,
+      role: 'assistant',
+      timestamp: new Date(),
+      agent: 'aria'
+    };
+    
+    streamingElement = createMessageElement(streamingMessage);
+    streamingElement.classList.add('streaming');
+    chatMessages.appendChild(streamingElement);
+  } else {
+    // Update existing streaming message
+    const bubbleDiv = streamingElement.querySelector('.message-bubble');
+    if (bubbleDiv) {
+      // Parse markdown asynchronously
+      parseMarkdown(content).then(html => {
+        bubbleDiv.innerHTML = html;
+        // Render any Mermaid diagrams (async)
+        renderMermaidDiagrams(bubbleDiv).catch(error => {
+          console.warn('Failed to render Mermaid diagrams in streaming message:', error);
+        });
+      }).catch(error => {
+        console.warn('Failed to parse markdown in streaming message:', error);
+        // Fallback to plain text
+        bubbleDiv.textContent = content;
+      });
+    }
+  }
+  
+  // Scroll to show streaming content - force scroll for streaming content
+  if (streamingElement) {
+    // First attempt - immediate scroll with force
+    scrollIntoView(streamingElement, { block: 'end', behavior: 'smooth' }, true);
+    
+    // Second attempt with delay for reliability
+    setTimeout(() => {
+      if (chatMessages) {
+        scrollToBottom(chatMessages, 'smooth');
+      }
+    }, 50);
   }
 }
 
