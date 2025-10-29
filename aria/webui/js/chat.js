@@ -16,6 +16,8 @@ let isLoadingFromAPI = false;
 let isLoadingMoreMessages = false;
 let hasMoreMessages = false;
 let nextMessageCursor = null;
+// Throttle flag to prevent excessive scrolling during streaming
+let streamingScrollScheduled = false;
 
 // DOM elements
 let chatMessages, messageInput, sendBtn, typingIndicator, chatForm;
@@ -226,29 +228,14 @@ function addMessageToCurrentSession(message) {
   renderCurrentSession();
   
   // Ensure we scroll to the bottom after adding a message
-  // Force scroll for user messages, but be more gentle with assistant messages
-  const forceScroll = message.role === 'user';
-  
-  // First attempt - immediate scroll
-  if (chatMessages) {
-    scrollToBottom(chatMessages, 'smooth');
+  // Use a single scheduled scroll; respect user's position
+  const nearBottom = isAtBottom(chatMessages);
+  const behavior = message.role === 'user' ? 'smooth' : 'auto';
+  if (chatMessages && nearBottom) {
+    requestAnimationFrame(() => {
+      scrollToBottom(chatMessages, behavior);
+    });
   }
-  
-  // Second attempt with delay to ensure DOM is fully updated
-  setTimeout(() => {
-    if (chatMessages && chatMessages.lastChild && chatMessages.lastChild.nodeType === Node.ELEMENT_NODE) {
-      scrollIntoView(chatMessages.lastChild, { block: 'end', behavior: 'smooth' }, forceScroll);
-    } else if (chatMessages) {
-      scrollToBottom(chatMessages, 'smooth');
-    }
-  }, 100);
-  
-  // Final fallback with longer delay
-  setTimeout(() => {
-    if (chatMessages) {
-      scrollToBottom(chatMessages, 'smooth');
-    }
-  }, 300);
   
   window.dispatchEvent(new Event('aria-message-added'));
 }
@@ -529,17 +516,17 @@ function updateStreamingMessage(content) {
     }
   }
   
-  // Scroll to show streaming content - force scroll for streaming content
-  if (streamingElement) {
-    // First attempt - immediate scroll with force
-    scrollIntoView(streamingElement, { block: 'end', behavior: 'smooth' }, true);
-    
-    // Second attempt with delay for reliability
-    setTimeout(() => {
-      if (chatMessages) {
-        scrollToBottom(chatMessages, 'smooth');
-      }
-    }, 50);
+  // Scroll to show streaming content without competing smooth animations
+  if (streamingElement && chatMessages) {
+    const nearBottom = isAtBottom(chatMessages);
+    if (nearBottom && !streamingScrollScheduled) {
+      streamingScrollScheduled = true;
+      requestAnimationFrame(() => {
+        // Use 'auto' to avoid stacking smooth animations during streaming
+        scrollToBottom(chatMessages, 'auto');
+        streamingScrollScheduled = false;
+      });
+    }
   }
 }
 

@@ -1,60 +1,39 @@
-/* ===== MODERN DESIGN SYSTEM ===== */
+/* ===== MODERN DESIGN SYSTEM - 2025 ===== */
 
 :root {
-  /* ===== MODERN COLOR PALETTE ===== */
+  /* ===== REFINED COLOR PALETTE ===== */
   
-  /* Primary Colors - Healing Green */
-  --primary-50: #f0fdf4;
-  --primary-100: #dcfce7;
-  --primary-200: #bbf7d0;
-  --primary-300: #86efac;
-  --primary-400: #4ade80;
-  --primary-500: #22c55e;
-  --primary-600: #16a34a;
-  --primary-700: #15803d;
-  --primary-800: #166534;
-  --primary-900: #14532d;
+  /* Primary Colors - Modern Blue */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+  --primary-950: #172554;
   
-  /* Accent Colors - Soft Teal */
-  --accent-50: #f0fdfa;
-  --accent-100: #ccfbf1;
-  --accent-200: #99f6e4;
-  --accent-300: #5eead4;
-  --accent-400: #2dd4bf;
-  --accent-500: #14b8a6;
-  --accent-600: #0d9488;
-  --accent-700: #0f766e;
-  --accent-800: #115e59;
-  --accent-900: #134e4a;
-
-  /* Playful Pastel Colors */
-  --pastel-pink: #ffe4ec;
-  --pastel-blue: #e0f2fe;
-  --pastel-yellow: #fef9c3;
-  --pastel-purple: #ede9fe;
-  --pastel-green: #d1fae5;
-  --pastel-orange: #ffedd5;
-  --pastel-lavender: #f3e8ff;
-  --pastel-mint: #ccfbf1;
-  
-  /* Neutral Colors - Modern Grays */
+  /* Neutral Colors - Pure Grays */
   --neutral-0: #ffffff;
-  --neutral-50: #fafafa;
-  --neutral-100: #f5f5f5;
-  --neutral-200: #e5e5e5;
-  --neutral-300: #d4d4d4;
-  --neutral-400: #a3a3a3;
-  --neutral-500: #737373;
-  --neutral-600: #525252;
-  --neutral-700: #404040;
-  --neutral-800: #262626;
-  --neutral-900: #171717;
-  --neutral-950: #0a0a0a;
+  --neutral-50: #fafbfc;
+  --neutral-100: #f8fafc;
+  --neutral-200: #e2e8f0;
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+  --neutral-950: #020617;
   
   /* Semantic Colors */
   --success-50: #f0fdf4;
-  --success-500: #10b981;
-  --success-600: #059669;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
   
   --warning-50: #fffbeb;
   --warning-500: #f59e0b;
@@ -64,7 +43,7 @@
   --error-500: #ef4444;
   --error-600: #dc2626;
   
-  /* ===== MODERN SPACING SYSTEM ===== */
+  /* ===== SPACING SYSTEM ===== */
   --space-0: 0;
   --space-1: 0.25rem;    /* 4px */
   --space-2: 0.5rem;     /* 8px */
@@ -79,75 +58,69 @@
   --space-20: 5rem;      /* 80px */
   --space-24: 6rem;      /* 96px */
   
-  /* ===== MODERN TYPOGRAPHY ===== */
+  /* ===== ENHANCED TYPOGRAPHY ===== */
   --font-family: 'SF Pro Display', 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', monospace;
 
-  /* Font Sizes - Compact Type Scale */
-  --text-xs: 0.68rem;     /* ~11px */
-  --text-sm: 0.78rem;     /* ~12.5px */
-  --text-base: 0.92rem;   /* ~14.5px */
-  --text-lg: 1.05rem;     /* ~16.8px */
-  --text-xl: 1.18rem;     /* ~18.9px */
-  --text-2xl: 1.32rem;    /* ~21px */
-  --text-3xl: 1.6rem;     /* ~25.6px */
-  --text-4xl: 1.95rem;    /* ~31px */
-  --text-5xl: 2.4rem;     /* ~38px */
+  /* Font Sizes - Standard Readable Scale */
+  --text-xs: 0.75rem;      /* 12px - labels, timestamps */
+  --text-sm: 0.875rem;     /* 14px - secondary text */
+  --text-base: 1rem;       /* 16px - body text (standard) */
+  --text-lg: 1.125rem;     /* 18px - emphasized text */
+  --text-xl: 1.25rem;      /* 20px - subtitles */
+  --text-2xl: 1.5rem;      /* 24px - headings */
+  --text-3xl: 1.875rem;    /* 30px - large headings */
+  --text-4xl: 2.25rem;     /* 36px - hero text */
+  --text-5xl: 3rem;        /* 48px - display text */
   
-  /* Font Weights */
-  --font-light: 300;
+  /* Font Weights - Simplified */
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
-  --font-extrabold: 800;
   
-  /* Line Heights */
-  --leading-none: 1;
+  /* Line Heights - Optimized for Readability */
   --leading-tight: 1.25;
-  --leading-snug: 1.375;
   --leading-normal: 1.5;
-  --leading-relaxed: 1.625;
-  --leading-loose: 2;
+  --leading-relaxed: 1.75;
   
-  /* ===== MODERN BORDER SYSTEM ===== */
+  /* ===== BORDER SYSTEM ===== */
   --border-width: 1px;
   --border-width-2: 2px;
-  --border-width-4: 4px;
   
-  --radius-none: 0;
-  --radius-sm: 0.375rem;    /* 6px */
-  --radius-base: 0.5rem;    /* 8px */
-  --radius-md: 0.75rem;     /* 12px */
-  --radius-lg: 1rem;        /* 16px */
-  --radius-xl: 1.5rem;      /* 24px */
-  --radius-2xl: 2rem;       /* 32px */
-  --radius-full: 9999px;
+  --radius-sm: 0.5rem;     /* 8px - small elements */
+  --radius-base: 0.75rem;  /* 12px - medium elements */
+  --radius-lg: 1rem;       /* 16px - large containers */
+  --radius-full: 9999px;   /* circular */
   
-  /* ===== MODERN SHADOWS ===== */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-base: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  /* ===== MODERN SHADOW SYSTEM ===== */
+  /* Subtle depth */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
+               0 1px 2px -1px rgba(0, 0, 0, 0.1);
   
-  /* Modern Colored Shadows */
-  --shadow-primary: 0 10px 15px -3px rgb(34 197 94 / 0.1), 0 4px 6px -4px rgb(34 197 94 / 0.1);
-  --shadow-accent: 0 10px 15px -3px rgb(20 184 166 / 0.1), 0 4px 6px -4px rgb(20 184 166 / 0.1);
+  /* Standard elevation */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+               0 2px 4px -2px rgba(0, 0, 0, 0.1);
   
-  /* ===== MODERN TRANSITIONS ===== */
+  /* Floating elements */
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+               0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  
+  /* Modal overlays */
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+               0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  
+  /* Colored accents (subtle) */
+  --shadow-primary: 0 4px 6px -1px rgba(59, 130, 246, 0.15);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+  
+  /* ===== TRANSITIONS ===== */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* ===== MODERN GRADIENTS ===== */
-  --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-  --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-600) 100%);
-  --gradient-pastel: linear-gradient(135deg, var(--pastel-pink) 0%, var(--pastel-blue) 40%, var(--pastel-yellow) 80%, var(--pastel-purple) 100%);
-  --gradient-surface: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
+  /* ===== GRADIENTS ===== */
   --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   
   /* ===== Z-INDEX SCALE ===== */
@@ -167,13 +140,13 @@
 .theme-light {
   /* Surface Colors */
   --surface-primary: var(--neutral-0);
-  --surface-secondary: var(--neutral-50);
-  --surface-tertiary: var(--neutral-100);
+  --surface-secondary: var(--neutral-100);
+  --surface-tertiary: var(--neutral-200);
   --surface-elevated: var(--neutral-0);
   --surface-overlay: rgba(255, 255, 255, 0.95);
   
   /* Notification Colors */
-  --notification-info-bg: var(--accent-500);
+  --notification-info-bg: var(--primary-500);
   --notification-info-text: var(--neutral-0);
   --notification-success-bg: var(--success-500);
   --notification-success-text: var(--neutral-0);
@@ -189,10 +162,10 @@
   --bg-accent: var(--primary-50);
   --bg-glass: rgba(255, 255, 255, 0.8);
   
-  /* Transparent Sidebar & Header */
+  /* Sidebar */
   --sidebar-header-bg: transparent;
   
-  /* Text Colors */
+  /* Text Colors - High Contrast */
   --text-primary: var(--neutral-900);
   --text-secondary: var(--neutral-600);
   --text-tertiary: var(--neutral-500);
@@ -203,82 +176,75 @@
   /* Border Colors */
   --border-primary: var(--neutral-200);
   --border-secondary: var(--neutral-300);
-  --border-accent: var(--primary-200);
+  --border-accent: var(--primary-300);
   --border-focus: var(--primary-500);
   
   /* Interactive Colors */
-  --interactive-primary: var(--primary-600);
-  --interactive-primary-hover: var(--primary-700);
+  --interactive-primary: var(--primary-500);
+  --interactive-primary-hover: var(--primary-600);
   --interactive-secondary: var(--neutral-100);
   --interactive-secondary-hover: var(--neutral-200);
-  --interactive-accent: var(--accent-600);
-  --interactive-accent-hover: var(--accent-700);
   
   /* Message Colors */
-  --message-user-bg: var(--gradient-primary);
+  --message-user-bg: var(--primary-500);
   --message-user-text: var(--neutral-0);
-  --message-assistant-bg: var(--surface-elevated);
+  --message-assistant-bg: var(--neutral-100);
   --message-assistant-text: var(--text-primary);
-  --message-system-bg: var(--surface-tertiary);
+  --message-system-bg: var(--neutral-200);
   --message-system-text: var(--text-secondary);
 }
 
 /* ===== MODERN DARK THEME ===== */
 .theme-dark {
   /* Surface Colors */
-  --surface-primary: #181a20;
-  --surface-secondary: #232532;
-  --surface-tertiary: #232532;
-  --surface-elevated: rgba(36, 38, 50, 0.98);
-  --surface-overlay: rgba(24, 26, 32, 0.98);
+  --surface-primary: #0f1419;
+  --surface-secondary: #1e293b;
+  --surface-tertiary: #334155;
+  --surface-elevated: #1e293b;
+  --surface-overlay: rgba(15, 20, 25, 0.95);
   --sidebar-header-bg: transparent;
   
   /* Notification Colors */
-  --notification-info-bg: var(--accent-600);
+  --notification-info-bg: var(--primary-500);
   --notification-info-text: var(--neutral-0);
-  --notification-success-bg: var(--success-600);
+  --notification-success-bg: var(--success-500);
   --notification-success-text: var(--neutral-0);
-  --notification-warning-bg: var(--warning-600);
+  --notification-warning-bg: var(--warning-500);
   --notification-warning-text: var(--neutral-50);
-  --notification-error-bg: var(--error-600);
+  --notification-error-bg: var(--error-500);
   --notification-error-text: var(--neutral-0);
 
   /* Background Colors */
-  --bg-primary: #181a20;
-  --bg-secondary: #232532;
-  --bg-tertiary: #242632;
-  --bg-accent: var(--pastel-purple);
-  --bg-glass: rgba(36, 38, 50, 0.82);
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a1f2e;
+  --bg-tertiary: #1e293b;
+  --bg-accent: var(--primary-950);
+  --bg-glass: rgba(30, 41, 59, 0.8);
 
-  /* Pastel for dark mode */
-  --gradient-pastel: linear-gradient(135deg, var(--pastel-purple) 0%, var(--pastel-blue) 40%, var(--pastel-mint) 80%, var(--pastel-pink) 100%);
-
-  /* Text Colors */
-  --text-primary: #f1f3f4;
-  --text-secondary: #c1c7d0;
-  --text-tertiary: #9aa0a6;
-  --text-accent: var(--pastel-pink);
-  --text-inverse: #ffffff;
-  --text-muted: #6c7293;
+  /* Text Colors - Soft & Readable */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-accent: var(--primary-400);
+  --text-inverse: var(--neutral-0);
+  --text-muted: #475569;
 
   /* Border Colors */
-  --border-primary: #3c4043;
-  --border-secondary: #52525b;
-  --border-accent: var(--pastel-blue);
-  --border-focus: var(--pastel-pink);
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --border-accent: var(--primary-700);
+  --border-focus: var(--primary-500);
 
   /* Interactive Colors */
-  --interactive-primary: var(--pastel-blue);
-  --interactive-primary-hover: var(--pastel-mint);
-  --interactive-secondary: #232532;
-  --interactive-secondary-hover: #2a2d3a;
-  --interactive-accent: var(--pastel-pink);
-  --interactive-accent-hover: var(--pastel-purple);
+  --interactive-primary: var(--primary-500);
+  --interactive-primary-hover: var(--primary-400);
+  --interactive-secondary: #1e293b;
+  --interactive-secondary-hover: #334155;
 
   /* Message Colors */
-  --message-user-bg: var(--gradient-pastel);
-  --message-user-text: var(--neutral-900);
-  --message-assistant-bg: var(--pastel-purple);
+  --message-user-bg: var(--primary-500);
+  --message-user-text: var(--neutral-0);
+  --message-assistant-bg: #1e293b;
   --message-assistant-text: var(--text-primary);
   --message-system-bg: var(--surface-tertiary);
   --message-system-text: var(--text-secondary);
