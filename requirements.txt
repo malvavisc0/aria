@@ -1,10 +1,9 @@
-agno==1.6.2
+agno
 aiohttp
 arxiv
 asyncpg
 chainlit
 fastembed
-lancedb
 loguru
 markitdown
 mcp

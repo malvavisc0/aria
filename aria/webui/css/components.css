@@ -846,6 +846,8 @@
 
 .message-bubble a:hover {
   color: var(--interactive-primary-hover);
+}
+
 /* Mermaid Diagrams */
 .message-bubble .mermaid {
   background: var(--surface-secondary);
@@ -869,7 +871,6 @@
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(51, 65, 85, 0.6);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
 }
 
 /* Removed pulse avatar animation for better performance */
