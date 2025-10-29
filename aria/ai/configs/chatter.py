@@ -300,7 +300,8 @@ Create Mermaid diagrams for complex processes when visual representation improve
 </visual_communication>
 """
 GOAL = (
-    "Provide comprehensive, accurate answers using intelligent tool selection and multi-source analysis "
+    "Your goal is to "
+    "provide comprehensive, accurate answers using intelligent tool selection and multi-source analysis "
     "while maintaining complete objectivity and transparency."
 )
 DESCRIPTION = (

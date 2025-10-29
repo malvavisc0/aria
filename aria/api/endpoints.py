@@ -5,8 +5,8 @@ from os import environ
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from aria.ai import ollama_core_agent
 from aria.ai.agents import get_prompt_improver_agent
@@ -14,7 +14,6 @@ from aria.ai.outputs import ImprovedPromptResponse
 from aria.schemas import (
     HealthResponse,
     MessageCreate,
-    MessageResponse,
     PaginatedMessagesResponse,
     PasswordResponse,
     SearchResponse,
@@ -106,13 +105,11 @@ async def send_message(
 
     async def stream_response():
         nonlocal assistant_content
-        agent = ollama_core_agent(user_id=message_data.role, session_id=session_id, enable_memory=True)
-        response = await agent.arun(
-            message=message_data.content, stream=True, user_id=message_data.role, session_id=session_id
+        agent = ollama_core_agent(
+            user_id=message_data.role, session_id=session_id, enable_memory=True
         )
-
         # Stream chunks and collect content
-        async for chunk in response:
+        async for chunk in agent.arun(input=message_data.content, stream=True):
             if chunk.content:
                 chunk_str = str(chunk.content)
                 assistant_content += chunk_str
@@ -219,7 +216,7 @@ async def improve_prompt(prompt_data: Dict[str, Any] = Body(...)):
     agent = get_prompt_improver_agent()
 
     # Run the agent to improve the prompt
-    response = await agent.arun(message=message)
+    response = await agent.arun(input=message)
 
     # Return the improved prompt and explanation
     return response.content

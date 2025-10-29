@@ -2,11 +2,8 @@ from datetime import datetime
 from os import environ
 
 from agno.agent import Agent
-from agno.memory.v2.db.redis import RedisMemoryDb
-from agno.memory.v2.memory import Memory
+from agno.db.redis import RedisDb
 from agno.models.ollama import Ollama
-from agno.storage.redis import RedisStorage
-
 from aria.ai.configs import (
     chatter_agent_description,
     chatter_agent_goal,
@@ -78,35 +75,27 @@ def get_ollama_core_agent(
     """
 
     storage = None
-    memory = None
     num_history_runs = 0
     if enable_memory:
         num_history_runs = 3
-        storage = RedisStorage(
-            prefix="chat", host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB
+        storage = RedisDb(
+            db_prefix="chat", db_url=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
         )
-        memory_db = RedisMemoryDb(
-            prefix="memory", host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB
-        )
-        memory = Memory(model=OLLAMA_MODEL, db=memory_db)
 
     return Agent(
         model=OLLAMA_MODEL,
         name=chatter_agent_name,
         description=f"{chatter_agent_description}\n\n{EXTRA_INFORMATION}",
         role=chatter_agent_role,
-        instructions=chatter_agent_instructions,
-        goal=chatter_agent_goal,
+        instructions=f"{chatter_agent_instructions}\n\n{chatter_agent_goal}",
         user_id=user_id,
         session_id=session_id,
-        memory=memory,
-        add_history_to_messages=enable_memory,
+        enable_user_memories=enable_memory,
         read_chat_history=enable_memory,
         enable_session_summaries=enable_memory,
         num_history_runs=num_history_runs,
-        storage=storage,
+        db=storage,
         debug_mode=DEBUG_MODE,
-        show_tool_calls=DEBUG_MODE,
         tools=[
             searxng_tools,
             thinking_tools,
@@ -137,11 +126,9 @@ def get_prompt_improver_agent() -> Agent:
         name=prompt_improver_agent_name,
         description=f"{prompt_improver_agent_description}\n\n{EXTRA_INFORMATION}",
         role=prompt_improver_agent_role,
-        instructions=prompt_improver_agent_instructions,
-        goal=prompt_improver_agent_goal,
-        add_datetime_to_instructions=True,
+        instructions=f"{prompt_improver_agent_instructions}\n\n{prompt_improver_agent_goal}",
+        add_datetime_to_context=True,
         debug_mode=DEBUG_MODE,
-        show_tool_calls=DEBUG_MODE,
         tools=[thinking_tools],
-        response_model=ImprovedPromptResponse,
+        output_schema=ImprovedPromptResponse,
     )

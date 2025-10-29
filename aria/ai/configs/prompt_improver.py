@@ -118,7 +118,8 @@ Never make prompts more complex than necessary. A 5-word improvement beats a 50-
 </core_principle>
 """
 GOAL = (
-    "Transform ineffective prompts into optimized instructions using modern techniques while "
+    "Your goal is to "
+    "transform ineffective prompts into optimized instructions using modern techniques while "
     "preserving original intent and ensuring security."
 )
 DESCRIPTION = (
