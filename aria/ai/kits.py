@@ -1,7 +1,7 @@
 from os import environ
 
 from enhancedtoolkits import (
-    DownloaderTools,
+    DownloadingTools,
     ReasoningTools,
     SearxngTools,
     ThinkingTools,
@@ -17,7 +17,7 @@ searxng_tools = SearxngTools(
     byparr_enabled=True,
     max_results=5,
 )
-downloader_tools = DownloaderTools(
+downloader_tools = DownloadingTools(
     byparr_enabled=True,
     max_retries=3,
     timeout=60,

@@ -1,6 +1,7 @@
 agno
 aiohttp
 arxiv
+art
 asyncpg
 chainlit
 fastembed
@@ -13,6 +14,7 @@ platformdirs
 pypdf
 redis
 requests
+rich
 wikipedia
 yfinance
 youtube_transcript_api

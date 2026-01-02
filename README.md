@@ -182,6 +182,16 @@ python -m aria.cli run --reload
 
 This will start the FastAPI server with hot-reloading enabled.
 
+### CLI banner (filled ASCII art)
+
+The experimental chat CLI prints a filled banner using [`filled_text2art()`](aria/utils/ascii_art.py:86).
+
+```python
+from aria.utils.ascii_art import filled_text2art
+
+print(filled_text2art("aria", font="small", fill_char="█"))
+```
+
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
