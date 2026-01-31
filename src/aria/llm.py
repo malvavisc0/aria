@@ -5,6 +5,11 @@ from datetime import datetime
 from llama_index.core.agent.workflow import (
     AgentWorkflow,
 )
+from llama_index.core.memory import (
+    FactExtractionMemoryBlock,
+    InsertMethod,
+    Memory,
+)
 from llama_index.llms.openai import OpenAI
 
 from aria.agents import (
@@ -177,3 +182,16 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
         initial_state=initial_state,
     )
     return workflow
+
+
+def get_default_memory(llm: OpenAI, tokens: int, max_facts: int) -> Memory:
+    memory = Memory.from_defaults(
+        insert_method=InsertMethod.USER,
+        token_limit=tokens,
+        token_flush_size=1024 * 4,
+        chat_history_token_ratio=0.7,
+        memory_blocks=[
+            FactExtractionMemoryBlock(llm=llm, max_facts=max_facts, priority=1)
+        ],
+    )
+    return memory

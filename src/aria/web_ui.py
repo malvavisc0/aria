@@ -15,14 +15,9 @@ import os
 
 import chainlit as cl
 from llama_index.core.agent.workflow import AgentStream, ToolCall
-from llama_index.core.memory import (
-    FactExtractionMemoryBlock,
-    InsertMethod,
-    Memory,
-)
 from loguru import logger
 
-from aria.llm import get_agent_workflow, get_chat_llm
+from aria.llm import get_agent_workflow, get_chat_llm, get_default_memory
 from aria.ui import display_ui_feedback
 
 MAIN_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"
@@ -45,6 +40,9 @@ logger.add(
 
 shared_llm = get_chat_llm(api_base=MAIN_LLAMACPP_API_URL)
 workflow = get_agent_workflow(llm=shared_llm)
+memory = get_default_memory(
+    llm=shared_llm, tokens=CHAT_MEMORY_TOKEN_LIMIT, max_facts=MAX_FACTS
+)
 
 
 @cl.on_chat_start
@@ -52,19 +50,7 @@ async def start():
     """
     Chainlit chat-start handler.
     """
-    memory_llm = get_chat_llm(api_base=MEMORY_LLAMACPP_API_URL)
-    memory = Memory.from_defaults(
-        insert_method=InsertMethod.USER,
-        token_limit=CHAT_MEMORY_TOKEN_LIMIT,
-        token_flush_size=1024 * 4,
-        chat_history_token_ratio=0.7,
-        memory_blocks=[
-            FactExtractionMemoryBlock(
-                llm=memory_llm, max_facts=MAX_FACTS, priority=1
-            )
-        ],
-    )
-    cl.user_session.set("memory", memory)
+    pass
 
 
 @cl.on_message
@@ -77,7 +63,7 @@ async def main(message: cl.Message):
     """
     msg = cl.Message(content="")
 
-    handler = workflow.run(user_msg=message.content)
+    handler = workflow.run(user_msg=message.content, memory=memory)
 
     # Stream events as they arrive
     async for event in handler.stream_events():
