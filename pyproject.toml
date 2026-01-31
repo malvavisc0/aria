@@ -1,0 +1,41 @@
+[project]
+name = "aria"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Malvavisc0", email = "207609879+malvavisc0@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "chainlit>=2.9.6",
+    "ddgs>=9.10.0",
+    "httpx>=0.28.1",
+    "llama-index>=0.14.12",
+    "llama-index-llms-openrouter>=0.4.3",
+    "loguru>=0.7.3",
+    "markitdown>=0.0.2",
+    "sqlalchemy>=2.0.45",
+    "typer>=0.21.1",
+    "yfinance>=1.0",
+]
+
+[project.scripts]
+aria2 = "aria:main"
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "black>=25.12.0",
+    "flake8>=7.3.0",
+    "isort>=7.0.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
+
+[tool.isort]
+profile = "black"
+line_length = 79
