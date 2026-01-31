@@ -1,0 +1,24 @@
+{
+    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "error"
+    },
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "black-formatter.args": [
+        "--line-length",
+        "79"
+    ],
+    "isort.args": [
+        "--profile",
+        "black",
+        "--line-length",
+        "79"
+    ]
+}
