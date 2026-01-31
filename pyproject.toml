@@ -18,10 +18,11 @@ dependencies = [
     "sqlalchemy>=2.0.45",
     "typer>=0.21.1",
     "yfinance>=1.0",
+    "youtube-transcript-api>=1.2.4",
 ]
 
 [project.scripts]
-aria2 = "aria:main"
+aria = "aria:main"
 
 [build-system]
 requires = ["uv_build>=0.9.24,<0.10.0"]
