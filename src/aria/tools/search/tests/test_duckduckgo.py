@@ -21,7 +21,7 @@ def test_web_search_success():
         },
     ]
 
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
@@ -67,7 +67,7 @@ def test_web_search_invalid_max_results():
 
 def test_web_search_exception_handling():
     """Test web search with exception handling"""
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.side_effect = Exception("Network error")
@@ -90,7 +90,7 @@ def test_web_search_default_max_results():
         }
     ]
 
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
@@ -126,7 +126,7 @@ def test_web_search_query_with_leading_trailing_whitespace():
         }
     ]
 
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
@@ -166,7 +166,7 @@ def test_web_search_non_integer_max_results():
 
 def test_web_search_empty_results():
     """Test web search that returns no results"""
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = []
@@ -192,7 +192,7 @@ def test_web_search_result_structure():
         }
     ]
 
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
@@ -215,7 +215,7 @@ def test_web_search_json_format():
         {"title": "Test", "href": "https://example.com", "body": "Body"}
     ]
 
-    with patch("aria2.tools.search.duckduckgo.DDGS") as mock_ddgs:
+    with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results

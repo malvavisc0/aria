@@ -9,7 +9,7 @@ require both information gathering and sophisticated analytical thinking.
 The DeepReasoningAgent follows the same patterns as other agents in
 the codebase:
 - Uses FunctionAgent framework from llama_index
-- Integrates tools from aria2.tools.search and aria2.tools.reasoning modules
+- Integrates tools from aria.tools.search and aria.tools.reasoning modules
 - Implements proper system prompts with clear instructions and best practices
 - Follows security and logging conventions used throughout the codebase
 """
@@ -26,10 +26,10 @@ from loguru import logger
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.tools.documentation import tool_help
 
-PYTHON_DEVELOPMENT_TOOLS = "aria2.tools.development"
-REASONING_TOOLS = "aria2.tools.reasoning"
-WEB_SEARCH_TOOLS = "aria2.tools.search"
-FILESYSTEM_TOOLS = "aria2.tools.files"
+PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
+REASONING_TOOLS = "aria.tools.reasoning"
+WEB_SEARCH_TOOLS = "aria.tools.search"
+FILESYSTEM_TOOLS = "aria.tools.files"
 
 
 class DeepReasoningAgent(FunctionAgent):

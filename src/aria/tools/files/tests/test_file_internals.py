@@ -224,7 +224,7 @@ class TestSecureResolvePath:
             link.symlink_to(target)
 
             # Mock BASE_DIR to be tmpdir
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 # Symlink check happens after resolve, so it checks if
                 # the resolved path is a symlink
                 result = _secure_resolve_path("link.txt")
@@ -238,7 +238,7 @@ class TestSecureResolvePath:
             file_path = tmpdir_path / "test.exe"
             file_path.write_text("content")
 
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 with pytest.raises(FileSecurityError, match="File type not"):
                     _secure_resolve_path("test.exe")
 
@@ -246,7 +246,7 @@ class TestSecureResolvePath:
         """Test error when file doesn't exist and check_exists=True."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 with pytest.raises(FileOperationError, match="File not found"):
                     _secure_resolve_path("nonexistent.txt", check_exists=True)
 
@@ -254,7 +254,7 @@ class TestSecureResolvePath:
         """Test resolving nonexistent file with check_exists=False."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 # Should not raise
                 result = _secure_resolve_path(
                     "nonexistent.txt", check_exists=False
@@ -272,7 +272,7 @@ class TestSecureResolveDir:
             subdir = tmpdir_path / "subdir"
             subdir.mkdir()
 
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 result = _secure_resolve_dir("subdir")
                 assert result.is_dir()
 
@@ -290,7 +290,7 @@ class TestSecureResolveDir:
             link_dir = tmpdir_path / "link"
             link_dir.symlink_to(target_dir)
 
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 # Symlink check happens after resolve
                 result = _secure_resolve_dir("link")
                 # Should succeed since resolve() follows symlinks
@@ -301,7 +301,7 @@ class TestSecureResolveDir:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             # Use a path that will cause traversal error
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 with pytest.raises(FileSecurityError, match="Path traversal"):
                     _secure_resolve_dir("../outside")
 
@@ -499,7 +499,7 @@ class TestCreateBackup:
 
         try:
             # Mock shutil.copy2 to raise an exception
-            with patch("aria2.tools.files._internals.shutil.copy2") as mock:
+            with patch("aria.tools.files._internals.shutil.copy2") as mock:
                 mock.side_effect = PermissionError("Access denied")
                 result = _create_backup(temp_path)
                 assert result is None  # Should return None on error
@@ -612,7 +612,7 @@ class TestValidateAndResolveFile:
             file_path = tmpdir_path / "test.txt"
             file_path.write_text("content")
 
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 result = validate_and_resolve_file("test.txt")
                 assert result.exists()
 
@@ -632,7 +632,7 @@ class TestValidateAndResolveTwoFiles:
             source = tmpdir_path / "source.txt"
             source.write_text("content")
 
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 src_path, dest_path = validate_and_resolve_two_files(
                     "source.txt", "dest.txt", dest_must_exist=False
                 )
@@ -650,7 +650,7 @@ class TestValidateAndResolveTwoFiles:
             source = tmpdir_path / "source.txt"
             source.write_text("content")
 
-            with patch("aria2.tools.files._internals.BASE_DIR", tmpdir_path):
+            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
                 with pytest.raises(FileSecurityError):
                     validate_and_resolve_two_files(
                         "source.txt", "../etc/passwd"

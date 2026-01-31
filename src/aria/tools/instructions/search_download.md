@@ -1,6 +1,6 @@
-# Download Tools (`aria2.tools.search.download`)
+# Download Tools (`aria.tools.search.download`)
 
-This file documents the tools implemented in [`aria2.tools.search.download`](src/aria2/tools/search/download.py:1).
+This file documents the tools implemented in [`aria.tools.search.download`](src/aria2/tools/search/download.py:1).
 
 ### `get_file_from_url(intent: str, url: str, output: str = "auto", custom_headers: dict[str, str] | None = None, max_size: int | None = MAX_FILE_SIZE, download_path: str | None = str(DOWNLOADS_DIR))`
 

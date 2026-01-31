@@ -1,6 +1,6 @@
-# Python Development Tools (`aria2.tools.development.python`)
+# Python Development Tools (`aria.tools.development.python`)
 
-This file documents the tools implemented in [`aria2.tools.development.python`](src/aria2/tools/development/python.py:1).
+This file documents the tools implemented in [`aria.tools.development.python`](src/aria2/tools/development/python.py:1).
 
 ## Python execution and syntax
 

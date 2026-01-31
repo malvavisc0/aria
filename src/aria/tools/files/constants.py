@@ -5,7 +5,7 @@ These constants define security limits, allowed file types, and system
 configuration parameters for file handling operations.
 
 For shared constants like BASE_DIR and MAX_FILE_SIZE,
-import from aria2.tools.constants.
+import from aria.tools.constants.
 """
 
 # Maximum chunk size for operations (in lines)

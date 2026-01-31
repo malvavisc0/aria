@@ -547,7 +547,7 @@ class TestReadFileSafely:
     def test_read_file_safely_with_base_dir(self):
         """Test reading file with BASE_DIR resolution"""
         # This tests the branch where file is resolved using BASE_DIR
-        with patch("aria2.tools.development._internals.logger"):
+        with patch("aria.tools.development._internals.logger"):
             # Create a file that doesn't exist in current dir
             # but might be resolved with BASE_DIR
             with pytest.raises(FileNotFoundError):

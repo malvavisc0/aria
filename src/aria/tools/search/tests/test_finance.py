@@ -95,7 +95,7 @@ class TestHelperFunctions:
     def test_get_ticker(self):
         """Test _get_ticker returns yfinance Ticker object."""
         with patch(
-            "aria2.tools.search.finance.yfinance.Ticker"
+            "aria.tools.search.finance.yfinance.Ticker"
         ) as mock_ticker:
             mock_ticker.return_value = Mock()
             result = _get_ticker("AAPL")
@@ -244,7 +244,7 @@ class TestFetchCurrentStockPrice:
         }
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -270,7 +270,7 @@ class TestFetchCurrentStockPrice:
         }
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -286,7 +286,7 @@ class TestFetchCurrentStockPrice:
         mock_info = {"currency": "USD"}
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -317,7 +317,7 @@ class TestFetchCurrentStockPrice:
         }
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -339,7 +339,7 @@ class TestFetchCurrentStockPrice:
         }
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -379,7 +379,7 @@ class TestFetchCompanyInformation:
         }
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -404,7 +404,7 @@ class TestFetchCompanyInformation:
         mock_info = {"symbol": "TEST"}
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -454,7 +454,7 @@ class TestFetchTickerNews:
         ]
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.news = mock_news
@@ -477,7 +477,7 @@ class TestFetchTickerNews:
     def test_fetch_news_no_articles(self):
         """Test news fetch with no articles."""
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.news = []
@@ -504,7 +504,7 @@ class TestFetchTickerNews:
         ]
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.news = mock_news
@@ -523,7 +523,7 @@ class TestFetchTickerNews:
         mock_news = [{"title": "Test", "link": "https://example.com"}]
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.news = mock_news
@@ -578,7 +578,7 @@ class TestFetchTickerNews:
     def test_fetch_news_api_exception(self):
         """Test news fetch with API exception."""
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             # Configure news property to raise exception when accessed
@@ -613,7 +613,7 @@ class TestFetchTickerNews:
         ]
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.news = mock_news
@@ -670,7 +670,7 @@ class TestIntegration:
         }
 
         with patch(
-            "aria2.tools.search.finance.yfinance.Ticker"
+            "aria.tools.search.finance.yfinance.Ticker"
         ) as mock_ticker_class:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
@@ -690,7 +690,7 @@ class TestIntegration:
         mock_info = {"regularMarketPrice": 150.0, "currency": "USD"}
 
         with patch(
-            "aria2.tools.search.finance._get_ticker"
+            "aria.tools.search.finance._get_ticker"
         ) as mock_get_ticker:
             mock_ticker = Mock()
             mock_ticker.info = mock_info

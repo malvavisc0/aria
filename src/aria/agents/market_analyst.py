@@ -18,9 +18,9 @@ from loguru import logger
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.tools.documentation import tool_help
 
-PYTHON_DEVELOPMENT_TOOLS = "aria2.tools.development"
-FILESYSTEM_TOOLS = "aria2.tools.files"
-WEB_SEARCH_TOOLS = "aria2.tools.search"
+PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
+FILESYSTEM_TOOLS = "aria.tools.files"
+WEB_SEARCH_TOOLS = "aria.tools.search"
 
 
 class MarketAnalystAgent(FunctionAgent):

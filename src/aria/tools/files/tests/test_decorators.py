@@ -147,7 +147,7 @@ class TestWithInputValidation:
 
         # Mock _validate_inputs to raise FileSecurityError
         with patch(
-            "aria2.tools.files.decorators._validate_inputs",
+            "aria.tools.files.decorators._validate_inputs",
             side_effect=FileSecurityError("Invalid path"),
         ):
             result = function_to_test("../invalid.txt")

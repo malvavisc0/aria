@@ -168,7 +168,7 @@ class TestWithRunnerErrorHandling:
         result = kwargs_func(code="test", timeout=60)
         assert "error" in result.lower()
 
-    @patch("aria2.tools.development.decorators.logger")
+    @patch("aria.tools.development.decorators.logger")
     def test_logging_on_security_error(self, mock_logger):
         """Test that security errors are logged with warning level."""
 
@@ -179,7 +179,7 @@ class TestWithRunnerErrorHandling:
         security_func("malicious code")
         mock_logger.warning.assert_called()
 
-    @patch("aria2.tools.development.decorators.logger")
+    @patch("aria.tools.development.decorators.logger")
     def test_logging_on_syntax_error(self, mock_logger):
         """Test that syntax errors are logged with warning level."""
 
@@ -190,7 +190,7 @@ class TestWithRunnerErrorHandling:
         syntax_func("invalid syntax")
         mock_logger.warning.assert_called()
 
-    @patch("aria2.tools.development.decorators.logger")
+    @patch("aria.tools.development.decorators.logger")
     def test_logging_on_timeout_error(self, mock_logger):
         """Test that timeout errors are logged with warning level."""
 
@@ -201,7 +201,7 @@ class TestWithRunnerErrorHandling:
         timeout_func("slow code")
         mock_logger.warning.assert_called()
 
-    @patch("aria2.tools.development.decorators.logger")
+    @patch("aria.tools.development.decorators.logger")
     def test_logging_on_execution_error(self, mock_logger):
         """Test that execution errors are logged with error level."""
 
@@ -212,7 +212,7 @@ class TestWithRunnerErrorHandling:
         exec_func("failing code")
         mock_logger.error.assert_called()
 
-    @patch("aria2.tools.development.decorators.logger")
+    @patch("aria.tools.development.decorators.logger")
     def test_logging_on_unexpected_error(self, mock_logger):
         """Test that unexpected errors are logged with exception level."""
 
@@ -367,7 +367,7 @@ class TestWithInputValidation:
         result = complex_func("test", "script.py")
         assert result == "Success"
 
-    @patch("aria2.tools.development.decorators._validate_inputs")
+    @patch("aria.tools.development.decorators._validate_inputs")
     def test_validate_inputs_called_correctly(self, mock_validate):
         """Test that _validate_inputs is called with correct parameters."""
 
@@ -378,7 +378,7 @@ class TestWithInputValidation:
         test_func("print('test')", 30)
         mock_validate.assert_called_once_with(code="print('test')", timeout=30)
 
-    @patch("aria2.tools.development.decorators._validate_inputs")
+    @patch("aria.tools.development.decorators._validate_inputs")
     def test_validate_inputs_not_called_when_no_params(self, mock_validate):
         """Test _validate_inputs not called when no params to validate."""
 

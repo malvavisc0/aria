@@ -2,7 +2,7 @@
 Constants for search and download operations.
 
 This module contains constants specific to URL downloading and content
-processing. For shared constants, imports from aria2.tools.constants.
+processing. For shared constants, imports from aria.tools.constants.
 """
 
 from aria.tools.constants import (

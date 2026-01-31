@@ -1,6 +1,6 @@
-# Reasoning Tools (`aria2.tools.reasoning.functions`)
+# Reasoning Tools (`aria.tools.reasoning.functions`)
 
-This file documents the tools implemented in [`aria2.tools.reasoning.functions`](src/aria2/tools/reasoning/functions.py:1).
+This file documents the tools implemented in [`aria.tools.reasoning.functions`](src/aria2/tools/reasoning/functions.py:1).
 
 ## Critical Workflow
 

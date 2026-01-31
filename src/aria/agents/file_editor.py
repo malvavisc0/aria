@@ -24,7 +24,7 @@ from loguru import logger
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.tools.documentation import tool_help
 
-FILESYSTEM_TOOLS = "aria2.tools.files"
+FILESYSTEM_TOOLS = "aria.tools.files"
 
 
 class FileEditorAgent(FunctionAgent):

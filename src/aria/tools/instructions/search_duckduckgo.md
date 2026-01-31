@@ -1,6 +1,6 @@
-# Web Search Tools (`aria2.tools.search.duckduckgo`)
+# Web Search Tools (`aria.tools.search.duckduckgo`)
 
-This file documents the tools implemented in [`aria2.tools.search.duckduckgo`](src/aria2/tools/search/duckduckgo.py:1).
+This file documents the tools implemented in [`aria.tools.search.duckduckgo`](src/aria2/tools/search/duckduckgo.py:1).
 
 ### `web_search(intent: str, query: str, max_results: int = 5)`
 

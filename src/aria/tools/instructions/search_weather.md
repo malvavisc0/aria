@@ -1,6 +1,6 @@
-# Weather Tools (`aria2.tools.search.weather`)
+# Weather Tools (`aria.tools.search.weather`)
 
-This file documents the tools implemented in [`aria2.tools.search.weather`](src/aria2/tools/search/weather.py:1).
+This file documents the tools implemented in [`aria.tools.search.weather`](src/aria2/tools/search/weather.py:1).
 
 ### `get_current_weather(intent: str, location: str)`
 

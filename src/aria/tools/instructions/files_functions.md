@@ -1,6 +1,6 @@
-# File Tools (`aria2.tools.files.functions`)
+# File Tools (`aria.tools.files.functions`)
 
-This file documents the tools implemented in [`aria2.tools.files.functions`](src/aria2/tools/files/functions.py:1).
+This file documents the tools implemented in [`aria.tools.files.functions`](src/aria2/tools/files/functions.py:1).
 
 ## Available tools
 

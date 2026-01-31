@@ -4,7 +4,7 @@ Constants for Python code execution and validation.
 These constants define security limits, restricted builtins, and system
 configuration parameters for Python code execution.
 
-For shared timeout constants, import from aria2.tools.constants.
+For shared timeout constants, import from aria.tools.constants.
 """
 
 # Restricted builtins for safe execution

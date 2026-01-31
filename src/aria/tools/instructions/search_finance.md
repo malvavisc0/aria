@@ -1,6 +1,6 @@
-# Finance Tools (`aria2.tools.search.finance`)
+# Finance Tools (`aria.tools.search.finance`)
 
-This file documents the tools implemented in [`aria2.tools.search.finance`](src/aria2/tools/search/finance.py:1).
+This file documents the tools implemented in [`aria.tools.search.finance`](src/aria2/tools/search/finance.py:1).
 
 ### `fetch_current_stock_price(intent: str, ticker: str)`
 
