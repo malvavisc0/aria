@@ -5,12 +5,12 @@ This module contains constants specific to URL downloading and content
 processing. For shared constants, imports from aria2.tools.constants.
 """
 
-from aria2.tools.constants import (
+from aria.tools.constants import (
     DOWNLOADS_DIR,
     MAX_FILE_SIZE,
     MAX_RETRIES,
 )
-from aria2.tools.constants import NETWORK_TIMEOUT as TIMEOUT
+from aria.tools.constants import NETWORK_TIMEOUT as TIMEOUT
 
 # Re-export for backward compatibility
 __all__ = [

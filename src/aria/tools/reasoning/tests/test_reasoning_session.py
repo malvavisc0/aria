@@ -1,6 +1,6 @@
 """Tests for ReasoningSession class."""
 
-from aria2.tools.reasoning.session import ReasoningSession
+from aria.tools.reasoning.session import ReasoningSession
 
 
 def test_session_creation():

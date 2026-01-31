@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 
-from aria2.tools.reasoning import (
+from aria.tools.reasoning import (
     add_reasoning_step,
     add_reflection,
     end_reasoning,
@@ -16,8 +16,8 @@ from aria2.tools.reasoning import (
     start_reasoning,
     use_scratchpad,
 )
-from aria2.tools.reasoning.database import ReasoningDatabase
-from aria2.tools.reasoning.functions import _active_sessions, _session_registry
+from aria.tools.reasoning.database import ReasoningDatabase
+from aria.tools.reasoning.functions import _active_sessions, _session_registry
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def test_db():
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, "test_reasoning.db")
         # Replace global database instance with test instance
-        from aria2.tools.reasoning import functions
+        from aria.tools.reasoning import functions
 
         original_db = functions._db
 

@@ -7,7 +7,7 @@ from llama_index.core.agent.workflow import (
 )
 from llama_index.llms.openai import OpenAI
 
-from aria2.agents import (
+from aria.agents import (
     get_chatter_agent,
     get_file_editor_agent,
     get_market_analyst_agent,

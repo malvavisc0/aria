@@ -9,11 +9,11 @@ from unittest.mock import patch
 
 import pytest
 
-from aria2.tools.development.decorators import (
+from aria.tools.development.decorators import (
     with_input_validation,
     with_runner_error_handling,
 )
-from aria2.tools.development.exceptions import (
+from aria.tools.development.exceptions import (
     PythonExecutionError,
     PythonExecutionTimeoutError,
     PythonRunnerError,
@@ -309,7 +309,7 @@ class TestWithInputValidation:
             return "Success"
 
         # Code exceeding 10MB should raise error
-        from aria2.tools.development.exceptions import PythonSecurityError
+        from aria.tools.development.exceptions import PythonSecurityError
 
         with pytest.raises(PythonSecurityError):
             code_func("x" * 10_000_001)  # Exceeds 10MB limit

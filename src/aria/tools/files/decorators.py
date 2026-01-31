@@ -11,8 +11,8 @@ from typing import Callable
 
 from loguru import logger
 
-from aria2.tools.files._internals import _error_response, _validate_inputs
-from aria2.tools.files.exceptions import FileOperationError, FileSecurityError
+from aria.tools.files._internals import _error_response, _validate_inputs
+from aria.tools.files.exceptions import FileOperationError, FileSecurityError
 
 
 def with_file_operation_error_handling(operation_name: str) -> Callable:

@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional
 from ddgs import DDGS
 from loguru import logger
 
-from aria2.tools.constants import DEFAULT_TIMEOUT
-from aria2.tools.search.constants import MAX_RESULTS_LIMIT
+from aria.tools.constants import DEFAULT_TIMEOUT
+from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
 
 def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:

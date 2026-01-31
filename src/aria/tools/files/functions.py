@@ -10,8 +10,8 @@ from typing import List, Optional
 
 from loguru import logger
 
-from aria2.tools.constants import BASE_DIR, MAX_FILE_SIZE
-from aria2.tools.files._internals import (
+from aria.tools.constants import BASE_DIR, MAX_FILE_SIZE
+from aria.tools.files._internals import (
     _atomic_write,
     _build_directory_tree,
     _count_lines_efficiently,
@@ -28,11 +28,11 @@ from aria2.tools.files._internals import (
     validate_and_resolve_file,
     validate_and_resolve_two_files,
 )
-from aria2.tools.files.decorators import (
+from aria.tools.files.decorators import (
     with_file_operation_error_handling,
     with_input_validation,
 )
-from aria2.tools.files.exceptions import FileOperationError
+from aria.tools.files.exceptions import FileOperationError
 
 
 @with_input_validation(contents=True)

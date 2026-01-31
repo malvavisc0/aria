@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
-from aria2.tools.search.download import (
+from aria.tools.search.download import (
     ContentParsingError,
     URLDownloadError,
     _auto_detect_format,

@@ -8,11 +8,11 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 
-from aria2.tools.constants import (
+from aria.tools.constants import (
     DEFAULT_TIMEOUT,
     MAX_TIMEOUT,
 )
-from aria2.tools.development._internals import (
+from aria.tools.development._internals import (
     _build_response,
     _capture_execution_output,
     _create_safe_globals,
@@ -20,10 +20,10 @@ from aria2.tools.development._internals import (
     _read_file_safely,
     _validate_timeout,
 )
-from aria2.tools.development.constants import (
+from aria.tools.development.constants import (
     RESTRICTED_BUILTINS,
 )
-from aria2.tools.development.decorators import (
+from aria.tools.development.decorators import (
     with_input_validation,
     with_runner_error_handling,
 )

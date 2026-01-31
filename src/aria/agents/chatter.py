@@ -14,9 +14,9 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria2.agents.tool_schema import filter_tools_for_llamacpp
-from aria2.tools.files.functions import read_full_file
-from aria2.tools.search import (
+from aria.agents.tool_schema import filter_tools_for_llamacpp
+from aria.tools.files.functions import read_full_file
+from aria.tools.search import (
     get_current_weather,
     get_file_from_url,
     get_youtube_video_transcription,

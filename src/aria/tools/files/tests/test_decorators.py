@@ -5,11 +5,11 @@ This module tests the decorators used in file operations, focusing on
 error handling and input validation edge cases.
 """
 
-from aria2.tools.files.decorators import (
+from aria.tools.files.decorators import (
     with_file_operation_error_handling,
     with_input_validation,
 )
-from aria2.tools.files.exceptions import FileOperationError, FileSecurityError
+from aria.tools.files.exceptions import FileOperationError, FileSecurityError
 
 
 class TestWithFileOperationErrorHandling:

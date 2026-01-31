@@ -23,7 +23,7 @@ from youtube_transcript_api import (
 )
 from youtube_transcript_api.formatters import TextFormatter
 
-from aria2.tools.search.constants import (
+from aria.tools.search.constants import (
     BINARY_CONTENT_TYPES,
     DOWNLOADS_DIR,
     HTML_CONTENT_TYPES,

@@ -22,7 +22,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from aria2.agents import (
+from aria.agents import (
     DeepReasoningAgent,
     FileEditorAgent,
     MarketAnalystAgent,

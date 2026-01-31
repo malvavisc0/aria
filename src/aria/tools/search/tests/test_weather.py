@@ -2,7 +2,7 @@ import json
 
 import httpx
 
-from aria2.tools.search.weather import get_current_weather
+from aria.tools.search.weather import get_current_weather
 
 
 def test_get_current_weather_success(monkeypatch):

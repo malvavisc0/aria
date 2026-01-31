@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from aria2.tools.search.finance import (
+from aria.tools.search.finance import (
     MAX_ARTICLES,
     MIN_ARTICLES,
     YFinanceDataError,

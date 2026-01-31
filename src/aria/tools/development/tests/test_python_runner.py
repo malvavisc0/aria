@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from aria2.tools.development.python import (
+from aria.tools.development.python import (
     check_python_file_syntax,
     check_python_syntax,
     execute_python_code,

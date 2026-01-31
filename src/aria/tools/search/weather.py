@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 import httpx
 from loguru import logger
 
-from aria2.tools.constants import NETWORK_TIMEOUT
+from aria.tools.constants import NETWORK_TIMEOUT
 
 # https://open-meteo.com/en/docs
 _WEATHER_CODE_TEXT: dict[int, str] = {

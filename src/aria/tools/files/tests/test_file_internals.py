@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from aria2.tools.files._internals import (
+from aria.tools.files._internals import (
     _atomic_write,
     _build_directory_tree,
     _count_lines_efficiently,
@@ -30,7 +30,7 @@ from aria2.tools.files._internals import (
     validate_and_resolve_file,
     validate_and_resolve_two_files,
 )
-from aria2.tools.files.exceptions import FileOperationError, FileSecurityError
+from aria.tools.files.exceptions import FileOperationError, FileSecurityError
 
 
 class TestTimestamp:

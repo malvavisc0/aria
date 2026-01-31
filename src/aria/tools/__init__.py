@@ -4,6 +4,6 @@ This top-level package exports common helpers used by multiple tool
 subpackages.
 """
 
-from aria2.tools.documentation import tool_help
+from aria.tools.documentation import tool_help
 
 __all__ = ["tool_help"]

@@ -22,8 +22,8 @@ from llama_index.core.memory import (
 )
 from loguru import logger
 
-from aria2.llm import get_agent_workflow, get_chat_llm
-from aria2.ui import display_ui_feedback
+from aria.llm import get_agent_workflow, get_chat_llm
+from aria.ui import display_ui_feedback
 
 MAIN_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"
 MEMORY_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"

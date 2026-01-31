@@ -14,8 +14,8 @@ from unittest.mock import patch
 
 import pytest
 
-from aria2.tools.constants import MAX_TIMEOUT
-from aria2.tools.development._internals import (
+from aria.tools.constants import MAX_TIMEOUT
+from aria.tools.development._internals import (
     _build_response,
     _capture_execution_output,
     _create_safe_globals,
@@ -28,7 +28,7 @@ from aria2.tools.development._internals import (
     _validate_inputs,
     _validate_timeout,
 )
-from aria2.tools.development.exceptions import (
+from aria.tools.development.exceptions import (
     PythonExecutionError,
     PythonExecutionTimeoutError,
     PythonRunnerError,

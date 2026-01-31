@@ -11,11 +11,11 @@ from typing import Callable
 
 from loguru import logger
 
-from aria2.tools.development._internals import (
+from aria.tools.development._internals import (
     _error_response,
     _validate_inputs,
 )
-from aria2.tools.development.exceptions import (
+from aria.tools.development.exceptions import (
     PythonExecutionError,
     PythonExecutionTimeoutError,
     PythonRunnerError,

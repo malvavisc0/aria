@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aria2.tools.documentation import tool_help
+from aria.tools.documentation import tool_help
 
 
 def test_tool_help_returns_section_for_known_tool() -> None:

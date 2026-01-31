@@ -14,14 +14,14 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from aria2.tools.constants import BASE_DIR, MAX_FILE_SIZE
-from aria2.tools.files.constants import (
+from aria.tools.constants import BASE_DIR, MAX_FILE_SIZE
+from aria.tools.files.constants import (
     ALLOWED_EXTENSIONS,
     BLOCKED_PATTERNS,
     MAX_CHUNK_SIZE,
     MAX_LINE_LENGTH,
 )
-from aria2.tools.files.exceptions import FileOperationError, FileSecurityError
+from aria.tools.files.exceptions import FileOperationError, FileSecurityError
 
 
 def _timestamp() -> str:

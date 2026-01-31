@@ -14,9 +14,9 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from aria2.tools.constants import MAX_TIMEOUT
-from aria2.tools.development.constants import RESTRICTED_BUILTINS
-from aria2.tools.development.exceptions import (
+from aria.tools.constants import MAX_TIMEOUT
+from aria.tools.development.constants import RESTRICTED_BUILTINS
+from aria.tools.development.exceptions import (
     PythonExecutionError,
     PythonExecutionTimeoutError,
     PythonRunnerError,
@@ -441,7 +441,7 @@ def _read_file_safely(file_path: str) -> str:
     else:
         # Try with BASE_DIR prefix
         try:
-            from aria2.tools.files.constants import BASE_DIR
+            from aria.tools.files.constants import BASE_DIR
 
             potential_path = BASE_DIR / file_path
             if potential_path.exists():

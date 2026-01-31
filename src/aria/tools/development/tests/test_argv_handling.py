@@ -10,7 +10,7 @@ This test suite verifies that:
 
 import json
 
-from aria2.tools.development.python import execute_python_code
+from aria.tools.development.python import execute_python_code
 
 
 class TestArgvHandling:

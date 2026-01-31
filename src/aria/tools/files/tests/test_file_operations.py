@@ -3,7 +3,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from aria2.tools.files.functions import (
+from aria.tools.files.functions import (
     append_to_file,
     copy_file,
     create_directory,
@@ -35,8 +35,8 @@ class TestFileOperations:
         self.base_dir = Path(self.test_dir)
 
         # Patch BASE_DIR in all modules that use it
-        import aria2.tools.files._internals as internals_module
-        import aria2.tools.files.functions as func_module
+        import aria.tools.files._internals as internals_module
+        import aria.tools.files.functions as func_module
 
         func_module.BASE_DIR = self.base_dir
         internals_module.BASE_DIR = self.base_dir

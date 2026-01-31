@@ -21,8 +21,8 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria2.agents.tool_schema import filter_tools_for_llamacpp
-from aria2.tools.documentation import tool_help
+from aria.agents.tool_schema import filter_tools_for_llamacpp
+from aria.tools.documentation import tool_help
 
 FILESYSTEM_TOOLS = "aria2.tools.files"
 
