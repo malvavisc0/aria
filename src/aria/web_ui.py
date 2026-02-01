@@ -33,7 +33,6 @@ MAX_FACTS = 20
 MAX_ITERATIONS = 100
 
 log_path = os.path.expanduser(".files/debug.log")
-logger.remove()
 logger.add(
     log_path,
     rotation="10 MB",
@@ -54,33 +53,23 @@ memory = get_default_memory(
 @cl.data_layer
 def get_data_layer():
     # SQLite file (async URL required by Chainlit's SQLAlchemyDataLayer).
-    # Default matches project convention of storing files under `.files/`.
-    os.makedirs(".files", exist_ok=True)
+    # Stored in `data/` directory for persistence across server restarts.
+    # The `.files/` directory is for temporary data only.
+    os.makedirs("data", exist_ok=True)
 
     # Chainlit does not auto-create its tables; create them from our SQLAlchemy
     # models (idempotent).
-    sync_url = "sqlite:///./.files/chainlit.db"
+    sync_url = "sqlite:///./data/chainlit.db"
     engine = create_engine(sync_url)
 
-    # DEBUG: Check if database has data before create_all
-    from sqlalchemy import text
-
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT COUNT(*) FROM threads")).scalar()
-        logger.debug(f"Database has {result} threads before create_all")
-
+    # Create tables (idempotent - won't drop existing tables)
     Base.metadata.create_all(engine)
-
-    # DEBUG: Check if database still has data after create_all
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT COUNT(*) FROM threads")).scalar()
-        logger.debug(f"Database has {result} threads after create_all")
 
     # Use local storage for elements (images, files, etc.)
     storage_client = LocalStorageClient(storage_path=".files/storage")
 
     return SQLiteSQLAlchemyDataLayer(
-        conninfo="sqlite+aiosqlite:///./.files/chainlit.db",
+        conninfo="sqlite+aiosqlite:///./data/chainlit.db",
         storage_provider=storage_client,
         show_logger=True,  # Enable to debug data layer issues
     )
@@ -98,7 +87,7 @@ async def auth_callback(username: str, password: str):
     from aria.db.models import User
 
     # Create database session (sync since this is a sync callback)
-    sync_url = "sqlite:///./.files/chainlit.db"
+    sync_url = "sqlite:///./data/chainlit.db"
     engine = create_engine(sync_url)
     session = Session(engine)
 

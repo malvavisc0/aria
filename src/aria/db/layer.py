@@ -156,6 +156,17 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                     s.get("generation"), default={}
                 )
 
+                # FIX: Promote assistant messages to root level for thread display
+                # Chainlit only displays root-level messages (parentId=NULL) in thread history.
+                # Messages created inside workflow context get parentId set automatically,
+                # but we want them to appear in thread history, so we clear parentId on read.
+                if s.get("type") == "assistant_message" and s.get("parentId"):
+                    logger.debug(
+                        f"Promoting assistant message {s.get('id')} to root level "
+                        f"(was child of {s.get('parentId')})"
+                    )
+                    s["parentId"] = None
+
             for e in t.get("elements") or []:
                 e["props"] = _json_loads_or(e.get("props"), default={})
 

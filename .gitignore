@@ -17,3 +17,9 @@ wheels/
 # - Everything else under `.files/` is ignored.
 .files/**
 !.files/**/.gitkeep
+
+# Persistent data directory (track structure, not contents)
+# The `data/` directory stores persistent application data like databases
+# that should survive server restarts, unlike `.files/` which is temporary.
+data/**
+!data/.gitkeep

@@ -44,8 +44,7 @@ from aria.db.models import Base, User
 
 # Configure loguru to not interfere with Rich console output
 # Remove default handler and add one that writes to a file
-log_path = os.path.expanduser("~/.aria/debug.log")
-logger.remove()
+log_path = os.path.expanduser(".files/debug.log")
 logger.add(
     log_path,
     rotation="10 MB",
@@ -295,8 +294,8 @@ def enhancer(query: Annotated[str, typer.Option(prompt=">")]):
 
 def _get_db_session() -> Session:
     """Get a database session for user management commands."""
-    os.makedirs(".files", exist_ok=True)
-    sync_url = "sqlite:///./.files/chainlit.db"
+    os.makedirs("data", exist_ok=True)
+    sync_url = "sqlite:///./data/chainlit.db"
     engine = create_engine(sync_url)
     Base.metadata.create_all(engine)
     return Session(engine)
