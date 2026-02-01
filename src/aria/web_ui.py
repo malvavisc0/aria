@@ -18,13 +18,13 @@ from llama_index.core.agent.workflow import AgentStream, ToolCall
 from loguru import logger
 
 from aria.llm import get_agent_workflow, get_chat_llm, get_default_memory
-from aria.ui import display_ui_feedback
+from aria.ui import maybe_remove_step, send_tool_step
 
 MAIN_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"
 MEMORY_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"
-CHAT_MEMORY_TOKEN_LIMIT = 1024 * 24
+CHAT_MEMORY_TOKEN_LIMIT = 1024 * 8
 MAX_FACTS = 20
-MAX_ITERATIONS = 50
+MAX_ITERATIONS = 100
 
 log_path = os.path.expanduser(".files/debug.log")
 logger.remove()
@@ -63,13 +63,14 @@ async def main(message: cl.Message):
     """
     msg = cl.Message(content="")
 
-    handler = workflow.run(user_msg=message.content, memory=memory)
+    handler = workflow.run(
+        user_msg=message.content, memory=memory, max_iterations=MAX_ITERATIONS
+    )
 
+    step: cl.Step | None = None
     # Stream events as they arrive
     async for event in handler.stream_events():
-        if isinstance(event, AgentStream):
-            await msg.stream_token(event.delta)
-        elif isinstance(event, ToolCall):
+        if isinstance(event, ToolCall):
             logger.debug(
                 {
                     "tool_id": event.tool_id,
@@ -77,7 +78,11 @@ async def main(message: cl.Message):
                     "tool_kwargs": event.tool_kwargs,
                 }
             )
-            await display_ui_feedback(event=event, message=msg)
+
+            step = await send_tool_step(event)
+        elif isinstance(event, AgentStream):
+            step = await maybe_remove_step(step)
+            await msg.stream_token(event.delta)
 
     await msg.update()
 

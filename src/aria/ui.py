@@ -1,8 +1,10 @@
 """UI-related constants/helpers for displaying tool activity."""
 
-from typing import Dict
+from __future__ import annotations
 
-from chainlit import Message as ChainlitMessage
+from typing import Dict, Optional
+
+import chainlit as cl
 from llama_index.core.agent.workflow import ToolCall
 
 # Emoji prefix for tool-call notifications in the UI.
@@ -60,32 +62,47 @@ TOOL_EMOJI: Dict[str, str] = {
 }
 
 
-async def display_ui_feedback(event: ToolCall, message: ChainlitMessage):
-    """
-    Logs a tool call event to the debug log and streams the tool call
-    information to the user message.
+async def send_tool_step(event: ToolCall) -> cl.Step:
+    """Create + send a tool Step for a ToolCall event."""
 
-    Args:
-        event (ToolCall): The tool call event containing details about the tool
-            being called and its parameters.
-        message (cl.Message): The Chainlit message object to which the tool
-            call information will be streamed.
+    label = _step_label_from_tool_call(event)
+    step = _make_tool_step(label)
+    await step.send()
+    return step
 
-    Returns:
-        None: This function does not return any value. It logs the event and
-            streams information to the message.
+
+async def maybe_remove_step(step: Optional[cl.Step]) -> None:
+    """Remove a Step if present."""
+
+    if step is None:
+        return
+    await step.remove()
+    step = None
+    return step
+
+
+def _step_label_from_tool_call(event: ToolCall) -> str:
+    """Best-effort label for a tool call.
+
+    Keeps current behavior: prefer `intent`, else `reason`, else tool name.
     """
+
     tool_name = (event.tool_name or "").strip() or "<unknown_tool>"
-    emoji = TOOL_EMOJI.get(tool_name, "❔")
     tool_kwargs = event.tool_kwargs or {}
     label = tool_kwargs.get("intent", None)
     if not label:
         label = tool_kwargs.get("reason", None)
     if isinstance(label, str) and label.strip():
-        line = f"{emoji} {label.strip().capitalize()}"
-    else:
-        line = f"{emoji} [{tool_name}]"
+        return label
+    return tool_name
 
-    # Avoid Markdown blockquote (`>`) because it can unintentionally capture
-    # subsequent streamed tokens until a blank line is emitted.
-    await message.stream_token(f"\n- *{line}*\n\n")
+
+def _make_tool_step(label: str) -> cl.Step:
+    """Create a tool Step with the current UI preferences.
+
+    Keeps current behavior: `show_input=False`, `default_open=False`.
+    """
+
+    return cl.Step(
+        name=label, type="tool", show_input=False, default_open=False
+    )
