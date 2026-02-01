@@ -223,6 +223,16 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                     step.get("generation"), default={}
                 )
 
+                # FIX: Promote assistant messages to root level for thread display
+                if step.get("type") == "assistant_message" and step.get(
+                    "parentId"
+                ):
+                    logger.debug(
+                        f"Promoting assistant message {step.get('id')} to root level "
+                        f"(was child of {step.get('parentId')})"
+                    )
+                    step["parentId"] = None
+
             # Deserialize nested elements
             for element in thread.get("elements") or []:
                 element["props"] = _json_loads_or(

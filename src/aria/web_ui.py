@@ -147,9 +147,14 @@ async def on_chat_resume(thread: ThreadDict):
     steps = thread.get("steps", [])
     logger.debug(f"Thread has {len(steps)} total steps")
 
+    # Filter for root-level messages only (parentId == None)
+    # This matches the official Chainlit pattern from the cookbook
+    root_messages = [m for m in steps if m.get("parentId") is None]
+    logger.debug(f"Thread has {len(root_messages)} root-level messages")
+
     # Restore the conversation history by replaying messages into memory
     # Chainlit automatically displays the messages in the UI from the database
-    for step in steps:
+    for step in root_messages:
         step_type = step.get("type")
         content = step.get("output", "")
 
@@ -169,7 +174,7 @@ async def on_chat_resume(thread: ThreadDict):
             logger.debug(f"Restored assistant message: {content[:50]}...")
 
     logger.debug(
-        f"Restored {len([s for s in steps if s.get('output')])} messages for thread {thread.get('id')}"
+        f"Restored {len([s for s in root_messages if s.get('output')])} messages for thread {thread.get('id')}"
     )
 
 
