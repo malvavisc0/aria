@@ -98,36 +98,34 @@ async def auth_callback(username: str, password: str):
     # Create database session (sync since this is a sync callback)
     sync_url = "sqlite:///./data/chainlit.db"
     engine = create_engine(sync_url)
-    session = Session(engine)
 
     try:
-        # Find user by identifier (username)
-        user = session.execute(
-            select(User).where(User.identifier == username)
-        ).scalar_one_or_none()
+        with Session(engine) as session:
+            # Find user by identifier (username)
+            user = session.execute(
+                select(User).where(User.identifier == username)
+            ).scalar_one_or_none()
 
-        if not user:
-            logger.debug(f"User not found: {username}")
+            if not user:
+                logger.debug(f"User not found: {username}")
+                return None
+
+            # Verify password using new password field
+            # Type ignore needed because SQLAlchemy's type system doesn't fully capture runtime values
+            if user.password and verify_password(password, str(user.password)):  # type: ignore
+                metadata = json.loads(str(user.metadata_))  # type: ignore
+                logger.debug(f"User authenticated: {username}")
+                return cl.User(
+                    identifier=str(user.identifier),  # type: ignore
+                    metadata=metadata,
+                )
+
+            logger.debug(f"Invalid password for user: {username}")
             return None
-
-        # Verify password using new password field
-        # Type ignore needed because SQLAlchemy's type system doesn't fully capture runtime values
-        if user.password and verify_password(password, str(user.password)):  # type: ignore
-            metadata = json.loads(str(user.metadata_))  # type: ignore
-            logger.debug(f"User authenticated: {username}")
-            return cl.User(
-                identifier=str(user.identifier),  # type: ignore
-                metadata=metadata,
-            )
-
-        logger.debug(f"Invalid password for user: {username}")
-        return None
 
     except Exception as e:
         logger.error(f"Authentication error: {e}")
         return None
-    finally:
-        session.close()
 
 
 @cl.on_chat_start
