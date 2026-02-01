@@ -95,16 +95,10 @@ def _step_label_from_tool_call(event: ToolCall) -> str:
     if not label:
         label = tool_kwargs.get("reason", None)
 
-    prefix = TOOL_EMOJI.get(tool_name, ":-|")
+    if isinstance(label, str):
+        return label.strip()
 
-    # Keep the existing preference order for human labels, but always include
-    # the tool name for clarity when `intent`/`reason` is used.
-    if isinstance(label, str) and label.strip():
-        if label.strip() == tool_name:
-            return f"{prefix} {tool_name}"
-        return f"{prefix} {tool_name}: {label.strip()}"
-
-    return f"{prefix} {tool_name}"
+    return f"{tool_name}"
 
 
 def _make_tool_step(label: str) -> cl.Step:
