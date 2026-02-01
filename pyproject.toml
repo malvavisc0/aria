@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "Malvavisc0", email = "207609879+malvavisc0@users.noreply.github.com" }
+    { name = "Malvavisc0", email = "207609879+malvavisc0@users.noreply.github.com" },
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -34,6 +34,7 @@ dev = [
     "flake8>=7.3.0",
     "isort>=7.0.0",
     "pytest>=9.0.2",
+    "pytest-asyncio>=0.24.0",
     "pytest-cov>=7.0.0",
 ]
 
