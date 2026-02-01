@@ -26,11 +26,20 @@ from aria.db.models import Base
 from aria.llm import get_agent_workflow, get_chat_llm, get_default_memory
 from aria.ui import maybe_remove_step, send_tool_step
 
-MAIN_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"
-MEMORY_LLAMACPP_API_URL = "http://skynet.tago.lan:7070/v1"
-CHAT_MEMORY_TOKEN_LIMIT = 1024 * 8
-MAX_FACTS = 20
-MAX_ITERATIONS = 100
+
+def _get_required_env(key: str) -> str:
+    """Get required environment variable or raise an error."""
+    value = os.getenv(key)
+    if value is None:
+        raise ValueError(f"Required environment variable '{key}' is not set")
+    return value
+
+
+MAIN_LLAMACPP_API_URL = _get_required_env("MAIN_LLAMACPP_API_URL")
+MEMORY_LLAMACPP_API_URL = _get_required_env("MEMORY_LLAMACPP_API_URL")
+CHAT_MEMORY_TOKEN_LIMIT = int(_get_required_env("CHAT_MEMORY_TOKEN_LIMIT"))
+MAX_FACTS = int(_get_required_env("MAX_FACTS"))
+MAX_ITERATIONS = int(_get_required_env("MAX_ITERATIONS"))
 
 log_path = os.path.expanduser(".files/debug.log")
 logger.add(
