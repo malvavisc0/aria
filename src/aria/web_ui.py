@@ -111,12 +111,12 @@ async def auth_callback(username: str, password: str):
                 return None
 
             # Verify password using new password field
-            # Type ignore needed because SQLAlchemy's type system doesn't fully capture runtime values
-            if user.password and verify_password(password, str(user.password)):  # type: ignore
-                metadata = json.loads(str(user.metadata_))  # type: ignore
+            user_password = str(user.password)
+            if user_password and verify_password(password, user_password):
+                metadata = json.loads(str(user.metadata_))
                 logger.debug(f"User authenticated: {username}")
                 return cl.User(
-                    identifier=str(user.identifier),  # type: ignore
+                    identifier=str(user.identifier),
                     metadata=metadata,
                 )
 

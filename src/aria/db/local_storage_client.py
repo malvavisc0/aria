@@ -88,7 +88,7 @@ class LocalStorageClient(BaseStorageClient):
             # Write file
             if isinstance(data, bytes):
                 async with aiofiles.open(file_path, "wb") as f:
-                    await f.write(data)  # type: ignore
+                    await f.write(data)
             else:
                 async with aiofiles.open(file_path, "w") as f:
                     await f.write(str(data))

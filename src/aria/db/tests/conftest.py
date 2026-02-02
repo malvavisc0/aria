@@ -353,6 +353,6 @@ async def raw_db_query(db_session: AsyncSession) -> Callable:
         except Exception:
             # For INSERT/UPDATE/DELETE queries
             await db_session.commit()
-            return result.rowcount  # type: ignore
+            return result.rowcount
 
     return _execute_query

@@ -32,7 +32,10 @@ class TestUserModel:
         )
         retrieved_user = result.scalar_one()
         assert retrieved_user is not None
-        assert retrieved_user.identifier == "test@example.com"  # type: ignore[comparison-overlap]
+        assert (
+            retrieved_user.identifier
+            == "test@example.com"[comparison - overlap]
+        )
 
     @pytest.mark.asyncio
     async def test_user_metadata_column_mapping(
@@ -104,7 +107,7 @@ class TestUserModel:
             select(User).where(User.id == user.id)
         )
         retrieved_user = result.scalar_one()
-        assert retrieved_user.password == password_hash  # type: ignore
+        assert retrieved_user.password == password_hash
 
     @pytest.mark.asyncio
     async def test_user_without_password(self, db_session: AsyncSession):
@@ -124,7 +127,7 @@ class TestUserModel:
             select(User).where(User.id == user.id)
         )
         retrieved_user = result.scalar_one()
-        assert retrieved_user.password is None  # type: ignore
+        assert retrieved_user.password is None
 
 
 class TestThreadModel:
@@ -148,7 +151,7 @@ class TestThreadModel:
             select(Thread).where(Thread.id == thread.id)
         )
         retrieved_thread = result.scalar_one()
-        assert retrieved_thread.name == "Test Thread"  # type: ignore[comparison-overlap]
+        assert retrieved_thread.name == "Test Thread"[comparison - overlap]
 
     @pytest.mark.asyncio
     async def test_thread_user_relationship(self, db_session: AsyncSession):
@@ -177,7 +180,7 @@ class TestThreadModel:
         )
         retrieved_thread = result.scalar_one()
         # Note: Relationship loading may require explicit loading in async context
-        assert retrieved_thread.userId == user.id  # type: ignore[comparison-overlap]
+        assert retrieved_thread.userId == user.id[comparison - overlap]
 
 
 class TestCascadeDeletes:

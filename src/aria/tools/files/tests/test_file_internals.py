@@ -100,7 +100,7 @@ class TestValidateInputs:
     def test_non_string_filename(self):
         """Test validation with non-string filename."""
         with pytest.raises(FileSecurityError, match="Invalid file name"):
-            _validate_inputs(123)  # type: ignore
+            _validate_inputs(123)
 
     def test_path_traversal_attempt(self):
         """Test validation detects path traversal."""

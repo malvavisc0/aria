@@ -375,12 +375,12 @@ def reset_password(
             raise typer.Exit(1)
 
         # Update password field
-        user.password = hash_password(password)  # type: ignore
+        user.password = hash_password(password)
 
         # Update metadata with timestamp for audit trail
-        metadata = json.loads(user.metadata_)  # type: ignore
+        metadata = json.loads(user.metadata_)
         metadata["password_updated_at"] = datetime.datetime.now().isoformat()
-        user.metadata_ = json.dumps(metadata)  # type: ignore
+        user.metadata_ = json.dumps(metadata)
 
         session.commit()
 
@@ -429,7 +429,7 @@ def update_user(
             raise typer.Exit(1)
 
         # Update metadata
-        metadata = json.loads(user.metadata_)  # type: ignore
+        metadata = json.loads(user.metadata_)
 
         if role:
             metadata["role"] = role
@@ -444,7 +444,7 @@ def update_user(
 
         metadata["updated_at"] = datetime.datetime.now().isoformat()
 
-        user.metadata_ = json.dumps(metadata)  # type: ignore
+        user.metadata_ = json.dumps(metadata)
         session.commit()
 
         console.print(
@@ -479,13 +479,13 @@ def list_users():
         table.add_column("Created At", style="dim")
 
         for user in users:
-            metadata = json.loads(user.metadata_)  # type: ignore
+            metadata = json.loads(user.metadata_)
             role = metadata.get("role", "unknown")
             table.add_row(
-                str(user.id),  # type: ignore
-                str(user.identifier),  # type: ignore
+                str(user.id),
+                str(user.identifier),
                 role,
-                str(user.createdAt or ""),  # type: ignore
+                str(user.createdAt or ""),
             )
 
         console.print(table)

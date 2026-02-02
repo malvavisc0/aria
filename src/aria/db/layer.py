@@ -78,7 +78,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
             user_id=user_id,
             metadata=metadata,
             # Store as JSON string (TEXT column).
-            tags=tags_json,  # type: ignore[arg-type]
+            tags=tags_json,  [arg-type]
         )
 
     async def create_step(self, step_dict: StepDict):

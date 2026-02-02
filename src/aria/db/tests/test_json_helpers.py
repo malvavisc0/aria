@@ -99,7 +99,7 @@ class TestJsonDumpsOrNone:
     def test_dumps_circular_reference_raises_error(self):
         """Test _json_dumps_or_none with circular reference."""
         data: dict = {"key": "value"}
-        data["self"] = data  # Create circular reference  # type: ignore
+        data["self"] = data  # Create circular reference
 
         with pytest.raises(ValueError):
             _json_dumps_or_none(data)

@@ -40,10 +40,10 @@ class TestPasswordAuthentication:
         retrieved_user = result.scalar_one()
 
         # Correct password should verify
-        assert verify_password(password, retrieved_user.password)  # type: ignore
+        assert verify_password(password, retrieved_user.password)
 
         # Wrong password should not verify
-        assert not verify_password("wrong_password", retrieved_user.password)  # type: ignore
+        assert not verify_password("wrong_password", retrieved_user.password)
 
     @pytest.mark.asyncio
     async def test_password_hash_uniqueness(self, db_session: AsyncSession):
@@ -71,11 +71,11 @@ class TestPasswordAuthentication:
         await db_session.commit()
 
         # Hashes should be different (different salts)
-        assert str(user1.password) != str(user2.password)  # type: ignore
+        assert str(user1.password) != str(user2.password)
 
         # But both should verify with the same password
-        assert verify_password(password, user1.password)  # type: ignore
-        assert verify_password(password, user2.password)  # type: ignore
+        assert verify_password(password, user1.password)
+        assert verify_password(password, user2.password)
 
     @pytest.mark.asyncio
     async def test_user_without_password_authentication(
@@ -120,7 +120,7 @@ class TestPasswordAuthentication:
 
         # Update password
         new_password = "new_password"
-        user.password = hash_password(new_password)  # type: ignore
+        user.password = hash_password(new_password)
         await db_session.commit()
 
         # Retrieve user
@@ -130,7 +130,7 @@ class TestPasswordAuthentication:
         retrieved_user = result.scalar_one()
 
         # Old password should not work
-        assert not verify_password(old_password, retrieved_user.password)  # type: ignore
+        assert not verify_password(old_password, retrieved_user.password)
 
         # New password should work
-        assert verify_password(new_password, retrieved_user.password)  # type: ignore
+        assert verify_password(new_password, retrieved_user.password)
