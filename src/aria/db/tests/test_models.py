@@ -32,10 +32,7 @@ class TestUserModel:
         )
         retrieved_user = result.scalar_one()
         assert retrieved_user is not None
-        assert (
-            retrieved_user.identifier
-            == "test@example.com"[comparison - overlap]
-        )
+        assert retrieved_user.identifier == "test@example.com"
 
     @pytest.mark.asyncio
     async def test_user_metadata_column_mapping(
@@ -151,7 +148,7 @@ class TestThreadModel:
             select(Thread).where(Thread.id == thread.id)
         )
         retrieved_thread = result.scalar_one()
-        assert retrieved_thread.name == "Test Thread"[comparison - overlap]
+        assert retrieved_thread.name == "Test Thread"
 
     @pytest.mark.asyncio
     async def test_thread_user_relationship(self, db_session: AsyncSession):
@@ -180,7 +177,7 @@ class TestThreadModel:
         )
         retrieved_thread = result.scalar_one()
         # Note: Relationship loading may require explicit loading in async context
-        assert retrieved_thread.userId == user.id[comparison - overlap]
+        assert retrieved_thread.userId == user.id
 
 
 class TestCascadeDeletes:
