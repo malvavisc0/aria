@@ -30,15 +30,17 @@ class LocalStorageClient(BaseStorageClient):
         {'object_key': 'image.png', 'url': 'file://.../.files/storage/image.png'}
     """
 
-    def __init__(self, storage_path: Path, base_url: str = "file://"):
+    def __init__(
+        self, storage_path: Union[str, Path], base_url: str = "file://"
+    ):
         """Initialize local storage client.
 
         Args:
-            storage_path: Directory path for storing files
+            storage_path: Directory path for storing files (str or Path)
             base_url: Base URL for file access (use "file://" for local,
                      or "http://localhost:8000/files/" if serving via HTTP)
         """
-        self.storage_path = storage_path
+        self.storage_path = Path(storage_path)
         self.base_url = base_url.rstrip("/")
 
         # Create storage directory if it doesn't exist
