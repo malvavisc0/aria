@@ -2,15 +2,12 @@ import platform
 import uuid
 from datetime import datetime
 
-from llama_index.core.agent.workflow import (
-    AgentWorkflow,
-)
-from llama_index.core.memory import (
-    FactExtractionMemoryBlock,
-    InsertMethod,
-    Memory,
-)
+from chromadb.api import ClientAPI as ChromaClientAPI
+from llama_index.core.agent.workflow import AgentWorkflow
+from llama_index.core.memory import InsertMethod, Memory, VectorMemoryBlock
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
+from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from aria.agents import (
     get_chatter_agent,
@@ -184,14 +181,26 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
     return workflow
 
 
-def get_default_memory(llm: OpenAI, tokens: int, max_facts: int) -> Memory:
+def get_default_memory(
+    vector_db: ChromaClientAPI,
+    embed_model: OpenAIEmbedding,
+    thread_id: str,
+) -> Memory:
+    chroma_collection = vector_db.get_or_create_collection(thread_id)
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+    vector_block = VectorMemoryBlock(
+        vector_store=vector_store,
+        embed_model=embed_model,
+        similarity_top_k=3,  # Retrieve top 3 similar messages
+        priority=2,  # For multi-block setups
+    )
     memory = Memory.from_defaults(
-        insert_method=InsertMethod.USER,
-        token_limit=tokens,
-        token_flush_size=1024 * 4,
-        chat_history_token_ratio=0.7,
-        memory_blocks=[
-            FactExtractionMemoryBlock(llm=llm, max_facts=max_facts, priority=1)
-        ],
+        insert_method=InsertMethod.SYSTEM,  # Insert retrieved memory as system prompts
+        memory_blocks=[vector_block],
     )
     return memory
+
+
+def get_embeddings_model(api_base: str, model: str) -> OpenAIEmbedding:
+    return OpenAIEmbedding(model=model, api_base=api_base, api_key="sk-dummy")

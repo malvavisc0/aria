@@ -1,18 +1,3 @@
-"""
-Aria2 Chainlit web UI.
-
-This module wires Chainlit event handlers into a LlamaIndex AgentWorkflow
-that coordinates specialist agents through handoffs.
-
-Conversation state is stored per-Chainlit-session using a token-limited
-`ChatMemoryBuffer`. The workflow manages specialist agents and handoffs.
-
-The workflow manages agent handoffs and maintains conversation context across
-specialist interactions.
-"""
-
-import os
-
 import chainlit as cl
 from chainlit.types import ThreadDict
 from llama_index.core.agent.workflow import AgentStream, ToolCall
@@ -20,28 +5,28 @@ from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from loguru import logger
 from sqlalchemy import create_engine
 
+from aria.config import (
+    CHAT_HISTORY_DB_URL,
+    DEBUG_LOGS_PATH,
+    EMBEDDINGS_API_URL,
+    EMBEDDINGS_MODEL,
+    LLM,
+    LOCAL_STORAGE_PATH,
+    MAX_ITERATIONS,
+    SQLITE_CONN_INFO,
+    VECTOR_DB,
+)
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
-from aria.llm import get_agent_workflow, get_chat_llm, get_default_memory
+from aria.llm import (
+    get_agent_workflow,
+    get_default_memory,
+    get_embeddings_model,
+)
 from aria.ui import maybe_remove_step, send_tool_step
 
-
-def _get_required_env(key: str) -> str:
-    """Get required environment variable or raise an error."""
-    value = os.getenv(key)
-    if value is None:
-        raise ValueError(f"Required environment variable '{key}' is not set")
-    return value
-
-
-MAIN_LLAMACPP_API_URL = _get_required_env("MAIN_LLAMACPP_API_URL")
-MEMORY_LLAMACPP_API_URL = _get_required_env("MEMORY_LLAMACPP_API_URL")
-CHAT_MEMORY_TOKEN_LIMIT = int(_get_required_env("CHAT_MEMORY_TOKEN_LIMIT"))
-MAX_FACTS = int(_get_required_env("MAX_FACTS"))
-MAX_ITERATIONS = int(_get_required_env("MAX_ITERATIONS"))
-
-log_path = os.path.expanduser(".files/debug.log")
+log_path = DEBUG_LOGS_PATH
 logger.add(
     log_path,
     rotation="10 MB",
@@ -52,33 +37,19 @@ logger.add(
     ),
 )
 
-shared_llm = get_chat_llm(api_base=MAIN_LLAMACPP_API_URL)
-workflow = get_agent_workflow(llm=shared_llm)
-memory = get_default_memory(
-    llm=shared_llm, tokens=CHAT_MEMORY_TOKEN_LIMIT, max_facts=MAX_FACTS
-)
-
 
 @cl.data_layer
 def get_data_layer():
-    # SQLite file (async URL required by Chainlit's SQLAlchemyDataLayer).
-    # Stored in `data/` directory for persistence across server restarts.
-    # The `.files/` directory is for temporary data only.
-    os.makedirs("data", exist_ok=True)
-
-    # Chainlit does not auto-create its tables; create them from our SQLAlchemy
-    # models (idempotent).
-    sync_url = "sqlite:///./data/chainlit.db"
-    engine = create_engine(sync_url)
+    engine = create_engine(CHAT_HISTORY_DB_URL)
 
     # Create tables (idempotent - won't drop existing tables)
     Base.metadata.create_all(engine)
 
     # Use local storage for elements (images, files, etc.)
-    storage_client = LocalStorageClient(storage_path=".files/storage")
+    storage_client = LocalStorageClient(storage_path=LOCAL_STORAGE_PATH)
 
     return SQLiteSQLAlchemyDataLayer(
-        conninfo="sqlite+aiosqlite:///./data/chainlit.db",
+        conninfo=SQLITE_CONN_INFO,
         storage_provider=storage_client,
         show_logger=True,  # Enable to debug data layer issues
     )
@@ -96,8 +67,7 @@ async def auth_callback(username: str, password: str):
     from aria.db.models import User
 
     # Create database session (sync since this is a sync callback)
-    sync_url = "sqlite:///./data/chainlit.db"
-    engine = create_engine(sync_url)
+    engine = create_engine(CHAT_HISTORY_DB_URL)
 
     try:
         with Session(engine) as session:
@@ -129,7 +99,7 @@ async def auth_callback(username: str, password: str):
 
 
 @cl.on_chat_start
-async def start():
+async def on_chat_start():
     """
     Chainlit chat-start handler.
 
@@ -149,7 +119,9 @@ async def on_chat_resume(thread: ThreadDict):
     Args:
         thread: The thread data containing steps (messages) and metadata
     """
-    logger.debug(f"Resuming thread: {thread.get('id')} - {thread.get('name')}")
+    thread_id = thread.get("id")
+    thread_name = thread.get("name")
+    logger.debug(f"Resuming thread: {thread_id} - {thread_name}")
 
     steps = thread.get("steps", [])
     logger.debug(f"Thread has {len(steps)} total steps")
@@ -158,6 +130,14 @@ async def on_chat_resume(thread: ThreadDict):
     # This matches the official Chainlit pattern from the cookbook
     root_messages = [m for m in steps if m.get("parentId") is None]
     logger.debug(f"Thread has {len(root_messages)} root-level messages")
+
+    memory = get_default_memory(
+        vector_db=VECTOR_DB,
+        thread_id=thread_id,
+        embed_model=get_embeddings_model(
+            api_base=EMBEDDINGS_API_URL, model=EMBEDDINGS_MODEL
+        ),
+    )
 
     # Restore the conversation history by replaying messages into memory
     # Chainlit automatically displays the messages in the UI from the database
@@ -186,7 +166,7 @@ async def on_chat_resume(thread: ThreadDict):
 
 
 @cl.on_message
-async def main(message: cl.Message):
+async def on_message(message: cl.Message):
     """
     Chainlit message handler.
 
@@ -196,6 +176,16 @@ async def main(message: cl.Message):
     # Create assistant message at root level (no parent_id)
     # By creating it outside any step context, it will be a root-level message
     msg = cl.Message(content="", parent_id=None)
+
+    memory = get_default_memory(
+        vector_db=VECTOR_DB,
+        thread_id=message.thread_id,
+        embed_model=get_embeddings_model(
+            api_base=EMBEDDINGS_API_URL, model=EMBEDDINGS_MODEL
+        ),
+    )
+
+    workflow = get_agent_workflow(llm=LLM)
 
     handler = workflow.run(
         user_msg=message.content, memory=memory, max_iterations=MAX_ITERATIONS
