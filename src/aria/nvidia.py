@@ -398,3 +398,127 @@ def get_nvidia_smi_version() -> str:
         return match.group(1) if match else ""
     except (subprocess.CalledProcessError, FileNotFoundError):
         return ""
+
+
+def calculate_max_safe_context(
+    free_vram_mb: int, model_size_mb: int = 0, is_embedding_model: bool = False
+) -> int:
+    """
+    Calculate the maximum safe context size (in tokens) for a language model or embedding
+    model based on available VRAM, accounting for the model's memory requirements and
+    applying a safety margin.
+
+    The function uses tiered thresholds that provide appropriate context sizes for different
+    VRAM capacities, with more conservative values for embedding models. It validates inputs
+    to prevent errors and ensures at least a minimum context size is always available when
+    possible. The function distinguishes between regular language models and embedding models
+    through a boolean flag, providing optimized context sizes for each type of model.
+
+    Process:
+    1. Validates input parameters (type and value checks)
+    2. Subtracts model size from free VRAM to get available memory
+    3. Applies a 10% safety margin to available memory
+    4. Checks if safe memory meets minimum tier threshold
+    5. Selects appropriate tier based on safe memory
+    6. Returns context size (enforcing minimum of 1024 tokens)
+
+    Args:
+        free_vram_mb: Currently free VRAM in megabytes (from get_free_vram_per_gpu)
+        model_size_mb: Size of the model being loaded in megabytes (including embeddings)
+        is_embedding_model: Whether this is an embedding model (default: False)
+
+    Returns:
+        Maximum safe context size in tokens (0 if VRAM is insufficient)
+
+    Examples:
+        >>> # LLM with 16GB free VRAM, no model loaded
+        >>> calculate_max_safe_context(16384, 0, False)
+        32768
+
+        >>> # Embedding model with 8GB free VRAM
+        >>> calculate_max_safe_context(8192, 0, True)
+        1024
+
+        >>> # LLM with 10GB free, 2GB model
+        >>> calculate_max_safe_context(10240, 2048, False)
+        16384
+    """
+    # Constants
+    SAFETY_MARGIN = 0.10  # 10% safety margin for other operations
+    MIN_CONTEXT = 1024  # Minimum context size in tokens
+
+    # Embedding-specific thresholds (more conservative, more granular)
+    # Format: (memory_threshold_gb, context_tokens)
+    EMBEDDING_TIERS = [
+        (2, 256),  # 2GB → 256 tokens
+        (3, 384),  # 3GB → 384 tokens
+        (4, 512),  # 4GB → 512 tokens
+        (6, 768),  # 6GB → 768 tokens
+        (8, 1024),  # 8GB → 1024 tokens
+        (12, 1536),  # 12GB → 1536 tokens
+        (16, 2048),  # 16GB → 2048 tokens
+        (24, 3072),  # 24GB → 3072 tokens
+        (32, 4096),  # 32GB+ → 4096 tokens (max for embeddings)
+    ]
+
+    # Regular LLM tiers (more granular)
+    # Format: (memory_threshold_gb, context_tokens)
+    LLM_TIERS = [
+        (4, 2048),  # 4GB → 2,048 tokens
+        (6, 4096),  # 6GB → 4,096 tokens
+        (8, 8192),  # 8GB → 8,192 tokens
+        (10, 12288),  # 10GB → 12,288 tokens
+        (12, 16384),  # 12GB → 16,384 tokens
+        (14, 24576),  # 14GB → 24,576 tokens
+        (16, 32768),  # 16GB → 32,768 tokens
+        (20, 49152),  # 20GB → 49,152 tokens
+        (24, 65536),  # 24GB → 65,536 tokens
+        (28, 131072),  # 28GB → 131,072 tokens
+        (32, 262144),  # 32GB → 262,144 tokens
+        (40, 393216),  # 40GB → 393,216 tokens
+        (48, 524288),  # 48GB → 524,288 tokens
+        (64, 786432),  # 64GB → 786,432 tokens
+        (96, 1048576),  # 96GB → 1,048,576 tokens
+        (128, 1572864),  # 128GB → 1,572,864 tokens
+        (192, 2097152),  # 192GB+ → 2,097,152 tokens (max for LLMs)
+    ]
+
+    # Select appropriate tier list based on model type
+    tiers = EMBEDDING_TIERS if is_embedding_model else LLM_TIERS
+
+    # Absolute minimum memory threshold (below this, return 0)
+    # This is lower than the first tier to allow the tier selection to work
+    ABSOLUTE_MIN_GB = 1.5
+
+    # Comprehensive input validation
+    if not isinstance(free_vram_mb, int) or not isinstance(model_size_mb, int):
+        return 0
+    if free_vram_mb <= 0 or model_size_mb < 0:
+        return 0
+    if model_size_mb > 0 and free_vram_mb < model_size_mb:
+        return 0
+
+    # Calculate memory available after loading model
+    available_after_model = free_vram_mb - model_size_mb
+
+    # Apply safety margin
+    safe_memory_mb = available_after_model * (1 - SAFETY_MARGIN)
+    safe_memory_gb = safe_memory_mb / 1024
+
+    # Check if we have enough for absolute minimum threshold
+    if safe_memory_gb < ABSOLUTE_MIN_GB:
+        return 0
+
+    # Find the appropriate tier based on safe memory
+    # Select the first tier where safe_memory_gb <= threshold
+    context_size = MIN_CONTEXT
+    for threshold_gb, tokens in tiers:
+        if safe_memory_gb <= threshold_gb:
+            context_size = tokens
+            break
+    else:
+        # If no tier matched (memory exceeds all thresholds), use maximum tier
+        context_size = tiers[-1][1]
+
+    # Ensure we return at least the minimum context
+    return max(MIN_CONTEXT, context_size)
