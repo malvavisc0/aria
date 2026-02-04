@@ -9,9 +9,11 @@ Run with: uv run pytest src/aria/tests/test_nvidia_integration.py -v
 import pytest
 
 from aria.nvidia import (
+    GPUMetadata,
     check_gpu_memory_usage,
     check_nvidia_smi_available,
     detect_gpu_count,
+    detect_gpus_with_details,
     detect_nvlink,
     get_free_vram_per_gpu,
     get_nvidia_smi_version,
@@ -157,6 +159,97 @@ class TestNvidiaIntegration:
         for free_vram in free_vram_list:
             assert free_vram <= total_vram
 
+    def test_detect_gpus_with_details_returns_list(self):
+        """Test that detect_gpus_with_details returns a list of GPUMetadata."""
+        gpus = detect_gpus_with_details()
+
+        assert isinstance(gpus, list)
+        assert len(gpus) > 0
+
+        for gpu in gpus:
+            assert isinstance(gpu, GPUMetadata)
+
+    def test_gpu_details_count_matches_gpu_count(self):
+        """Verify detailed GPU list length matches GPU count."""
+        gpu_count = detect_gpu_count()
+        gpus = detect_gpus_with_details()
+
+        assert len(gpus) == gpu_count
+
+    def test_gpu_details_have_valid_data(self):
+        """Test that GPU details contain valid data."""
+        gpus = detect_gpus_with_details()
+
+        for gpu in gpus:
+            # Index should be non-negative
+            assert gpu.index >= 0
+
+            # Name should not be empty
+            assert gpu.name != ""
+
+            # UUID should not be empty
+            assert gpu.uuid != ""
+
+            # Memory values should be non-negative
+            assert gpu.total_memory >= 0
+            assert gpu.used_memory >= 0
+            assert gpu.free_memory >= 0
+
+            # Memory utilization should be 0-100
+            assert 0.0 <= gpu.memory_utilization <= 100.0
+
+            # Power values should be non-negative
+            assert gpu.power_limit >= 0
+            assert gpu.power_draw >= 0
+
+            # Temperature should be reasonable (0-100°C)
+            assert 0 <= gpu.temperature <= 150
+
+            # Fan speed should be 0-100%
+            assert 0 <= gpu.fan_speed <= 100
+
+            # Driver version should not be empty
+            assert gpu.driver_version != ""
+
+            # Display active should be boolean
+            assert isinstance(gpu.display_active, bool)
+
+            # Compute mode should not be empty
+            assert gpu.compute_mode != ""
+
+    def test_gpu_details_memory_consistency(self):
+        """Test that memory values are consistent."""
+        gpus = detect_gpus_with_details()
+
+        for gpu in gpus:
+            # Used + Free should approximately equal Total
+            # Allow variance due to rounding and nvidia-smi reporting differences
+            calculated_total = gpu.used_memory + gpu.free_memory
+            variance = abs(calculated_total - gpu.total_memory)
+            # Allow up to 2% variance or 500 MiB, whichever is larger
+            max_variance = max(gpu.total_memory * 0.02, 500)
+            assert variance <= max_variance
+
+    def test_gpu_details_utilization_matches_memory(self):
+        """Test that memory utilization matches used/total ratio."""
+        gpus = detect_gpus_with_details()
+
+        for gpu in gpus:
+            if gpu.total_memory > 0:
+                expected_util = round(
+                    (gpu.used_memory / gpu.total_memory * 100), 2
+                )
+                # Allow small variance due to rounding
+                assert abs(gpu.memory_utilization - expected_util) <= 0.1
+
+    def test_gpu_details_indices_are_sequential(self):
+        """Test that GPU indices are sequential starting from 0."""
+        gpus = detect_gpus_with_details()
+
+        indices = [gpu.index for gpu in gpus]
+        expected_indices = list(range(len(gpus)))
+        assert indices == expected_indices
+
 
 class TestNvidiaIntegrationEdgeCases:
     """Edge case integration tests."""
@@ -216,6 +309,22 @@ def print_gpu_info():
         below_threshold = check_gpu_memory_usage(i, 50.0)
         status = "✓ Below" if below_threshold else "✗ Above"
         print(f"  GPU {i}: {status} 50% threshold")
+
+    print("\nDetailed GPU Information:")
+    gpus = detect_gpus_with_details()
+    for gpu in gpus:
+        print(f"\n  GPU {gpu.index}: {gpu.name}")
+        print(f"    UUID: {gpu.uuid}")
+        print(
+            f"    Memory: {gpu.used_memory}/{gpu.total_memory} MiB ({gpu.memory_utilization}% used)"
+        )
+        print(f"    Free: {gpu.free_memory} MiB")
+        print(f"    Power: {gpu.power_draw}/{gpu.power_limit} W")
+        print(f"    Temperature: {gpu.temperature}°C")
+        print(f"    Fan Speed: {gpu.fan_speed}%")
+        print(f"    Driver: {gpu.driver_version}")
+        print(f"    Display Active: {gpu.display_active}")
+        print(f"    Compute Mode: {gpu.compute_mode}")
 
     print("=" * 60 + "\n")
 

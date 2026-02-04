@@ -6,9 +6,11 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from aria.nvidia import (
+    GPUMetadata,
     check_gpu_memory_usage,
     check_nvidia_smi_available,
     detect_gpu_count,
+    detect_gpus_with_details,
     detect_nvlink,
     get_free_vram_per_gpu,
     get_nvidia_smi_version,
@@ -83,6 +85,25 @@ MOCK_VERSION_OUTPUT_WITH_COLON = """NVIDIA-SMI version  : 590.48.01
 NVML version        : 590.48
 DRIVER version      : 590.48.01
 CUDA Version        : 13.1"""
+
+# Mock data for detect_gpus_with_details()
+MOCK_GPU_DETAILS_SINGLE = """0, NVIDIA GeForce RTX 3090, GPU-12345678-1234-1234-1234-123456789012, 24576, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
+
+MOCK_GPU_DETAILS_DUAL = """0, NVIDIA GeForce RTX 3090, GPU-12345678-1234-1234-1234-123456789012, 24576, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, Enabled
+1, NVIDIA GeForce RTX 3090, GPU-87654321-4321-4321-4321-210987654321, 24576, 8192, 16384, Default, 535.104.05, 350, 250, 58, 40, Disabled"""
+
+MOCK_GPU_DETAILS_WITH_UNITS = """0, NVIDIA GeForce RTX 3090, GPU-12345678-1234-1234-1234-123456789012, 24576, 12288, 12288, Default, 535.104.05, 350W, 280W, 65C, 45%, Enabled"""
+
+MOCK_GPU_DETAILS_MALFORMED = """0, NVIDIA GeForce RTX 3090, GPU-12345678"""
+
+MOCK_GPU_DETAILS_INVALID_NUMBERS = """0, NVIDIA GeForce RTX 3090, GPU-12345678-1234-1234-1234-123456789012, invalid, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
+
+MOCK_GPU_DETAILS_EMPTY_VALUES = """0, NVIDIA GeForce RTX 3090, GPU-12345678-1234-1234-1234-123456789012, , , , Default, 535.104.05, , , , , Enabled"""
+
+MOCK_GPU_DETAILS_DISPLAY_VARIATIONS = """0, GPU1, UUID1, 24576, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, enabled
+1, GPU2, UUID2, 24576, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, ENABLED
+2, GPU3, UUID3, 24576, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, Disabled
+3, GPU4, UUID4, 24576, 12288, 12288, Default, 535.104.05, 350, 280, 65, 45, disabled"""
 
 
 # ============================================================================
@@ -669,6 +690,233 @@ class TestGetNvidiaSmiVersion:
             )
             version = get_nvidia_smi_version()
             assert version == "590.48.01"
+
+
+# ============================================================================
+# Tests for detect_gpus_with_details()
+# ============================================================================
+
+
+class TestDetectGpusWithDetails:
+    """Test suite for detect_gpus_with_details function."""
+
+    def test_single_gpu_with_details(self):
+        """Test detection of single GPU with full details."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
+            )
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 1
+            gpu = gpus[0]
+
+            assert isinstance(gpu, GPUMetadata)
+            assert gpu.index == 0
+            assert gpu.name == "NVIDIA GeForce RTX 3090"
+            assert gpu.uuid == "GPU-12345678-1234-1234-1234-123456789012"
+            assert gpu.total_memory == 24576
+            assert gpu.used_memory == 12288
+            assert gpu.free_memory == 12288
+            assert gpu.memory_utilization == 50.0
+            assert gpu.power_limit == 350
+            assert gpu.power_draw == 280
+            assert gpu.temperature == 65
+            assert gpu.fan_speed == 45
+            assert gpu.driver_version == "535.104.05"
+            assert gpu.display_active is True
+            assert gpu.compute_mode == "Default"
+
+    def test_dual_gpu_with_details(self):
+        """Test detection of two GPUs with different states."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_DUAL
+            )
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 2
+
+            # First GPU
+            assert gpus[0].index == 0
+            assert gpus[0].memory_utilization == 50.0
+            assert gpus[0].display_active is True
+
+            # Second GPU
+            assert gpus[1].index == 1
+            assert gpus[1].used_memory == 8192
+            assert gpus[1].free_memory == 16384
+            assert gpus[1].memory_utilization == 33.33
+            assert gpus[1].power_draw == 250
+            assert gpus[1].temperature == 58
+            assert gpus[1].fan_speed == 40
+            assert gpus[1].display_active is False
+
+    def test_gpu_with_unit_suffixes(self):
+        """Test parsing values with unit suffixes (W, C, %)."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_WITH_UNITS
+            )
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 1
+            gpu = gpus[0]
+
+            # Should correctly parse values with units
+            assert gpu.power_limit == 350
+            assert gpu.power_draw == 280
+            assert gpu.temperature == 65
+            assert gpu.fan_speed == 45
+
+    def test_empty_output(self):
+        """Test handling of empty output."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="")
+            gpus = detect_gpus_with_details()
+            assert gpus == []
+
+    def test_malformed_csv_line(self):
+        """Test handling of malformed CSV with insufficient columns."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_MALFORMED
+            )
+            gpus = detect_gpus_with_details()
+            # Should skip malformed lines
+            assert gpus == []
+
+    def test_invalid_numeric_values(self):
+        """Test handling of invalid numeric values in memory fields."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_INVALID_NUMBERS
+            )
+            gpus = detect_gpus_with_details()
+            # Should skip lines with invalid numbers
+            assert gpus == []
+
+    def test_empty_field_values(self):
+        """Test handling of empty field values."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_EMPTY_VALUES
+            )
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 1
+            gpu = gpus[0]
+
+            # Empty values should default to 0
+            assert gpu.total_memory == 0
+            assert gpu.used_memory == 0
+            assert gpu.free_memory == 0
+            assert gpu.memory_utilization == 0.0
+            assert gpu.power_limit == 0
+            assert gpu.power_draw == 0
+            assert gpu.temperature == 0
+            assert gpu.fan_speed == 0
+
+    def test_display_active_variations(self):
+        """Test different variations of display_active field."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_DISPLAY_VARIATIONS
+            )
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 4
+            # "enabled" (lowercase)
+            assert gpus[0].display_active is True
+            # "ENABLED" (uppercase)
+            assert gpus[1].display_active is True
+            # "Disabled"
+            assert gpus[2].display_active is False
+            # "disabled"
+            assert gpus[3].display_active is False
+
+    def test_nvidia_smi_not_found(self):
+        """Test handling when nvidia-smi is not installed."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("nvidia-smi not found")
+            gpus = detect_gpus_with_details()
+            assert gpus == []
+
+    def test_nvidia_smi_fails(self):
+        """Test handling when nvidia-smi command fails."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(
+                1, "nvidia-smi", "Error"
+            )
+            gpus = detect_gpus_with_details()
+            assert gpus == []
+
+    def test_output_with_empty_lines(self):
+        """Test that empty lines are filtered correctly."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE + "\n\n\n"
+            )
+            gpus = detect_gpus_with_details()
+            assert len(gpus) == 1
+
+    def test_memory_utilization_calculation(self):
+        """Test memory utilization percentage calculation."""
+        with patch("subprocess.run") as mock_run:
+            # 12288 / 24576 = 50%
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
+            )
+            gpus = detect_gpus_with_details()
+            assert gpus[0].memory_utilization == 50.0
+
+    def test_zero_total_memory(self):
+        """Test handling of zero total memory (edge case)."""
+        mock_data = """0, GPU, UUID, 0, 0, 0, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout=mock_data)
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 1
+            assert gpus[0].memory_utilization == 0.0
+
+    def test_pydantic_model_validation(self):
+        """Test that GPUMetadata model validates correctly."""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
+            )
+            gpus = detect_gpus_with_details()
+
+            gpu = gpus[0]
+            # Test that we can access all fields
+            assert hasattr(gpu, "index")
+            assert hasattr(gpu, "name")
+            assert hasattr(gpu, "uuid")
+            assert hasattr(gpu, "total_memory")
+            assert hasattr(gpu, "used_memory")
+            assert hasattr(gpu, "free_memory")
+            assert hasattr(gpu, "memory_utilization")
+            assert hasattr(gpu, "power_limit")
+            assert hasattr(gpu, "power_draw")
+            assert hasattr(gpu, "temperature")
+            assert hasattr(gpu, "fan_speed")
+            assert hasattr(gpu, "driver_version")
+            assert hasattr(gpu, "display_active")
+            assert hasattr(gpu, "compute_mode")
+
+    def test_float_values_in_memory(self):
+        """Test handling of float values in memory fields."""
+        mock_data = """0, GPU, UUID, 24576.5, 12288.3, 12288.2, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout=mock_data)
+            gpus = detect_gpus_with_details()
+
+            assert len(gpus) == 1
+            # Should convert floats to ints
+            assert gpus[0].total_memory == 24576
+            assert gpus[0].used_memory == 12288
+            assert gpus[0].free_memory == 12288
 
 
 # ============================================================================
