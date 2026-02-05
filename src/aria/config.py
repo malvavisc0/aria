@@ -24,6 +24,17 @@ LOCAL_STORAGE_PATH = DATA_FOLDER / Path(
     _get_required_env("LOCAL_STORAGE_PATH")
 )
 
+# Llama.cpp binary directory
+# Binaries are downloaded from GitHub releases and stored here
+LLAMA_CPP_BIN_DIR = Path.cwd() / Path(_get_required_env("LLAMA_CPP_BIN_DIR"))
+LLAMA_CPP_BIN_DIR.mkdir(exist_ok=True)
+
+# Llama.cpp version to download
+LLAMA_CPP_VERSION = getenv("LLAMA_CPP_VERSION", "latest")
+
+# GitHub releases URL for llama.cpp
+LLAMA_CPP_RELEASES_URL = "https://github.com/ggml-org/llama.cpp/releases"
+
 # Chat LLM
 CHAT_OPENAI_API = _get_required_env("CHAT_OPENAI_API")
 MAX_ITERATIONS = int(_get_required_env("MAX_ITERATIONS"))

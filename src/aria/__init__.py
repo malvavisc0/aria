@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from aria.config import CHAT_HISTORY_DB_URL
 from aria.db.auth import hash_password
 from aria.db.models import Base, User
+from aria.scripts.llama import download_latest_llama_cpp, get_llama_cpp_binary
 
 app = typer.Typer()
 console = Console()
@@ -223,6 +224,25 @@ def list_users():
         raise typer.Exit(1)
     finally:
         session.close()
+
+
+@app.command()
+def update_llama(
+    version: Annotated[
+        Optional[str],
+        typer.Option(help="Specific version tag to install (e.g., v1.0.0)"),
+    ] = None,
+):
+    """Download and install the latest llama.cpp binary from GitHub releases.
+
+    The binary is downloaded to the bin/ directory and made executable.
+    This replaces the need for compiling from source with the bash script.
+    """
+    try:
+        download_latest_llama_cpp(version=version)
+    except Exception as e:
+        error_console.print(f"[red]Installation failed: {e}[/red]")
+        raise typer.Exit(1)
 
 
 def main():

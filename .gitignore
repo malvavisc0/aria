@@ -23,4 +23,24 @@ wheels/
 # that should survive server restarts, unlike `.files/` which is temporary.
 data/**
 !data/.gitkeep
+
+# Binary files (track structure, not contents)
+# The `bin/` directory stores compiled binaries that can be re-downloaded
+bin/**
+!bin/.gitkeep
+
+# Build directories
+build/
+!build/.gitkeep
+
+# Virtual environments
+.venv
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+dist/
+wheels/
+*.egg-info
+
 .env
