@@ -5,7 +5,7 @@ from chromadb import PersistentClient as ChromaDBPersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 
 from aria.agents import get_prompt_enhancer_agent
-from aria.llm import get_chat_llm, get_embeddings_model
+from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 
 
 def _get_required_env(key: str) -> str:
@@ -61,3 +61,5 @@ VECTOR_DB = ChromaDBPersistentClient(
 )
 
 PROMPT_ENHANCER = get_prompt_enhancer_agent(llm=LLM)
+
+AGENT_WORKFLOW = get_agent_workflow(llm=LLM)

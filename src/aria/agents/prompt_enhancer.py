@@ -94,9 +94,6 @@ def get_agent(
     )
 
     tools = []
-    logger.debug(f"Creating PromptEnhancerAgent with {len(tools)} tools")
-    logger.debug(f"Tool names: {[tool.metadata.name for tool in tools]}")
-    logger.debug(f"LLM type: {type(llm)}")
 
     agent = PromptEnhancerAgent(
         name="Prompt Enhancer",

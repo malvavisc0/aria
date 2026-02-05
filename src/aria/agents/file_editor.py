@@ -19,7 +19,6 @@ from typing import Optional
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
-from loguru import logger
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.tools.documentation import tool_help
@@ -91,10 +90,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> FileEditorAgent:
     tools.append(FunctionTool.from_defaults(fn=tool_help))
 
     tools = filter_tools_for_llamacpp(tools, agent_name="Notepad")
-
-    logger.debug(f"Creating FileEditorAgent with {len(tools)} tools")
-    logger.debug(f"Tool names: {[tool.metadata.name for tool in tools]}")
-    logger.debug(f"LLM type: {type(llm)}")
 
     agent = FileEditorAgent(
         name="Notepad",

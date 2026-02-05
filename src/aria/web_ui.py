@@ -2,15 +2,16 @@ import chainlit as cl
 from chainlit.types import ThreadDict
 from llama_index.core.agent.workflow import AgentStream, ToolCall
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.memory import Memory
 from loguru import logger
 from sqlalchemy import create_engine
 
 from aria.agents.prompt_enhancer import PromptEnhancementResult
 from aria.config import (
+    AGENT_WORKFLOW,
     CHAT_HISTORY_DB_URL,
     DEBUG_LOGS_PATH,
     EMBEDDINGS,
-    LLM,
     LOCAL_STORAGE_PATH,
     MAX_ITERATIONS,
     PROMPT_ENHANCER,
@@ -21,7 +22,7 @@ from aria.config import (
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
-from aria.llm import get_agent_workflow, get_default_memory
+from aria.llm import get_default_memory
 from aria.ui import maybe_remove_step, send_tool_step
 
 log_path = DEBUG_LOGS_PATH
@@ -166,7 +167,7 @@ async def on_chat_resume(thread: ThreadDict):
         )
 
         message = ChatMessage(role=role, content=content)
-        memory.put(message)
+        await memory.aput(message)
         steps_restored += 1
 
     # Store memory in user session for reuse
@@ -193,14 +194,11 @@ async def on_message(message: cl.Message):
             ouput: PromptEnhancementResult = response.structured_response
             prompt = ouput.enhanced
 
-    # Try to get existing memory from session (for resumed chats)
-    memory = cl.user_session.get("memory")
+    # Try to get existing memory from session
+    memory: Memory | None = cl.user_session.get("memory")
 
     # If not found (new chat or session issue), create new memory instance
     if memory is None:
-        logger.debug(
-            f"No memory in session, creating new instance for thread {message.thread_id}"
-        )
         memory = get_default_memory(
             vector_db=VECTOR_DB,
             thread_id=message.thread_id,
@@ -209,10 +207,9 @@ async def on_message(message: cl.Message):
         )
         # Store in session for future messages
         cl.user_session.set("memory", memory)
+        logger.debug(f"Created new Memory for thread {message.thread_id}")
 
-    workflow = get_agent_workflow(llm=LLM)
-
-    handler = workflow.run(
+    handler = AGENT_WORKFLOW.run(
         user_msg=prompt, memory=memory, max_iterations=MAX_ITERATIONS
     )
 
