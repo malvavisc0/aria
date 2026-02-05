@@ -664,10 +664,17 @@ def install_llama_cpp_from_source(
             build_args,
             cwd=str(repo_dir),
             check=True,
-            capture_output=not verbose,
-            text=verbose,
+            capture_output=True,
+            text=True,
         )
         if result.returncode != 0:
+            error_console.print("[red]Compilation failed![/red]")
+            if result.stderr:
+                error_console.print(
+                    f"[red]Error output:[/red]\n{result.stderr}"
+                )
+            if result.stdout:
+                error_console.print(f"[red]Stdout:[/red]\n{result.stdout}")
             raise RuntimeError("Compilation failed")
 
         console.print("[green]✓[/green] llama.cpp compiled successfully!")
