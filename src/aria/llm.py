@@ -185,22 +185,29 @@ def get_default_memory(
     vector_db: ChromaClientAPI,
     embed_model: OpenAIEmbedding,
     thread_id: str,
+    token_limit: int = 5120,
 ) -> Memory:
-    chroma_collection = vector_db.get_or_create_collection(thread_id)
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 
-    vector_block = VectorMemoryBlock(
-        vector_store=vector_store,
-        embed_model=embed_model,
-        similarity_top_k=3,  # Retrieve top 3 similar messages
-        priority=2,  # For multi-block setups
-    )
     memory = Memory.from_defaults(
         insert_method=InsertMethod.SYSTEM,  # Insert retrieved memory as system prompts
-        memory_blocks=[vector_block],
+        memory_blocks=[
+            VectorMemoryBlock(
+                vector_store=ChromaVectorStore(
+                    chroma_collection=vector_db.get_or_create_collection(
+                        thread_id
+                    )
+                ),
+                embed_model=embed_model,
+                similarity_top_k=3,  # Retrieve top 3 similar messages
+            )
+        ],
+        token_limit=token_limit,  # Total tokens for (Recent History + Vector Results)
+        chat_history_token_ratio=0.7,  # 70% for Recent History, 30% for Vector Result
+        token_flush_size=512,
     )
+
     return memory
 
 
-def get_embeddings_model(api_base: str, model: str) -> OpenAIEmbedding:
-    return OpenAIEmbedding(model=model, api_base=api_base, api_key="sk-dummy")
+def get_embeddings_model(api_base: str) -> OpenAIEmbedding:
+    return OpenAIEmbedding(api_base=api_base, api_key="sk-dummy")

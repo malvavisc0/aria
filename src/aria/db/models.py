@@ -15,72 +15,80 @@ Notes
   exactly `metadata`.
 """
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Text,
-)
-from sqlalchemy.orm import declarative_base, relationship
+from typing import Annotated
 
-Base = declarative_base()
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+# Type aliases for common column patterns
+str_pk = Annotated[str, mapped_column(String(36), primary_key=True)]
+str_36 = Annotated[str, mapped_column(String(36))]
+str_fk_user = Annotated[
+    str, mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
+]
+str_fk_thread = Annotated[
+    str,
+    mapped_column(String(36), ForeignKey("threads.id", ondelete="CASCADE")),
+]
+
+
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+
+    pass
 
 
 class User(Base):
+    """User model for authentication and thread ownership."""
+
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True)
-    identifier = Column(Text, nullable=False, unique=True)
+    id: Mapped[str_pk]
+    identifier: Mapped[str] = mapped_column(Text, unique=True)
     # Stored as JSON string (Chainlit serializes via `json.dumps`).
-    metadata_ = Column("metadata", Text, nullable=False)
-    createdAt = Column(Text)
+    metadata_: Mapped[str] = mapped_column("metadata", Text)
+    createdAt: Mapped[str | None] = mapped_column(Text)
     # Hashed password (PBKDF2-SHA256 format: salt$hash)
-    password = Column(Text, nullable=True)
+    password: Mapped[str | None] = mapped_column(Text)
 
     # Relationships
-    threads = relationship(
-        "Thread", back_populates="user", cascade="all, delete-orphan"
+    threads: Mapped[list["Thread"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 
 
 class Thread(Base):
+    """Thread model representing a conversation thread."""
+
     __tablename__ = "threads"
 
-    id = Column(String(36), primary_key=True)
-    createdAt = Column(Text)
-    name = Column(Text)
-    userId = Column(
-        String(36),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=True,
+    id: Mapped[str_pk]
+    createdAt: Mapped[str | None] = mapped_column(Text)
+    name: Mapped[str | None] = mapped_column(Text)
+    userId: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE")
     )
-    userIdentifier = Column(Text)
+    userIdentifier: Mapped[str | None] = mapped_column(Text)
     # `TEXT[]` in the source schema. Chainlit currently passes Python `list[str]`
     # for SQLite, which cannot be bound by sqlite3/aiosqlite.
     # Our custom data layer will `json.dumps(tags)` on write and `json.loads` on read.
-    tags = Column(Text)
+    tags: Mapped[str | None] = mapped_column(Text)
     # Stored as JSON string (Chainlit serializes via `json.dumps`).
-    metadata_ = Column("metadata", Text)
+    metadata_: Mapped[str | None] = mapped_column("metadata", Text)
 
     # Relationships
-    user = relationship("User", back_populates="threads")
-    steps = relationship(
-        "Step",
+    user: Mapped["User | None"] = relationship(back_populates="threads")
+    steps: Mapped[list["Step"]] = relationship(
         back_populates="thread",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    elements = relationship(
-        "Element",
+    elements: Mapped[list["Element"]] = relationship(
         back_populates="thread",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    feedbacks = relationship(
-        "Feedback",
+    feedbacks: Mapped[list["Feedback"]] = relationship(
         back_populates="thread",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -94,39 +102,37 @@ class Thread(Base):
 
 
 class Step(Base):
+    """Step model representing individual steps in a conversation thread."""
+
     __tablename__ = "steps"
 
-    id = Column(String(36), primary_key=True)
-    name = Column(Text, nullable=False)
-    type = Column(Text, nullable=False)
-    threadId = Column(
-        String(36),
-        ForeignKey("threads.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    parentId = Column(String(36))
-    streaming = Column(Boolean, nullable=False)
-    waitForAnswer = Column(Boolean)
-    isError = Column(Boolean)
+    id: Mapped[str_pk]
+    name: Mapped[str] = mapped_column(Text)
+    type: Mapped[str] = mapped_column(Text)
+    threadId: Mapped[str_fk_thread]
+    parentId: Mapped[str | None] = mapped_column(String(36))
+    streaming: Mapped[bool] = mapped_column(Boolean)
+    waitForAnswer: Mapped[bool | None] = mapped_column(Boolean)
+    isError: Mapped[bool | None] = mapped_column(Boolean)
     # Stored as JSON string (Chainlit serializes via `json.dumps`).
-    metadata_ = Column("metadata", Text)
+    metadata_: Mapped[str | None] = mapped_column("metadata", Text)
     # `TEXT[]` in the source schema; stored as JSON string for SQLite.
-    tags = Column(Text)
-    input = Column(Text)
-    output = Column(Text)
-    createdAt = Column(Text)
-    command = Column(Text)
-    start = Column(Text)
-    end = Column(Text)
+    tags: Mapped[str | None] = mapped_column(Text)
+    input: Mapped[str | None] = mapped_column(Text)
+    output: Mapped[str | None] = mapped_column(Text)
+    createdAt: Mapped[str | None] = mapped_column(Text)
+    command: Mapped[str | None] = mapped_column(Text)
+    start: Mapped[str | None] = mapped_column(Text)
+    end: Mapped[str | None] = mapped_column(Text)
     # Stored as JSON string (Chainlit serializes via `json.dumps`).
-    generation = Column(Text)
-    showInput = Column(Text)
-    language = Column(Text)
-    indent = Column(Integer)
-    defaultOpen = Column(Boolean)
+    generation: Mapped[str | None] = mapped_column(Text)
+    showInput: Mapped[str | None] = mapped_column(Text)
+    language: Mapped[str | None] = mapped_column(Text)
+    indent: Mapped[int | None] = mapped_column(Integer)
+    defaultOpen: Mapped[bool | None] = mapped_column(Boolean)
 
     # Relationships
-    thread = relationship("Thread", back_populates="steps")
+    thread: Mapped["Thread"] = relationship(back_populates="steps")
 
     # Indexes for performance
     __table_args__ = (
@@ -136,30 +142,30 @@ class Step(Base):
 
 
 class Element(Base):
+    """Element model representing attachments or media in a thread."""
+
     __tablename__ = "elements"
 
-    id = Column(String(36), primary_key=True)
-    threadId = Column(
-        String(36),
-        ForeignKey("threads.id", ondelete="CASCADE"),
-        nullable=True,
+    id: Mapped[str_pk]
+    threadId: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("threads.id", ondelete="CASCADE")
     )
-    type = Column(Text)
-    url = Column(Text)
-    chainlitKey = Column(Text)
-    name = Column(Text, nullable=False)
-    display = Column(Text)
-    objectKey = Column(Text)
-    size = Column(Text)
-    page = Column(Integer)
-    language = Column(Text)
-    forId = Column(String(36))
-    mime = Column(Text)
+    type: Mapped[str | None] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(Text)
+    chainlitKey: Mapped[str | None] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    display: Mapped[str | None] = mapped_column(Text)
+    objectKey: Mapped[str | None] = mapped_column(Text)
+    size: Mapped[str | None] = mapped_column(Text)
+    page: Mapped[int | None] = mapped_column(Integer)
+    language: Mapped[str | None] = mapped_column(Text)
+    forId: Mapped[str | None] = mapped_column(String(36))
+    mime: Mapped[str | None] = mapped_column(Text)
     # Stored as JSON string (Chainlit serializes via `json.dumps`).
-    props = Column(Text)
+    props: Mapped[str | None] = mapped_column(Text)
 
     # Relationships
-    thread = relationship("Thread", back_populates="elements")
+    thread: Mapped["Thread | None"] = relationship(back_populates="elements")
 
     # Indexes for performance
     __table_args__ = (
@@ -169,20 +175,18 @@ class Element(Base):
 
 
 class Feedback(Base):
+    """Feedback model for user feedback on steps."""
+
     __tablename__ = "feedbacks"
 
-    id = Column(String(36), primary_key=True)
-    forId = Column(String(36), nullable=False)
-    threadId = Column(
-        String(36),
-        ForeignKey("threads.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    value = Column(Integer, nullable=False)
-    comment = Column(Text)
+    id: Mapped[str_pk]
+    forId: Mapped[str] = mapped_column(String(36))
+    threadId: Mapped[str_fk_thread]
+    value: Mapped[int] = mapped_column(Integer)
+    comment: Mapped[str | None] = mapped_column(Text)
 
     # Relationships
-    thread = relationship("Thread", back_populates="feedbacks")
+    thread: Mapped["Thread"] = relationship(back_populates="feedbacks")
 
     # Indexes for performance
     __table_args__ = (

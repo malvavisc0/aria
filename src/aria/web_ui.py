@@ -5,25 +5,23 @@ from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from loguru import logger
 from sqlalchemy import create_engine
 
+from aria.agents.prompt_enhancer import PromptEnhancementResult
 from aria.config import (
     CHAT_HISTORY_DB_URL,
     DEBUG_LOGS_PATH,
-    EMBEDDINGS_API_URL,
-    EMBEDDINGS_MODEL,
+    EMBEDDINGS,
     LLM,
     LOCAL_STORAGE_PATH,
     MAX_ITERATIONS,
+    PROMPT_ENHANCER,
     SQLITE_CONN_INFO,
+    TOKEN_LIMIT,
     VECTOR_DB,
 )
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
-from aria.llm import (
-    get_agent_workflow,
-    get_default_memory,
-    get_embeddings_model,
-)
+from aria.llm import get_agent_workflow, get_default_memory
 from aria.ui import maybe_remove_step, send_tool_step
 
 log_path = DEBUG_LOGS_PATH
@@ -104,8 +102,20 @@ async def on_chat_start():
     Chainlit chat-start handler.
 
     Initializes a new chat session.
+    Memory will be initialized on first message since thread_id is not available yet.
     """
     logger.debug("Starting new chat session")
+    await cl.context.emitter.set_commands(
+        [
+            {
+                "id": "Enhance",
+                "icon": "wand-sparkles",
+                "description": "Enhance Prompt",
+                "button": None,
+                "persistent": True,
+            }
+        ]
+    )
 
 
 @cl.on_chat_resume
@@ -127,42 +137,42 @@ async def on_chat_resume(thread: ThreadDict):
     logger.debug(f"Thread has {len(steps)} total steps")
 
     # Filter for root-level messages only (parentId == None)
-    # This matches the official Chainlit pattern from the cookbook
+    # Chainlit automatically displays the messages in the UI from the database
     root_messages = [m for m in steps if m.get("parentId") is None]
     logger.debug(f"Thread has {len(root_messages)} root-level messages")
 
     memory = get_default_memory(
         vector_db=VECTOR_DB,
         thread_id=thread_id,
-        embed_model=get_embeddings_model(
-            api_base=EMBEDDINGS_API_URL, model=EMBEDDINGS_MODEL
-        ),
+        embed_model=EMBEDDINGS,
+        token_limit=TOKEN_LIMIT,
     )
 
     # Restore the conversation history by replaying messages into memory
-    # Chainlit automatically displays the messages in the UI from the database
+    steps_restored = 0
     for step in root_messages:
-        step_type = step.get("type")
         content = step.get("output", "")
-
-        if not content:
+        message_type = step.get("type")
+        if not content or message_type not in [
+            "user_message",
+            "assistant_message",
+        ]:
             continue
 
-        # Add user messages to memory
-        if step_type == "user_message":
-            memory.put(ChatMessage(role=MessageRole.USER, content=content))
-            logger.debug(f"Restored user message: {content[:50]}...")
+        role = (
+            MessageRole.USER
+            if message_type == "user_message"
+            else MessageRole.ASSISTANT
+        )
 
-        # Add assistant messages to memory
-        elif step_type == "assistant_message":
-            memory.put(
-                ChatMessage(role=MessageRole.ASSISTANT, content=content)
-            )
-            logger.debug(f"Restored assistant message: {content[:50]}...")
+        message = ChatMessage(role=role, content=content)
+        memory.put(message)
+        steps_restored += 1
 
-    logger.debug(
-        f"Restored {len([s for s in root_messages if s.get('output')])} messages for thread {thread.get('id')}"
-    )
+    # Store memory in user session for reuse
+    cl.user_session.set("memory", memory)
+
+    logger.info(f"Restored {steps_restored} steps for thread {thread_id}")
 
 
 @cl.on_message
@@ -173,36 +183,43 @@ async def on_message(message: cl.Message):
     Args:
         message (cl.Message): The inbound user message.
     """
-    # Create assistant message at root level (no parent_id)
-    # By creating it outside any step context, it will be a root-level message
-    msg = cl.Message(content="", parent_id=None)
+    msg = cl.Message(content="")
 
-    memory = get_default_memory(
-        vector_db=VECTOR_DB,
-        thread_id=message.thread_id,
-        embed_model=get_embeddings_model(
-            api_base=EMBEDDINGS_API_URL, model=EMBEDDINGS_MODEL
-        ),
-    )
+    prompt = message.content
+    if msg.command == "Enhance":
+        # Let's try to use the prompt enhancer
+        response = await PROMPT_ENHANCER.run(user_msg=message.content)
+        if response.structured_response:
+            ouput: PromptEnhancementResult = response.structured_response
+            prompt = ouput.enhanced
+
+    # Try to get existing memory from session (for resumed chats)
+    memory = cl.user_session.get("memory")
+
+    # If not found (new chat or session issue), create new memory instance
+    if memory is None:
+        logger.debug(
+            f"No memory in session, creating new instance for thread {message.thread_id}"
+        )
+        memory = get_default_memory(
+            vector_db=VECTOR_DB,
+            thread_id=message.thread_id,
+            embed_model=EMBEDDINGS,
+            token_limit=TOKEN_LIMIT,
+        )
+        # Store in session for future messages
+        cl.user_session.set("memory", memory)
 
     workflow = get_agent_workflow(llm=LLM)
 
     handler = workflow.run(
-        user_msg=message.content, memory=memory, max_iterations=MAX_ITERATIONS
+        user_msg=prompt, memory=memory, max_iterations=MAX_ITERATIONS
     )
 
     step: cl.Step | None = None
     # Stream events as they arrive
     async for event in handler.stream_events():
         if isinstance(event, ToolCall):
-            logger.debug(
-                {
-                    "tool_id": event.tool_id,
-                    "tool_name": event.tool_name,
-                    "tool_kwargs": event.tool_kwargs,
-                }
-            )
-
             step = await send_tool_step(event)
         elif isinstance(event, AgentStream):
             step = await maybe_remove_step(step)

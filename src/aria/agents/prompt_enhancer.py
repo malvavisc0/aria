@@ -6,8 +6,8 @@ prompt engineering best practices to improve clarity, specificity, and overall
 quality of user prompts.
 """
 
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
@@ -62,7 +62,9 @@ class PromptEnhancerAgent(FunctionAgent):
         return f"{instructions}\n\n## Extras\n{extras}"
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> PromptEnhancerAgent:
+def get_agent(
+    llm: LLM,
+) -> PromptEnhancerAgent:
     """
     Create a prompt enhancer agent with the given LLM.
 
@@ -73,9 +75,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> PromptEnhancerAgent:
 
     Args:
         llm (LLM): The language model to use for the agent
-        extras (str, optional): Additional system prompt instructions to
-                               append to the base system prompt.
-                               Defaults to None.
 
     Returns:
         PromptEnhancerAgent: A configured prompt enhancement agent instance
@@ -87,6 +86,13 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> PromptEnhancerAgent:
         >>> agent = get_agent(llm, extras="Focus on technical documentation")
         >>> # Agent is now ready to enhance prompts
     """
+    timestamp = datetime.now()
+    extras = (
+        f"- **Current date**: {timestamp.strftime('%B %dth')} "
+        + f"- **Current time**: {timestamp.strftime('%H:%M')} "
+        + f"- **Timezone**: {timestamp.astimezone().tzinfo}"
+    )
+
     tools = []
     logger.debug(f"Creating PromptEnhancerAgent with {len(tools)} tools")
     logger.debug(f"Tool names: {[tool.metadata.name for tool in tools]}")

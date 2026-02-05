@@ -4,7 +4,8 @@ from pathlib import Path
 from chromadb import PersistentClient as ChromaDBPersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 
-from aria.llm import get_chat_llm
+from aria.agents import get_prompt_enhancer_agent
+from aria.llm import get_chat_llm, get_embeddings_model
 
 
 def _get_required_env(key: str) -> str:
@@ -39,6 +40,10 @@ SQLITE_CONN_INFO = f"sqlite+aiosqlite:///{CHAT_HISTORY_DB_PATH}"
 EMBEDDINGS_API_URL = _get_required_env("EMBEDDINGS_API_URL")
 EMBEDDINGS_MODEL = _get_required_env("EMBEDDINGS_MODEL")
 
+EMBEDDINGS = get_embeddings_model(api_base=EMBEDDINGS_API_URL)
+
+TOKEN_LIMIT = int(_get_required_env("TOKEN_LIMIT"))
+
 # Embeddings Database
 CHROMADB_PERSISTENT_PATH = (
     Path.cwd()
@@ -54,3 +59,5 @@ VECTOR_DB = ChromaDBPersistentClient(
         anonymized_telemetry=False,
     ),
 )
+
+PROMPT_ENHANCER = get_prompt_enhancer_agent(llm=LLM)
