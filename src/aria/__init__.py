@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from aria.config import CHAT_HISTORY_DB_URL
 from aria.db.auth import hash_password
 from aria.db.models import Base, User
-from aria.scripts.llama import download_latest_llama_cpp, get_llama_cpp_binary
+from aria.scripts.llama import download_latest_llama_cpp
 
 app = typer.Typer()
 console = Console()

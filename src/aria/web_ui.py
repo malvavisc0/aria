@@ -6,15 +6,15 @@ from llama_index.core.memory import Memory
 from loguru import logger
 from sqlalchemy import create_engine
 
+from aria.agents import get_prompt_enhancer_agent
 from aria.agents.prompt_enhancer import PromptEnhancementResult
 from aria.config import (
-    AGENT_WORKFLOW,
     CHAT_HISTORY_DB_URL,
+    CHAT_OPENAI_API,
     DEBUG_LOGS_PATH,
-    EMBEDDINGS,
+    EMBEDDINGS_API_URL,
     LOCAL_STORAGE_PATH,
     MAX_ITERATIONS,
-    PROMPT_ENHANCER,
     SQLITE_CONN_INFO,
     TOKEN_LIMIT,
     VECTOR_DB,
@@ -22,7 +22,12 @@ from aria.config import (
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
-from aria.llm import get_default_memory
+from aria.llm import (
+    get_agent_workflow,
+    get_chat_llm,
+    get_default_memory,
+    get_embeddings_model,
+)
 from aria.ui import maybe_remove_step, send_tool_step
 
 log_path = DEBUG_LOGS_PATH
@@ -35,6 +40,13 @@ logger.add(
         "{name}:{function}:{line} - {message}"
     ),
 )
+
+llm = get_chat_llm(api_base=CHAT_OPENAI_API)
+embeddings = get_embeddings_model(api_base=EMBEDDINGS_API_URL)
+
+
+agents_workflow = get_agent_workflow(llm)
+prompt_enhancer = get_prompt_enhancer_agent(llm=llm)
 
 
 @cl.data_layer
@@ -145,7 +157,7 @@ async def on_chat_resume(thread: ThreadDict):
     memory = get_default_memory(
         vector_db=VECTOR_DB,
         thread_id=thread_id,
-        embed_model=EMBEDDINGS,
+        embed_model=embeddings,
         token_limit=TOKEN_LIMIT,
     )
 
@@ -189,7 +201,7 @@ async def on_message(message: cl.Message):
     prompt = message.content
     if msg.command == "Enhance":
         # Let's try to use the prompt enhancer
-        response = await PROMPT_ENHANCER.run(user_msg=message.content)
+        response = await prompt_enhancer.run(user_msg=message.content)
         if response.structured_response:
             ouput: PromptEnhancementResult = response.structured_response
             prompt = ouput.enhanced
@@ -202,14 +214,14 @@ async def on_message(message: cl.Message):
         memory = get_default_memory(
             vector_db=VECTOR_DB,
             thread_id=message.thread_id,
-            embed_model=EMBEDDINGS,
+            embed_model=embeddings,
             token_limit=TOKEN_LIMIT,
         )
         # Store in session for future messages
         cl.user_session.set("memory", memory)
         logger.debug(f"Created new Memory for thread {message.thread_id}")
 
-    handler = AGENT_WORKFLOW.run(
+    handler = agents_workflow.run(
         user_msg=prompt, memory=memory, max_iterations=MAX_ITERATIONS
     )
 

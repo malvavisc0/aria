@@ -4,9 +4,6 @@ from pathlib import Path
 from chromadb import PersistentClient as ChromaDBPersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 
-from aria.agents import get_prompt_enhancer_agent
-from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
-
 
 def _get_required_env(key: str) -> str:
     value = getenv(key, None)
@@ -38,7 +35,6 @@ LLAMA_CPP_RELEASES_URL = "https://github.com/ggml-org/llama.cpp/releases"
 # Chat LLM
 CHAT_OPENAI_API = _get_required_env("CHAT_OPENAI_API")
 MAX_ITERATIONS = int(_get_required_env("MAX_ITERATIONS"))
-LLM = get_chat_llm(api_base=CHAT_OPENAI_API)
 
 # Chat History
 CHAT_HISTORY_DB_PATH = DATA_FOLDER / Path(
@@ -51,7 +47,6 @@ SQLITE_CONN_INFO = f"sqlite+aiosqlite:///{CHAT_HISTORY_DB_PATH}"
 EMBEDDINGS_API_URL = _get_required_env("EMBEDDINGS_API_URL")
 EMBEDDINGS_MODEL = _get_required_env("EMBEDDINGS_MODEL")
 
-EMBEDDINGS = get_embeddings_model(api_base=EMBEDDINGS_API_URL)
 
 TOKEN_LIMIT = int(_get_required_env("TOKEN_LIMIT"))
 
@@ -70,7 +65,3 @@ VECTOR_DB = ChromaDBPersistentClient(
         anonymized_telemetry=False,
     ),
 )
-
-PROMPT_ENHANCER = get_prompt_enhancer_agent(llm=LLM)
-
-AGENT_WORKFLOW = get_agent_workflow(llm=LLM)
