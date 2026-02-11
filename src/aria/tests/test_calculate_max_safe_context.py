@@ -2,7 +2,7 @@
 
 import pytest
 
-from aria.nvidia import calculate_max_safe_context
+from aria.helpers.nvidia import calculate_max_safe_context
 
 
 class TestCalculateMaxSafeContext:

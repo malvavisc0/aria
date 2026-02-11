@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -21,7 +22,9 @@ class TestMain:
 
             main()
 
-            mock_download.assert_called_once_with(version=None)
+            mock_download.assert_called_once_with(
+                bin_dir=Path("bin/llamacpp"), version=None
+            )
 
     def test_calls_download_latest_llama_cpp_with_version(self):
         """Test that main() calls download_latest_llama_cpp() with version."""
@@ -32,7 +35,9 @@ class TestMain:
 
             main(version="v1.2.3")
 
-            mock_download.assert_called_once_with(version="v1.2.3")
+            mock_download.assert_called_once_with(
+                bin_dir=Path("bin/llamacpp"), version="v1.2.3"
+            )
 
     def test_exits_with_code_0_on_success(self):
         """Test that main() exits with code 0 on success."""

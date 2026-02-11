@@ -6,13 +6,14 @@ version tag.
 
 Example:
     ```python
+    from pathlib import Path
     from aria.scripts.llama import download_latest_llama_cpp, get_llama_cpp_binary
 
-    # Download the latest release
-    download_latest_llama_cpp()
+    # Download the latest release to bin/llamacpp/
+    download_latest_llama_cpp(bin_dir=Path("bin/llamacpp"))
 
     # Get the path to the llama-cli binary
-    binary_path = get_llama_cpp_binary("llama-cli")
+    binary_path = get_llama_cpp_binary("llama-cli", bin_dir=Path("bin/llamacpp"))
     print(f"Binary location: {binary_path}")
     ```
 """
@@ -33,12 +34,8 @@ from typing import Optional
 from loguru import logger
 from rich.console import Console
 
-from aria.config import (
-    LLAMA_CPP_BIN_DIR,
-    LLAMA_CPP_RELEASES_URL,
-    LLAMA_CPP_VERSION,
-)
-from aria.nvidia import check_nvidia_smi_available, detect_gpus_with_details
+from aria.config import LLAMA_CPP_BIN_DIR
+from aria.helpers.nvidia import check_nvidia_smi_available
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -255,28 +252,31 @@ def _make_executable(file_path: Path) -> None:
     os.chmod(file_path, os.stat(file_path).st_mode | 0o111)
 
 
-def get_llama_cpp_binary(binary_name: str) -> Optional[Path]:
+def get_llama_cpp_binary(binary_name: str, bin_dir: Path) -> Optional[Path]:
     """Get the path to a llama.cpp binary.
 
     Args:
         binary_name: Name of the binary (e.g., "llama-cli").
+        bin_dir: Directory containing the llama.cpp binaries.
 
     Returns:
         Path to the binary if found, None otherwise.
     """
-    binary_path = LLAMA_CPP_BIN_DIR / binary_name
+    binary_path = bin_dir / binary_name
     if _verify_binary(binary_path):
         return binary_path
 
     # Also check in subdirectories (for extracted archives)
-    for item in LLAMA_CPP_BIN_DIR.rglob(binary_name):
+    for item in bin_dir.rglob(binary_name):
         if _verify_binary(item):
             return item
 
     return None
 
 
-def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
+def download_latest_llama_cpp(
+    bin_dir: Path, version: Optional[str] = None
+) -> Path:
     """Download and install the latest llama.cpp binary or compile from source.
 
     This function implements the following logic:
@@ -285,6 +285,7 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
     - If not Linux: compile from source
 
     Args:
+        bin_dir: Directory to install the binaries to.
         version: Specific version tag to download (e.g., "v1.0.0").
                  If None, downloads the latest release.
 
@@ -297,7 +298,7 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
     logger.info("Starting llama.cpp installation")
 
     # Ensure bin directory exists
-    LLAMA_CPP_BIN_DIR.mkdir(parents=True, exist_ok=True)
+    bin_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine installation method based on system configuration
     if not _is_linux():
@@ -343,31 +344,29 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
                 verbose=False,
             )
 
-            # Copy binaries and shared libraries to bin/llamacpp/
-            llama_cpp_dir = LLAMA_CPP_BIN_DIR / "llamacpp"
-            llama_cpp_dir.mkdir(parents=True, exist_ok=True)
+            # Copy binaries and shared libraries directly to bin_dir
             console.print(
-                "[green]✓[/green] Copying binaries and libraries to bin/llamacpp/"
+                "[green]✓[/green] Copying binaries and libraries to bin_dir"
             )
 
             # Copy binaries
             for binary_name in BINARY_NAMES:
                 src_binary = build_dir / "bin" / binary_name
                 if src_binary.exists():
-                    dst_binary = llama_cpp_dir / binary_name
+                    dst_binary = bin_dir / binary_name
                     shutil.copy2(src_binary, dst_binary)
                     _make_executable(dst_binary)
-                    logger.info(f"Copied {binary_name} to {llama_cpp_dir}")
+                    logger.info(f"Copied {binary_name} to {bin_dir}")
 
             # Copy shared libraries
             for lib_pattern in SHARED_LIB_PATTERNS:
                 for lib_file in build_dir.glob(f"bin/{lib_pattern}*.so*"):
-                    dst_lib = llama_cpp_dir / lib_file.name
+                    dst_lib = bin_dir / lib_file.name
                     shutil.copy2(lib_file, dst_lib)
-                    logger.info(f"Copied {lib_file.name} to {llama_cpp_dir}")
+                    logger.info(f"Copied {lib_file.name} to {bin_dir}")
 
             # Test the binary
-            test_binary = get_llama_cpp_binary("llama-server")
+            test_binary = get_llama_cpp_binary("llama-server", bin_dir)
             if test_binary:
                 console.print("[green]✓[/green] Testing binary...")
                 try:
@@ -400,8 +399,8 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
 
         console.print("[green]✓[/green] llama.cpp installed successfully!")
         console.print(f"  Version: {tag}")
-        console.print(f"  Location: {LLAMA_CPP_BIN_DIR}")
-        return LLAMA_CPP_BIN_DIR
+        console.print(f"  Location: {bin_dir}")
+        return bin_dir
 
     if not _is_ubuntu():
         logger.info("Non-Ubuntu Linux detected, compiling from source")
@@ -441,31 +440,29 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
                 verbose=False,
             )
 
-            # Copy binaries and shared libraries to bin/llamacpp/
-            llama_cpp_dir = LLAMA_CPP_BIN_DIR / "llamacpp"
-            llama_cpp_dir.mkdir(parents=True, exist_ok=True)
+            # Copy binaries and shared libraries directly to bin_dir
             console.print(
-                "[green]✓[/green] Copying binaries and libraries to bin/llamacpp/"
+                "[green]✓[/green] Copying binaries and libraries to bin_dir"
             )
 
             # Copy binaries
             for binary_name in BINARY_NAMES:
                 src_binary = build_dir / "bin" / binary_name
                 if src_binary.exists():
-                    dst_binary = llama_cpp_dir / binary_name
+                    dst_binary = bin_dir / binary_name
                     shutil.copy2(src_binary, dst_binary)
                     _make_executable(dst_binary)
-                    logger.info(f"Copied {binary_name} to {llama_cpp_dir}")
+                    logger.info(f"Copied {binary_name} to {bin_dir}")
 
             # Copy shared libraries
             for lib_pattern in SHARED_LIB_PATTERNS:
                 for lib_file in build_dir.glob(f"bin/{lib_pattern}*.so*"):
-                    dst_lib = llama_cpp_dir / lib_file.name
+                    dst_lib = bin_dir / lib_file.name
                     shutil.copy2(lib_file, dst_lib)
-                    logger.info(f"Copied {lib_file.name} to {llama_cpp_dir}")
+                    logger.info(f"Copied {lib_file.name} to {bin_dir}")
 
             # Test the binary
-            test_binary = get_llama_cpp_binary("llama-server")
+            test_binary = get_llama_cpp_binary("llama-server", bin_dir)
             if test_binary:
                 console.print("[green]✓[/green] Testing binary...")
                 try:
@@ -498,8 +495,8 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
 
         console.print("[green]✓[/green] llama.cpp installed successfully!")
         console.print(f"  Version: {tag}")
-        console.print(f"  Location: {LLAMA_CPP_BIN_DIR}")
-        return LLAMA_CPP_BIN_DIR
+        console.print(f"  Location: {bin_dir}")
+        return bin_dir
 
     # Ubuntu with no nvcc - download pre-built binary
     logger.info("Ubuntu detected with no CUDA, downloading pre-built binary")
@@ -534,12 +531,12 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
             raise RuntimeError("Could not find download URL for binary asset")
 
         # Download and extract
-        extracted = _download_and_extract(download_url, LLAMA_CPP_BIN_DIR)
+        extracted = _download_and_extract(download_url, bin_dir)
         logger.info(f"Extracted {len(extracted)} files")
 
         # Make binaries executable
         for binary_name in BINARY_NAMES:
-            binary_path = get_llama_cpp_binary(binary_name)
+            binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
                 _make_executable(binary_path)
                 logger.info(f"Made {binary_name} executable")
@@ -547,18 +544,18 @@ def download_latest_llama_cpp(version: Optional[str] = None) -> Path:
         # Print success message
         console.print("[green]✓[/green] llama.cpp installed successfully!")
         console.print(f"  Version: {tag}")
-        console.print(f"  Location: {LLAMA_CPP_BIN_DIR}")
+        console.print(f"  Location: {bin_dir}")
 
         # List installed binaries
         console.print("\nInstalled binaries:")
         for binary_name in BINARY_NAMES:
-            binary_path = get_llama_cpp_binary(binary_name)
+            binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
                 console.print(
                     f"  - [green]{binary_name}[/green]: {binary_path}"
                 )
 
-        return LLAMA_CPP_BIN_DIR
+        return bin_dir
 
     except urllib.error.URLError as e:
         error_console.print(f"[red]Network error: {e}[/red]")
@@ -690,14 +687,17 @@ def install_llama_cpp_from_source(
         raise
 
 
-def main(version: Optional[str] = None) -> None:
+def main(
+    bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None
+) -> None:
     """CLI entry point for llama.cpp installation.
 
     Args:
+        bin_dir: Directory to install the binaries to.
         version: Optional version tag to install.
     """
     try:
-        download_latest_llama_cpp(version=version)
+        download_latest_llama_cpp(bin_dir=bin_dir, version=version)
     except Exception as e:
         error_console.print(f"[red]Installation failed: {e}[/red]")
         sys.exit(1)

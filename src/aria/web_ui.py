@@ -1,3 +1,21 @@
+"""
+Web UI module for the ARIA application using Chainlit framework.
+
+This module provides the web interface for the ARIA application, handling:
+- User authentication and session management
+- Chat session lifecycle (start, resume, message handling)
+- Integration with LLM agents and workflows
+- Data persistence and storage
+- UI command handling
+
+The module uses Chainlit for the web interface and integrates with:
+- SQL database for user authentication and chat history
+- Local storage for uploaded files and images
+- LLM agents for conversation handling and prompt enhancement
+"""
+
+import json
+
 import chainlit as cl
 from chainlit.types import ThreadDict
 from llama_index.core.agent.workflow import AgentStream, ToolCall
@@ -22,67 +40,163 @@ from aria.config import (
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
+from aria.helpers.ui import maybe_remove_step, send_tool_step
 from aria.llm import (
     get_agent_workflow,
     get_chat_llm,
     get_default_memory,
     get_embeddings_model,
 )
-from aria.ui import maybe_remove_step, send_tool_step
 
+# Constants
+DEFAULT_TOKEN_LIMIT = TOKEN_LIMIT
+ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
+LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}"
+
+# Initialize logging
 log_path = DEBUG_LOGS_PATH
 logger.add(
     log_path,
     rotation="10 MB",
     level="DEBUG",
-    format=(
-        "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
-        "{name}:{function}:{line} - {message}"
-    ),
+    format=LOG_FORMAT,
 )
 
+# Initialize LLM and embeddings
 llm = get_chat_llm(api_base=CHAT_OPENAI_API)
 embeddings = get_embeddings_model(api_base=EMBEDDINGS_API_URL)
 
-
-agents_workflow = get_agent_workflow(llm)
+# Initialize workflow and agents
+agents_workflow = get_agent_workflow(llm=llm)
 prompt_enhancer = get_prompt_enhancer_agent(llm=llm)
 
 
-@cl.data_layer
-def get_data_layer():
-    engine = create_engine(CHAT_HISTORY_DB_URL)
+def _create_memory(thread_id: str) -> Memory:
+    """
+    Create and return a new memory instance for a chat thread.
 
-    # Create tables (idempotent - won't drop existing tables)
+    Args:
+        thread_id: The unique identifier for the chat thread
+
+    Returns:
+        Configured Memory instance for the thread
+    """
+    return get_default_memory(
+        vector_db=VECTOR_DB,
+        thread_id=thread_id,
+        embed_model=embeddings,
+        token_limit=DEFAULT_TOKEN_LIMIT,
+    )
+
+
+async def _handle_message(message: cl.Message) -> str:
+    """
+    Handle messages.
+
+    Args:
+        message: The incoming user message
+
+    Returns:
+        The processed prompt (either original or enhanced)
+    """
+    prompt = message.content
+    if message.command == "Enhance":
+        response = await prompt_enhancer.run(user_msg=message.content)
+        results: PromptEnhancementResult = response.structured_response
+        prompt = results.enhanced
+
+    return prompt
+
+
+async def _restore_chat_history(thread: ThreadDict) -> Memory:
+    """
+    Restore chat history from thread data into memory.
+
+    Args:
+        thread: The thread dictionary containing chat steps and metadata
+
+    Returns:
+        Memory instance populated with chat history
+    """
+    thread_id = thread.get("id")
+    thread_name = thread.get("name")
+    logger.debug(
+        f"Restoring chat history for thread {thread_id} ({thread_name})"
+    )
+
+    chat_steps = thread.get("steps", [])
+    logger.debug(f"Thread contains {len(chat_steps)} total steps")
+
+    # Filter for root-level messages only
+    root_messages = [m for m in chat_steps if m.get("parentId") is None]
+    logger.debug(f"Found {len(root_messages)} root-level messages")
+
+    memory = _create_memory(thread_id)
+
+    # Restore conversation history
+    steps_restored = 0
+    for message_step in root_messages:
+        content = message_step.get("output", "")
+        message_type = message_step.get("type")
+
+        if not content or message_type not in ROOT_MESSAGE_TYPES:
+            continue
+
+        role = (
+            MessageRole.USER
+            if message_type == "user_message"
+            else MessageRole.ASSISTANT
+        )
+
+        await memory.aput(ChatMessage(role=role, content=content))
+        steps_restored += 1
+
+    logger.info(f"Restored {steps_restored} messages for thread {thread_id}")
+    return memory
+
+
+@cl.data_layer
+def get_data_layer() -> SQLiteSQLAlchemyDataLayer:
+    """
+    Initialize and return the data layer for Chainlit.
+
+    Returns:
+        Configured data layer instance with database and storage providers
+    """
+    engine = create_engine(CHAT_HISTORY_DB_URL)
     Base.metadata.create_all(engine)
 
-    # Use local storage for elements (images, files, etc.)
     storage_client = LocalStorageClient(storage_path=LOCAL_STORAGE_PATH)
 
     return SQLiteSQLAlchemyDataLayer(
         conninfo=SQLITE_CONN_INFO,
         storage_provider=storage_client,
-        show_logger=True,  # Enable to debug data layer issues
+        show_logger=True,
     )
 
 
 @cl.password_auth_callback
-async def auth_callback(username: str, password: str):
-    """Authenticate user against database using password field."""
-    import json
+async def auth_callback(username: str, password: str) -> cl.User | None:
+    """
+    Handle user authentication against the database.
 
+    Args:
+        username: The username provided by the user
+        password: The password provided by the user
+
+    Returns:
+        User object if authentication succeeds, None otherwise
+    """
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
     from aria.db.auth import verify_password
     from aria.db.models import User
 
-    # Create database session (sync since this is a sync callback)
     engine = create_engine(CHAT_HISTORY_DB_URL)
 
     try:
         with Session(engine) as session:
-            # Find user by identifier (username)
             user = session.execute(
                 select(User).where(User.identifier == username)
             ).scalar_one_or_none()
@@ -91,7 +205,6 @@ async def auth_callback(username: str, password: str):
                 logger.debug(f"User not found: {username}")
                 return None
 
-            # Verify password using new password field
             user_password = str(user.password)
             if user_password and verify_password(password, user_password):
                 metadata = json.loads(str(user.metadata_))
@@ -105,18 +218,13 @@ async def auth_callback(username: str, password: str):
             return None
 
     except Exception as e:
-        logger.error(f"Authentication error: {e}")
+        logger.error(f"Authentication error for user {username}: {e}")
         return None
 
 
 @cl.on_chat_start
-async def on_chat_start():
-    """
-    Chainlit chat-start handler.
-
-    Initializes a new chat session.
-    Memory will be initialized on first message since thread_id is not available yet.
-    """
+async def on_chat_start() -> None:
+    """Initialize new chat session with available commands."""
     logger.debug("Starting new chat session")
     await cl.context.emitter.set_commands(
         [
@@ -132,110 +240,51 @@ async def on_chat_start():
 
 
 @cl.on_chat_resume
-async def on_chat_resume(thread: ThreadDict):
-    """
-    Chainlit chat-resume handler.
-
-    Called when a user resumes a previous conversation thread.
-    This restores the conversation history to the LLM memory.
-
-    Args:
-        thread: The thread data containing steps (messages) and metadata
-    """
-    thread_id = thread.get("id")
-    thread_name = thread.get("name")
-    logger.debug(f"Resuming thread: {thread_id} - {thread_name}")
-
-    steps = thread.get("steps", [])
-    logger.debug(f"Thread has {len(steps)} total steps")
-
-    # Filter for root-level messages only (parentId == None)
-    # Chainlit automatically displays the messages in the UI from the database
-    root_messages = [m for m in steps if m.get("parentId") is None]
-    logger.debug(f"Thread has {len(root_messages)} root-level messages")
-
-    memory = get_default_memory(
-        vector_db=VECTOR_DB,
-        thread_id=thread_id,
-        embed_model=embeddings,
-        token_limit=TOKEN_LIMIT,
-    )
-
-    # Restore the conversation history by replaying messages into memory
-    steps_restored = 0
-    for step in root_messages:
-        content = step.get("output", "")
-        message_type = step.get("type")
-        if not content or message_type not in [
-            "user_message",
-            "assistant_message",
-        ]:
-            continue
-
-        role = (
-            MessageRole.USER
-            if message_type == "user_message"
-            else MessageRole.ASSISTANT
-        )
-
-        message = ChatMessage(role=role, content=content)
-        await memory.aput(message)
-        steps_restored += 1
-
-    # Store memory in user session for reuse
+async def on_chat_resume(thread: ThreadDict) -> None:
+    """Restore previous chat session from thread data."""
+    memory = await _restore_chat_history(thread)
     cl.user_session.set("memory", memory)
-
-    logger.info(f"Restored {steps_restored} steps for thread {thread_id}")
 
 
 @cl.on_message
-async def on_message(message: cl.Message):
+async def on_message(message: cl.Message) -> None:
     """
-    Chainlit message handler.
+    Process incoming user messages through the agent workflow.
 
-    Args:
-        message (cl.Message): The inbound user message.
+    Handles command messages, memory management, and streaming responses.
     """
-    msg = cl.Message(content="")
+    output = cl.Message(content="")
+    try:
+        prompt = await _handle_message(message)
 
-    prompt = message.content
-    if msg.command == "Enhance":
-        # Let's try to use the prompt enhancer
-        response = await prompt_enhancer.run(user_msg=message.content)
-        if response.structured_response:
-            ouput: PromptEnhancementResult = response.structured_response
-            prompt = ouput.enhanced
+        # Get or create memory
+        memory: Memory | None = cl.user_session.get("memory")
+        if memory is None:
+            memory = _create_memory(message.thread_id)
+            cl.user_session.set("memory", memory)
+            logger.debug(f"Created new Memory for thread {message.thread_id}")
 
-    # Try to get existing memory from session
-    memory: Memory | None = cl.user_session.get("memory")
-
-    # If not found (new chat or session issue), create new memory instance
-    if memory is None:
-        memory = get_default_memory(
-            vector_db=VECTOR_DB,
-            thread_id=message.thread_id,
-            embed_model=embeddings,
-            token_limit=TOKEN_LIMIT,
+        # Process with agent workflow
+        handler = agents_workflow.run(
+            user_msg=prompt, memory=memory, max_iterations=MAX_ITERATIONS
         )
-        # Store in session for future messages
-        cl.user_session.set("memory", memory)
-        logger.debug(f"Created new Memory for thread {message.thread_id}")
 
-    handler = agents_workflow.run(
-        user_msg=prompt, memory=memory, max_iterations=MAX_ITERATIONS
-    )
+        current_step: cl.Step | None = None
 
-    step: cl.Step | None = None
-    # Stream events as they arrive
-    async for event in handler.stream_events():
-        if isinstance(event, ToolCall):
-            step = await send_tool_step(event)
-        elif isinstance(event, AgentStream):
-            step = await maybe_remove_step(step)
-            await msg.stream_token(event.delta)
+        # Stream events as they arrive
+        async for event in handler.stream_events():
+            if isinstance(event, ToolCall):
+                current_step = await send_tool_step(event)
+            elif isinstance(event, AgentStream):
+                current_step = await maybe_remove_step(current_step)
+                await output.stream_token(event.delta)
 
-    # Send the final message - this persists it to the database for thread resumption
-    await msg.send()
+        # Finalize and send the message
+        await output.send()
+        await handler
 
-    # Finalize the run
-    _ = await handler
+    except Exception as e:
+        logger.error(f"Error processing message: {e}")
+        output.content = "An error occurred. Please try again."
+        await output.send()
+        raise

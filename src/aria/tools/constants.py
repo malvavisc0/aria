@@ -13,8 +13,7 @@ from pathlib import Path
 # ============================================================================
 
 # Base directory for all file operations
-# Can be overridden via BASE_DIR environment variable
-BASE_DIR = Path(os.environ.get("BASE_DIR", ".files")).resolve()
+BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", ".files")).resolve()
 BASE_DIR.mkdir(exist_ok=True)
 
 # Derived directories
@@ -31,8 +30,8 @@ REPORTS_DIR.mkdir(exist_ok=True)
 # Size and Timeout Limits
 # ============================================================================
 
-# Maximum file size for processing (100MB)
-MAX_FILE_SIZE = 10 * 1024 * 1024
+# Maximum file size for processing (5MB)
+MAX_FILE_SIZE = 5 * 1024 * 1024
 
 # Default timeout for operations (seconds)
 DEFAULT_TIMEOUT = 30

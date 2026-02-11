@@ -13,20 +13,20 @@ from aria.scripts.llama import BINARY_NAMES, download_latest_llama_cpp
 class TestDownloadLatestLlamaCppNonLinux:
     """Tests for download_latest_llama_cpp() on non-Linux systems."""
 
-    def test_raises_not_implemented_on_windows(self):
+    def test_raises_not_implemented_on_windows(self, tmp_path: Path):
         """Test that download_latest_llama_cpp raises NotImplementedError on Windows."""
         with patch("platform.system", return_value="Windows"):
             with pytest.raises(NotImplementedError) as exc_info:
-                download_latest_llama_cpp()
+                download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert "Source compilation is required" in str(exc_info.value)
             assert "non-Linux systems" in str(exc_info.value)
 
-    def test_raises_not_implemented_on_macos(self):
+    def test_raises_not_implemented_on_macos(self, tmp_path: Path):
         """Test that download_latest_llama_cpp raises NotImplementedError on macOS."""
         with patch("platform.system", return_value="Darwin"):
             with pytest.raises(NotImplementedError) as exc_info:
-                download_latest_llama_cpp()
+                download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert "Source compilation is required" in str(exc_info.value)
 
@@ -48,7 +48,6 @@ class TestDownloadLatestLlamaCppUbuntuNoNvcc:
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -79,7 +78,7 @@ VERSION_ID="22.04"
             # Mock get_llama_cpp_binary
             mock_get_binary.return_value = tmp_path / "llama-cli"
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
             mock_extract.assert_called_once()
@@ -93,7 +92,6 @@ VERSION_ID="22.04"
             patch(
                 "aria.scripts.llama._get_latest_release_info"
             ) as mock_release,
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -116,7 +114,7 @@ ID=ubuntu
             }
 
             with pytest.raises(RuntimeError) as exc_info:
-                download_latest_llama_cpp()
+                download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert "No suitable Linux binary found" in str(exc_info.value)
 
@@ -129,7 +127,6 @@ ID=ubuntu
             patch(
                 "aria.scripts.llama._get_latest_release_info"
             ) as mock_release,
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -147,7 +144,7 @@ ID=ubuntu
             }
 
             with pytest.raises(RuntimeError) as exc_info:
-                download_latest_llama_cpp()
+                download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert "Could not find download URL" in str(exc_info.value)
 
@@ -160,7 +157,6 @@ ID=ubuntu
             patch(
                 "aria.scripts.llama._get_latest_release_info"
             ) as mock_release,
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -175,7 +171,7 @@ ID=ubuntu
             mock_release.side_effect = urllib.error.URLError("Network error")
 
             with pytest.raises(urllib.error.URLError):
-                download_latest_llama_cpp()
+                download_latest_llama_cpp(bin_dir=tmp_path)
 
 
 class TestDownloadLatestLlamaCppUbuntuWithNvcc:
@@ -196,7 +192,6 @@ class TestDownloadLatestLlamaCppUbuntuWithNvcc:
             patch(
                 "aria.scripts.llama.install_llama_cpp_from_source"
             ) as mock_compile,
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
             patch(
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
@@ -232,9 +227,7 @@ ID=ubuntu
             mock_compile.return_value = tmp_path / "build"
 
             # Mock get_llama_cpp_binary
-            mock_get_binary.return_value = (
-                tmp_path / "llamacpp" / "llama-server"
-            )
+            mock_get_binary.return_value = tmp_path / "llama-server"
 
             # Mock subprocess.run
             mock_result = Mock()
@@ -242,7 +235,7 @@ ID=ubuntu
             mock_result.stdout = "llama-server version: v1.2.3"
             mock_run.return_value = mock_result
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
             mock_compile.assert_called_once()
@@ -271,7 +264,6 @@ class TestDownloadLatestLlamaCppNonUbuntuLinux:
             patch(
                 "aria.scripts.llama.install_llama_cpp_from_source"
             ) as mock_compile,
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
             patch(
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
@@ -307,9 +299,7 @@ VERSION_ID="12"
             mock_compile.return_value = tmp_path / "build"
 
             # Mock get_llama_cpp_binary
-            mock_get_binary.return_value = (
-                tmp_path / "llamacpp" / "llama-server"
-            )
+            mock_get_binary.return_value = tmp_path / "llama-server"
 
             # Mock subprocess.run
             mock_result = Mock()
@@ -317,7 +307,7 @@ VERSION_ID="12"
             mock_result.stdout = "llama-server version: v1.2.3"
             mock_run.return_value = mock_result
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
             mock_compile.assert_called_once()
@@ -344,7 +334,6 @@ VERSION_ID="12"
             patch(
                 "aria.scripts.llama.install_llama_cpp_from_source"
             ) as mock_compile,
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
             patch(
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
@@ -380,9 +369,7 @@ VERSION_ID="12"
             mock_compile.return_value = tmp_path / "build"
 
             # Mock get_llama_cpp_binary
-            mock_get_binary.return_value = (
-                tmp_path / "llamacpp" / "llama-server"
-            )
+            mock_get_binary.return_value = tmp_path / "llama-server"
 
             # Mock subprocess.run
             mock_result = Mock()
@@ -390,7 +377,7 @@ VERSION_ID="12"
             mock_result.stdout = "llama-server version: v1.2.3"
             mock_run.return_value = mock_result
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
             mock_compile.assert_called_once()
@@ -415,7 +402,6 @@ class TestDownloadLatestLlamaCppVersionParameter:
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -443,7 +429,9 @@ ID=ubuntu
             # Mock get_llama_cpp_binary
             mock_get_binary.return_value = tmp_path / "llama-cli"
 
-            result = download_latest_llama_cpp(version="v1.2.3")
+            result = download_latest_llama_cpp(
+                bin_dir=tmp_path, version="v1.2.3"
+            )
 
             assert result == tmp_path
 
@@ -461,7 +449,6 @@ ID=ubuntu
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -489,7 +476,9 @@ ID=ubuntu
             # Mock get_llama_cpp_binary
             mock_get_binary.return_value = tmp_path / "llama-cli"
 
-            result = download_latest_llama_cpp(version="latest")
+            result = download_latest_llama_cpp(
+                bin_dir=tmp_path, version="latest"
+            )
 
             assert result == tmp_path
 
@@ -511,7 +500,6 @@ class TestDownloadLatestLlamaCppBinaryTesting:
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
             patch("subprocess.run") as mock_run,
         ):
             # Mock Ubuntu OS release
@@ -546,7 +534,7 @@ ID=ubuntu
             mock_result.stdout = "llama-server version: v1.2.3"
             mock_run.return_value = mock_result
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
             # Binary testing is not performed for Ubuntu pre-built binaries
@@ -567,7 +555,6 @@ ID=ubuntu
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
             patch("subprocess.run") as mock_run,
         ):
             # Mock Ubuntu OS release
@@ -601,7 +588,7 @@ ID=ubuntu
                 "llama-server", 10
             )
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
 
@@ -619,7 +606,6 @@ ID=ubuntu
                 "aria.scripts.llama.get_llama_cpp_binary"
             ) as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
-            patch("aria.scripts.llama.LLAMA_CPP_BIN_DIR", tmp_path),
             patch("subprocess.run") as mock_run,
         ):
             # Mock Ubuntu OS release
@@ -654,6 +640,6 @@ ID=ubuntu
             mock_result.stderr = "Error: something went wrong"
             mock_run.return_value = mock_result
 
-            result = download_latest_llama_cpp()
+            result = download_latest_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path

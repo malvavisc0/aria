@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from aria.nvidia import (
+from aria.helpers.nvidia import (
     GPUMetadata,
     check_gpu_memory_usage,
     check_nvidia_smi_available,

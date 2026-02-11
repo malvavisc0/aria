@@ -8,7 +8,7 @@ Run with: uv run pytest src/aria/tests/test_nvidia_integration.py -v
 
 import pytest
 
-from aria.nvidia import (
+from aria.helpers.nvidia import (
     GPUMetadata,
     check_gpu_memory_usage,
     check_nvidia_smi_available,

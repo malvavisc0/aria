@@ -441,7 +441,7 @@ def _read_file_safely(file_path: str) -> str:
     else:
         # Try with BASE_DIR prefix
         try:
-            from aria.tools.files.constants import BASE_DIR
+            from aria.tools.constants import BASE_DIR
 
             potential_path = BASE_DIR / file_path
             if potential_path.exists():

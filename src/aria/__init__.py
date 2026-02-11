@@ -228,6 +228,9 @@ def list_users():
 
 @app.command()
 def update_llama(
+    bin_dir: Annotated[
+        str, typer.Option(help="Directory to install the binaries to")
+    ] = "bin/llamacpp",
     version: Annotated[
         Optional[str],
         typer.Option(help="Specific version tag to install (e.g., v1.0.0)"),
@@ -238,8 +241,10 @@ def update_llama(
     The binary is downloaded to the bin/ directory and made executable.
     This replaces the need for compiling from source with the bash script.
     """
+    from pathlib import Path
+
     try:
-        download_latest_llama_cpp(version=version)
+        download_latest_llama_cpp(bin_dir=Path(bin_dir), version=version)
     except Exception as e:
         error_console.print(f"[red]Installation failed: {e}[/red]")
         raise typer.Exit(1)
