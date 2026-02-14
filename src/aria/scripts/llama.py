@@ -7,10 +7,10 @@ version tag.
 Example:
     ```python
     from pathlib import Path
-    from aria.scripts.llama import download_latest_llama_cpp, get_llama_cpp_binary
+    from aria.scripts.llama import download_llama_cpp, get_llama_cpp_binary
 
     # Download the latest release to bin/llamacpp/
-    download_latest_llama_cpp(bin_dir=Path("bin/llamacpp"))
+    download_llama_cpp(bin_dir=Path("bin/llamacpp"))
 
     # Get the path to the llama-cli binary
     binary_path = get_llama_cpp_binary("llama-cli", bin_dir=Path("bin/llamacpp"))
@@ -34,7 +34,6 @@ from typing import Optional
 from loguru import logger
 from rich.console import Console
 
-from aria.config import LLAMA_CPP_BIN_DIR
 from aria.helpers.nvidia import check_nvidia_smi_available
 
 console = Console()
@@ -274,9 +273,7 @@ def get_llama_cpp_binary(binary_name: str, bin_dir: Path) -> Optional[Path]:
     return None
 
 
-def download_latest_llama_cpp(
-    bin_dir: Path, version: Optional[str] = None
-) -> Path:
+def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     """Download and install the latest llama.cpp binary or compile from source.
 
     This function implements the following logic:
@@ -697,7 +694,7 @@ def main(
         version: Optional version tag to install.
     """
     try:
-        download_latest_llama_cpp(bin_dir=bin_dir, version=version)
+        download_llama_cpp(bin_dir=bin_dir, version=version)
     except Exception as e:
         error_console.print(f"[red]Installation failed: {e}[/red]")
         sys.exit(1)

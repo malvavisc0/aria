@@ -18,6 +18,8 @@ import json
 
 import chainlit as cl
 from chainlit.types import ThreadDict
+from chromadb import PersistentClient as ChromaDBPersistentClient
+from chromadb.config import Settings as ChromaDBSettings
 from llama_index.core.agent.workflow import AgentStream, ToolCall
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.memory import Memory
@@ -26,17 +28,12 @@ from sqlalchemy import create_engine
 
 from aria.agents import get_prompt_enhancer_agent
 from aria.agents.prompt_enhancer import PromptEnhancementResult
-from aria.config import (
-    CHAT_HISTORY_DB_URL,
-    CHAT_OPENAI_API,
-    DEBUG_LOGS_PATH,
-    EMBEDDINGS_API_URL,
-    LOCAL_STORAGE_PATH,
-    MAX_ITERATIONS,
-    SQLITE_CONN_INFO,
-    TOKEN_LIMIT,
-    VECTOR_DB,
-)
+from aria.config.database import ChromaDB as ChromaDBConfig
+from aria.config.database import SQLite as SQLiteConfig
+from aria.config.folders import Debug as DebugConfig
+from aria.config.folders import Storage as StorageConfig
+from aria.config.models import Chat as ChatConfig
+from aria.config.models import Embeddings as EmbeddingsConfig
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
@@ -49,12 +46,11 @@ from aria.llm import (
 )
 
 # Constants
-DEFAULT_TOKEN_LIMIT = TOKEN_LIMIT
 ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
 LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}"
 
 # Initialize logging
-log_path = DEBUG_LOGS_PATH
+log_path = DebugConfig.logs_path
 logger.add(
     log_path,
     rotation="10 MB",
@@ -63,8 +59,18 @@ logger.add(
 )
 
 # Initialize LLM and embeddings
-llm = get_chat_llm(api_base=CHAT_OPENAI_API)
-embeddings = get_embeddings_model(api_base=EMBEDDINGS_API_URL)
+llm = get_chat_llm(api_base=ChatConfig.api_url)
+embeddings = get_embeddings_model(api_base=EmbeddingsConfig.api_url)
+
+vector_db = ChromaDBPersistentClient(
+    path=ChromaDBConfig.db_path,
+    settings=ChromaDBSettings(
+        is_persistent=True,
+        persist_directory=ChromaDBConfig.db_path.absolute().as_posix(),
+        anonymized_telemetry=False,
+    ),
+)
+
 
 # Initialize workflow and agents
 agents_workflow = get_agent_workflow(llm=llm)
@@ -82,10 +88,10 @@ def _create_memory(thread_id: str) -> Memory:
         Configured Memory instance for the thread
     """
     return get_default_memory(
-        vector_db=VECTOR_DB,
+        vector_db=vector_db,
         thread_id=thread_id,
         embed_model=embeddings,
-        token_limit=DEFAULT_TOKEN_LIMIT,
+        token_limit=EmbeddingsConfig.token_limit,
     )
 
 
@@ -163,13 +169,13 @@ def get_data_layer() -> SQLiteSQLAlchemyDataLayer:
     Returns:
         Configured data layer instance with database and storage providers
     """
-    engine = create_engine(CHAT_HISTORY_DB_URL)
+    engine = create_engine(SQLiteConfig.db_url)
     Base.metadata.create_all(engine)
 
-    storage_client = LocalStorageClient(storage_path=LOCAL_STORAGE_PATH)
+    storage_client = LocalStorageClient(storage_path=StorageConfig.path)
 
     return SQLiteSQLAlchemyDataLayer(
-        conninfo=SQLITE_CONN_INFO,
+        conninfo=SQLiteConfig.conn_info,
         storage_provider=storage_client,
         show_logger=True,
     )
@@ -193,7 +199,7 @@ async def auth_callback(username: str, password: str) -> cl.User | None:
     from aria.db.auth import verify_password
     from aria.db.models import User
 
-    engine = create_engine(CHAT_HISTORY_DB_URL)
+    engine = create_engine(SQLiteConfig.db_url)
 
     try:
         with Session(engine) as session:
@@ -266,7 +272,9 @@ async def on_message(message: cl.Message) -> None:
 
         # Process with agent workflow
         handler = agents_workflow.run(
-            user_msg=prompt, memory=memory, max_iterations=MAX_ITERATIONS
+            user_msg=prompt,
+            memory=memory,
+            max_iterations=ChatConfig.max_iteration,
         )
 
         current_step: cl.Step | None = None

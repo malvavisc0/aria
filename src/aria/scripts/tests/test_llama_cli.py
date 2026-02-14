@@ -13,11 +13,9 @@ from aria.scripts.llama import main
 class TestMain:
     """Tests for main() function."""
 
-    def test_calls_download_latest_llama_cpp(self):
-        """Test that main() calls download_latest_llama_cpp()."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+    def test_calls_download_llama_cpp(self):
+        """Test that main() calls download_llama_cpp()."""
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.return_value = None
 
             main()
@@ -26,11 +24,9 @@ class TestMain:
                 bin_dir=Path("bin/llamacpp"), version=None
             )
 
-    def test_calls_download_latest_llama_cpp_with_version(self):
-        """Test that main() calls download_latest_llama_cpp() with version."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+    def test_calls_download_llama_cpp_with_version(self):
+        """Test that main() calls download_llama_cpp() with version."""
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.return_value = None
 
             main(version="v1.2.3")
@@ -41,9 +37,7 @@ class TestMain:
 
     def test_exits_with_code_0_on_success(self):
         """Test that main() exits with code 0 on success."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.return_value = None
 
             with patch("sys.exit") as mock_exit:
@@ -53,9 +47,7 @@ class TestMain:
 
     def test_exits_with_code_1_on_exception(self):
         """Test that main() exits with code 1 on exception."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = Exception("Installation failed")
 
             with patch("sys.exit") as mock_exit:
@@ -65,9 +57,7 @@ class TestMain:
 
     def test_prints_error_on_exception(self):
         """Test that main() prints error on exception."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = Exception("Installation failed")
 
             with patch(
@@ -83,9 +73,7 @@ class TestMain:
 
     def test_prints_error_message_on_exception(self):
         """Test that main() prints the exception message."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = ValueError("Invalid version")
 
             with patch(
@@ -100,9 +88,7 @@ class TestMain:
 
     def test_handles_subprocess_error(self):
         """Test that main() handles subprocess errors."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = subprocess_error = __import__(
                 "subprocess"
             ).CalledProcessError(1, "cmd", "Error")
@@ -117,9 +103,7 @@ class TestMain:
 
     def test_handles_file_not_found_error(self):
         """Test that main() handles FileNotFoundError."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = FileNotFoundError("Binary not found")
 
             with patch(
@@ -132,9 +116,7 @@ class TestMain:
 
     def test_handles_runtime_error(self):
         """Test that main() handles RuntimeError."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = RuntimeError("Compilation failed")
 
             with patch(
@@ -147,9 +129,7 @@ class TestMain:
 
     def test_handles_keyboard_interrupt(self):
         """Test that main() allows KeyboardInterrupt to propagate."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = KeyboardInterrupt()
 
             with pytest.raises(KeyboardInterrupt):
@@ -157,9 +137,7 @@ class TestMain:
 
     def test_handles_system_exit(self):
         """Test that main() allows SystemExit to propagate."""
-        with patch(
-            "aria.scripts.llama.download_latest_llama_cpp"
-        ) as mock_download:
+        with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = SystemExit(1)
 
             with pytest.raises(SystemExit):
