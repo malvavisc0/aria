@@ -107,9 +107,7 @@ def _validate_inputs(
 
     # Validate numeric parameters
     if chunk_size > MAX_CHUNK_SIZE:
-        raise FileSecurityError(
-            f"chunk_size must be between 1 and {MAX_CHUNK_SIZE}"
-        )
+        raise FileSecurityError(f"chunk_size must be between 1 and {MAX_CHUNK_SIZE}")
 
     if offset < 0 or length < 0:
         raise FileSecurityError("Negative offset or length not allowed")
@@ -200,10 +198,7 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
             raise FileSecurityError("Symlinks not allowed")
 
         # Check file extension (only if it has an extension)
-        if (
-            file_path.suffix
-            and file_path.suffix.lower() not in ALLOWED_EXTENSIONS
-        ):
+        if file_path.suffix and file_path.suffix.lower() not in ALLOWED_EXTENSIONS:
             msg = f"File type not allowed: {file_path.suffix}"
             raise FileSecurityError(msg)
 
@@ -246,9 +241,7 @@ def _secure_resolve_dir(dir_name: str) -> Path:
         raise FileSecurityError(f"Path resolution failed: {exc}") from exc
 
 
-def _read_lines_streaming(
-    file_path: Path, offset: int, length: int
-) -> List[str]:
+def _read_lines_streaming(file_path: Path, offset: int, length: int) -> List[str]:
     """Read lines from file using streaming.
 
     Args:
@@ -480,9 +473,7 @@ def _format_permissions_symbolic(mode: int) -> str:
     return "".join(perms)
 
 
-def validate_and_resolve_file(
-    file_name: str, check_exists: bool = True
-) -> Path:
+def validate_and_resolve_file(file_name: str, check_exists: bool = True) -> Path:
     """Validate inputs and resolve file path in one step.
 
     Args:

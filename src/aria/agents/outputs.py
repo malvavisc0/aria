@@ -12,9 +12,7 @@ class ResearchReport(BaseModel):
 
     file_name: str = Field(description="The name of the file report.")
 
-    file_path: str = Field(
-        description="The file path where the report is saved."
-    )
+    file_path: str = Field(description="The file path where the report is saved.")
 
     file_size: int = Field(
         ge=0,

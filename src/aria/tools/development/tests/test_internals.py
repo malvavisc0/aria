@@ -242,9 +242,7 @@ class TestValidateInputs:
 
     def test_validate_inputs_non_string_filename(self):
         """Test validation with non-string filename"""
-        with pytest.raises(
-            PythonSecurityError, match="Filename must be a string"
-        ):
+        with pytest.raises(PythonSecurityError, match="Filename must be a string"):
             _validate_inputs(filename=123)
 
     def test_validate_inputs_path_traversal_filename(self):
@@ -256,16 +254,12 @@ class TestValidateInputs:
 
     def test_validate_inputs_non_string_file_path(self):
         """Test validation with non-string file_path"""
-        with pytest.raises(
-            PythonSecurityError, match="File path must be a string"
-        ):
+        with pytest.raises(PythonSecurityError, match="File path must be a string"):
             _validate_inputs(file_path=123)
 
     def test_validate_inputs_empty_file_path(self):
         """Test validation with empty file_path"""
-        with pytest.raises(
-            PythonSecurityError, match="File path cannot be empty"
-        ):
+        with pytest.raises(PythonSecurityError, match="File path cannot be empty"):
             _validate_inputs(file_path="")
 
     def test_validate_inputs_path_traversal_file_path(self):
@@ -443,9 +437,7 @@ class TestExecuteWithoutCapture:
         """Test execution without capture with custom argv"""
         code = "import sys\nassert sys.argv == ['test.py', 'arg1']"
         safe_globals = _create_safe_globals()
-        _execute_without_capture(
-            code, safe_globals, 10, argv=["test.py", "arg1"]
-        )
+        _execute_without_capture(code, safe_globals, 10, argv=["test.py", "arg1"])
         # Should complete without error
 
     def test_execute_without_capture_restores_argv(self):
@@ -586,9 +578,7 @@ print(z)
 
     def test_validate_inputs_with_none_values(self):
         """Test validation with None values (should be allowed)"""
-        _validate_inputs(
-            code=None, timeout=None, filename=None, file_path=None
-        )
+        _validate_inputs(code=None, timeout=None, filename=None, file_path=None)
         # Should not raise
 
     def test_safe_json_with_nested_data(self):

@@ -126,9 +126,7 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
     """
     thread_id = thread.get("id")
     thread_name = thread.get("name")
-    logger.debug(
-        f"Restoring chat history for thread {thread_id} ({thread_name})"
-    )
+    logger.debug(f"Restoring chat history for thread {thread_id} ({thread_name})")
 
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")

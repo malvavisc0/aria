@@ -122,10 +122,10 @@ def check_status():
     for binary in binaries:
         binary_path = LlamaCpp.bin_path / binary
         if binary_path.exists():
-            table.add_row(f"Binary: {binary}", "[green]✓ Installed[/green]")
+            table.add_row(f"{binary}", "[green]✓ Installed[/green]")
             installed_count += 1
         else:
-            table.add_row(f"Binary: {binary}", "[red]✗ Not found[/red]")
+            table.add_row(f"{binary}", "[red]✗ Not found[/red]")
 
     console.print(
         Panel(

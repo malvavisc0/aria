@@ -30,9 +30,7 @@ class LocalStorageClient(BaseStorageClient):
         {'object_key': 'image.png', 'url': 'file://.../.files/storage/image.png'}
     """
 
-    def __init__(
-        self, storage_path: Union[str, Path], base_url: str = "file://"
-    ):
+    def __init__(self, storage_path: Union[str, Path], base_url: str = "file://"):
         """Initialize local storage client.
 
         Args:
@@ -46,9 +44,7 @@ class LocalStorageClient(BaseStorageClient):
         # Create storage directory if it doesn't exist
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(
-            f"LocalStorageClient initialized: storage_path={self.storage_path}"
-        )
+        logger.info(f"LocalStorageClient initialized: storage_path={self.storage_path}")
 
     async def upload_file(
         self,

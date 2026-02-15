@@ -68,9 +68,7 @@ class ReasoningSession:
             reasoning_type = "deductive"
 
         biases = (
-            self._detect_biases(content + " ".join(evidence or []))
-            if evidence
-            else []
+            self._detect_biases(content + " ".join(evidence or [])) if evidence else []
         )
 
         step = {
@@ -281,9 +279,7 @@ class ReasoningSession:
                     "status": "error",
                     "error": {
                         "code": "UNSUPPORTED_OPERATION",
-                        "message": (
-                            "Supported operations: get, set, list, clear"
-                        ),
+                        "message": ("Supported operations: get, set, list, clear"),
                     },
                 }
 
@@ -426,9 +422,7 @@ class ReasoningSession:
     @classmethod
     def from_dict(cls, data: Dict) -> "ReasoningSession":
         """Deserialize session from dictionary."""
-        session = cls(
-            session_id=data.get("session_id"), agent_id=data.get("agent_id")
-        )
+        session = cls(session_id=data.get("session_id"), agent_id=data.get("agent_id"))
         session.id = data["id"]
         session.created_at = data["created_at"]
         session.steps = data.get("steps", [])

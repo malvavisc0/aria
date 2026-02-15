@@ -75,7 +75,9 @@ GPU1    NV2      X
 
 Bonded"""
 
-MOCK_VERSION_OUTPUT = """NVIDIA-SMI 535.104.05    Driver Version: 535.104.05    CUDA Version: 12.2"""
+MOCK_VERSION_OUTPUT = (
+    """NVIDIA-SMI 535.104.05    Driver Version: 535.104.05    CUDA Version: 12.2"""
+)
 
 MOCK_VERSION_OUTPUT_ALT = """NVIDIA-SMI 525.85.12
 Driver Version: 525.85.12
@@ -155,25 +157,19 @@ class TestDetectGpuCount:
     def test_single_gpu(self):
         """Test detection of single GPU."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_LIST_SINGLE
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_LIST_SINGLE)
             assert detect_gpu_count() == 1
 
     def test_dual_gpu(self):
         """Test detection of two GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_LIST_DUAL
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_LIST_DUAL)
             assert detect_gpu_count() == 2
 
     def test_quad_gpu(self):
         """Test detection of four GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_LIST_QUAD
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_LIST_QUAD)
             assert detect_gpu_count() == 4
 
     def test_no_gpus_empty_output(self):
@@ -223,25 +219,19 @@ class TestGetTotalVramMb:
     def test_single_gpu_vram(self):
         """Test VRAM calculation for single GPU."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VRAM_TOTAL_SINGLE
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_TOTAL_SINGLE)
             assert get_total_vram_mb() == 24576
 
     def test_dual_gpu_vram(self):
         """Test VRAM calculation for two GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VRAM_TOTAL_DUAL
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_TOTAL_DUAL)
             assert get_total_vram_mb() == 49152  # 24576 * 2
 
     def test_quad_gpu_vram(self):
         """Test VRAM calculation for four GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VRAM_TOTAL_QUAD
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_TOTAL_QUAD)
             assert get_total_vram_mb() == 98304  # 24576 * 4
 
     def test_empty_output(self):
@@ -273,18 +263,14 @@ class TestGetTotalVramMb:
     def test_mixed_valid_invalid_values(self):
         """Test handling of mixed valid and invalid values."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout="24576\ninvalid\n16384"
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="24576\ninvalid\n16384")
             # Should fail on first invalid value
             assert get_total_vram_mb() == 0
 
     def test_vram_with_empty_lines(self):
         """Test that empty lines are filtered correctly."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout="24576\n\n24576\n"
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="24576\n\n24576\n")
             assert get_total_vram_mb() == 49152
 
 
@@ -399,9 +385,7 @@ class TestCheckGpuMemoryUsage:
     def test_malformed_output_too_many_values(self):
         """Test handling of malformed output with too many values."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout="12288, 24576, 8192"
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="12288, 24576, 8192")
             assert check_gpu_memory_usage(0, 50.0) is False
 
     def test_full_memory_usage(self):
@@ -432,9 +416,7 @@ class TestGetFreeVramPerGpu:
     def test_dual_gpu_free_vram(self):
         """Test free VRAM for two GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VRAM_FREE_DUAL
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_FREE_DUAL)
             result = get_free_vram_per_gpu()
             assert result == [20480, 22528]
 
@@ -454,9 +436,7 @@ class TestGetFreeVramPerGpu:
     def test_output_with_empty_lines(self):
         """Test that empty lines are filtered correctly."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout="20480\n\n22528\n"
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="20480\n\n22528\n")
             result = get_free_vram_per_gpu()
             assert result == [20480, 22528]
 
@@ -581,9 +561,7 @@ class TestCheckNvidiaSmiAvailable:
     def test_nvidia_smi_available(self):
         """Test when nvidia-smi is available."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VERSION_OUTPUT
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VERSION_OUTPUT)
             assert check_nvidia_smi_available() is True
 
     def test_nvidia_smi_not_found(self):
@@ -620,27 +598,21 @@ class TestGetNvidiaSmiVersion:
     def test_version_standard_format(self):
         """Test parsing of standard version format."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VERSION_OUTPUT
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VERSION_OUTPUT)
             version = get_nvidia_smi_version()
             assert version == "535.104.05"
 
     def test_version_alternative_format(self):
         """Test parsing of alternative version format."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_VERSION_OUTPUT_ALT
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VERSION_OUTPUT_ALT)
             version = get_nvidia_smi_version()
             assert version == "525.85.12"
 
     def test_version_two_part(self):
         """Test parsing of two-part version number."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout="NVIDIA-SMI 535.104"
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="NVIDIA-SMI 535.104")
             version = get_nvidia_smi_version()
             assert version == "535.104"
 
@@ -703,9 +675,7 @@ class TestDetectGpusWithDetails:
     def test_single_gpu_with_details(self):
         """Test detection of single GPU with full details."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE)
             gpus = detect_gpus_with_details()
 
             assert len(gpus) == 1
@@ -730,9 +700,7 @@ class TestDetectGpusWithDetails:
     def test_dual_gpu_with_details(self):
         """Test detection of two GPUs with different states."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_DETAILS_DUAL
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_DUAL)
             gpus = detect_gpus_with_details()
 
             assert len(gpus) == 2
@@ -864,15 +832,15 @@ class TestDetectGpusWithDetails:
         """Test memory utilization percentage calculation."""
         with patch("subprocess.run") as mock_run:
             # 12288 / 24576 = 50%
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE)
             gpus = detect_gpus_with_details()
             assert gpus[0].memory_utilization == 50.0
 
     def test_zero_total_memory(self):
         """Test handling of zero total memory (edge case)."""
-        mock_data = """0, GPU, UUID, 0, 0, 0, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
+        mock_data = (
+            """0, GPU, UUID, 0, 0, 0, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
+        )
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout=mock_data)
             gpus = detect_gpus_with_details()
@@ -883,9 +851,7 @@ class TestDetectGpusWithDetails:
     def test_pydantic_model_validation(self):
         """Test that GPUMetadata model validates correctly."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE)
             gpus = detect_gpus_with_details()
 
             gpu = gpus[0]

@@ -49,9 +49,7 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
                 if processed_result["title"] and processed_result["href"]:
                     results.append(processed_result)
                 else:
-                    logger.warning(
-                        f"Skipping result with missing fields: {result}"
-                    )
+                    logger.warning(f"Skipping result with missing fields: {result}")
             except (KeyError, TypeError) as field_error:
                 logger.warning(f"Skipping malformed result: {field_error}")
                 continue

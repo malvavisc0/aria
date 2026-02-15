@@ -60,9 +60,7 @@ class TestMain:
         with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = Exception("Installation failed")
 
-            with patch(
-                "aria.scripts.llama.error_console"
-            ) as mock_error_console:
+            with patch("aria.scripts.llama.error_console") as mock_error_console:
                 with patch("sys.exit"):
                     main()
 
@@ -76,9 +74,7 @@ class TestMain:
         with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = ValueError("Invalid version")
 
-            with patch(
-                "aria.scripts.llama.error_console"
-            ) as mock_error_console:
+            with patch("aria.scripts.llama.error_console") as mock_error_console:
                 with patch("sys.exit"):
                     main()
 
@@ -93,9 +89,7 @@ class TestMain:
                 "subprocess"
             ).CalledProcessError(1, "cmd", "Error")
 
-            with patch(
-                "aria.scripts.llama.error_console"
-            ) as mock_error_console:
+            with patch("aria.scripts.llama.error_console") as mock_error_console:
                 with patch("sys.exit") as mock_exit:
                     main()
 
@@ -106,9 +100,7 @@ class TestMain:
         with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = FileNotFoundError("Binary not found")
 
-            with patch(
-                "aria.scripts.llama.error_console"
-            ) as mock_error_console:
+            with patch("aria.scripts.llama.error_console") as mock_error_console:
                 with patch("sys.exit") as mock_exit:
                     main()
 
@@ -119,9 +111,7 @@ class TestMain:
         with patch("aria.scripts.llama.download_llama_cpp") as mock_download:
             mock_download.side_effect = RuntimeError("Compilation failed")
 
-            with patch(
-                "aria.scripts.llama.error_console"
-            ) as mock_error_console:
+            with patch("aria.scripts.llama.error_console") as mock_error_console:
                 with patch("sys.exit") as mock_exit:
                     main()
 

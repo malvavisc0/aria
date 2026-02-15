@@ -113,9 +113,7 @@ class TestHelperFunctions:
         mock_ticker = Mock()
         mock_ticker.info = {}
 
-        with pytest.raises(
-            YFinanceDataError, match="No information available"
-        ):
+        with pytest.raises(YFinanceDataError, match="No information available"):
             _get_ticker_info(mock_ticker, "AAPL")
 
     def test_get_ticker_info_not_dict(self):
@@ -123,9 +121,7 @@ class TestHelperFunctions:
         mock_ticker = Mock()
         mock_ticker.info = None
 
-        with pytest.raises(
-            YFinanceDataError, match="No information available"
-        ):
+        with pytest.raises(YFinanceDataError, match="No information available"):
             _get_ticker_info(mock_ticker, "AAPL")
 
     def test_get_ticker_info_exception(self):
@@ -135,9 +131,7 @@ class TestHelperFunctions:
             lambda self: (_ for _ in ()).throw(Exception("Network error"))
         )
 
-        with pytest.raises(
-            YFinanceDataError, match="Failed to get ticker info"
-        ):
+        with pytest.raises(YFinanceDataError, match="Failed to get ticker info"):
             _get_ticker_info(mock_ticker, "AAPL")
 
     def test_format_json_response_success(self):
@@ -292,9 +286,7 @@ class TestFetchCurrentStockPrice:
 
     def test_fetch_price_invalid_ticker(self):
         """Test price fetch with invalid ticker."""
-        result = fetch_current_stock_price(
-            "Testing stock price", "INVALID@TICKER"
-        )
+        result = fetch_current_stock_price("Testing stock price", "INVALID@TICKER")
         result_dict = json.loads(result)
         assert result_dict["ticker"] == "INVALID@TICKER"
         assert result_dict["error_type"] == "validation_error"
@@ -317,9 +309,7 @@ class TestFetchCurrentStockPrice:
             result_dict = json.loads(result)
 
             assert result_dict["day_change"] == 10.0
-            assert result_dict["day_change_percent"] == pytest.approx(
-                11.11, 0.01
-            )
+            assert result_dict["day_change_percent"] == pytest.approx(11.11, 0.01)
 
     def test_fetch_price_no_previous_close(self):
         """Test price fetch without previous close."""
@@ -377,9 +367,7 @@ class TestFetchCompanyInformation:
             assert result_dict["basic_info"]["name"] == "Apple Inc."
             assert result_dict["basic_info"]["symbol"] == "AAPL"
             assert result_dict["basic_info"]["sector"] == "Technology"
-            assert (
-                result_dict["financial_metrics"]["market_cap"] == 3000000000000
-            )
+            assert result_dict["financial_metrics"]["market_cap"] == 3000000000000
             assert result_dict["price_data"]["current_price"] == 150.25
             assert result_dict["location"]["city"] == "Cupertino"
             assert result_dict["metadata"]["ticker"] == "AAPL"
@@ -442,18 +430,13 @@ class TestFetchTickerNews:
             mock_ticker.news = mock_news
             mock_get_ticker.return_value = mock_ticker
 
-            result = fetch_ticker_news(
-                "Testing ticker news", "AAPL", max_articles=2
-            )
+            result = fetch_ticker_news("Testing ticker news", "AAPL", max_articles=2)
             result_dict = json.loads(result)
 
             assert result_dict["ticker"] == "AAPL"
             assert result_dict["count"] == 2
             assert len(result_dict["articles"]) == 2
-            assert (
-                result_dict["articles"][0]["title"]
-                == "Apple announces new product"
-            )
+            assert result_dict["articles"][0]["title"] == "Apple announces new product"
             assert "timestamp" in result_dict
 
     def test_fetch_news_no_articles(self):
@@ -488,9 +471,7 @@ class TestFetchTickerNews:
             mock_ticker.news = mock_news
             mock_get_ticker.return_value = mock_ticker
 
-            result = fetch_ticker_news(
-                "Testing ticker news", "AAPL", max_articles=5
-            )
+            result = fetch_ticker_news("Testing ticker news", "AAPL", max_articles=5)
             result_dict = json.loads(result)
 
             assert result_dict["count"] == 5
@@ -506,16 +487,12 @@ class TestFetchTickerNews:
             mock_get_ticker.return_value = mock_ticker
 
             # Test lower bound
-            result = fetch_ticker_news(
-                "Testing ticker news", "AAPL", max_articles=-5
-            )
+            result = fetch_ticker_news("Testing ticker news", "AAPL", max_articles=-5)
             result_dict = json.loads(result)
             assert result_dict["count"] >= 0
 
             # Test upper bound
-            result = fetch_ticker_news(
-                "Testing ticker news", "AAPL", max_articles=1000
-            )
+            result = fetch_ticker_news("Testing ticker news", "AAPL", max_articles=1000)
             result_dict = json.loads(result)
             assert result_dict["count"] <= MAX_ARTICLES
 
@@ -591,9 +568,7 @@ class TestFetchTickerNews:
             mock_ticker.news = mock_news
             mock_get_ticker.return_value = mock_ticker
 
-            result = fetch_ticker_news(
-                "Testing ticker news", "AAPL", max_articles=10
-            )
+            result = fetch_ticker_news("Testing ticker news", "AAPL", max_articles=10)
             result_dict = json.loads(result)
 
             # Should only include valid articles
@@ -641,9 +616,7 @@ class TestIntegration:
             "previousClose": 173.25,
         }
 
-        with patch(
-            "aria.tools.search.finance.yfinance.Ticker"
-        ) as mock_ticker_class:
+        with patch("aria.tools.search.finance.yfinance.Ticker") as mock_ticker_class:
             mock_ticker = Mock()
             mock_ticker.info = mock_info
             mock_ticker_class.return_value = mock_ticker
@@ -671,9 +644,7 @@ class TestIntegration:
 
             # Should be valid ISO format
             timestamp = result_dict["timestamp"]
-            parsed_time = datetime.fromisoformat(
-                timestamp.replace("Z", "+00:00")
-            )
+            parsed_time = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
             assert isinstance(parsed_time, datetime)
 
 

@@ -145,9 +145,7 @@ def show_paths():
         table.add_row(name, str(path), exists)
 
     console.print(
-        Panel(
-            table, title="[bold]File System Paths[/bold]", border_style="cyan"
-        )
+        Panel(table, title="[bold]File System Paths[/bold]", border_style="cyan")
     )
 
 
@@ -219,9 +217,7 @@ def show_api():
     table.add_row("Token Limit", str(Embeddings.token_limit))
 
     console.print(
-        Panel(
-            table, title="[bold]API Configuration[/bold]", border_style="cyan"
-        )
+        Panel(table, title="[bold]API Configuration[/bold]", border_style="cyan")
     )
 
 

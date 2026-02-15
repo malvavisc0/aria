@@ -200,9 +200,7 @@ def delete_file(intent: str, file_name: str) -> str:
 
 @with_input_validation(offset=True, length=True)
 @with_file_operation_error_handling("delete_lines_range")
-def delete_lines_range(
-    intent: str, file_name: str, offset: int, length: int
-) -> str:
+def delete_lines_range(intent: str, file_name: str, offset: int, length: int) -> str:
     """
     Delete a contiguous range of lines from a file.
     """
@@ -211,9 +209,7 @@ def delete_lines_range(
         func_name = frame.f_code.co_name
         logger.debug(f"Calling {func_name} to achieve: {intent}")
 
-    logger.info(
-        f"Deleting lines from {file_name} (offset={offset}, length={length})"
-    )
+    logger.info(f"Deleting lines from {file_name} (offset={offset}, length={length})")
 
     # Resolve path (validation done by decorator)
     resolved_path = _secure_resolve_path(file_name)
@@ -280,9 +276,7 @@ def file_exists(intent: str, file_name: str) -> str:
 
 @with_input_validation()
 @with_file_operation_error_handling("get_directory_tree")
-def get_directory_tree(
-    intent: str, path: str, max_depth: Optional[int] = 3
-) -> str:
+def get_directory_tree(intent: str, path: str, max_depth: Optional[int] = 3) -> str:
     """
     Return a directory tree summary.
     """
@@ -293,9 +287,7 @@ def get_directory_tree(
 
     max_depth_value = 3 if max_depth is None else max_depth
 
-    logger.info(
-        f"Getting directory tree for: {path} (max_depth={max_depth_value})"
-    )
+    logger.info(f"Getting directory tree for: {path} (max_depth={max_depth_value})")
 
     # Resolve path (validation done by decorator)
     resolved_path = _secure_resolve_dir(path)
@@ -452,9 +444,7 @@ def insert_lines_at(
         func_name = frame.f_code.co_name
         logger.debug(f"Calling {func_name} to achieve: {intent}")
 
-    logger.info(
-        f"Inserting {len(new_lines)} lines at offset {offset} in {file_name}"
-    )
+    logger.info(f"Inserting {len(new_lines)} lines at offset {offset} in {file_name}")
 
     # Resolve path (validation done by decorator)
     resolved_path = _secure_resolve_path(file_name)
@@ -609,9 +599,7 @@ def read_file_chunk(
 
 
 @with_file_operation_error_handling("read_full_file")
-def read_full_file(
-    intent: str, file_name: str, max_lines: Optional[int] = 500
-) -> str:
+def read_full_file(intent: str, file_name: str, max_lines: Optional[int] = 500) -> str:
     """
     Read an entire small file.
     """
@@ -842,9 +830,7 @@ def search_in_files(
     matches = []
     files_searched = 0
     paths = list(
-        BASE_DIR.rglob(file_pattern)
-        if recursive
-        else BASE_DIR.glob(file_pattern)
+        BASE_DIR.rglob(file_pattern) if recursive else BASE_DIR.glob(file_pattern)
     )
 
     # Search through files
@@ -875,8 +861,7 @@ def search_in_files(
                         lines[i].rstrip("\n\r") for i in range(start, line_num)
                     ]
                     context_after = [
-                        lines[i].rstrip("\n\r")
-                        for i in range(line_num + 1, end)
+                        lines[i].rstrip("\n\r") for i in range(line_num + 1, end)
                     ]
 
                     matches.append(

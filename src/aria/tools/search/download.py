@@ -99,9 +99,7 @@ def get_file_from_url(
             download_path_value = str(DOWNLOADS_DIR)
         else:
             download_path_value = download_path
-        logger.debug(
-            f"URL validated: {validated_url}, format: {validated_format}"
-        )
+        logger.debug(f"URL validated: {validated_url}, format: {validated_format}")
 
         frame = inspect.currentframe()
         if frame:
@@ -190,9 +188,7 @@ def get_youtube_video_transcription(
             "text/plain",
             "text",
             original_filename=f"{video_id}_transcript.txt",
-            download_path=(
-                str(DOWNLOADS_DIR) if not download_path else download_path
-            ),
+            download_path=(str(DOWNLOADS_DIR) if not download_path else download_path),
         )
 
         # Add transcript-specific metadata
@@ -207,15 +203,12 @@ def get_youtube_video_transcription(
 
     except NoTranscriptFound:
         error_msg = (
-            f"No transcripts found for video {video_id}. "
-            "Video may lack captions."
+            f"No transcripts found for video {video_id}. " "Video may lack captions."
         )
         logger.warning(error_msg)
         return _create_error_response(error_msg)
     except TranscriptsDisabled:
-        error_msg = (
-            f"Transcripts disabled for video {video_id} " "by uploader."
-        )
+        error_msg = f"Transcripts disabled for video {video_id} " "by uploader."
         logger.warning(error_msg)
         return _create_error_response(error_msg)
     except Exception as exc:
@@ -268,9 +261,7 @@ def _validate_format(output_format: str) -> str:
     if output_format in SUPPORTED_FORMATS:
         return output_format
     supported = ", ".join(SUPPORTED_FORMATS)
-    error = (
-        f"Unsupported format '{output_format}'. Supported formats: {supported}"
-    )
+    error = f"Unsupported format '{output_format}'. Supported formats: {supported}"
     raise ContentParsingError(error)
 
 
@@ -297,9 +288,7 @@ def _is_binary_content(content_type: str) -> bool:
     Returns:
         bool: True if the content type represents binary data, False otherwise
     """
-    return any(
-        binary_type in content_type for binary_type in BINARY_CONTENT_TYPES
-    )
+    return any(binary_type in content_type for binary_type in BINARY_CONTENT_TYPES)
 
 
 def _get_default_headers() -> Dict[str, str]:
@@ -479,8 +468,7 @@ def _fetch_file(
                         (
                             "File size (%s bytes) exceeds maximum allowed "
                             "size "
-                            "(%s bytes)"
-                            % (len(text_content.encode("utf-8")), max_size)
+                            "(%s bytes)" % (len(text_content.encode("utf-8")), max_size)
                         )
                     )
                 return text_content, content_type, filename
@@ -496,18 +484,14 @@ def _fetch_file(
             return content, content_type, filename
 
         except httpx.TimeoutException:
-            last_error = (
-                f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
-            )
+            last_error = f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
         except httpx.HTTPStatusError as exc:
             last_error = f"HTTP error {exc.response.status_code}"
             if exc.response.status_code in [403, 429]:  # Likely anti-bot
                 continue
             break  # Don't retry other HTTP errors
         except AntiBotDetectedError:
-            last_error = (
-                f"Anti-bot detected (attempt {attempt + 1}/{MAX_RETRIES})"
-            )
+            last_error = f"Anti-bot detected (attempt {attempt + 1}/{MAX_RETRIES})"
             # If anti-bot is detected, don't continue retrying
             break
         except URLDownloadError:
@@ -536,10 +520,7 @@ def _is_markitdown_supported(content_type: str) -> bool:
     supported_types = [
         "application/pdf",
         "application/msword",
-        (
-            "application/vnd.openxmlformats-"
-            "officedocument.wordprocessingml.document"
-        ),
+        ("application/vnd.openxmlformats-" "officedocument.wordprocessingml.document"),
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/vnd.ms-powerpoint",
@@ -552,9 +533,7 @@ def _is_markitdown_supported(content_type: str) -> bool:
         "text/xml",
         "application/xml",
     ]
-    return any(
-        supported_type in content_type for supported_type in supported_types
-    )
+    return any(supported_type in content_type for supported_type in supported_types)
 
 
 def _auto_detect_format(content_type: str) -> str:
@@ -567,9 +546,7 @@ def _auto_detect_format(content_type: str) -> str:
     Returns:
         str: The auto-detected output format
     """
-    if _is_html_content(content_type) or _is_markitdown_supported(
-        content_type
-    ):
+    if _is_html_content(content_type) or _is_markitdown_supported(content_type):
         return "markdown"
     if _is_binary_content(content_type):
         return "binary"
@@ -620,9 +597,7 @@ def _clean_text(text: str) -> str:
     return text
 
 
-def _markitdown(
-    content: Union[str, bytes], content_type: str, url: str
-) -> str:
+def _markitdown(content: Union[str, bytes], content_type: str, url: str) -> str:
     """
     Convert content to markdown using MarkItDown.
 
@@ -723,15 +698,13 @@ def _save_content_to_file(
             # Use original filename if available, otherwise use URL-based name
             if original_filename:
                 base_filename = Path(original_filename).stem
-                file_ext = Path(
-                    original_filename
-                ).suffix or _get_file_extension(url, content_type)
+                file_ext = Path(original_filename).suffix or _get_file_extension(
+                    url, content_type
+                )
             else:
                 # Extract filename from URL
                 url_path = urlparse(url).path
-                url_filename = (
-                    os.path.basename(url_path) if url_path else "content"
-                )
+                url_filename = os.path.basename(url_path) if url_path else "content"
                 base_filename = Path(url_filename).stem or "content"
                 file_ext = Path(url_filename).suffix or _get_file_extension(
                     url, content_type
@@ -741,9 +714,7 @@ def _save_content_to_file(
             resolved_path.parent.mkdir(parents=True, exist_ok=True)
             download_dir = resolved_path.parent
             base_filename = resolved_path.stem
-            file_ext = resolved_path.suffix or _get_file_extension(
-                url, content_type
-            )
+            file_ext = resolved_path.suffix or _get_file_extension(url, content_type)
     else:
         # Use temporary directory (original behavior)
         download_dir = Path(tempfile.mkdtemp(prefix="aria2_download_"))

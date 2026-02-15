@@ -138,8 +138,7 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
             session.set_database(_db)
             _session_registry[cache_key] = session
             logger.debug(
-                f"Loaded session {session_id} for agent {agent_id} "
-                f"from database"
+                f"Loaded session {session_id} for agent {agent_id} " f"from database"
             )
         else:
             # Session doesn't exist
@@ -587,9 +586,7 @@ def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
         )
     except Exception:
         # Ending should still succeed even if session can't be loaded.
-        logger.debug(
-            f"Could not persist end_reasoning tool event for {session_id}"
-        )
+        logger.debug(f"Could not persist end_reasoning tool event for {session_id}")
 
     # Remove from active sessions
     del _active_sessions[agent_id]

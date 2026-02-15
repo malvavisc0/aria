@@ -67,9 +67,7 @@ class TestInstallLlamaCppFromSource:
             mock_result.stdout = ""
             mock_run.return_value = mock_result
 
-            install_llama_cpp_from_source(
-                repo_dir=repo_dir, build_dir=build_dir
-            )
+            install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             assert build_dir.exists()
 
@@ -88,9 +86,7 @@ class TestInstallLlamaCppFromSource:
             mock_result.stdout = ""
             mock_run.return_value = mock_result
 
-            install_llama_cpp_from_source(
-                repo_dir=repo_dir, build_dir=build_dir
-            )
+            install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             # Old file should be gone after clean
             assert not (build_dir / "old_file.txt").exists()
@@ -108,9 +104,7 @@ class TestInstallLlamaCppFromSource:
             mock_result.stdout = ""
             mock_run.return_value = mock_result
 
-            install_llama_cpp_from_source(
-                repo_dir=repo_dir, build_dir=build_dir
-            )
+            install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             # Check that cmake was called with correct arguments
             # Skip the first 3 calls which are dependency checks (git, cmake, make)
@@ -133,15 +127,11 @@ class TestInstallLlamaCppFromSource:
             mock_result.stdout = ""
             mock_run.return_value = mock_result
 
-            install_llama_cpp_from_source(
-                repo_dir=repo_dir, build_dir=build_dir
-            )
+            install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             # Check that cmake build was called
             build_calls = [
-                call
-                for call in mock_run.call_args_list
-                if "--build" in call[0][0]
+                call for call in mock_run.call_args_list if "--build" in call[0][0]
             ]
             assert len(build_calls) >= 1
 
@@ -268,9 +258,7 @@ class TestInstallLlamaCppFromSource:
                 for call in mock_run.call_args_list
                 if "cmake" in call[0][0] and "-B" in call[0][0]
             ]
-            assert any(
-                "-DCMAKE_VERBOSE_MAKEFILE=ON" in args for args in cmake_args[0]
-            )
+            assert any("-DCMAKE_VERBOSE_MAKEFILE=ON" in args for args in cmake_args[0])
 
     def test_uses_default_build_dir(self, tmp_path: Path):
         """Test that install_llama_cpp_from_source uses default build directory."""
@@ -304,9 +292,7 @@ class TestInstallLlamaCppFromSource:
             mock_run.return_value = mock_result
 
             with pytest.raises(RuntimeError) as exc_info:
-                install_llama_cpp_from_source(
-                    repo_dir=repo_dir, build_dir=build_dir
-                )
+                install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             assert "Required dependency" in str(exc_info.value)
             assert "not found" in str(exc_info.value)
@@ -338,9 +324,7 @@ class TestInstallLlamaCppFromSource:
             ]
 
             with pytest.raises(RuntimeError) as exc_info:
-                install_llama_cpp_from_source(
-                    repo_dir=repo_dir, build_dir=build_dir
-                )
+                install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             assert "CMake configuration failed" in str(exc_info.value)
 
@@ -377,15 +361,11 @@ class TestInstallLlamaCppFromSource:
             ]
 
             with pytest.raises(RuntimeError) as exc_info:
-                install_llama_cpp_from_source(
-                    repo_dir=repo_dir, build_dir=build_dir
-                )
+                install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             assert "Compilation failed" in str(exc_info.value)
 
-    def test_raises_error_on_subprocess_called_process_error(
-        self, tmp_path: Path
-    ):
+    def test_raises_error_on_subprocess_called_process_error(self, tmp_path: Path):
         """Test that install_llama_cpp_from_source raises error on subprocess.CalledProcessError."""
         repo_dir = tmp_path / "repo"
         repo_dir.mkdir()
@@ -393,14 +373,10 @@ class TestInstallLlamaCppFromSource:
         build_dir = tmp_path / "build"
 
         with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(
-                1, "cmake", "Error"
-            )
+            mock_run.side_effect = subprocess.CalledProcessError(1, "cmake", "Error")
 
             with pytest.raises(subprocess.CalledProcessError):
-                install_llama_cpp_from_source(
-                    repo_dir=repo_dir, build_dir=build_dir
-                )
+                install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
     def test_raises_error_on_other_exception(self, tmp_path: Path):
         """Test that install_llama_cpp_from_source raises error on other exceptions."""
@@ -413,8 +389,6 @@ class TestInstallLlamaCppFromSource:
             mock_run.side_effect = Exception("Unexpected error")
 
             with pytest.raises(Exception) as exc_info:
-                install_llama_cpp_from_source(
-                    repo_dir=repo_dir, build_dir=build_dir
-                )
+                install_llama_cpp_from_source(repo_dir=repo_dir, build_dir=build_dir)
 
             assert "Unexpected error" in str(exc_info.value)

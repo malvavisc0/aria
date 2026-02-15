@@ -28,6 +28,8 @@ Example:
     ```
 """
 
+from typing import Type
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -35,6 +37,12 @@ from rich.table import Table
 from sqlalchemy import text
 
 from aria.cli import config, get_db_session, llamacpp, system, users
+from aria.config.api import LlamaCpp as LlamaCppConfig
+from aria.config.database import SQLite as SQLiteConfig
+from aria.config.folders import Data as DataConfig
+from aria.config.folders import Debug as DebugConfig
+from aria.config.folders import Storage as StorageConfig
+from aria.helpers.nvidia import check_nvidia_smi_available, detect_gpu_count
 
 app = typer.Typer(
     name="aria",
@@ -112,9 +120,7 @@ def main(ctx: typer.Context):
         console.print("  [cyan]users[/cyan]     User management commands")
         console.print("  [cyan]llamacpp[/cyan]  Llama.cpp binary management")
         console.print("  [cyan]config[/cyan]    Configuration display")
-        console.print(
-            "  [cyan]system[/cyan]    System information (GPU, VRAM)"
-        )
+        console.print("  [cyan]system[/cyan]    System information (GPU, VRAM)")
         console.print()
         console.print("[dim]Run 'aria --help' for more information.[/dim]")
 
@@ -145,14 +151,22 @@ def health_check():
             session.execute(text("DROP TABLE health"))
 
             console.print(
-                Panel(
-                    "[green]✓[/green] Database connection is healthy and writable.",
-                    title="[bold]Health Check[/bold]",
-                    border_style="green",
-                )
+                "[green]✓[/green] Database connection is healthy and writable."
             )
+
     except Exception:
         error_console.print_exception()
+
+    llama_server_path = LlamaCppConfig.bin_path / "llama-server"
+    if not llama_server_path.exists():
+        error_console.print("[red]✗[/red] llama-server not found.")
+        console.print(
+            "[dim]Run 'aria llamacpp download' to download llama.cpp binaries.[/dim]"
+        )
+
+        raise typer.Exit(1)
+
+    console.print("[green]✓[/green] llama-server found.")
 
 
 @app.command("version")
@@ -184,22 +198,16 @@ def system_info():
         aria info
         ```
     """
-    from aria.config.database import SQLite
-    from aria.config.folders import Data, Debug, Storage
-    from aria.helpers.nvidia import (
-        check_nvidia_smi_available,
-        detect_gpu_count,
-    )
 
     table = Table(title="Aria System Information", show_header=True)
     table.add_column("Component", style="cyan", width=20)
     table.add_column("Status", style="green")
 
     # Database info
-    table.add_row("Database Path", str(SQLite.file_path))
-    table.add_row("Data Folder", str(Data.path))
-    table.add_row("Storage Path", str(Storage.path))
-    table.add_row("Debug Logs", str(Debug.logs_path))
+    table.add_row("Data Folder", str(DataConfig.path))
+    table.add_row("Database Path", str(SQLiteConfig.file_path))
+    table.add_row("Storage Path", str(StorageConfig.path))
+    table.add_row("Debug Logs", str(DebugConfig.logs_path))
 
     # GPU info
     if check_nvidia_smi_available():

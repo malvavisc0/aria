@@ -104,9 +104,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                 # This works when called from within a Chainlit session (e.g., websocket)
                 from chainlit.context import context
 
-                if hasattr(context, "session") and hasattr(
-                    context.session, "user"
-                ):
+                if hasattr(context, "session") and hasattr(context.session, "user"):
                     current_user = context.session.user
                     if current_user and hasattr(current_user, "identifier"):
                         # Look up the user_id from the database using the identifier
@@ -135,15 +133,11 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         if threads is None:
             return None
 
-        logger.debug(
-            f"get_all_user_threads returning {len(threads)} thread(s)"
-        )
+        logger.debug(f"get_all_user_threads returning {len(threads)} thread(s)")
 
         # Deserialize JSON-string columns into the shapes Chainlit's types expect.
         for t in threads:
-            logger.debug(
-                f"Thread {t.get('id')}: {len(t.get('steps', []))} steps"
-            )
+            logger.debug(f"Thread {t.get('id')}: {len(t.get('steps', []))} steps")
             t["tags"] = _json_loads_or(t.get("tags"), default=[])
             t["metadata"] = _json_loads_or(t.get("metadata"), default={})
 
@@ -152,9 +146,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                 # in some codepaths, but we keep this defensive.
                 s["tags"] = _json_loads_or(s.get("tags"), default=[])
                 s["metadata"] = _json_loads_or(s.get("metadata"), default={})
-                s["generation"] = _json_loads_or(
-                    s.get("generation"), default={}
-                )
+                s["generation"] = _json_loads_or(s.get("generation"), default={})
 
                 # FIX: Promote assistant messages to root level for thread display
                 # Chainlit only displays root-level messages (parentId=NULL) in thread history.
@@ -209,24 +201,16 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         # Deserialize JSON fields in all returned threads
         for thread in response.data:
             thread["tags"] = _json_loads_or(thread.get("tags"), default=[])
-            thread["metadata"] = _json_loads_or(
-                thread.get("metadata"), default={}
-            )
+            thread["metadata"] = _json_loads_or(thread.get("metadata"), default={})
 
             # Deserialize nested steps
             for step in thread.get("steps") or []:
                 step["tags"] = _json_loads_or(step.get("tags"), default=[])
-                step["metadata"] = _json_loads_or(
-                    step.get("metadata"), default={}
-                )
-                step["generation"] = _json_loads_or(
-                    step.get("generation"), default={}
-                )
+                step["metadata"] = _json_loads_or(step.get("metadata"), default={})
+                step["generation"] = _json_loads_or(step.get("generation"), default={})
 
                 # FIX: Promote assistant messages to root level for thread display
-                if step.get("type") == "assistant_message" and step.get(
-                    "parentId"
-                ):
+                if step.get("type") == "assistant_message" and step.get("parentId"):
                     logger.debug(
                         f"Promoting assistant message {step.get('id')} to root level "
                         f"(was child of {step.get('parentId')})"
@@ -235,8 +219,6 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
 
             # Deserialize nested elements
             for element in thread.get("elements") or []:
-                element["props"] = _json_loads_or(
-                    element.get("props"), default={}
-                )
+                element["props"] = _json_loads_or(element.get("props"), default={})
 
         return response

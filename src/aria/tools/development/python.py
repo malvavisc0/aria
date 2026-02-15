@@ -55,9 +55,7 @@ def check_python_syntax(intent: str, code: str) -> str:
         )
 
     except SyntaxError as e:
-        logger.error(
-            f"Syntax error in {filename} at line {e.lineno or 0}: {e.msg}"
-        )
+        logger.error(f"Syntax error in {filename} at line {e.lineno or 0}: {e.msg}")
         return _build_response(
             operation="check_python_syntax",
             result={
@@ -99,9 +97,7 @@ def check_python_file_syntax(intent: str, file_path: str) -> str:
         )
 
     except SyntaxError as e:
-        logger.error(
-            f"Syntax error in {file_path} at line {e.lineno or 0}: {e.msg}"
-        )
+        logger.error(f"Syntax error in {file_path} at line {e.lineno or 0}: {e.msg}")
         return _build_response(
             operation="check_python_file_syntax",
             result={
@@ -154,9 +150,7 @@ def execute_python_code(
                 code, safe_globals, timeout, filename, argv
             )
         else:
-            _execute_without_capture(
-                code, safe_globals, timeout, filename, argv
-            )
+            _execute_without_capture(code, safe_globals, timeout, filename, argv)
             stdout_text, stderr_text = "", ""
 
         logger.info(
@@ -215,9 +209,7 @@ def execute_python_code(
 
     except NameError as e:
         # Likely trying to use restricted builtin
-        logger.error(
-            f"NameError in {filename} (possible security violation): {e}"
-        )
+        logger.error(f"NameError in {filename} (possible security violation): {e}")
         tb = traceback.format_exc()
         return _build_response(
             operation="execute_python_code",
@@ -305,9 +297,7 @@ def execute_python_file(
     code = _read_file_safely(file_path)
 
     # Use absolute path if file exists, otherwise use as-is
-    filename = (
-        os.path.abspath(file_path) if os.path.exists(file_path) else file_path
-    )
+    filename = os.path.abspath(file_path) if os.path.exists(file_path) else file_path
 
     try:
         # Create safe execution environment
@@ -325,9 +315,7 @@ def execute_python_file(
                 code, safe_globals, timeout, filename, argv
             )
         else:
-            _execute_without_capture(
-                code, safe_globals, timeout, filename, argv
-            )
+            _execute_without_capture(code, safe_globals, timeout, filename, argv)
             stdout_text, stderr_text = "", ""
 
         logger.info(
@@ -386,9 +374,7 @@ def execute_python_file(
 
     except NameError as e:
         # Likely trying to use restricted builtin
-        logger.error(
-            f"NameError in {filename} (possible security violation): {e}"
-        )
+        logger.error(f"NameError in {filename} (possible security violation): {e}")
         tb = traceback.format_exc()
         return _build_response(
             operation="execute_python_file",

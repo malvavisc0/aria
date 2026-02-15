@@ -40,13 +40,9 @@ class TestDownloadLatestLlamaCppUbuntuNoNvcc:
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
         ):
             # Mock Ubuntu OS release
@@ -89,9 +85,7 @@ VERSION_ID="22.04"
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -124,9 +118,7 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -154,9 +146,7 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -183,18 +173,10 @@ class TestDownloadLatestLlamaCppUbuntuWithNvcc:
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=True),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("subprocess.run") as mock_run,
         ):
@@ -219,9 +201,7 @@ ID=ubuntu
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-v1.2.3"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-v1.2.3"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -255,18 +235,10 @@ class TestDownloadLatestLlamaCppNonUbuntuLinux:
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
             patch("aria.scripts.llama._is_ubuntu", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("subprocess.run") as mock_run,
         ):
@@ -291,9 +263,7 @@ VERSION_ID="12"
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-v1.2.3"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-v1.2.3"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -316,27 +286,17 @@ VERSION_ID="12"
             assert call_kwargs["use_cuda"] is False
             assert call_kwargs["use_blas"] is False
 
-    def test_compiles_from_source_with_cuda_when_nvcc_available(
-        self, tmp_path: Path
-    ):
+    def test_compiles_from_source_with_cuda_when_nvcc_available(self, tmp_path: Path):
         """Test that download_llama_cpp compiles from source with CUDA when nvcc is available."""
         with (
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=True),
             patch("aria.scripts.llama._is_ubuntu", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("subprocess.run") as mock_run,
         ):
@@ -361,9 +321,7 @@ VERSION_ID="12"
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-v1.2.3"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-v1.2.3"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -398,9 +356,7 @@ class TestDownloadLatestLlamaCppVersionParameter:
             patch("aria.scripts.llama._nvcc_available", return_value=False),
             patch("aria.scripts.llama._get_release_by_tag") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
         ):
             # Mock Ubuntu OS release
@@ -439,13 +395,9 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
         ):
             # Mock Ubuntu OS release
@@ -488,13 +440,9 @@ class TestDownloadLatestLlamaCppBinaryTesting:
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("subprocess.run") as mock_run,
         ):
@@ -543,13 +491,9 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("subprocess.run") as mock_run,
         ):
@@ -580,9 +524,7 @@ ID=ubuntu
             mock_get_binary.return_value = tmp_path / "llama-cli"
 
             # Mock subprocess.run to raise TimeoutExpired
-            mock_run.side_effect = subprocess.TimeoutExpired(
-                "llama-server", 10
-            )
+            mock_run.side_effect = subprocess.TimeoutExpired("llama-server", 10)
 
             result = download_llama_cpp(bin_dir=tmp_path)
 
@@ -594,13 +536,9 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("subprocess.run") as mock_run,
         ):

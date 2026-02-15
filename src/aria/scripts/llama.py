@@ -164,9 +164,7 @@ def _get_release_by_tag(tag: str) -> dict:
     Returns:
         dict: Release information including assets.
     """
-    api_url = (
-        f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
-    )
+    api_url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
     with urllib.request.urlopen(api_url) as response:
         return __import__("json").loads(response.read())
 
@@ -194,9 +192,7 @@ def _find_linux_binary_asset(assets: list) -> Optional[dict]:
     for prefix in priority:
         for asset in assets:
             name = asset.get("name", "").lower()
-            if prefix in name and (
-                name.endswith(".tar.gz") or name.endswith(".gz")
-            ):
+            if prefix in name and (name.endswith(".tar.gz") or name.endswith(".gz")):
                 return asset
     return None
 
@@ -223,9 +219,7 @@ def _download_and_extract(url: str, dest_dir: Path) -> list[str]:
         logger.info("Extracting archive")
         with tarfile.open(archive_path, "r:gz") as tar:
             tar.extractall(dest_dir)
-            extracted_files = [
-                str(Path(dest_dir) / m.name) for m in tar.getmembers()
-            ]
+            extracted_files = [str(Path(dest_dir) / m.name) for m in tar.getmembers()]
 
     return extracted_files
 
@@ -306,9 +300,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         )
 
     if _nvcc_available():
-        logger.info(
-            "CUDA (nvcc) detected, compiling from source with CUDA support"
-        )
+        logger.info("CUDA (nvcc) detected, compiling from source with CUDA support")
 
         # Get release information to get the tag
         if version and version.lower() != "latest":
@@ -327,9 +319,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         # Download to /tmp and extract
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            source_dir = _download_and_extract_zip(
-                zip_url, tmp_path / "source"
-            )
+            source_dir = _download_and_extract_zip(zip_url, tmp_path / "source")
             logger.info(f"Source extracted to {source_dir}")
 
             # Compile from source
@@ -342,9 +332,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
             )
 
             # Copy binaries and shared libraries directly to bin_dir
-            console.print(
-                "[green]✓[/green] Copying binaries and libraries to bin_dir"
-            )
+            console.print("[green]✓[/green] Copying binaries and libraries to bin_dir")
 
             # Copy binaries
             for binary_name in BINARY_NAMES:
@@ -382,9 +370,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
                             f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
                         )
                 except subprocess.TimeoutExpired:
-                    console.print(
-                        "  [yellow]Warning: Version check timed out[/yellow]"
-                    )
+                    console.print("  [yellow]Warning: Version check timed out[/yellow]")
                 except Exception as e:
                     console.print(
                         f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
@@ -419,9 +405,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         # Download to /tmp and extract
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            source_dir = _download_and_extract_zip(
-                zip_url, tmp_path / "source"
-            )
+            source_dir = _download_and_extract_zip(zip_url, tmp_path / "source")
             logger.info(f"Source extracted to {source_dir}")
 
             # Determine CUDA support based on nvcc availability
@@ -438,9 +422,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
             )
 
             # Copy binaries and shared libraries directly to bin_dir
-            console.print(
-                "[green]✓[/green] Copying binaries and libraries to bin_dir"
-            )
+            console.print("[green]✓[/green] Copying binaries and libraries to bin_dir")
 
             # Copy binaries
             for binary_name in BINARY_NAMES:
@@ -478,9 +460,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
                             f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
                         )
                 except subprocess.TimeoutExpired:
-                    console.print(
-                        "  [yellow]Warning: Version check timed out[/yellow]"
-                    )
+                    console.print("  [yellow]Warning: Version check timed out[/yellow]")
                 except Exception as e:
                     console.print(
                         f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
@@ -548,9 +528,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(
-                    f"  - [green]{binary_name}[/green]: {binary_path}"
-                )
+                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
 
         return bin_dir
 
@@ -664,9 +642,7 @@ def install_llama_cpp_from_source(
         if result.returncode != 0:
             error_console.print("[red]Compilation failed![/red]")
             if result.stderr:
-                error_console.print(
-                    f"[red]Error output:[/red]\n{result.stderr}"
-                )
+                error_console.print(f"[red]Error output:[/red]\n{result.stderr}")
             if result.stdout:
                 error_console.print(f"[red]Stdout:[/red]\n{result.stdout}")
             raise RuntimeError("Compilation failed")
@@ -684,9 +660,7 @@ def install_llama_cpp_from_source(
         raise
 
 
-def main(
-    bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None
-) -> None:
+def main(bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None) -> None:
     """CLI entry point for llama.cpp installation.
 
     Args:
