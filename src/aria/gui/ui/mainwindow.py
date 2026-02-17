@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowffUWtU.ui'
+## Form generated from reading UI file 'mainwindowqfeJlO.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -477,6 +477,13 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_2.addWidget(self.plainTextEdit_Logs)
 
+        self.pushButton_RefreshLogs = QPushButton(self.verticalLayoutWidget_2)
+        self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
+        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
+        self.pushButton_RefreshLogs.setIcon(icon5)
+
+        self.verticalLayout_2.addWidget(self.pushButton_RefreshLogs)
+
         self.tabWidget.addTab(self.tab_logs, "")
 
         self.verticalLayout.addWidget(self.tabWidget)
@@ -657,6 +664,9 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_users),
             QCoreApplication.translate("MainWindow", "Users", None),
+        )
+        self.pushButton_RefreshLogs.setText(
+            QCoreApplication.translate("MainWindow", "Refresh", None)
         )
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_logs),
