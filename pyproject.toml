@@ -17,6 +17,7 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.5.5",
     "loguru>=0.7.3",
     "markitdown>=0.0.2",
+    "pyside6>=6.10.2",
     "sqlalchemy>=2.0.45",
     "typer>=0.21.1",
     "yfinance>=1.0",
@@ -25,6 +26,7 @@ dependencies = [
 
 [project.scripts]
 aria = "aria:main"
+aria-gui = "aria.gui:main"
 
 [build-system]
 requires = ["uv_build>=0.9.24,<0.10.0"]
