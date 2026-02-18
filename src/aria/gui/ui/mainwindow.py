@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowCDNHlP.ui'
+## Form generated from reading UI file 'mainwindowXqKlRf.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -143,7 +143,7 @@ class Ui_MainWindow(object):
         self.groupBox_3.setObjectName("groupBox_3")
         self.formLayoutWidget_3 = QWidget(self.groupBox_3)
         self.formLayoutWidget_3.setObjectName("formLayoutWidget_3")
-        self.formLayoutWidget_3.setGeometry(QRect(9, 29, 361, 141))
+        self.formLayoutWidget_3.setGeometry(QRect(9, 29, 471, 141))
         self.formLayout_3 = QFormLayout(self.formLayoutWidget_3)
         self.formLayout_3.setObjectName("formLayout_3")
         self.formLayout_3.setHorizontalSpacing(20)
@@ -153,7 +153,9 @@ class Ui_MainWindow(object):
         self.label_8.setObjectName("label_8")
         self.label_8.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_3.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_8)
+        self.formLayout_3.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_8
+        )
 
         self.label_ServiceURL = QLabel(self.formLayoutWidget_3)
         self.label_ServiceURL.setObjectName("label_ServiceURL")
@@ -166,7 +168,9 @@ class Ui_MainWindow(object):
         self.label_13.setObjectName("label_13")
         self.label_13.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_3.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_13)
+        self.formLayout_3.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_13
+        )
 
         self.label_ServicePID = QLabel(self.formLayoutWidget_3)
         self.label_ServicePID.setObjectName("label_ServicePID")
@@ -179,7 +183,9 @@ class Ui_MainWindow(object):
         self.label_9.setObjectName("label_9")
         self.label_9.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_3.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_9)
+        self.formLayout_3.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_9
+        )
 
         self.label_ServiceUptime = QLabel(self.formLayoutWidget_3)
         self.label_ServiceUptime.setObjectName("label_ServiceUptime")
@@ -192,7 +198,9 @@ class Ui_MainWindow(object):
         self.label_12.setObjectName("label_12")
         self.label_12.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_3.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_12)
+        self.formLayout_3.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_12
+        )
 
         self.label_ServiceStarted = QLabel(self.formLayoutWidget_3)
         self.label_ServiceStarted.setObjectName("label_ServiceStarted")
@@ -205,7 +213,9 @@ class Ui_MainWindow(object):
         self.label_14.setObjectName("label_14")
         self.label_14.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_3.setWidget(4, QFormLayout.ItemRole.LabelRole, self.label_14)
+        self.formLayout_3.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_14
+        )
 
         self.label_DebugLogsPath = QLabel(self.formLayoutWidget_3)
         self.label_DebugLogsPath.setObjectName("label_DebugLogsPath")
@@ -227,7 +237,7 @@ class Ui_MainWindow(object):
         self.pushButton_ServiceOpen = QPushButton(self.groupBox_3)
         self.pushButton_ServiceOpen.setObjectName("pushButton_ServiceOpen")
         self.pushButton_ServiceOpen.setEnabled(False)
-        self.pushButton_ServiceOpen.setGeometry(QRect(380, 30, 96, 27))
+        self.pushButton_ServiceOpen.setGeometry(QRect(500, 30, 96, 27))
         icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.UserAvailable))
         self.pushButton_ServiceOpen.setIcon(icon5)
 
@@ -237,7 +247,7 @@ class Ui_MainWindow(object):
         self.groupBox_2.setObjectName("groupBox_2")
         self.formLayoutWidget = QWidget(self.groupBox_2)
         self.formLayoutWidget.setObjectName("formLayoutWidget")
-        self.formLayoutWidget.setGeometry(QRect(10, 30, 361, 141))
+        self.formLayoutWidget.setGeometry(QRect(10, 30, 471, 141))
         self.formLayout = QFormLayout(self.formLayoutWidget)
         self.formLayout.setObjectName("formLayout")
         self.formLayout.setHorizontalSpacing(20)
@@ -247,7 +257,9 @@ class Ui_MainWindow(object):
         self.label_2.setObjectName("label_2")
         self.label_2.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_2)
+        self.formLayout.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_2
+        )
 
         self.label_DatabaseType = QLabel(self.formLayoutWidget)
         self.label_DatabaseType.setObjectName("label_DatabaseType")
@@ -260,7 +272,9 @@ class Ui_MainWindow(object):
         self.label_3.setObjectName("label_3")
         self.label_3.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_3)
+        self.formLayout.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_3
+        )
 
         self.label_DatabaseLocation = QLabel(self.formLayoutWidget)
         self.label_DatabaseLocation.setObjectName("label_DatabaseLocation")
@@ -273,7 +287,9 @@ class Ui_MainWindow(object):
         self.label_6.setObjectName("label_6")
         self.label_6.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_6)
+        self.formLayout.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_6
+        )
 
         self.label_DatabaseFileExists = QLabel(self.formLayoutWidget)
         self.label_DatabaseFileExists.setObjectName("label_DatabaseFileExists")
@@ -286,10 +302,14 @@ class Ui_MainWindow(object):
         self.label_10.setObjectName("label_10")
         self.label_10.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_10)
+        self.formLayout.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_10
+        )
 
         self.label_DatabasePermissions = QLabel(self.formLayoutWidget)
-        self.label_DatabasePermissions.setObjectName("label_DatabasePermissions")
+        self.label_DatabasePermissions.setObjectName(
+            "label_DatabasePermissions"
+        )
 
         self.formLayout.setWidget(
             3, QFormLayout.ItemRole.FieldRole, self.label_DatabasePermissions
@@ -299,7 +319,9 @@ class Ui_MainWindow(object):
         self.label_11.setObjectName("label_11")
         self.label_11.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout.setWidget(4, QFormLayout.ItemRole.LabelRole, self.label_11)
+        self.formLayout.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_11
+        )
 
         self.label_DatabaseSize = QLabel(self.formLayoutWidget)
         self.label_DatabaseSize.setObjectName("label_DatabaseSize")
@@ -314,7 +336,7 @@ class Ui_MainWindow(object):
         self.groupBox.setObjectName("groupBox")
         self.formLayoutWidget_2 = QWidget(self.groupBox)
         self.formLayoutWidget_2.setObjectName("formLayoutWidget_2")
-        self.formLayoutWidget_2.setGeometry(QRect(10, 30, 361, 141))
+        self.formLayoutWidget_2.setGeometry(QRect(10, 30, 471, 141))
         self.formLayout_2 = QFormLayout(self.formLayoutWidget_2)
         self.formLayout_2.setObjectName("formLayout_2")
         self.formLayout_2.setHorizontalSpacing(20)
@@ -324,19 +346,25 @@ class Ui_MainWindow(object):
         self.label_18.setObjectName("label_18")
         self.label_18.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_2.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_18)
+        self.formLayout_2.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_18
+        )
 
         self.label_19 = QLabel(self.formLayoutWidget_2)
         self.label_19.setObjectName("label_19")
         self.label_19.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_2.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_19)
+        self.formLayout_2.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_19
+        )
 
         self.label_20 = QLabel(self.formLayoutWidget_2)
         self.label_20.setObjectName("label_20")
         self.label_20.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_2.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_20)
+        self.formLayout_2.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_20
+        )
 
         self.label_LLMChatAPIURL = QLabel(self.formLayoutWidget_2)
         self.label_LLMChatAPIURL.setObjectName("label_LLMChatAPIURL")
@@ -353,7 +381,9 @@ class Ui_MainWindow(object):
         )
 
         self.label_LLMEmbeddingsAPIURL = QLabel(self.formLayoutWidget_2)
-        self.label_LLMEmbeddingsAPIURL.setObjectName("label_LLMEmbeddingsAPIURL")
+        self.label_LLMEmbeddingsAPIURL.setObjectName(
+            "label_LLMEmbeddingsAPIURL"
+        )
 
         self.formLayout_2.setWidget(
             3, QFormLayout.ItemRole.FieldRole, self.label_LLMEmbeddingsAPIURL
@@ -363,7 +393,9 @@ class Ui_MainWindow(object):
         self.label_24.setObjectName("label_24")
         self.label_24.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_2.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_24)
+        self.formLayout_2.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_24
+        )
 
         self.label_LLMType = QLabel(self.formLayoutWidget_2)
         self.label_LLMType.setObjectName("label_LLMType")
@@ -376,7 +408,9 @@ class Ui_MainWindow(object):
         self.label_21.setObjectName("label_21")
         self.label_21.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout_2.setWidget(4, QFormLayout.ItemRole.LabelRole, self.label_21)
+        self.formLayout_2.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_21
+        )
 
         self.label_VectorDB = QLabel(self.formLayoutWidget_2)
         self.label_VectorDB.setObjectName("label_VectorDB")
@@ -427,17 +461,23 @@ class Ui_MainWindow(object):
         self.label_26 = QLabel(self.formLayoutWidget_4)
         self.label_26.setObjectName("label_26")
 
-        self.formLayout_4.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_26)
+        self.formLayout_4.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_26
+        )
 
         self.label_27 = QLabel(self.formLayoutWidget_4)
         self.label_27.setObjectName("label_27")
 
-        self.formLayout_4.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_27)
+        self.formLayout_4.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_27
+        )
 
         self.label_28 = QLabel(self.formLayoutWidget_4)
         self.label_28.setObjectName("label_28")
 
-        self.formLayout_4.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_28)
+        self.formLayout_4.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_28
+        )
 
         self.pushButton_CreateUser = QPushButton(self.formLayoutWidget_4)
         self.pushButton_CreateUser.setObjectName("pushButton_CreateUser")
@@ -464,7 +504,9 @@ class Ui_MainWindow(object):
         self.lineEdit_UserPassword = QLineEdit(self.formLayoutWidget_4)
         self.lineEdit_UserPassword.setObjectName("lineEdit_UserPassword")
         self.lineEdit_UserPassword.setMaxLength(48)
-        self.lineEdit_UserPassword.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        self.lineEdit_UserPassword.setEchoMode(
+            QLineEdit.EchoMode.PasswordEchoOnEdit
+        )
 
         self.formLayout_4.setWidget(
             2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword
@@ -487,7 +529,9 @@ class Ui_MainWindow(object):
         font1.setFamilies(["Courier New"])
         font1.setPointSize(10)
         self.plainTextEdit_Logs.setFont(font1)
-        self.plainTextEdit_Logs.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.plainTextEdit_Logs.setLineWrapMode(
+            QPlainTextEdit.LineWrapMode.NoWrap
+        )
         self.plainTextEdit_Logs.setReadOnly(True)
         self.plainTextEdit_Logs.setMaximumBlockCount(1000)
 
@@ -537,14 +581,18 @@ class Ui_MainWindow(object):
         self.actionAbout.setText(
             QCoreApplication.translate("MainWindow", "&About", None)
         )
-        self.actionQuit.setText(QCoreApplication.translate("MainWindow", "&Quit", None))
+        self.actionQuit.setText(
+            QCoreApplication.translate("MainWindow", "&Quit", None)
+        )
         # if QT_CONFIG(shortcut)
         self.actionQuit.setShortcut(
             QCoreApplication.translate("MainWindow", "Ctrl+Q", None)
         )
         # endif // QT_CONFIG(shortcut)
         self.label.setText(
-            QCoreApplication.translate("MainWindow", "Aria Service Manager", None)
+            QCoreApplication.translate(
+                "MainWindow", "Aria Service Manager", None
+            )
         )
         self.pushButton_ServiceStop.setText(
             QCoreApplication.translate("MainWindow", "Stop", None)
@@ -555,19 +603,27 @@ class Ui_MainWindow(object):
         self.groupBox_3.setTitle(
             QCoreApplication.translate("MainWindow", "Service", None)
         )
-        self.label_8.setText(QCoreApplication.translate("MainWindow", "URL", None))
+        self.label_8.setText(
+            QCoreApplication.translate("MainWindow", "URL", None)
+        )
         self.label_ServiceURL.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_13.setText(QCoreApplication.translate("MainWindow", "PID", None))
+        self.label_13.setText(
+            QCoreApplication.translate("MainWindow", "PID", None)
+        )
         self.label_ServicePID.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_9.setText(QCoreApplication.translate("MainWindow", "Uptime", None))
+        self.label_9.setText(
+            QCoreApplication.translate("MainWindow", "Uptime", None)
+        )
         self.label_ServiceUptime.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_12.setText(QCoreApplication.translate("MainWindow", "Started", None))
+        self.label_12.setText(
+            QCoreApplication.translate("MainWindow", "Started", None)
+        )
         self.label_ServiceStarted.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
@@ -583,15 +639,21 @@ class Ui_MainWindow(object):
         self.groupBox_2.setTitle(
             QCoreApplication.translate("MainWindow", "Database", None)
         )
-        self.label_2.setText(QCoreApplication.translate("MainWindow", "Type", None))
+        self.label_2.setText(
+            QCoreApplication.translate("MainWindow", "Type", None)
+        )
         self.label_DatabaseType.setText(
             QCoreApplication.translate("MainWindow", "SQLite", None)
         )
-        self.label_3.setText(QCoreApplication.translate("MainWindow", "Location", None))
+        self.label_3.setText(
+            QCoreApplication.translate("MainWindow", "Location", None)
+        )
         self.label_DatabaseLocation.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_6.setText(QCoreApplication.translate("MainWindow", "Exists", None))
+        self.label_6.setText(
+            QCoreApplication.translate("MainWindow", "Exists", None)
+        )
         self.label_DatabaseFileExists.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
@@ -601,14 +663,20 @@ class Ui_MainWindow(object):
         self.label_DatabasePermissions.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_11.setText(QCoreApplication.translate("MainWindow", "Size", None))
+        self.label_11.setText(
+            QCoreApplication.translate("MainWindow", "Size", None)
+        )
         self.label_DatabaseSize.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
         self.groupBox.setTitle(
-            QCoreApplication.translate("MainWindow", "LLM Inference APIs", None)
+            QCoreApplication.translate(
+                "MainWindow", "LLM Inference APIs", None
+            )
         )
-        self.label_18.setText(QCoreApplication.translate("MainWindow", "Chat", None))
+        self.label_18.setText(
+            QCoreApplication.translate("MainWindow", "Chat", None)
+        )
         self.label_19.setText(
             QCoreApplication.translate("MainWindow", "Vision/OCR", None)
         )
@@ -624,14 +692,18 @@ class Ui_MainWindow(object):
         self.label_LLMEmbeddingsAPIURL.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_24.setText(QCoreApplication.translate("MainWindow", "Type", None))
+        self.label_24.setText(
+            QCoreApplication.translate("MainWindow", "Type", None)
+        )
         self.label_LLMType.setText(
             QCoreApplication.translate("MainWindow", "llama.cpp", None)
         )
         self.label_21.setText(
             QCoreApplication.translate("MainWindow", "VectorDB", None)
         )
-        self.label_VectorDB.setText(QCoreApplication.translate("MainWindow", "-", None))
+        self.label_VectorDB.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_overview),
             QCoreApplication.translate("MainWindow", "Overview", None),
@@ -645,9 +717,15 @@ class Ui_MainWindow(object):
         self.pushButton_DeleteUser.setText(
             QCoreApplication.translate("MainWindow", "Delete", None)
         )
-        self.groupBox_4.setTitle(QCoreApplication.translate("MainWindow", "New", None))
-        self.label_26.setText(QCoreApplication.translate("MainWindow", "Name", None))
-        self.label_27.setText(QCoreApplication.translate("MainWindow", "E-Mail", None))
+        self.groupBox_4.setTitle(
+            QCoreApplication.translate("MainWindow", "New", None)
+        )
+        self.label_26.setText(
+            QCoreApplication.translate("MainWindow", "Name", None)
+        )
+        self.label_27.setText(
+            QCoreApplication.translate("MainWindow", "E-Mail", None)
+        )
         self.label_28.setText(
             QCoreApplication.translate("MainWindow", "Password", None)
         )
@@ -669,6 +747,8 @@ class Ui_MainWindow(object):
         self.menuApplication.setTitle(
             QCoreApplication.translate("MainWindow", "&Application", None)
         )
-        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", "&Help", None))
+        self.menuHelp.setTitle(
+            QCoreApplication.translate("MainWindow", "&Help", None)
+        )
 
     # retranslateUi
