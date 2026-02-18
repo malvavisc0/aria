@@ -33,6 +33,15 @@ from typing import Optional
 
 from loguru import logger
 from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 from aria.helpers.nvidia import check_nvidia_smi_available
 
@@ -49,37 +58,6 @@ BINARY_NAMES = [
 
 # Shared library patterns to copy
 SHARED_LIB_PATTERNS = ["libggml", "libllama", "libmtmd"]
-
-
-def _download_and_extract_zip(url: str, dest_dir: Path) -> Path:
-    """Download and extract a zip file from a URL.
-
-    Args:
-        url: URL to download from.
-        dest_dir: Directory to extract to.
-
-    Returns:
-        Path to the extracted directory (first subdirectory in the zip).
-    """
-    logger.info(f"Downloading from {url}")
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir)
-        zip_path = tmp_path / "download.zip"
-
-        urllib.request.urlretrieve(url, zip_path)
-
-        logger.info("Extracting archive")
-        dest_dir.mkdir(parents=True, exist_ok=True)
-
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(dest_dir)
-
-        # Return the first subdirectory (llama.cpp-{tag})
-        subdirs = [d for d in dest_dir.iterdir() if d.is_dir()]
-        if subdirs:
-            return subdirs[0]
-        return dest_dir
 
 
 def _is_linux() -> bool:
@@ -128,20 +106,11 @@ def _nvcc_available() -> bool:
     """
     try:
         result = subprocess.run(
-            ["which", "nvcc"], capture_output=True, text=True, check=True
+            ["which", "nvcc"], capture_output=True, text=True
         )
         return result.returncode == 0
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
-
-
-# Binary names to look for in the release
-BINARY_NAMES = [
-    "llama-cli",
-    "llama-server",
-    "llama-quantize",
-    "llama-bench",
-]
 
 
 def _get_latest_release_info() -> dict:
@@ -151,7 +120,7 @@ def _get_latest_release_info() -> dict:
         dict: Release information including tag_name and assets.
     """
     api_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
-    with urllib.request.urlopen(api_url) as response:
+    with urllib.request.urlopen(api_url, timeout=30) as response:
         return __import__("json").loads(response.read())
 
 
@@ -159,18 +128,26 @@ def _get_release_by_tag(tag: str) -> dict:
     """Fetch release information for a specific tag.
 
     Args:
-        tag: The git tag of the release (e.g., "v1.0.0").
+        tag: The git tag of the release (e.g., "b4500").
 
     Returns:
         dict: Release information including assets.
     """
-    api_url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
-    with urllib.request.urlopen(api_url) as response:
+    api_url = (
+        f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
+    )
+    with urllib.request.urlopen(api_url, timeout=30) as response:
         return __import__("json").loads(response.read())
 
 
 def _find_linux_binary_asset(assets: list) -> Optional[dict]:
     """Find the appropriate Linux binary asset from the release assets.
+
+    Searches for pre-built Linux binary archives in priority order.
+    Matches current llama.cpp release naming conventions (e.g. b5000+):
+      llama-{tag}-bin-ubuntu-x64.tar.gz
+      llama-{tag}-bin-ubuntu-cuda-cu12.4.1-x64.tar.gz
+      llama-{tag}-bin-linux-x64.tar.gz
 
     Args:
         assets: List of asset dictionaries from the release.
@@ -178,31 +155,73 @@ def _find_linux_binary_asset(assets: list) -> Optional[dict]:
     Returns:
         The asset dictionary for the Linux binary, or None if not found.
     """
-    # Priority order for binary types
-    # Updated to match current llama.cpp release naming conventions
+    # Priority order: prefer Ubuntu builds, then generic Linux
     priority = [
-        "ubuntu-x64",  # Most common Linux x64 build
-        "ubuntu-vulkan",  # Ubuntu with Vulkan support
-        "linux-gpu-cuda",
-        "linux-gpu",
-        "linux-cuda",
-        "linux",
+        "ubuntu-x64",  # Ubuntu CPU x64 (most common)
+        "ubuntu-vulkan",  # Ubuntu with Vulkan
+        "linux-gpu-cuda",  # Generic Linux CUDA
+        "linux-gpu",  # Generic Linux GPU
+        "linux-cuda",  # Generic Linux CUDA (alt naming)
+        "linux-x64",  # Generic Linux CPU x64
+        "ubuntu",  # Any Ubuntu build
+        "linux",  # Any Linux build
     ]
 
-    for prefix in priority:
+    def _is_binary_archive(name: str) -> bool:
+        return (
+            name.endswith(".tar.gz") or name.endswith(".gz")
+        ) and "src" not in name.lower()
+
+    for keyword in priority:
         for asset in assets:
             name = asset.get("name", "").lower()
-            if prefix in name and (name.endswith(".tar.gz") or name.endswith(".gz")):
+            if keyword in name and _is_binary_archive(name):
                 return asset
+
     return None
 
 
-def _download_and_extract(url: str, dest_dir: Path) -> list[str]:
-    """Download and extract a tar.gz file.
+def _download_with_progress(
+    url: str, dest_path: Path, description: str = "Downloading"
+) -> None:
+    """Download a file from a URL with a Rich progress bar.
+
+    Args:
+        url: URL to download from.
+        dest_path: Local path to save the file to.
+        description: Label shown in the progress bar.
+    """
+    with Progress(
+        SpinnerColumn(),
+        TextColumn(f"[bold cyan]{description}[/bold cyan]"),
+        BarColumn(),
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+        console=console,
+        transient=True,
+    ) as progress:
+        task = progress.add_task(description, total=None)
+
+        def _reporthook(
+            block_num: int, block_size: int, total_size: int
+        ) -> None:
+            if total_size > 0 and progress.tasks[task].total is None:
+                progress.update(task, total=total_size)
+            progress.update(task, completed=block_num * block_size)
+
+        urllib.request.urlretrieve(url, dest_path, reporthook=_reporthook)
+
+
+def _download_and_extract(
+    url: str, dest_dir: Path, description: str = "Downloading"
+) -> list[str]:
+    """Download and extract a tar.gz file with progress display.
 
     Args:
         url: URL to download from.
         dest_dir: Directory to extract to.
+        description: Label shown in the progress bar.
 
     Returns:
         List of extracted file paths.
@@ -213,15 +232,48 @@ def _download_and_extract(url: str, dest_dir: Path) -> list[str]:
         tmp_path = Path(tmpdir)
         archive_path = tmp_path / "download.tar.gz"
 
-        logger.info(f"Downloading from {url}")
-        urllib.request.urlretrieve(url, archive_path)
+        _download_with_progress(url, archive_path, description)
 
-        logger.info("Extracting archive")
+        console.print("[cyan]  Extracting archive...[/cyan]")
         with tarfile.open(archive_path, "r:gz") as tar:
             tar.extractall(dest_dir)
-            extracted_files = [str(Path(dest_dir) / m.name) for m in tar.getmembers()]
+            extracted_files = [
+                str(Path(dest_dir) / m.name) for m in tar.getmembers()
+            ]
 
     return extracted_files
+
+
+def _download_and_extract_zip(
+    url: str, dest_dir: Path, description: str = "Downloading source"
+) -> Path:
+    """Download and extract a zip file from a URL with progress display.
+
+    Args:
+        url: URL to download from.
+        dest_dir: Directory to extract to.
+        description: Label shown in the progress bar.
+
+    Returns:
+        Path to the extracted directory (first subdirectory in the zip).
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        zip_path = tmp_path / "download.zip"
+
+        _download_with_progress(url, zip_path, description)
+
+        console.print("[cyan]  Extracting source archive...[/cyan]")
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(dest_dir)
+
+        # Return the first subdirectory (llama.cpp-{tag})
+        subdirs = [d for d in dest_dir.iterdir() if d.is_dir()]
+        if subdirs:
+            return subdirs[0]
+        return dest_dir
 
 
 def _verify_binary(binary_path: Path) -> bool:
@@ -267,116 +319,147 @@ def get_llama_cpp_binary(binary_name: str, bin_dir: Path) -> Optional[Path]:
     return None
 
 
-def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
-    """Download and install the latest llama.cpp binary or compile from source.
+def _copy_binaries_and_libs(build_bin_dir: Path, dest_dir: Path) -> None:
+    """Copy compiled binaries and shared libraries to the destination directory.
 
-    This function implements the following logic:
-    - If Ubuntu and no nvcc available: download pre-built binary from GitHub
-    - If Linux with nvcc available: compile from source with CUDA support
-    - If not Linux: compile from source
+    Args:
+        build_bin_dir: The build output bin/ directory.
+        dest_dir: The destination directory.
+    """
+    for binary_name in BINARY_NAMES:
+        src_binary = build_bin_dir / binary_name
+        if src_binary.exists():
+            dst_binary = dest_dir / binary_name
+            shutil.copy2(src_binary, dst_binary)
+            _make_executable(dst_binary)
+            logger.info(f"Copied {binary_name} to {dest_dir}")
+
+    for lib_pattern in SHARED_LIB_PATTERNS:
+        for lib_file in build_bin_dir.glob(f"{lib_pattern}*.so*"):
+            dst_lib = dest_dir / lib_file.name
+            shutil.copy2(lib_file, dst_lib)
+            logger.info(f"Copied {lib_file.name} to {dest_dir}")
+
+
+def _test_binary(bin_dir: Path) -> None:
+    """Test the installed llama-server binary.
+
+    Args:
+        bin_dir: Directory containing the binaries.
+    """
+    test_binary = get_llama_cpp_binary("llama-server", bin_dir)
+    if test_binary:
+        console.print("[cyan]  Testing binary...[/cyan]")
+        try:
+            result = subprocess.run(
+                [str(test_binary), "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                console.print(
+                    f"  [green]llama-server version: {result.stdout.strip()}[/green]"
+                )
+            else:
+                console.print(
+                    f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
+                )
+        except subprocess.TimeoutExpired:
+            console.print(
+                "  [yellow]Warning: Version check timed out[/yellow]"
+            )
+        except Exception as e:
+            console.print(
+                f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
+            )
+
+
+def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
+    """Download and install llama.cpp binaries.
+
+    Installation strategy:
+    - If ``nvcc`` is available: compile from source with CUDA support (produces
+      a CUDA-enabled binary optimised for the local GPU architecture)
+    - Otherwise on Ubuntu: download the pre-built Ubuntu binary from GitHub releases
+    - Otherwise on other Linux: compile from source without CUDA
+
+    Note: Compilation can take 10-30 minutes. Progress is streamed to the console.
 
     Args:
         bin_dir: Directory to install the binaries to.
-        version: Specific version tag to download (e.g., "v1.0.0").
-                 If None, downloads the latest release.
+        version: Specific version tag to download (e.g., "b4500").
+                 If None, downloads/compiles the latest release.
 
     Returns:
         Path to the directory containing the binaries.
 
     Raises:
         RuntimeError: If download, extraction, or compilation fails.
+        NotImplementedError: If running on a non-Linux OS.
     """
     logger.info("Starting llama.cpp installation")
 
     # Ensure bin directory exists
     bin_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine installation method based on system configuration
     if not _is_linux():
-        logger.info("Non-Linux OS detected, compiling from source")
         raise NotImplementedError(
             "Source compilation is required for non-Linux systems. "
             "Please clone the llama.cpp repository and run cmake build manually."
         )
 
-    if _nvcc_available():
-        logger.info("CUDA (nvcc) detected, compiling from source with CUDA support")
-
-        # Get release information to get the tag
+    # Fetch release information (needed for both download and source paths)
+    try:
         if version and version.lower() != "latest":
-            logger.info(f"Fetching release info for tag: {version}")
+            console.print(
+                f"[cyan]  Fetching release info for tag: {version}[/cyan]"
+            )
             release = _get_release_by_tag(version)
         else:
-            logger.info("Fetching latest release info")
+            console.print(
+                "[cyan]  Fetching latest release info from GitHub...[/cyan]"
+            )
             release = _get_latest_release_info()
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Failed to fetch release info from GitHub: {e}"
+        ) from e
 
-        tag = release.get("tag_name", "unknown")
-        logger.info(f"Found release: {tag}")
+    tag = release.get("tag_name", "unknown")
+    console.print(f"[green]  Found release: {tag}[/green]")
 
-        # Download source from GitHub zip URL
+    # --- Path 1: nvcc available → compile from source with CUDA ---
+    if _nvcc_available():
+        console.print(
+            "[cyan]  nvcc detected — compiling from source with CUDA support[/cyan]"
+        )
+        console.print(
+            "[yellow]  This may take 10-30 minutes. Output is shown below.[/yellow]"
+        )
+
         zip_url = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
 
-        # Download to /tmp and extract
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            source_dir = _download_and_extract_zip(zip_url, tmp_path / "source")
+            source_dir = _download_and_extract_zip(
+                zip_url,
+                tmp_path / "source",
+                description=f"Downloading source {tag}",
+            )
             logger.info(f"Source extracted to {source_dir}")
 
-            # Compile from source
             build_dir = install_llama_cpp_from_source(
                 repo_dir=source_dir,
                 build_dir=source_dir / "build",
                 use_cuda=True,
                 use_blas=True,
-                verbose=False,
+                verbose=True,
             )
 
-            # Copy binaries and shared libraries directly to bin_dir
-            console.print("[green]✓[/green] Copying binaries and libraries to bin_dir")
+            _copy_binaries_and_libs(build_dir / "bin", bin_dir)
+            _test_binary(bin_dir)
 
-            # Copy binaries
-            for binary_name in BINARY_NAMES:
-                src_binary = build_dir / "bin" / binary_name
-                if src_binary.exists():
-                    dst_binary = bin_dir / binary_name
-                    shutil.copy2(src_binary, dst_binary)
-                    _make_executable(dst_binary)
-                    logger.info(f"Copied {binary_name} to {bin_dir}")
-
-            # Copy shared libraries
-            for lib_pattern in SHARED_LIB_PATTERNS:
-                for lib_file in build_dir.glob(f"bin/{lib_pattern}*.so*"):
-                    dst_lib = bin_dir / lib_file.name
-                    shutil.copy2(lib_file, dst_lib)
-                    logger.info(f"Copied {lib_file.name} to {bin_dir}")
-
-            # Test the binary
-            test_binary = get_llama_cpp_binary("llama-server", bin_dir)
-            if test_binary:
-                console.print("[green]✓[/green] Testing binary...")
-                try:
-                    result = subprocess.run(
-                        [str(test_binary), "--version"],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    if result.returncode == 0:
-                        console.print(
-                            f"  [green]llama-server version: {result.stdout.strip()}[/green]"
-                        )
-                    else:
-                        console.print(
-                            f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
-                        )
-                except subprocess.TimeoutExpired:
-                    console.print("  [yellow]Warning: Version check timed out[/yellow]")
-                except Exception as e:
-                    console.print(
-                        f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
-                    )
-
-            # Cleanup source directory
             console.print("[green]✓[/green] Cleaning up source directory")
             shutil.rmtree(source_dir, ignore_errors=True)
 
@@ -385,112 +468,12 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         console.print(f"  Location: {bin_dir}")
         return bin_dir
 
-    if not _is_ubuntu():
-        logger.info("Non-Ubuntu Linux detected, compiling from source")
+    # --- Path 2: Ubuntu without nvcc → download pre-built binary ---
+    if _is_ubuntu():
+        console.print(
+            "[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]"
+        )
 
-        # Get release information to get the tag
-        if version and version.lower() != "latest":
-            logger.info(f"Fetching release info for tag: {version}")
-            release = _get_release_by_tag(version)
-        else:
-            logger.info("Fetching latest release info")
-            release = _get_latest_release_info()
-
-        tag = release.get("tag_name", "unknown")
-        logger.info(f"Found release: {tag}")
-
-        # Download source from GitHub zip URL
-        zip_url = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
-
-        # Download to /tmp and extract
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir)
-            source_dir = _download_and_extract_zip(zip_url, tmp_path / "source")
-            logger.info(f"Source extracted to {source_dir}")
-
-            # Determine CUDA support based on nvcc availability
-            use_cuda = _nvcc_available()
-            logger.info(f"Compiling with CUDA support: {use_cuda}")
-
-            # Compile from source
-            build_dir = install_llama_cpp_from_source(
-                repo_dir=source_dir,
-                build_dir=source_dir / "build",
-                use_cuda=use_cuda,
-                use_blas=False,
-                verbose=False,
-            )
-
-            # Copy binaries and shared libraries directly to bin_dir
-            console.print("[green]✓[/green] Copying binaries and libraries to bin_dir")
-
-            # Copy binaries
-            for binary_name in BINARY_NAMES:
-                src_binary = build_dir / "bin" / binary_name
-                if src_binary.exists():
-                    dst_binary = bin_dir / binary_name
-                    shutil.copy2(src_binary, dst_binary)
-                    _make_executable(dst_binary)
-                    logger.info(f"Copied {binary_name} to {bin_dir}")
-
-            # Copy shared libraries
-            for lib_pattern in SHARED_LIB_PATTERNS:
-                for lib_file in build_dir.glob(f"bin/{lib_pattern}*.so*"):
-                    dst_lib = bin_dir / lib_file.name
-                    shutil.copy2(lib_file, dst_lib)
-                    logger.info(f"Copied {lib_file.name} to {bin_dir}")
-
-            # Test the binary
-            test_binary = get_llama_cpp_binary("llama-server", bin_dir)
-            if test_binary:
-                console.print("[green]✓[/green] Testing binary...")
-                try:
-                    result = subprocess.run(
-                        [str(test_binary), "--version"],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    if result.returncode == 0:
-                        console.print(
-                            f"  [green]llama-server version: {result.stdout.strip()}[/green]"
-                        )
-                    else:
-                        console.print(
-                            f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
-                        )
-                except subprocess.TimeoutExpired:
-                    console.print("  [yellow]Warning: Version check timed out[/yellow]")
-                except Exception as e:
-                    console.print(
-                        f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
-                    )
-
-            # Cleanup source directory
-            console.print("[green]✓[/green] Cleaning up source directory")
-            shutil.rmtree(source_dir, ignore_errors=True)
-
-        console.print("[green]✓[/green] llama.cpp installed successfully!")
-        console.print(f"  Version: {tag}")
-        console.print(f"  Location: {bin_dir}")
-        return bin_dir
-
-    # Ubuntu with no nvcc - download pre-built binary
-    logger.info("Ubuntu detected with no CUDA, downloading pre-built binary")
-
-    try:
-        # Get release information
-        if version and version.lower() != "latest":
-            logger.info(f"Fetching release info for tag: {version}")
-            release = _get_release_by_tag(version)
-        else:
-            logger.info("Fetching latest release info")
-            release = _get_latest_release_info()
-
-        tag = release.get("tag_name", "unknown")
-        logger.info(f"Found release: {tag}")
-
-        # Find Linux binary asset
         assets = release.get("assets", [])
         binary_asset = _find_linux_binary_asset(assets)
 
@@ -505,39 +488,103 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
         download_url = binary_asset.get("browser_download_url")
         if not download_url:
-            raise RuntimeError("Could not find download URL for binary asset")
+            raise RuntimeError(
+                f"Could not find download URL for binary asset: {binary_asset.get('name')}"
+            )
 
-        # Download and extract
-        extracted = _download_and_extract(download_url, bin_dir)
-        logger.info(f"Extracted {len(extracted)} files")
+        asset_name = binary_asset.get("name", "unknown")
+        console.print(f"[cyan]  Downloading: {asset_name}[/cyan]")
 
-        # Make binaries executable
-        for binary_name in BINARY_NAMES:
-            binary_path = get_llama_cpp_binary(binary_name, bin_dir)
-            if binary_path:
-                _make_executable(binary_path)
-                logger.info(f"Made {binary_name} executable")
+        try:
+            with tempfile.TemporaryDirectory() as extract_tmp:
+                extract_tmp_path = Path(extract_tmp)
+                extracted = _download_and_extract(
+                    download_url,
+                    extract_tmp_path,
+                    description=f"Downloading {asset_name}",
+                )
+                logger.info(f"Extracted {len(extracted)} files")
 
-        # Print success message
+                # Flatten: copy binaries and shared libs directly into bin_dir
+                # (the tar.gz contains a top-level dir like llama-b8089/)
+                console.print("[cyan]  Installing binaries...[/cyan]")
+                for binary_name in BINARY_NAMES:
+                    binary_path = get_llama_cpp_binary(
+                        binary_name, extract_tmp_path
+                    )
+                    if binary_path:
+                        dst = bin_dir / binary_name
+                        shutil.copy2(binary_path, dst)
+                        _make_executable(dst)
+                        logger.info(f"Installed {binary_name} to {bin_dir}")
+
+                # Copy shared libraries
+                for lib_pattern in SHARED_LIB_PATTERNS:
+                    for lib_file in extract_tmp_path.rglob(
+                        f"{lib_pattern}*.so*"
+                    ):
+                        dst_lib = bin_dir / lib_file.name
+                        shutil.copy2(lib_file, dst_lib)
+                        logger.info(f"Installed {lib_file.name} to {bin_dir}")
+
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Failed to download binary: {e}") from e
+
+        _test_binary(bin_dir)
+
         console.print("[green]✓[/green] llama.cpp installed successfully!")
         console.print(f"  Version: {tag}")
         console.print(f"  Location: {bin_dir}")
 
-        # List installed binaries
         console.print("\nInstalled binaries:")
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+                console.print(
+                    f"  - [green]{binary_name}[/green]: {binary_path}"
+                )
 
         return bin_dir
 
-    except urllib.error.URLError as e:
-        error_console.print(f"[red]Network error: {e}[/red]")
-        raise
-    except Exception as e:
-        error_console.print(f"[red]Error: {e}[/red]")
-        raise
+    # --- Path 3: Non-Ubuntu Linux without nvcc → compile from source (CPU only) ---
+    console.print(
+        "[cyan]  Non-Ubuntu Linux without nvcc — compiling from source (CPU only)[/cyan]"
+    )
+    console.print(
+        "[yellow]  This may take 10-30 minutes. Output is shown below.[/yellow]"
+    )
+
+    zip_url = (
+        f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        source_dir = _download_and_extract_zip(
+            zip_url,
+            tmp_path / "source",
+            description=f"Downloading source {tag}",
+        )
+        logger.info(f"Source extracted to {source_dir}")
+
+        build_dir = install_llama_cpp_from_source(
+            repo_dir=source_dir,
+            build_dir=source_dir / "build",
+            use_cuda=False,
+            use_blas=False,
+            verbose=True,
+        )
+
+        _copy_binaries_and_libs(build_dir / "bin", bin_dir)
+        _test_binary(bin_dir)
+
+        console.print("[green]✓[/green] Cleaning up source directory")
+        shutil.rmtree(source_dir, ignore_errors=True)
+
+    console.print("[green]✓[/green] llama.cpp installed successfully!")
+    console.print(f"  Version: {tag}")
+    console.print(f"  Location: {bin_dir}")
+    return bin_dir
 
 
 def install_llama_cpp_from_source(
@@ -545,19 +592,21 @@ def install_llama_cpp_from_source(
     build_dir: Optional[Path] = None,
     use_cuda: bool = True,
     use_blas: bool = False,
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> Path:
-    """Install llama.cpp from source (fallback method).
+    """Install llama.cpp from source.
 
-    This method compiles llama.cpp from source using CMake. It's more time-consuming
-    than downloading pre-built binaries but allows for custom compilation flags.
+    Compiles llama.cpp from source using CMake. Used when nvcc is available
+    (CUDA build) or when running on non-Ubuntu Linux without nvcc (CPU build).
+
+    Note: Compilation can take 10-30 minutes depending on hardware.
 
     Args:
         repo_dir: Directory containing the llama.cpp source code.
         build_dir: Build directory (defaults to repo_dir/build).
-        use_cuda: Enable CUDA compilation.
+        use_cuda: Enable CUDA compilation (requires nvcc).
         use_blas: Enable OpenBLAS compilation.
-        verbose: Enable verbose output.
+        verbose: Stream cmake/make output to the console (default True).
 
     Returns:
         Path to the build directory containing binaries.
@@ -571,11 +620,15 @@ def install_llama_cpp_from_source(
     logger.info("Compiling llama.cpp from source")
 
     # Check dependencies
-    dependencies = ["git", "cmake", "make"]
+    dependencies = ["cmake", "make"]
     for dep in dependencies:
         result = subprocess.run(["which", dep], capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(f"Required dependency '{dep}' not found")
+            raise RuntimeError(
+                f"Required dependency '{dep}' not found. "
+                f"Install it with your package manager "
+                f"(e.g. 'pacman -S cmake make' on Arch, 'apt install cmake make' on Debian)."
+            )
 
     try:
         # Clean build directory
@@ -592,6 +645,7 @@ def install_llama_cpp_from_source(
             str(build_dir),
             "-S",
             str(repo_dir),
+            "-DCMAKE_BUILD_TYPE=Release",
         ]
 
         if use_cuda:
@@ -605,19 +659,20 @@ def install_llama_cpp_from_source(
                 ]
             )
 
-        if verbose:
-            cmake_args.append("-DCMAKE_VERBOSE_MAKEFILE=ON")
-
-        logger.info(f"Running: {' '.join(cmake_args)}")
-        result = subprocess.run(
-            cmake_args,
-            cwd=str(repo_dir),
-            check=True,
-            capture_output=True,
-            text=True,
+        console.print(
+            f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]"
         )
-        if result.returncode != 0:
-            raise RuntimeError("CMake configuration failed")
+
+        if verbose:
+            subprocess.run(cmake_args, cwd=str(repo_dir), check=True)
+        else:
+            subprocess.run(
+                cmake_args,
+                cwd=str(repo_dir),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
         # Build
         threads = os.cpu_count() or 1
@@ -631,21 +686,20 @@ def install_llama_cpp_from_source(
             str(threads),
         ]
 
-        logger.info(f"Running: {' '.join(build_args)}")
-        result = subprocess.run(
-            build_args,
-            cwd=str(repo_dir),
-            check=True,
-            capture_output=True,
-            text=True,
+        console.print(
+            f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]"
         )
-        if result.returncode != 0:
-            error_console.print("[red]Compilation failed![/red]")
-            if result.stderr:
-                error_console.print(f"[red]Error output:[/red]\n{result.stderr}")
-            if result.stdout:
-                error_console.print(f"[red]Stdout:[/red]\n{result.stdout}")
-            raise RuntimeError("Compilation failed")
+
+        if verbose:
+            subprocess.run(build_args, cwd=str(repo_dir), check=True)
+        else:
+            result = subprocess.run(
+                build_args,
+                cwd=str(repo_dir),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
         console.print("[green]✓[/green] llama.cpp compiled successfully!")
         console.print(f"  Location: {build_dir}")
@@ -654,13 +708,15 @@ def install_llama_cpp_from_source(
 
     except subprocess.CalledProcessError as e:
         error_console.print(f"[red]Command failed: {e}[/red]")
-        raise
+        raise RuntimeError(f"Compilation failed: {e}") from e
     except Exception as e:
         error_console.print(f"[red]Error: {e}[/red]")
         raise
 
 
-def main(bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None) -> None:
+def main(
+    bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None
+) -> None:
     """CLI entry point for llama.cpp installation.
 
     Args:
