@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QMainWindow
 from aria.config.database import SQLite
 from aria.config.folders import Debug
 from aria.config.models import Chat, Embeddings, Vision
+from aria.config.service import Server
 from aria.gui.dialogs import AboutDialog
 from aria.gui.main_window.user_handlers import UserHandlersMixin
 from aria.gui.ui.mainwindow import Ui_MainWindow
@@ -132,6 +133,8 @@ class MainWindow(UserHandlersMixin, QMainWindow):
             self.ui.plainTextEdit_Logs.setPlainText(f"Error loading logs: {e}")
 
     def load_overview(self):
+        self.ui.label_ServiceURL.setText(Server.base_url)
+
         self.ui.label_DatabaseLocation.setText(
             str(SQLite.file_path.absolute())
         )
