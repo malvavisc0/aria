@@ -5,4 +5,6 @@ class Server:
     host = get_required_env("SERVER_HOST")
     port = int(get_required_env("SERVER_PORT"))
 
-    base_url = f"http://{host}:{port}/"
+    @classmethod
+    def get_base_url(cls):
+        return f"http://{cls.host}:{cls.port}/"
