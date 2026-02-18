@@ -44,8 +44,8 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str_pk]
-    display_name: Mapped[str] = mapped_column(Text, nullable=False)
 
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
     identifier: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     # Stored as JSON string (Chainlit serializes via `json.dumps`).
     metadata_: Mapped[str] = mapped_column("metadata", Text)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowqfeJlO.ui'
+## Form generated from reading UI file 'mainwindowXHByqY.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -113,7 +113,7 @@ class Ui_MainWindow(object):
         self.pushButton_ServiceControl.setObjectName(
             "pushButton_ServiceControl"
         )
-        self.pushButton_ServiceControl.setEnabled(True)
+        self.pushButton_ServiceControl.setEnabled(False)
         icon3 = QIcon(QIcon.fromTheme("media-playback-start"))
         self.pushButton_ServiceControl.setIcon(icon3)
         self.pushButton_ServiceControl.setFlat(False)
@@ -213,6 +213,7 @@ class Ui_MainWindow(object):
         self.label_ServiceStarted.raise_()
         self.pushButton_ServiceOpen = QPushButton(self.groupBox_3)
         self.pushButton_ServiceOpen.setObjectName("pushButton_ServiceOpen")
+        self.pushButton_ServiceOpen.setEnabled(False)
         self.pushButton_ServiceOpen.setGeometry(QRect(380, 30, 96, 27))
         icon4 = QIcon(QIcon.fromTheme("applications-internet"))
         self.pushButton_ServiceOpen.setIcon(icon4)
@@ -381,15 +382,16 @@ class Ui_MainWindow(object):
         self.listWidget_CurrentUsers = QListWidget(self.groupBox_5)
         self.listWidget_CurrentUsers.setObjectName("listWidget_CurrentUsers")
         self.listWidget_CurrentUsers.setGeometry(QRect(5, 31, 581, 231))
-        self.pushButton_ResetPassword = QPushButton(self.groupBox_5)
-        self.pushButton_ResetPassword.setObjectName("pushButton_ResetPassword")
-        self.pushButton_ResetPassword.setGeometry(QRect(600, 60, 96, 27))
         self.pushButton_EditUser = QPushButton(self.groupBox_5)
         self.pushButton_EditUser.setObjectName("pushButton_EditUser")
+        self.pushButton_EditUser.setEnabled(False)
         self.pushButton_EditUser.setGeometry(QRect(600, 30, 96, 27))
         self.pushButton_DeleteUser = QPushButton(self.groupBox_5)
         self.pushButton_DeleteUser.setObjectName("pushButton_DeleteUser")
-        self.pushButton_DeleteUser.setGeometry(QRect(600, 90, 96, 27))
+        self.pushButton_DeleteUser.setEnabled(False)
+        self.pushButton_DeleteUser.setGeometry(QRect(600, 70, 96, 27))
+        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditDelete))
+        self.pushButton_DeleteUser.setIcon(icon5)
 
         self.verticalLayout_4.addWidget(self.groupBox_5)
 
@@ -426,6 +428,7 @@ class Ui_MainWindow(object):
 
         self.pushButton_CreateUser = QPushButton(self.formLayoutWidget_4)
         self.pushButton_CreateUser.setObjectName("pushButton_CreateUser")
+        self.pushButton_CreateUser.setEnabled(False)
 
         self.formLayout_4.setWidget(
             3, QFormLayout.ItemRole.LabelRole, self.pushButton_CreateUser
@@ -479,8 +482,8 @@ class Ui_MainWindow(object):
 
         self.pushButton_RefreshLogs = QPushButton(self.verticalLayoutWidget_2)
         self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
-        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
-        self.pushButton_RefreshLogs.setIcon(icon5)
+        icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
+        self.pushButton_RefreshLogs.setIcon(icon6)
 
         self.verticalLayout_2.addWidget(self.pushButton_RefreshLogs)
 
@@ -636,9 +639,6 @@ class Ui_MainWindow(object):
         self.groupBox_5.setTitle(
             QCoreApplication.translate("MainWindow", "Current Users", None)
         )
-        self.pushButton_ResetPassword.setText(
-            QCoreApplication.translate("MainWindow", "Reset", None)
-        )
         self.pushButton_EditUser.setText(
             QCoreApplication.translate("MainWindow", "Edit", None)
         )
@@ -658,7 +658,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Password", None)
         )
         self.pushButton_CreateUser.setText(
-            QCoreApplication.translate("MainWindow", "Create", None)
+            QCoreApplication.translate("MainWindow", "Save", None)
         )
         self.lineEdit_UserPassword.setInputMask("")
         self.tabWidget.setTabText(
