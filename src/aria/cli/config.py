@@ -27,6 +27,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from aria.config.api import LlamaCpp
+from aria.config.database import ChromaDB, SQLite
+from aria.config.folders import Data, Debug, Storage
+from aria.config.models import Chat, Embeddings
+
 app = typer.Typer(
     name="config",
     help="Configuration display commands.",
@@ -50,11 +55,6 @@ def show_config():
         aria config show
         ```
     """
-    from aria.config.api import LlamaCpp
-    from aria.config.database import ChromaDB, SQLite
-    from aria.config.folders import Data, Debug, Storage
-    from aria.config.models import Chat, Embeddings
-
     # Paths table
     paths_table = Table(show_header=True, header_style="bold cyan")
     paths_table.add_column("Name", style="cyan", width=20)
@@ -124,9 +124,6 @@ def show_paths():
         aria config paths
         ```
     """
-    from aria.config.database import ChromaDB, SQLite
-    from aria.config.folders import Data, Debug, Storage
-
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Name", style="cyan", width=20)
     table.add_column("Path", style="green")
@@ -163,8 +160,6 @@ def show_database():
         aria config database
         ```
     """
-    from aria.config.database import ChromaDB, SQLite
-
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
     table.add_column("Value", style="green")
@@ -204,8 +199,6 @@ def show_api():
         aria config api
         ```
     """
-    from aria.config.models import Chat, Embeddings
-
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
     table.add_column("Value", style="green")

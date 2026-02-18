@@ -114,8 +114,6 @@ def list_users():
                 )
             )
             raise typer.Exit(1)
-        finally:
-            session.close()
 
 
 @app.command("add")
@@ -193,8 +191,6 @@ def add_user(
                 )
             )
 
-        except typer.Exit:
-            raise
         except Exception as e:
             error_console.print(
                 Panel(
@@ -263,8 +259,6 @@ def reset_password(
                 )
             )
 
-        except typer.Exit:
-            raise
         except Exception as e:
             error_console.print(
                 Panel(
@@ -358,8 +352,6 @@ def update_user(
                 )
             )
 
-        except typer.Exit:
-            raise
         except Exception as e:
             error_console.print(
                 Panel(

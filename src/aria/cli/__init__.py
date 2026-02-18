@@ -2,8 +2,6 @@
 
 This module provides shared utilities for CLI commands including:
 - Database session management with automatic commit/rollback
-- Console output helpers for consistent styling
-- Error handling patterns for CLI commands
 
 Example:
     ```python
@@ -17,7 +15,6 @@ Example:
 
 import contextlib
 
-import typer
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -29,14 +26,15 @@ from aria.db.models import Base
 def get_db_session():
     """Context manager for database sessions with automatic transaction handling.
 
-    Creates a new SQLAlchemy session, handles commit/rollback automatically,
-    and ensures proper cleanup on exit.
+    Creates a new SQLAlchemy session, commits on success, rolls back on error,
+    and always closes the session on exit.
 
     Yields:
         Session: An active SQLAlchemy session for database operations.
 
     Raises:
-        typer.Exit: Exits with code 1 if any exception occurs during operations.
+        Exception: Re-raises any exception that occurs during the session,
+            after rolling back the transaction.
 
     Example:
         ```python
@@ -52,6 +50,6 @@ def get_db_session():
         session.commit()
     except Exception:
         session.rollback()
-        raise typer.Exit(1)
+        raise
     finally:
         session.close()
