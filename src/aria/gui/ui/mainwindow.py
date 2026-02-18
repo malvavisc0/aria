@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowBnTxgX.ui'
+## Form generated from reading UI file 'mainwindowCDNHlP.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -109,16 +109,22 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
 
-        self.pushButton_ServiceControl = QPushButton(self.verticalLayoutWidget)
-        self.pushButton_ServiceControl.setObjectName(
-            "pushButton_ServiceControl"
-        )
-        self.pushButton_ServiceControl.setEnabled(False)
-        icon3 = QIcon(QIcon.fromTheme("media-playback-start"))
-        self.pushButton_ServiceControl.setIcon(icon3)
-        self.pushButton_ServiceControl.setFlat(False)
+        self.pushButton_ServiceStop = QPushButton(self.verticalLayoutWidget)
+        self.pushButton_ServiceStop.setObjectName("pushButton_ServiceStop")
+        self.pushButton_ServiceStop.setEnabled(False)
+        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.SystemShutdown))
+        self.pushButton_ServiceStop.setIcon(icon3)
 
-        self.horizontalLayout.addWidget(self.pushButton_ServiceControl)
+        self.horizontalLayout.addWidget(self.pushButton_ServiceStop)
+
+        self.pushButton_ServiceStart = QPushButton(self.verticalLayoutWidget)
+        self.pushButton_ServiceStart.setObjectName("pushButton_ServiceStart")
+        self.pushButton_ServiceStart.setEnabled(False)
+        icon4 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackStart))
+        self.pushButton_ServiceStart.setIcon(icon4)
+        self.pushButton_ServiceStart.setFlat(False)
+
+        self.horizontalLayout.addWidget(self.pushButton_ServiceStart)
 
         self.verticalLayout.addLayout(self.horizontalLayout)
 
@@ -232,8 +238,8 @@ class Ui_MainWindow(object):
         self.pushButton_ServiceOpen.setObjectName("pushButton_ServiceOpen")
         self.pushButton_ServiceOpen.setEnabled(False)
         self.pushButton_ServiceOpen.setGeometry(QRect(380, 30, 96, 27))
-        icon4 = QIcon(QIcon.fromTheme("applications-internet"))
-        self.pushButton_ServiceOpen.setIcon(icon4)
+        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.UserAvailable))
+        self.pushButton_ServiceOpen.setIcon(icon5)
 
         self.verticalLayout_3.addWidget(self.groupBox_3)
 
@@ -437,8 +443,8 @@ class Ui_MainWindow(object):
         self.pushButton_DeleteUser.setObjectName("pushButton_DeleteUser")
         self.pushButton_DeleteUser.setEnabled(False)
         self.pushButton_DeleteUser.setGeometry(QRect(600, 70, 96, 27))
-        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditDelete))
-        self.pushButton_DeleteUser.setIcon(icon5)
+        icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditDelete))
+        self.pushButton_DeleteUser.setIcon(icon6)
 
         self.verticalLayout_4.addWidget(self.groupBox_5)
 
@@ -533,8 +539,8 @@ class Ui_MainWindow(object):
 
         self.pushButton_RefreshLogs = QPushButton(self.verticalLayoutWidget_2)
         self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
-        icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
-        self.pushButton_RefreshLogs.setIcon(icon6)
+        icon7 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
+        self.pushButton_RefreshLogs.setIcon(icon7)
 
         self.verticalLayout_2.addWidget(self.pushButton_RefreshLogs)
 
@@ -588,7 +594,10 @@ class Ui_MainWindow(object):
                 "MainWindow", "Aria Service Manager", None
             )
         )
-        self.pushButton_ServiceControl.setText(
+        self.pushButton_ServiceStop.setText(
+            QCoreApplication.translate("MainWindow", "Stop", None)
+        )
+        self.pushButton_ServiceStart.setText(
             QCoreApplication.translate("MainWindow", "Start", None)
         )
         self.groupBox_3.setTitle(
