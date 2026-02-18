@@ -10,7 +10,6 @@ from PySide6.QtWidgets import QMainWindow
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
 from aria.config.models import Chat, Embeddings, Vision
-from aria.config.service import Server
 from aria.gui.dialogs import AboutDialog
 from aria.gui.main_window.server_handlers import ServerHandlersMixin
 from aria.gui.main_window.user_handlers import UserHandlersMixin
@@ -139,7 +138,6 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
 
     def load_overview(self):
         self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
-        self.ui.label_ServiceURL.setText(Server.get_base_url())
 
         self.ui.label_DatabaseLocation.setText(
             str(SQLite.file_path.absolute())

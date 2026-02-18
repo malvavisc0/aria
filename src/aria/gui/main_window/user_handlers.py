@@ -86,7 +86,7 @@ class UserHandlersMixin:
                     self.ui.lineEdit_UserEmail.clear()
                     self.ui.lineEdit_UserPassword.clear()
         except Exception as e:
-            self.ui.statusBar.showMessage(f"Error listing users: {e}")
+            self.ui.statusBar.showMessage(f"Error creating user: {e}")
 
     def on_edit_user_clicked(self) -> None:
         """Handle edit user button click - open edit dialog for selected user."""
@@ -96,16 +96,19 @@ class UserHandlersMixin:
             return
 
         identifier = selected_items[0].text()
-        with get_db_session() as session:
-            user = session.execute(
-                select(User).where(User.identifier == identifier)
-            ).scalar_one_or_none()
-            if user:
-                # self is MainWindow which inherits from QWidget
-                parent_widget: QWidget = self  # type: ignore[assignment]
-                dialog = EditUserDialog(parent_widget, user)
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    self.load_users()
+        try:
+            with get_db_session() as session:
+                user = session.execute(
+                    select(User).where(User.identifier == identifier)
+                ).scalar_one_or_none()
+                if user:
+                    # self is MainWindow which inherits from QWidget
+                    parent_widget: QWidget = self  # type: ignore[assignment]
+                    dialog = EditUserDialog(parent_widget, user)
+                    if dialog.exec() == QDialog.DialogCode.Accepted:
+                        self.load_users()
+        except Exception as e:
+            self.ui.statusBar.showMessage(f"Error editing user: {e}")
 
     def on_delete_user_clicked(self) -> None:
         """Handle delete user button click with confirmation."""
@@ -133,15 +136,18 @@ class UserHandlersMixin:
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
 
         if msg_box.exec() == QMessageBox.StandardButton.Yes:
-            with get_db_session() as session:
-                user = session.execute(
-                    select(User).where(User.identifier == identifier)
-                ).scalar_one_or_none()
-                if user:
-                    session.delete(user)
-                    self.load_users()  # Refresh the list
+            try:
+                with get_db_session() as session:
+                    user = session.execute(
+                        select(User).where(User.identifier == identifier)
+                    ).scalar_one_or_none()
+                    if user:
+                        session.delete(user)
+                        self.load_users()
+            except Exception as e:
+                self.ui.statusBar.showMessage(f"Error deleting user: {e}")
 
-    def show_error(self, information: str) -> None:
+    def show_error(self, message: str) -> None:
         """Display an error message box."""
         # self is MainWindow which inherits from QWidget
         parent_widget: QWidget = self  # type: ignore[assignment]
@@ -149,7 +155,6 @@ class UserHandlersMixin:
         msg_box = QMessageBox(parent_widget)
         msg_box.setIcon(QMessageBox.Icon.Critical)
         msg_box.setWindowTitle("Error")
-        msg_box.setText("An error occurred!")
-        msg_box.setInformativeText(information)
+        msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg_box.exec()
