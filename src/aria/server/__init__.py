@@ -1,19 +1,30 @@
 """Server management module for the Aria application.
 
-This module provides the ServerManager class for controlling the
-Chainlit webserver lifecycle (start, stop, restart, status).
+This module provides:
+- ``ServerManager``: controls the Chainlit webserver lifecycle (start, stop, restart, status)
+- ``LlamaCppServerManager``: manages the three llama-server inference processes
+  (chat, vision/language, embeddings)
 
 Example:
     ```python
-    from aria.server import ServerManager, ServerStatus
+    from aria.server import ServerManager, LlamaCppServerManager
+
+    llama = LlamaCppServerManager(context_size=8192)
+    llama.start_all()
 
     manager = ServerManager()
-    manager.start()  # Start in background
-    status = manager.get_status()
-    manager.stop()   # Stop the server
+    manager.run()  # blocking
+
+    llama.stop_all()
     ```
 """
 
+from aria.server.llama import LlamaCppServerConfig, LlamaCppServerManager
 from aria.server.manager import ServerManager, ServerStatus
 
-__all__ = ["ServerManager", "ServerStatus"]
+__all__ = [
+    "ServerManager",
+    "ServerStatus",
+    "LlamaCppServerManager",
+    "LlamaCppServerConfig",
+]

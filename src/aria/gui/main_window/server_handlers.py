@@ -7,12 +7,35 @@ for the Aria GUI application.
 from __future__ import annotations
 
 import webbrowser
+from typing import Optional
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QThread, QTimer, Signal
 
 from aria.config.service import Server
 from aria.gui.ui.mainwindow import Ui_MainWindow
-from aria.server import ServerManager
+from aria.server import LlamaCppServerManager, ServerManager
+
+
+class _LlamaStartWorker(QObject):
+    """Worker that starts llama-server processes in a background thread.
+
+    Emits ``finished`` when all servers are ready, or ``error`` if any fail.
+    """
+
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, llama_manager: LlamaCppServerManager):
+        super().__init__()
+        self._llama_manager = llama_manager
+
+    def run(self) -> None:
+        """Start all llama-server processes (runs in a QThread)."""
+        try:
+            self._llama_manager.start_all()
+            self.finished.emit()
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 class ServerHandlersMixin:
@@ -24,9 +47,11 @@ class ServerHandlersMixin:
     - Server start/stop/open button handlers
     - Periodic status updates via QTimer
     - Button state management based on server running state
+    - LlamaCPP inference server lifecycle management (via QThread)
 
     Attributes:
         _server_manager: ServerManager instance for controlling the webserver.
+        _llama_manager: LlamaCppServerManager instance for inference servers.
         _server_timer: QTimer for periodic status updates.
     """
 
@@ -39,6 +64,8 @@ class ServerHandlersMixin:
         after the UI is set up.
         """
         self._server_manager = ServerManager()
+        self._llama_manager: Optional[LlamaCppServerManager] = None
+        self._llama_thread: Optional[QThread] = None
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
         self._server_timer.start(1000)  # Update every second
@@ -56,17 +83,60 @@ class ServerHandlersMixin:
     def on_start_server(self):
         """Handle Start button click.
 
-        Starts the webserver in the background and updates the status display.
+        Starts the llama-server inference processes in a background QThread
+        (to avoid blocking the UI during the health-check wait), then starts
+        the Chainlit webserver once all inference servers are ready.
+        """
+        # Disable the start button while starting
+        self.ui.pushButton_ServiceStart.setEnabled(False)
+
+        # Create a new LlamaCppServerManager
+        self._llama_manager = LlamaCppServerManager()
+
+        # Run start_all() in a background thread
+        self._llama_thread = QThread()
+        worker = _LlamaStartWorker(self._llama_manager)
+        worker.moveToThread(self._llama_thread)
+
+        self._llama_thread.started.connect(worker.run)
+        worker.finished.connect(self._on_llama_started)
+        worker.error.connect(self._on_llama_error)
+        worker.finished.connect(self._llama_thread.quit)
+        worker.error.connect(self._llama_thread.quit)
+        self._llama_thread.finished.connect(worker.deleteLater)
+
+        self._llama_thread.start()
+
+    def _on_llama_started(self):
+        """Called when all llama-server processes are ready.
+
+        Starts the Chainlit webserver.
         """
         self._server_manager.start()
+        self._update_server_status()
+
+    def _on_llama_error(self, error_message: str):
+        """Called when llama-server startup fails.
+
+        Re-enables the start button and logs the error.
+        """
+        from loguru import logger
+
+        logger.error(f"Failed to start inference servers: {error_message}")
+        self.ui.pushButton_ServiceStart.setEnabled(True)
         self._update_server_status()
 
     def on_stop_server(self):
         """Handle Stop button click.
 
-        Stops the webserver and updates the status display.
+        Stops the Chainlit webserver and all llama-server inference processes.
         """
         self._server_manager.stop()
+
+        if self._llama_manager is not None:
+            self._llama_manager.stop_all()
+            self._llama_manager = None
+
         self._update_server_status()
 
     def on_open_server(self):
@@ -94,7 +164,9 @@ class ServerHandlersMixin:
             self.ui.label_ServiceStatus.setStyleSheet("color: red;")
 
         # Update PID label
-        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
+        self.ui.label_ServicePID.setText(
+            str(status.pid) if status.pid else "-"
+        )
 
         # Update URL label
         self.ui.label_ServiceURL.setText(f"http://{status.host}:{status.port}")
@@ -111,7 +183,9 @@ class ServerHandlersMixin:
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            self.ui.label_ServiceUptime.setText(f"{hours}h {minutes}m {seconds}s")
+            self.ui.label_ServiceUptime.setText(
+                f"{hours}h {minutes}m {seconds}s"
+            )
         else:
             self.ui.label_ServiceUptime.setText("-")
 
