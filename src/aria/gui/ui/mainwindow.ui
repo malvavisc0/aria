@@ -147,23 +147,10 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_9">
-                <property name="styleSheet">
-                 <string notr="true">color: rgb(61, 56, 70)</string>
-                </property>
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_ServiceURL">
                 <property name="text">
-                 <string>Uptime</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_12">
-                <property name="styleSheet">
-                 <string notr="true">color: rgb(61, 56, 70)</string>
-                </property>
-                <property name="text">
-                 <string>Started</string>
+                 <string>-</string>
                 </property>
                </widget>
               </item>
@@ -177,17 +164,20 @@
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_ServiceURL">
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_ServicePID">
                 <property name="text">
                  <string>-</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_ServicePID">
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_9">
+                <property name="styleSheet">
+                 <string notr="true">color: rgb(61, 56, 70)</string>
+                </property>
                 <property name="text">
-                 <string>-</string>
+                 <string>Uptime</string>
                 </property>
                </widget>
               </item>
@@ -198,8 +188,35 @@
                 </property>
                </widget>
               </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_12">
+                <property name="styleSheet">
+                 <string notr="true">color: rgb(61, 56, 70)</string>
+                </property>
+                <property name="text">
+                 <string>Started</string>
+                </property>
+               </widget>
+              </item>
               <item row="3" column="1">
                <widget class="QLabel" name="label_ServiceStarted">
+                <property name="text">
+                 <string>-</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="label_14">
+                <property name="styleSheet">
+                 <string notr="true">color: rgb(61, 56, 70)</string>
+                </property>
+                <property name="text">
+                 <string>Logs Path</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="label_DebugLogsPath">
                 <property name="text">
                  <string>-</string>
                 </property>
@@ -214,6 +231,8 @@
              <zorder>label_ServicePID</zorder>
              <zorder>label_ServiceUptime</zorder>
              <zorder>label_ServiceStarted</zorder>
+             <zorder>label_14</zorder>
+             <zorder>label_DebugLogsPath</zorder>
             </widget>
             <widget class="QPushButton" name="pushButton_ServiceOpen">
              <property name="enabled">

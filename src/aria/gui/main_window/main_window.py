@@ -133,6 +133,7 @@ class MainWindow(UserHandlersMixin, QMainWindow):
             self.ui.plainTextEdit_Logs.setPlainText(f"Error loading logs: {e}")
 
     def load_overview(self):
+        self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
         self.ui.label_ServiceURL.setText(Server.get_base_url())
 
         self.ui.label_DatabaseLocation.setText(

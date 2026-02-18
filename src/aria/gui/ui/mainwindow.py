@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowigOKbn.ui'
+## Form generated from reading UI file 'mainwindowBnTxgX.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -151,20 +151,11 @@ class Ui_MainWindow(object):
             0, QFormLayout.ItemRole.LabelRole, self.label_8
         )
 
-        self.label_9 = QLabel(self.formLayoutWidget_3)
-        self.label_9.setObjectName("label_9")
-        self.label_9.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_ServiceURL = QLabel(self.formLayoutWidget_3)
+        self.label_ServiceURL.setObjectName("label_ServiceURL")
 
         self.formLayout_3.setWidget(
-            2, QFormLayout.ItemRole.LabelRole, self.label_9
-        )
-
-        self.label_12 = QLabel(self.formLayoutWidget_3)
-        self.label_12.setObjectName("label_12")
-        self.label_12.setStyleSheet("color: rgb(61, 56, 70)")
-
-        self.formLayout_3.setWidget(
-            3, QFormLayout.ItemRole.LabelRole, self.label_12
+            0, QFormLayout.ItemRole.FieldRole, self.label_ServiceURL
         )
 
         self.label_13 = QLabel(self.formLayoutWidget_3)
@@ -175,18 +166,19 @@ class Ui_MainWindow(object):
             1, QFormLayout.ItemRole.LabelRole, self.label_13
         )
 
-        self.label_ServiceURL = QLabel(self.formLayoutWidget_3)
-        self.label_ServiceURL.setObjectName("label_ServiceURL")
-
-        self.formLayout_3.setWidget(
-            0, QFormLayout.ItemRole.FieldRole, self.label_ServiceURL
-        )
-
         self.label_ServicePID = QLabel(self.formLayoutWidget_3)
         self.label_ServicePID.setObjectName("label_ServicePID")
 
         self.formLayout_3.setWidget(
             1, QFormLayout.ItemRole.FieldRole, self.label_ServicePID
+        )
+
+        self.label_9 = QLabel(self.formLayoutWidget_3)
+        self.label_9.setObjectName("label_9")
+        self.label_9.setStyleSheet("color: rgb(61, 56, 70)")
+
+        self.formLayout_3.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_9
         )
 
         self.label_ServiceUptime = QLabel(self.formLayoutWidget_3)
@@ -196,11 +188,34 @@ class Ui_MainWindow(object):
             2, QFormLayout.ItemRole.FieldRole, self.label_ServiceUptime
         )
 
+        self.label_12 = QLabel(self.formLayoutWidget_3)
+        self.label_12.setObjectName("label_12")
+        self.label_12.setStyleSheet("color: rgb(61, 56, 70)")
+
+        self.formLayout_3.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_12
+        )
+
         self.label_ServiceStarted = QLabel(self.formLayoutWidget_3)
         self.label_ServiceStarted.setObjectName("label_ServiceStarted")
 
         self.formLayout_3.setWidget(
             3, QFormLayout.ItemRole.FieldRole, self.label_ServiceStarted
+        )
+
+        self.label_14 = QLabel(self.formLayoutWidget_3)
+        self.label_14.setObjectName("label_14")
+        self.label_14.setStyleSheet("color: rgb(61, 56, 70)")
+
+        self.formLayout_3.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_14
+        )
+
+        self.label_DebugLogsPath = QLabel(self.formLayoutWidget_3)
+        self.label_DebugLogsPath.setObjectName("label_DebugLogsPath")
+
+        self.formLayout_3.setWidget(
+            4, QFormLayout.ItemRole.FieldRole, self.label_DebugLogsPath
         )
 
         self.label_13.raise_()
@@ -211,6 +226,8 @@ class Ui_MainWindow(object):
         self.label_ServicePID.raise_()
         self.label_ServiceUptime.raise_()
         self.label_ServiceStarted.raise_()
+        self.label_14.raise_()
+        self.label_DebugLogsPath.raise_()
         self.pushButton_ServiceOpen = QPushButton(self.groupBox_3)
         self.pushButton_ServiceOpen.setObjectName("pushButton_ServiceOpen")
         self.pushButton_ServiceOpen.setEnabled(False)
@@ -580,25 +597,31 @@ class Ui_MainWindow(object):
         self.label_8.setText(
             QCoreApplication.translate("MainWindow", "URL", None)
         )
-        self.label_9.setText(
-            QCoreApplication.translate("MainWindow", "Uptime", None)
-        )
-        self.label_12.setText(
-            QCoreApplication.translate("MainWindow", "Started", None)
+        self.label_ServiceURL.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_13.setText(
             QCoreApplication.translate("MainWindow", "PID", None)
         )
-        self.label_ServiceURL.setText(
-            QCoreApplication.translate("MainWindow", "-", None)
-        )
         self.label_ServicePID.setText(
             QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.label_9.setText(
+            QCoreApplication.translate("MainWindow", "Uptime", None)
         )
         self.label_ServiceUptime.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
+        self.label_12.setText(
+            QCoreApplication.translate("MainWindow", "Started", None)
+        )
         self.label_ServiceStarted.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.label_14.setText(
+            QCoreApplication.translate("MainWindow", "Logs Path", None)
+        )
+        self.label_DebugLogsPath.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
         self.pushButton_ServiceOpen.setText(
