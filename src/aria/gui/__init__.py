@@ -108,8 +108,33 @@ class MainWindow(QMainWindow):
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
         self.ui.pushButton_RefreshLogs.clicked.connect(self.load_logs)
 
-        self.ui.pushButton_CreateUser.clicked.connect(self.create_user)
+        # User management connections
+        self.ui.pushButton_CreateUser.clicked.connect(
+            self.on_create_user_clicked
+        )
         self.ui.pushButton_EditUser.clicked.connect(self.on_edit_user_clicked)
+        self.ui.pushButton_DeleteUser.clicked.connect(
+            self.on_delete_user_clicked
+        )
+
+        # Enable/disable Create User button based on field content
+        self.ui.pushButton_CreateUser.setEnabled(False)
+        self.ui.lineEdit_UserName.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserEmail.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserPassword.textChanged.connect(
+            self.validate_create_fields
+        )
+
+        # Enable/disable Edit and Delete buttons based on user selection
+        self.ui.pushButton_EditUser.setEnabled(False)
+        self.ui.pushButton_DeleteUser.setEnabled(False)
+        self.ui.listWidget_CurrentUsers.itemSelectionChanged.connect(
+            self.validate_user_selection
+        )
 
     def load_logs(self):
         """Load logs content into the plainTextEdit_Logs widget."""
@@ -166,10 +191,56 @@ class MainWindow(QMainWindow):
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     self.load_users()
 
-    def create_user(self):
+    def validate_create_fields(self):
+        """Enable Create User button only when all fields are filled."""
+        name = self.ui.lineEdit_UserName.text().strip()
+        email = self.ui.lineEdit_UserEmail.text().strip()
+        password = self.ui.lineEdit_UserPassword.text().strip()
+
+        all_filled = bool(name and email and password)
+        self.ui.pushButton_CreateUser.setEnabled(all_filled)
+
+    def validate_user_selection(self):
+        """Enable Edit and Delete buttons when a user is selected."""
+        has_selection = bool(self.ui.listWidget_CurrentUsers.selectedItems())
+        self.ui.pushButton_EditUser.setEnabled(has_selection)
+        self.ui.pushButton_DeleteUser.setEnabled(has_selection)
+
+    def on_delete_user_clicked(self):
+        """Handle delete user button click with confirmation."""
+        selected_items = self.ui.listWidget_CurrentUsers.selectedItems()
+        if not selected_items:
+            self.show_error("Please select a user to delete")
+            return
+
+        identifier = selected_items[0].text()
+
+        # Show confirmation dialog
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setWindowTitle("Confirm Delete")
+        msg_box.setText(
+            f"Are you sure you want to delete user '{identifier}'?"
+        )
+        msg_box.setInformativeText("This action cannot be undone.")
+        msg_box.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+
+        if msg_box.exec() == QMessageBox.StandardButton.Yes:
+            with get_db_session() as session:
+                user = session.execute(
+                    select(User).where(User.identifier == identifier)
+                ).scalar_one_or_none()
+                if user:
+                    session.delete(user)
+                    self.load_users()  # Refresh the list
+
+    def on_create_user_clicked(self):
         role = "user"
-        name = self.ui.lineEdit_UserName.text()
-        identifier = self.ui.lineEdit_UserEmail.text()
+        name = self.ui.lineEdit_UserName.text().strip()
+        identifier = self.ui.lineEdit_UserEmail.text().strip()
         password = self.ui.lineEdit_UserPassword.text()
         with get_db_session() as session:
             user = session.execute(
