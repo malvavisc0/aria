@@ -68,7 +68,7 @@ def server_run():
     """
     manager = get_manager()
     console.print(
-        f"[cyan]Starting server on http://{manager._host}:{manager._port}[/cyan]"
+        f"[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
     )
     console.print("[dim]Press Ctrl+C to stop[/dim]")
     try:
@@ -94,7 +94,7 @@ def server_start():
     if manager.start():
         console.print(
             f"[green]✓[/green] Server started on "
-            f"http://{manager._host}:{manager._port}"
+            f"http://{manager.host}:{manager.port}"
         )
         console.print(f"[dim]PID: {manager.pid}[/dim]")
     else:
@@ -152,7 +152,7 @@ def server_restart(
     manager.restart(timeout)
     console.print(
         f"[green]✓[/green] Server restarted on "
-        f"http://{manager._host}:{manager._port}"
+        f"http://{manager.host}:{manager.port}"
     )
     console.print(f"[dim]PID: {manager.pid}[/dim]")
 

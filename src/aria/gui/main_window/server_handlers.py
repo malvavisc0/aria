@@ -18,22 +18,19 @@ from aria.server import ServerManager
 class ServerHandlersMixin:
     """Mixin class providing server management handlers for MainWindow.
 
-    This mixin expects to be combined with a QMainWindow that has a `ui`
-    attribute of type Ui_MainWindow.
-    """
+    This mixin expects to be combined with a QMainWindow that has a ``ui``
+    attribute of type ``Ui_MainWindow``. It provides:
 
-    ui: Ui_MainWindow
-    """Mixin class providing server management handlers for MainWindow.
-
-    This mixin provides:
     - Server start/stop/open button handlers
     - Periodic status updates via QTimer
-    - Button state management based on server status
+    - Button state management based on server running state
 
     Attributes:
         _server_manager: ServerManager instance for controlling the webserver.
         _server_timer: QTimer for periodic status updates.
     """
+
+    ui: Ui_MainWindow
 
     def _init_server_manager(self):
         """Initialize the server manager and status update timer.

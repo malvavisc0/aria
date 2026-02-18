@@ -9,10 +9,12 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+import aria
 from aria.config.folders import Data as DataConfig
 from aria.config.service import Server
 
@@ -57,6 +59,10 @@ class ServerManager:
     Process state is persisted to a JSON file, allowing the manager
     to track servers started by other processes (e.g., CLI to GUI).
 
+    Args:
+        host: Host address to bind the server to. Defaults to Server.host.
+        port: Port number to listen on. Defaults to Server.port.
+
     Attributes:
         pid: Process ID of the running server, or None if not running.
         started_at: Timestamp when the server was started, or None.
@@ -81,21 +87,24 @@ class ServerManager:
 
     PID_FILE = DataConfig.path / "server.json"
 
-    def __init__(self):
+    def __init__(self, host: str = Server.host, port: int = Server.port):
         """Initialize the ServerManager.
+
+        Args:
+            host: Host address to bind the server to. Defaults to Server.host.
+            port: Port number to listen on. Defaults to Server.port.
 
         Reads host and port configuration from the Server config class,
         resolves the path to web_ui.py relative to the package location,
         and loads any existing process state from the PID file.
         """
-        self._host = Server.host
-        self._port = Server.port
+        self._host = host
+        self._port = port
         self._process: subprocess.Popen | None = None
+        self._pid: int | None = None
         self._started_at: datetime | None = None
 
         # Resolve path to web_ui.py in the installed package
-        import aria
-
         package_dir = Path(aria.__file__).parent
         self._target = str(package_dir / "web_ui.py")
 
@@ -106,7 +115,7 @@ class ServerManager:
         """Load process state from the PID file.
 
         If the PID file exists and the process is still running,
-        restores the _started_at timestamp.
+        restores the _pid and _started_at from the saved state.
         """
         if not self.PID_FILE.exists():
             return
@@ -119,13 +128,13 @@ class ServerManager:
             started_at_str = data.get("started_at")
 
             if pid and self._is_process_running(pid):
+                self._pid = pid
                 self._started_at = datetime.fromisoformat(started_at_str)
         except (json.JSONDecodeError, KeyError, ValueError):
             pass
 
     def _save_state(self) -> None:
         """Save process state to the PID file."""
-        # Ensure data directory exists
         self.PID_FILE.parent.mkdir(parents=True, exist_ok=True)
 
         data = {
@@ -141,7 +150,8 @@ class ServerManager:
             json.dump(data, f, indent=2)
 
     def _clear_state(self) -> None:
-        """Clear the PID file."""
+        """Clear the PID file and reset in-memory PID."""
+        self._pid = None
         if self.PID_FILE.exists():
             self.PID_FILE.unlink()
 
@@ -162,6 +172,16 @@ class ServerManager:
             return False
 
     @property
+    def host(self) -> str:
+        """The host address the server is bound to."""
+        return self._host
+
+    @property
+    def port(self) -> int:
+        """The port number the server is listening on."""
+        return self._port
+
+    @property
     def pid(self) -> int | None:
         """Get the process ID of the running server.
 
@@ -170,17 +190,7 @@ class ServerManager:
         """
         if self._process is not None:
             return self._process.pid
-
-        # Try to get PID from saved state
-        if self.PID_FILE.exists():
-            try:
-                with open(self.PID_FILE, "r") as f:
-                    data = json.load(f)
-                return data.get("pid")
-            except (json.JSONDecodeError, KeyError):
-                pass
-
-        return None
+        return self._pid
 
     @property
     def started_at(self) -> datetime | None:
@@ -211,40 +221,25 @@ class ServerManager:
         Returns:
             List of command arguments for subprocess.
         """
-        # Check if we're in a uv environment
+        chainlit_args = [
+            "chainlit",
+            "run",
+            "--no-cache",
+            "--host",
+            self._host,
+            "--port",
+            str(self._port),
+            "--root-path",
+            str(Path.cwd()),
+            self._target,
+        ]
+
         # Heuristic: uv in executable path or pyproject.toml exists
         in_uv = "uv" in sys.executable or Path("pyproject.toml").exists()
-
         if in_uv:
-            cmd = [
-                "uv",
-                "run",
-                "chainlit",
-                "run",
-                "--no-cache",
-                "--host",
-                self._host,
-                "--port",
-                str(self._port),
-                "--root-path",
-                str(Path.cwd()),
-                self._target,
-            ]
-        else:
-            cmd = [
-                "chainlit",
-                "run",
-                "--no-cache",
-                "--host",
-                self._host,
-                "--port",
-                str(self._port),
-                "--root-path",
-                str(Path.cwd()),
-                self._target,
-            ]
+            return ["uv", "run"] + chainlit_args
 
-        return cmd
+        return chainlit_args
 
     def start(self) -> bool:
         """Start the webserver as a background subprocess.
@@ -270,7 +265,11 @@ class ServerManager:
         """Run the webserver in the foreground (blocking).
 
         This method blocks until the server is stopped (Ctrl+C).
+        Does nothing if the server is already running.
         """
+        if self.is_running():
+            return
+
         cmd = self._build_command()
         self._started_at = datetime.now()
         self._save_state()
@@ -311,9 +310,6 @@ class ServerManager:
             # Otherwise, kill by PID
             try:
                 os.kill(pid, signal.SIGTERM)
-                # Wait for process to terminate
-                import time
-
                 start_time = time.time()
                 while time.time() - start_time < timeout:
                     if not self._is_process_running(pid):
@@ -354,9 +350,8 @@ class ServerManager:
             return self._process.poll() is None
 
         # Check if there's a running process from the PID file
-        pid = self.pid
-        if pid is not None:
-            return self._is_process_running(pid)
+        if self._pid is not None:
+            return self._is_process_running(self._pid)
 
         return False
 
