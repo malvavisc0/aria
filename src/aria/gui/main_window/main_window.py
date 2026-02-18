@@ -12,6 +12,7 @@ from aria.config.folders import Debug
 from aria.config.models import Chat, Embeddings, Vision
 from aria.config.service import Server
 from aria.gui.dialogs import AboutDialog
+from aria.gui.main_window.server_handlers import ServerHandlersMixin
 from aria.gui.main_window.user_handlers import UserHandlersMixin
 from aria.gui.ui.mainwindow import Ui_MainWindow
 
@@ -64,7 +65,7 @@ def friendly_permissions(path: Path) -> Dict[str, List[str]]:
         return {"Owner": [], "Group": [], "Others": []}
 
 
-class MainWindow(UserHandlersMixin, QMainWindow):
+class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
     """Main application window with user management and logs."""
 
     def __init__(self):
@@ -75,6 +76,10 @@ class MainWindow(UserHandlersMixin, QMainWindow):
         self._connect_menu_signals()
         self._connect_tab_signals()
         self._connect_user_management_signals()
+
+        # Server management
+        self._init_server_manager()
+        self._connect_server_signals()
 
         self.load_overview()
 
