@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from PySide6.QtWidgets import QMainWindow
 
-from aria.config.database import SQLite
+from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
 from aria.config.models import Chat, Embeddings, Vision
 from aria.config.service import Server
@@ -152,6 +152,7 @@ class MainWindow(UserHandlersMixin, QMainWindow):
         self.ui.label_LLMChatAPIURL.setText(Chat.api_url)
         self.ui.label_LLMVisionAPIURL.setText(Vision.api_url)
         self.ui.label_LLMEmbeddingsAPIURL.setText(Embeddings.api_url)
+        self.ui.label_VectorDB.setText(str(ChromaDB.db_path.absolute()))
 
     def on_tab_changed(self, index: int):
         """Handle tab changes - load content when tabs are selected."""

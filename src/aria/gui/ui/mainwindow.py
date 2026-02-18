@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowkDJWHV.ui'
+## Form generated from reading UI file 'mainwindowigOKbn.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -381,6 +381,21 @@ class Ui_MainWindow(object):
             0, QFormLayout.ItemRole.FieldRole, self.label_LLMType
         )
 
+        self.label_21 = QLabel(self.formLayoutWidget_2)
+        self.label_21.setObjectName("label_21")
+        self.label_21.setStyleSheet("color: rgb(61, 56, 70)")
+
+        self.formLayout_2.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_21
+        )
+
+        self.label_VectorDB = QLabel(self.formLayoutWidget_2)
+        self.label_VectorDB.setObjectName("label_VectorDB")
+
+        self.formLayout_2.setWidget(
+            4, QFormLayout.ItemRole.FieldRole, self.label_VectorDB
+        )
+
         self.verticalLayout_3.addWidget(self.groupBox)
 
         self.tabWidget.addTab(self.tab_overview, "")
@@ -650,6 +665,12 @@ class Ui_MainWindow(object):
         )
         self.label_LLMType.setText(
             QCoreApplication.translate("MainWindow", "llama.cpp", None)
+        )
+        self.label_21.setText(
+            QCoreApplication.translate("MainWindow", "VectorDB", None)
+        )
+        self.label_VectorDB.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_overview),
