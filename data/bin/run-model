@@ -1,0 +1,1248 @@
+#!/bin/bash
+set -euo pipefail
+
+# =============================================================================
+# run-model - Launch llama-server with GPU optimization
+# =============================================================================
+#
+# Usage: ./run-model <model_path> [context_size] [options]
+#
+# Arguments:
+#   model_path      Path to the GGUF model file (required)
+#   context_size    Context size in tokens (optional, default: 8192)
+#
+# Options:
+#   -p, --port PORT         Port to run the server on (default: 8080)
+#   -l, --n-gpu-layers N    Number of layers to offload to GPU (default: 999)
+#   -t, --temp TEMP         Temperature for generation (default: 0.65)
+#   --top-p TOP_P           Top-p sampling value (default: 0.95)
+#   -d, --debug             Enable debug output
+#   -f, --log-file FILE     Log output to FILE (server logs in non-debug mode)
+#   -h, --help              Show this help message
+#
+# Environment Variables:
+#   PORT                    Port to run the server on (default: 8080)
+#   N_GPU_LAYERS            Number of GPU layers (default: 999)
+#   DEBUG                   Enable debug mode (1/0, default: 0)
+#   LOG_FILE                Log file path
+#   KV_CACHE_TYPE_K         KV cache type for keys (default: q8_0)
+#   KV_CACHE_TYPE_V         KV cache type for values (default: q8_0)
+#   TEMP                    Temperature for generation (default: 0.65)
+#   TOP_P                   Top-p sampling value (default: 0.95)
+#   FLASH_ATTN              Enable flash attention (default: on)
+#   NO_MMAP                 Disable memory mapping (default: --no-mmap)
+#   MLOCK                   Enable memory locking (default: --mlock)
+#   CONT_BATCHING           Enable continuous batching (default: --cont-batching)
+#   NO_KV_OFFLOAD           Disable KV offloading (default: --no-kv-offload)
+#   LLAMA_SERVER_PATH       Path to llama-server binary (default: llama-server)
+#
+# Examples:
+#   ./run-model /path/to/model.gguf              (uses default context size 8192)
+#   ./run-model /path/to/model.gguf 8192
+#   ./run-model /path/to/model.gguf 32768 --port 8081 --debug
+#   PORT=8080 DEBUG=1 ./run-model /path/to/model.gguf 16384
+#
+# Notes:
+#   - Context size should be a power of 2 for optimal performance
+#   - Set STRICT_POWER_OF_2=1 to enforce power-of-2 context sizes
+#   - Use --debug for detailed server output to stdout
+#   - Check log file for server logs when --log-file is specified (non-debug mode)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Configuration
+# -----------------------------------------------------------------------------
+
+# Default values
+DEFAULT_PORT=8080
+DEFAULT_N_GPU_LAYERS=999
+DEFAULT_TEMP=0.65
+DEFAULT_TOP_P=0.95
+DEFAULT_CTX_SIZE=8192
+
+# Environment variable overrides
+: "${PORT:=$DEFAULT_PORT}"
+: "${N_GPU_LAYERS:=$DEFAULT_N_GPU_LAYERS}"
+: "${DEBUG:=0}"
+: "${STRICT_POWER_OF_2:=1}"
+: "${LOG_FILE:=""}"
+: "${KV_CACHE_TYPE_K:="q8_0"}"
+: "${KV_CACHE_TYPE_V:="q8_0"}"
+: "${TEMP:=$DEFAULT_TEMP}"
+: "${TOP_P:=$DEFAULT_TOP_P}"
+: "${FLASH_ATTN:="on"}"
+: "${NO_MMAP:="--no-mmap"}"
+: "${MLOCK:="--mlock"}"
+: "${CONT_BATCHING:="--cont-batching"}"
+: "${NO_KV_OFFLOAD:="--no-kv-offload"}"
+: "${LLAMA_SERVER_PATH:="llama-server"}" # Default added
+
+# Global variables
+MODEL_PATH=""
+REQUESTED_CTX=""
+SERVER_PID=""
+MAX_SAFE_CTX=0
+MODEL_FILE_SIZE=0
+TOTAL_RAM_MB=0
+AVAIL_RAM_MB=0
+ESTIMATED_KV_CACHE_MB=0
+
+# -----------------------------------------------------------------------------
+# Terminal Output / Colors
+# -----------------------------------------------------------------------------
+
+# Detect color support
+if [[ -t 2 ]] && [[ "${TERM:-}" != "dumb" ]]; then
+	HAS_COLOR=1
+else
+	HAS_COLOR=0
+fi
+
+# Color codes (only if terminal supports them)
+if [[ "$HAS_COLOR" -eq 1 ]]; then
+	RST='\033[0m'
+	BOLD='\033[1m'
+	DIM='\033[2m'
+	ITALIC='\033[3m'
+	ULINE='\033[4m'
+
+	RED='\033[0;31m'
+	GREEN='\033[0;32m'
+	YELLOW='\033[0;33m'
+	BLUE='\033[0;34m'
+	MAGENTA='\033[0;35m'
+	CYAN='\033[0;36m'
+	WHITE='\033[0;37m'
+
+	BRED='\033[1;31m'
+	BGREEN='\033[1;32m'
+	BYELLOW='\033[1;33m'
+	BBLUE='\033[1;34m'
+	BMAGENTA='\033[1;35m'
+	BCYAN='\033[1;36m'
+	BWHITE='\033[1;37m'
+
+	BG_RED='\033[41m'
+	BG_GREEN='\033[42m'
+	BG_BLUE='\033[44m'
+	BG_CYAN='\033[46m'
+else
+	RST='' BOLD='' DIM='' ITALIC='' ULINE=''
+	RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN='' WHITE=''
+	BRED='' BGREEN='' BYELLOW='' BBLUE='' BMAGENTA='' BCYAN='' BWHITE=''
+	BG_RED='' BG_GREEN='' BG_BLUE='' BG_CYAN=''
+fi
+
+# Box-drawing characters
+BOX_TL='╭' BOX_TR='╮' BOX_BL='╰' BOX_BR='╯'
+BOX_H='─' BOX_V='│'
+BOX_LT='├' BOX_RT='┤'
+
+# Terminal width (fallback to 70)
+TERM_WIDTH=${COLUMNS:-$(tput cols 2>/dev/null || echo 70)}
+# Cap at a reasonable max for readability
+[[ $TERM_WIDTH -gt 80 ]] && TERM_WIDTH=80
+
+# Draw a horizontal line
+draw_line() {
+	local char="${1:-$BOX_H}"
+	local width=$((TERM_WIDTH - 2))
+	printf '%s' "$char"
+	printf '%0.s─' $(seq 1 "$width")
+	printf '%s\n' "$char"
+}
+
+# Print a boxed header
+print_header() {
+	local title="$1"
+	local color="${2:-$BCYAN}"
+	local inner_width=$((TERM_WIDTH - 4))
+	local title_len=${#title}
+	local pad_left=$(((inner_width - title_len) / 2))
+	local pad_right=$((inner_width - title_len - pad_left))
+
+	echo >&2
+	printf '%b%s' "$color" "$BOX_TL" >&2
+	printf '%0.s─' $(seq 1 $((TERM_WIDTH - 2))) >&2
+	printf '%s%b\n' "$BOX_TR" "$RST" >&2
+
+	printf '%b%s%b' "$color" "$BOX_V" "$RST" >&2
+	printf '%*s' "$((pad_left + 1))" '' >&2
+	printf '%b%b%s%b' "$BOLD" "$color" "$title" "$RST" >&2
+	printf '%*s' "$((pad_right + 1))" '' >&2
+	printf '%b%s%b\n' "$color" "$BOX_V" "$RST" >&2
+
+	printf '%b%s' "$color" "$BOX_BL" >&2
+	printf '%0.s─' $(seq 1 $((TERM_WIDTH - 2))) >&2
+	printf '%s%b\n' "$BOX_BR" "$RST" >&2
+}
+
+# Print a section title with a line
+print_section() {
+	local title="$1"
+	local color="${2:-$BBLUE}"
+	local title_display=" $title "
+	local title_len=$((${#title} + 2))
+	local remaining=$((TERM_WIDTH - title_len - 3))
+
+	echo >&2
+	printf '%b%s%s%b' "$color" "$BOX_LT" "$BOX_H" "$RST" >&2
+	printf '%b%b%s%b' "$BOLD" "$color" "$title_display" "$RST" >&2
+	printf '%b' "$color" >&2
+	printf '%0.s─' $(seq 1 "$remaining") >&2
+	printf '%b\n' "$RST" >&2
+}
+
+# Print a key-value pair, nicely aligned
+print_kv() {
+	local key="$1"
+	local value="$2"
+	local key_color="${3:-$CYAN}"
+	local val_color="${4:-$WHITE}"
+	printf '%b  %b%-20s%b %b%s%b\n' "$DIM" "$key_color" "$key" "$RST" "$val_color" "$value" "$RST" >&2
+}
+
+# Print a status line with icon
+print_status() {
+	local icon="$1"
+	local message="$2"
+	local color="${3:-$GREEN}"
+	printf '  %b%s%b  %s\n' "$color" "$icon" "$RST" "$message" >&2
+}
+
+# Print a bullet point
+print_bullet() {
+	local message="$1"
+	local color="${2:-$DIM}"
+	printf '  %b•%b  %s\n' "$color" "$RST" "$message" >&2
+}
+
+# Print a tip
+print_tip() {
+	local message="$1"
+	printf '  %b💡 %s%b\n' "$DIM" "$message" "$RST" >&2
+}
+
+# Print a warning bullet
+print_warn_bullet() {
+	local message="$1"
+	printf '  %b⚠  %s%b\n' "$YELLOW" "$message" "$RST" >&2
+}
+
+# -----------------------------------------------------------------------------
+# Logging Functions
+# -----------------------------------------------------------------------------
+
+log_info() { printf '  %b●%b  %s\n' "$CYAN" "$RST" "$*" >&2; }
+log_warning() { printf '  %b▲%b  %b%s%b\n' "$YELLOW" "$RST" "$YELLOW" "$*" "$RST" >&2; }
+log_error() { printf '  %b✖%b  %b%s%b\n' "$BRED" "$RST" "$RED" "$*" "$RST" >&2; }
+debug_log() {
+	[[ "$DEBUG" -eq 1 ]] && printf '  %b⋯%b  %b%s%b\n' "$DIM" "$RST" "$DIM" "$*" "$RST" >&2
+	true
+}
+
+# Log to file if LOG_FILE is set
+log_to_file() {
+	if [[ -n "$LOG_FILE" ]]; then
+		local log_dir
+		log_dir=$(dirname "$LOG_FILE")
+		if [[ ! -d "$log_dir" ]]; then
+			mkdir -p "$log_dir" 2>/dev/null || {
+				log_error "Failed to create log directory: $log_dir"
+				return 1
+			}
+		fi
+		echo "[$(date -Iseconds)] $*" >>"$LOG_FILE"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# Validation Functions
+# -----------------------------------------------------------------------------
+
+# Check if a number is a power of 2
+is_power_of_2() {
+	local n=$1
+	[[ $n -gt 0 ]] && [[ $((n & (n - 1))) -eq 0 ]]
+}
+
+# Get next power of 2
+next_power_of_2() {
+	local n=$1
+	local result=1
+	while [[ $result -lt $n ]]; do
+		result=$((result * 2))
+	done
+	echo $result
+}
+
+# Validate GGUF file
+validate_gguf_file() {
+	local model_path="$1"
+
+	# Check file exists
+	if [[ ! -f "$model_path" ]]; then
+		log_error "Model file not found: $model_path"
+		return 1
+	fi
+
+	# Check file size (GGUF files should be > 1MB)
+	local file_size
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		file_size=$(stat -f%z "$model_path" 2>/dev/null || echo 0)
+	else
+		file_size=$(stat -c%s "$model_path" 2>/dev/null || echo 0)
+	fi
+
+	if [[ "$file_size" -lt 1048576 ]]; then
+		log_error "Model file seems too small (<1MB): $model_path"
+		return 1
+	fi
+
+	# Check GGUF magic number (first 4 bytes should be "GGUF" = 0x47475546)
+	local magic
+	magic=$(head -c 4 "$model_path" | od -An -tx1 | tr -d ' \n' 2>/dev/null || echo "")
+
+	if [[ "$magic" != "47475546" ]]; then
+		log_error "Invalid GGUF file (missing GGUF magic number): $model_path"
+		log_error "  Expected: 47475546 (GGUF)"
+		log_error "  Found: $magic"
+		return 1
+	fi
+
+	debug_log "GGUF validation passed for: $model_path"
+	return 0
+}
+
+# Validate context size
+validate_context_size() {
+	local ctx="$1"
+
+	if [[ "$ctx" -eq 0 ]]; then
+		return 0 # 0 is valid (auto/native)
+	fi
+
+	# Check if positive integer
+	if ! [[ "$ctx" =~ ^[0-9]+$ ]] || [[ "$ctx" -lt 0 ]]; then
+		log_error "Context size must be a positive integer or 0"
+		return 1
+	fi
+
+	# Check if power of 2
+	if ! is_power_of_2 "$ctx"; then
+		local next_pow2
+		next_pow2=$(next_power_of_2 "$ctx")
+		log_warning "Context size $ctx is not a power of 2. Suggested: $next_pow2"
+
+		if [[ "$STRICT_POWER_OF_2" == "1" ]]; then
+			log_error "Context size must be a power of 2 (or 0 for auto). Set STRICT_POWER_OF_2=0 to allow non-power-of-2 values."
+			return 1
+		fi
+
+		log_info "Continuing with requested context size (set STRICT_POWER_OF_2=1 to enforce)"
+	fi
+
+	return 0
+}
+
+# Validate port number
+validate_port() {
+	local port=$1
+
+	# Check if numeric
+	if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+		log_error "Invalid port number: $port"
+		return 1
+	fi
+
+	# Check range (1-65535)
+	if [[ $port -lt 1 || $port -gt 65535 ]]; then
+		log_error "Port must be between 1 and 65535, got: $port"
+		return 1
+	fi
+
+	# Check if privileged port (<1024) requires sudo
+	if [[ $port -lt 1024 ]]; then
+		log_warning "Port $port is a privileged port. May require sudo."
+	fi
+
+	# Check if port is in use
+	if command -v lsof &>/dev/null; then
+		if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+			log_error "Port $port is already in use"
+			return 1
+		fi
+	elif command -v ss &>/dev/null; then
+		if ss -tlnp 2>/dev/null | grep -q ":$port "; then
+			log_error "Port $port is already in use"
+			return 1
+		fi
+	fi
+
+	return 0
+}
+
+# Check if nvidia-smi is available
+check_nvidia_smi() {
+	if ! command -v nvidia-smi &>/dev/null; then
+		log_error "nvidia-smi not found. Please install NVIDIA drivers."
+		return 1
+	fi
+	return 0
+}
+
+# -----------------------------------------------------------------------------
+# Hardware Detection Functions
+# -----------------------------------------------------------------------------
+
+# Format bytes to human-readable
+format_size() {
+	local bytes=$1
+	if [[ $bytes -ge 1073741824 ]]; then
+		awk "BEGIN {printf \"%.1f GB\", $bytes / 1073741824}"
+	elif [[ $bytes -ge 1048576 ]]; then
+		awk "BEGIN {printf \"%.0f MB\", $bytes / 1048576}"
+	else
+		echo "${bytes} B"
+	fi
+}
+
+# Format token count to human-readable
+format_tokens() {
+	local tokens=$1
+	if [[ $tokens -ge 1048576 ]]; then
+		awk "BEGIN {printf \"%.1fM\", $tokens / 1048576}"
+	elif [[ $tokens -ge 1024 ]]; then
+		awk "BEGIN {printf \"%.0fK\", $tokens / 1024}"
+	else
+		echo "$tokens"
+	fi
+}
+
+# Detect system RAM
+detect_system_ram() {
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		# macOS
+		local total_bytes
+		total_bytes=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+		TOTAL_RAM_MB=$((total_bytes / 1048576))
+		# macOS doesn't have a simple "available" metric; use vm_stat
+		local pages_free pages_inactive page_size
+		page_size=$(sysctl -n hw.pagesize 2>/dev/null || echo 4096)
+		pages_free=$(vm_stat 2>/dev/null | awk '/Pages free/ {gsub(/\./,"",$3); print $3}')
+		pages_inactive=$(vm_stat 2>/dev/null | awk '/Pages inactive/ {gsub(/\./,"",$3); print $3}')
+		AVAIL_RAM_MB=$(( (${pages_free:-0} + ${pages_inactive:-0}) * page_size / 1048576 ))
+	else
+		# Linux - read from /proc/meminfo
+		TOTAL_RAM_MB=$(awk '/^MemTotal:/ {printf "%.0f", $2 / 1024}' /proc/meminfo 2>/dev/null || echo 0)
+		AVAIL_RAM_MB=$(awk '/^MemAvailable:/ {printf "%.0f", $2 / 1024}' /proc/meminfo 2>/dev/null || echo 0)
+	fi
+
+	debug_log "System RAM: ${TOTAL_RAM_MB} MiB total, ${AVAIL_RAM_MB} MiB available"
+}
+
+# Estimate KV cache size in MB for a given context size
+# Uses a heuristic based on model file size:
+#   - Model file size roughly correlates with parameter count
+#   - KV cache per token ≈ 2 × n_layers × n_kv_heads × head_dim × bytes_per_element
+#   - With q8_0 KV cache: ~1 byte per element (vs 2 bytes for f16)
+#   - Empirical formula: kv_cache_MB ≈ ctx_size × (model_GB × kv_factor) / 1024
+#   - kv_factor accounts for the ratio of KV parameters to total model size
+#
+# Calibrated against known models:
+#   - 8B Q8_0 (~8GB file), 128K ctx → ~4 GB KV cache with q8_0
+#   - 24B Q8_0 (~25GB file), 262K ctx → ~32 GB KV cache with q8_0
+#   - 70B Q8_0 (~70GB file), 32K ctx → ~10 GB KV cache with q8_0
+estimate_kv_cache_mb() {
+	local ctx_size=$1
+	local model_size_bytes=$2
+	local kv_type="${3:-q8_0}"
+
+	# Model size in GB (floating point)
+	local model_gb
+	model_gb=$(awk "BEGIN {printf \"%.2f\", $model_size_bytes / 1073741824}")
+
+	# KV quant multiplier: q8_0 ≈ 0.5x of f16, q4_0 ≈ 0.25x
+	local kv_mult
+	case "$kv_type" in
+		f16|fp16) kv_mult="1.0" ;;
+		q8_0)     kv_mult="0.5" ;;
+		q5_0|q5_1|q5_k) kv_mult="0.35" ;;
+		q4_0|q4_1|q4_k) kv_mult="0.25" ;;
+		*)        kv_mult="0.5" ;;
+	esac
+
+	# Empirical formula calibrated against real measurements:
+	# kv_cache_MB ≈ ctx_tokens × model_GB × kv_mult × 0.005
+	# This gives: 262144 × 25 × 0.5 × 0.005 ≈ 16384 MB ≈ 16 GB (close to real ~32GB)
+	# Adjusted: factor = 0.01 for better accuracy with larger models
+	# 262144 × 25 × 0.5 × 0.01 = 32768 MB = 32 GB ✓
+	local kv_cache_mb
+	kv_cache_mb=$(awk "BEGIN {printf \"%.0f\", $ctx_size * $model_gb * $kv_mult * 0.01}")
+
+	echo "$kv_cache_mb"
+}
+
+# Detect GPU count and VRAM
+detect_gpu() {
+	print_section "Hardware Detection" "$BCYAN"
+
+	# Check nvidia-smi availability
+	if ! check_nvidia_smi; then
+		return 1
+	fi
+
+	# Detect GPU count
+	local gpu_info
+	if ! gpu_info=$(nvidia-smi -L 2>&1); then
+		log_error "Failed to query GPU information: $gpu_info"
+		return 1
+	fi
+
+	GPU_COUNT=$(echo "$gpu_info" | grep -c "GPU" || echo 0)
+
+	if [[ "$GPU_COUNT" -eq 0 ]]; then
+		log_error "No NVIDIA GPU detected"
+		return 1
+	fi
+
+	debug_log "Detected $GPU_COUNT GPU(s)"
+
+	# Get GPU names
+	local gpu_names
+	gpu_names=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo "Unknown")
+
+	# Get total VRAM
+	local vram_info
+	vram_info=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null || echo "")
+
+	if [[ -z "$vram_info" ]]; then
+		log_error "Failed to query VRAM information"
+		return 1
+	fi
+
+	TOTAL_VRAM_MB=$(echo "$vram_info" | awk '{sum += $1} END {print sum+0}')
+
+	if [[ "$TOTAL_VRAM_MB" -eq 0 ]]; then
+		log_error "Invalid VRAM value detected"
+		return 1
+	fi
+
+	# Get free VRAM
+	local free_vram_mb
+	free_vram_mb=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | awk '{sum += $1} END {print sum+0}')
+
+	# Display GPU info
+	local gpu_idx=0
+	while IFS= read -r gpu_name; do
+		local this_vram
+		this_vram=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits -i "$gpu_idx" 2>/dev/null || echo "?")
+		print_kv "GPU $gpu_idx:" "$gpu_name (${this_vram} MiB)" "$CYAN" "$BWHITE"
+		gpu_idx=$((gpu_idx + 1))
+	done <<<"$gpu_names"
+
+	print_kv "Total VRAM:" "${TOTAL_VRAM_MB} MiB (${free_vram_mb} MiB free)" "$CYAN" "$GREEN"
+
+	# Tip for common mlock warning
+	print_tip "To suppress 'failed to mlock' warnings: ulimit -l unlimited"
+
+	# Low VRAM tips
+	if [[ "$TOTAL_VRAM_MB" -le 8192 ]]; then
+		echo >&2
+		log_warning "Low VRAM detected (≤8GB). Consider:"
+		print_warn_bullet "Prefer Q4_K_M / Q5_K_M quantizations"
+		print_warn_bullet "Recommended: Llama-3.x 8B, Qwen2.5 7-14B, Gemma-2 9B, Phi-3/4 14B"
+		print_warn_bullet "Larger models will partial-offload → slower"
+	fi
+
+	return 0
+}
+
+# Calculate safe maximum context based on VRAM
+calculate_max_safe_ctx() {
+	local vram=$1
+
+	if [[ $vram -le 8192 ]]; then # ≤8GB
+		MAX_SAFE_CTX=8192
+	elif [[ $vram -le 12288 ]]; then # ≤12GB
+		MAX_SAFE_CTX=16384
+	elif [[ $vram -le 16384 ]]; then # ≤16GB
+		MAX_SAFE_CTX=32768
+	elif [[ $vram -le 24576 ]]; then # ≤24GB
+		MAX_SAFE_CTX=65536
+	elif [[ $vram -le 32768 ]]; then # ≤32GB
+		MAX_SAFE_CTX=262144
+	elif [[ $vram -le 49152 ]]; then # ≤48GB
+		MAX_SAFE_CTX=524288
+	elif [[ $vram -le 98304 ]]; then # ≤96GB
+		MAX_SAFE_CTX=1048576
+	else # >96GB
+		MAX_SAFE_CTX=2097152
+	fi
+
+	debug_log "Calculated MAX_SAFE_CTX: $MAX_SAFE_CTX"
+}
+
+# Get performance tips based on hardware and model
+get_performance_tips() {
+	local gpu_count=$1
+	local total_vram=$2
+	local model_path=$3
+	local n_ctx=$4
+
+	print_section "Performance Tips" "$BYELLOW"
+
+	# GPU-specific recommendations
+	if [[ $gpu_count -eq 1 ]]; then
+		print_kv "Topology:" "Single GPU" "$CYAN"
+		if [[ $total_vram -lt 8192 ]]; then
+			print_bullet "Consider using smaller models (7B parameters)"
+			print_bullet "Use Q4_K_M or Q5_K_M quantization"
+			print_bullet "Reduce context size if experiencing OOM"
+		elif [[ $total_vram -lt 16384 ]]; then
+			print_bullet "Good for 8B-13B models with proper quantization"
+			print_bullet "Q5_K_M recommended for best quality/VRAM balance"
+		else
+			print_bullet "Can handle 70B models with quantization"
+			print_bullet "Use --n-gpu-layers to control offloading"
+		fi
+	elif [[ $gpu_count -eq 2 ]]; then
+		print_kv "Topology:" "Dual GPU" "$CYAN"
+		if nvidia-smi topo -m 2>/dev/null | grep -q "NV"; then
+			print_bullet "NVLink detected — optimal for tensor parallelism"
+			print_bullet "Consider --tensor-split for balanced loading"
+		else
+			print_bullet "No NVLink — using layer parallelism"
+			print_bullet "Performance may be limited for large models"
+		fi
+	else
+		print_kv "Topology:" "Multi-GPU ($gpu_count GPUs)" "$CYAN"
+		print_bullet "Consider --tensor-split for balanced loading"
+	fi
+
+	# Context size recommendations
+	if [[ $n_ctx -gt 32768 ]]; then
+		print_bullet "Large context enabled — flash attention active for performance"
+		print_bullet "Consider --n-batch to optimize memory usage"
+	fi
+}
+
+# Extract model metadata
+extract_model_metadata() {
+	local model_path="$1"
+
+	print_section "Model Information" "$BMAGENTA"
+
+	# Get model file size (store globally for resource estimation)
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		MODEL_FILE_SIZE=$(stat -f%z "$model_path" 2>/dev/null || echo 0)
+	else
+		MODEL_FILE_SIZE=$(stat -c%s "$model_path" 2>/dev/null || echo 0)
+	fi
+	local model_size_display
+	model_size_display=$(format_size "$MODEL_FILE_SIZE")
+
+	# Get model filename for display
+	local model_filename
+	model_filename=$(basename "$model_path")
+
+	print_kv "File:" "$model_filename" "$CYAN" "$BWHITE"
+	print_kv "Size:" "$model_size_display" "$CYAN"
+
+	# Extract strings from the GGUF header only (first 1MB) — avoids scanning
+	# the entire multi-GB file. Architecture and quantization metadata lives
+	# in the GGUF key-value header near the start of the file.
+	local header_strings
+	header_strings=$(head -c 1048576 "$model_path" 2>/dev/null | strings 2>/dev/null || echo "")
+
+	local model_arch=""
+	local quantization=""
+
+	# Check for common model architectures
+	if echo "$header_strings" | grep -qi "llama"; then
+		model_arch="LLaMA"
+	elif echo "$header_strings" | grep -qi "mistral"; then
+		model_arch="Mistral"
+	elif echo "$header_strings" | grep -qi "gemma"; then
+		model_arch="Gemma"
+	elif echo "$header_strings" | grep -qi "phi"; then
+		model_arch="Phi"
+	elif echo "$header_strings" | grep -qi "falcon"; then
+		model_arch="Falcon"
+	elif echo "$header_strings" | grep -qi "qwen"; then
+		model_arch="Qwen"
+	fi
+
+	# Check for quantization type
+	if echo "$header_strings" | grep -qi "q4_k_m\|q4_k"; then
+		quantization="Q4_K_M"
+	elif echo "$header_strings" | grep -qi "q5_k_m\|q5_k"; then
+		quantization="Q5_K_M"
+	elif echo "$header_strings" | grep -qi "q8_0"; then
+		quantization="Q8_0"
+	elif echo "$header_strings" | grep -qi "q2_k"; then
+		quantization="Q2_K"
+	elif echo "$header_strings" | grep -qi "q3_k"; then
+		quantization="Q3_K"
+	elif echo "$header_strings" | grep -qi "q6_k"; then
+		quantization="Q6_K"
+	fi
+
+	if [[ -n "$model_arch" ]]; then
+		print_kv "Architecture:" "$model_arch" "$CYAN"
+	fi
+
+	if [[ -n "$quantization" ]]; then
+		print_kv "Quantization:" "$quantization" "$CYAN"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# Dual GPU Functions
+# -----------------------------------------------------------------------------
+
+# Configure dual GPU settings
+configure_dual_gpu() {
+	local gpu_count=$1
+	SPLIT_MODE=""
+	TENSOR_SPLIT=""
+
+	if [[ $gpu_count -eq 2 ]]; then
+		if nvidia-smi topo -m 2>/dev/null | grep -q "NV"; then
+			local bond
+			bond=$(nvidia-smi topo -m 2>/dev/null | grep -o "NV[0-9]" | head -n1 || echo "")
+
+			if [[ -n "$bond" ]]; then
+				print_status "⚡" "NVLink detected ($bond) — row-split tensor parallelism" "$BGREEN"
+
+				# Get free memory on each GPU
+				local free_info
+				free_info=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null || echo "")
+
+				if [[ -n "$free_info" ]]; then
+					local free_array=()
+					while IFS= read -r line; do
+						free_array+=("$line")
+					done <<<"$free_info"
+
+					local free0=${free_array[0]:-0}
+					local free1=${free_array[1]:-0}
+					local total_free=$((free0 + free1))
+
+					if [[ $total_free -gt 0 ]]; then
+						local ratio0 ratio1
+						ratio0=$(awk "BEGIN {printf \"%.4f\", $free0 / $total_free}")
+						ratio1=$(awk "BEGIN {printf \"%.4f\", $free1 / $total_free}")
+
+						# Check if ratios sum to ~1
+						local sum
+						sum=$(awk "BEGIN {print $ratio0 + $ratio1}")
+						if awk "BEGIN {exit !($sum < 0.9999 || $sum > 1.0001)}"; then
+							ratio0="0.5000"
+							ratio1="0.5000"
+						fi
+
+						TENSOR_SPLIT="--tensor-split $ratio0,$ratio1"
+						print_kv "Tensor split:" "GPU0=$ratio0  GPU1=$ratio1" "$CYAN"
+					else
+						TENSOR_SPLIT="--tensor-split 0.5000,0.5000"
+						print_kv "Tensor split:" "GPU0=0.5000  GPU1=0.5000 (fallback)" "$CYAN" "$YELLOW"
+					fi
+
+					SPLIT_MODE="--split-mode row"
+				else
+					log_warning "Could not query GPU memory, using even split"
+					TENSOR_SPLIT="--tensor-split 0.5000,0.5000"
+					SPLIT_MODE="--split-mode row"
+				fi
+			else
+				log_info "No NVLink detected. Using layer-split parallelism."
+				SPLIT_MODE="--split-mode layer"
+			fi
+		else
+			log_info "No NVLink detected. Using layer-split parallelism."
+			SPLIT_MODE="--split-mode layer"
+		fi
+	else
+		debug_log "Single or >2 GPU setup: tensor splitting disabled."
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# Main Functions
+# -----------------------------------------------------------------------------
+
+# Parse command line arguments
+parse_args() {
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		-h | --help)
+			usage
+			exit 0
+			;;
+		-d | --debug)
+			DEBUG=1
+			shift
+			;;
+		-p | --port)
+			if [[ -n "$2" ]]; then
+				PORT="$2"
+				shift 2
+			else
+				log_error "Port value required after --port"
+				exit 1
+			fi
+			;;
+		-l | --n-gpu-layers)
+			if [[ -n "$2" ]]; then
+				N_GPU_LAYERS="$2"
+				shift 2
+			else
+				log_error "Number of layers required after --n-gpu-layers"
+				exit 1
+			fi
+			;;
+		-t | --temp)
+			if [[ -n "$2" ]]; then
+				TEMP="$2"
+				shift 2
+			else
+				log_error "Temperature value required after --temp"
+				exit 1
+			fi
+			;;
+		--top-p)
+			if [[ -n "$2" ]]; then
+				TOP_P="$2"
+				shift 2
+			else
+				log_error "Top-p value required after --top-p"
+				exit 1
+			fi
+			;;
+		-f | --log-file)
+			if [[ -n "$2" ]]; then
+				LOG_FILE="$2"
+				shift 2
+			else
+				log_error "Log file path required after --log-file"
+				exit 1
+			fi
+			;;
+		*)
+			if [[ -z "$MODEL_PATH" ]]; then
+				MODEL_PATH="$1"
+			elif [[ -z "$REQUESTED_CTX" ]]; then
+				REQUESTED_CTX="$1"
+			else
+				log_error "Unexpected argument: $1"
+				usage
+				exit 1
+			fi
+			shift
+			;;
+		esac
+	done
+}
+
+# Show usage information
+usage() {
+	cat <<EOF
+
+${BOLD}${BCYAN}USAGE${RST}
+  $(basename "$0") <model_path> [context_size] [options]
+
+${BOLD}${BCYAN}ARGUMENTS${RST}
+  ${BOLD}model_path${RST}      Path to the GGUF model file ${DIM}(required)${RST}
+  ${BOLD}context_size${RST}    Context size in tokens ${DIM}(optional, default: $DEFAULT_CTX_SIZE)${RST}
+
+${BOLD}${BCYAN}OPTIONS${RST}
+  ${GREEN}-p, --port${RST} PORT         Port to run the server on ${DIM}(default: 8080)${RST}
+  ${GREEN}-l, --n-gpu-layers${RST} N    Number of layers to offload to GPU ${DIM}(default: 999)${RST}
+  ${GREEN}-t, --temp${RST} TEMP         Temperature for generation ${DIM}(default: 0.65)${RST}
+  ${GREEN}--top-p${RST} TOP_P           Top-p sampling value ${DIM}(default: 0.95)${RST}
+  ${GREEN}-d, --debug${RST}             Enable debug output
+  ${GREEN}-f, --log-file${RST} FILE     Log output to FILE
+  ${GREEN}-h, --help${RST}              Show this help message
+
+${BOLD}${BCYAN}ENVIRONMENT VARIABLES${RST}
+  ${CYAN}PORT${RST}                    Port to run the server on ${DIM}(default: 8080)${RST}
+  ${CYAN}N_GPU_LAYERS${RST}            Number of GPU layers ${DIM}(default: 999)${RST}
+  ${CYAN}DEBUG${RST}                   Enable debug mode ${DIM}(1/0, default: 0)${RST}
+  ${CYAN}LOG_FILE${RST}                Log file path
+  ${CYAN}KV_CACHE_TYPE_K${RST}         KV cache type for keys ${DIM}(default: q8_0)${RST}
+  ${CYAN}KV_CACHE_TYPE_V${RST}         KV cache type for values ${DIM}(default: q8_0)${RST}
+  ${CYAN}TEMP${RST}                    Temperature ${DIM}(default: 0.65)${RST}
+  ${CYAN}TOP_P${RST}                   Top-p sampling ${DIM}(default: 0.95)${RST}
+  ${CYAN}FLASH_ATTN${RST}              Flash attention ${DIM}(default: on)${RST}
+  ${CYAN}LLAMA_SERVER_PATH${RST}       Path to llama-server binary
+
+${BOLD}${BCYAN}EXAMPLES${RST}
+  ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 8192
+  ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 32768 --port 8081 --debug
+  ${DIM}\$${RST} PORT=8080 DEBUG=1 $(basename "$0") /path/to/model.gguf 16384
+
+EOF
+}
+
+# Validate all inputs
+validate_inputs() {
+	# Check required arguments
+	if [[ -z "$MODEL_PATH" ]]; then
+		log_error "Model path is required"
+		usage
+		exit 1
+	fi
+
+	# Context size is optional — default to DEFAULT_CTX_SIZE if not provided
+	if [[ -z "$REQUESTED_CTX" ]]; then
+		REQUESTED_CTX="$DEFAULT_CTX_SIZE"
+		log_info "No context size specified — using default: $REQUESTED_CTX"
+	fi
+
+	# Validate model file
+	if ! validate_gguf_file "$MODEL_PATH"; then
+		exit 1
+	fi
+
+	# Validate context size
+	if ! validate_context_size "$REQUESTED_CTX"; then
+		exit 1
+	fi
+
+	# Validate port
+	if ! validate_port "$PORT"; then
+		exit 1
+	fi
+
+	debug_log "All validations passed"
+}
+
+# Initialize logging
+init_logging() {
+	if [[ -n "$LOG_FILE" ]]; then
+		log_to_file "=== llama-server started at $(date -Iseconds) ==="
+		log_to_file "Model: $MODEL_PATH"
+		log_to_file "Context size: $REQUESTED_CTX"
+		log_to_file "Port: $PORT"
+		log_to_file "GPU layers: $N_GPU_LAYERS"
+		log_to_file "Temperature: $TEMP"
+		log_to_file "Top-p: $TOP_P"
+	fi
+}
+
+# Build the llama-server command
+build_command() {
+	local cmd_array=()
+
+	print_section "Server Configuration" "$BGREEN"
+
+	# Calculate context size
+	if [[ "$REQUESTED_CTX" -eq 0 ]]; then
+		N_CTX=0
+		print_kv "Context:" "auto (native)" "$CYAN" "$BWHITE"
+	else
+		N_CTX="$REQUESTED_CTX"
+		if [[ $N_CTX -gt $MAX_SAFE_CTX ]]; then
+			log_warning "Requested context $(format_tokens "$N_CTX") exceeds safe limit ($(format_tokens "$MAX_SAFE_CTX")) for ${TOTAL_VRAM_MB} MiB VRAM"
+			log_warning "Capping to prevent OOM. Suggested alternatives:"
+
+			# Show alternatives with estimated KV cache RAM cost
+			local alt_ctx=$MAX_SAFE_CTX
+			while [[ $alt_ctx -ge 4096 ]]; do
+				local alt_kv_mb
+				alt_kv_mb=$(estimate_kv_cache_mb "$alt_ctx" "$MODEL_FILE_SIZE" "$KV_CACHE_TYPE_K")
+				local alt_kv_display
+				if [[ $alt_kv_mb -ge 1024 ]]; then
+					alt_kv_display=$(awk "BEGIN {printf \"%.1f GB\", $alt_kv_mb / 1024}")
+				else
+					alt_kv_display="${alt_kv_mb} MB"
+				fi
+				local marker=""
+				if [[ $alt_ctx -eq $MAX_SAFE_CTX ]]; then
+					marker=" ← will use this"
+				fi
+				printf '  %b  %-8s  (%s tokens)  ~%s KV cache%s%b\n' \
+					"$DIM" "$(format_tokens "$alt_ctx")" "$alt_ctx" "$alt_kv_display" "$marker" "$RST" >&2
+				alt_ctx=$((alt_ctx / 2))
+				# Show max 4 alternatives
+				[[ $alt_ctx -lt $((MAX_SAFE_CTX / 16)) ]] && break
+			done
+
+			N_CTX="$MAX_SAFE_CTX"
+		fi
+
+		if [[ $N_CTX -ne $REQUESTED_CTX ]]; then
+			print_kv "Context:" "$(format_tokens "$N_CTX") tokens (capped from $(format_tokens "$REQUESTED_CTX"))" "$CYAN" "$YELLOW"
+		else
+			print_kv "Context:" "$(format_tokens "$N_CTX") tokens" "$CYAN" "$BWHITE"
+		fi
+	fi
+
+	# Configure dual GPU
+	configure_dual_gpu "$GPU_COUNT"
+
+	# KV cache settings
+	CACHE_OPTS="--cache-type-k $KV_CACHE_TYPE_K --cache-type-v $KV_CACHE_TYPE_V"
+	print_kv "KV Cache:" "$KV_CACHE_TYPE_K / $KV_CACHE_TYPE_V" "$CYAN"
+	print_kv "Flash Attn:" "$FLASH_ATTN" "$CYAN"
+	print_kv "Temperature:" "$TEMP" "$CYAN"
+	print_kv "Top-p:" "$TOP_P" "$CYAN"
+	print_kv "GPU Layers:" "$N_GPU_LAYERS" "$CYAN"
+	print_kv "Port:" "$PORT" "$CYAN"
+
+	# --- Resource Estimates ---
+	print_section "Resource Estimates" "$BCYAN"
+
+	# Model VRAM estimate (≈ file size when fully offloaded)
+	local model_vram_mb=$((MODEL_FILE_SIZE / 1048576))
+	local model_vram_display
+	model_vram_display=$(format_size "$MODEL_FILE_SIZE")
+	print_kv "Model → VRAM:" "~${model_vram_display}" "$CYAN" "$BWHITE"
+
+	# KV cache RAM estimate (only when --no-kv-offload is active)
+	if [[ "$N_CTX" -gt 0 ]]; then
+		ESTIMATED_KV_CACHE_MB=$(estimate_kv_cache_mb "$N_CTX" "$MODEL_FILE_SIZE" "$KV_CACHE_TYPE_K")
+		local kv_display
+		if [[ $ESTIMATED_KV_CACHE_MB -ge 1024 ]]; then
+			kv_display=$(awk "BEGIN {printf \"%.1f GB\", $ESTIMATED_KV_CACHE_MB / 1024}")
+		else
+			kv_display="${ESTIMATED_KV_CACHE_MB} MB"
+		fi
+
+		if [[ "$NO_KV_OFFLOAD" == "--no-kv-offload" ]]; then
+			print_kv "KV Cache → RAM:" "~${kv_display} (offloaded from VRAM)" "$CYAN" "$BYELLOW"
+		else
+			print_kv "KV Cache → VRAM:" "~${kv_display}" "$CYAN" "$BYELLOW"
+		fi
+	else
+		print_kv "KV Cache:" "auto (depends on native context)" "$CYAN" "$DIM"
+	fi
+
+	# System RAM
+	local ram_total_display ram_avail_display
+	if [[ $TOTAL_RAM_MB -ge 1024 ]]; then
+		ram_total_display=$(awk "BEGIN {printf \"%.1f GB\", $TOTAL_RAM_MB / 1024}")
+	else
+		ram_total_display="${TOTAL_RAM_MB} MB"
+	fi
+	if [[ $AVAIL_RAM_MB -ge 1024 ]]; then
+		ram_avail_display=$(awk "BEGIN {printf \"%.1f GB\", $AVAIL_RAM_MB / 1024}")
+	else
+		ram_avail_display="${AVAIL_RAM_MB} MB"
+	fi
+	print_kv "System RAM:" "${ram_total_display} total / ${ram_avail_display} available" "$CYAN"
+
+	# VRAM after model
+	local free_vram_mb
+	free_vram_mb=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | awk '{sum += $1} END {print sum+0}')
+	local vram_after_model=$((free_vram_mb - model_vram_mb))
+	[[ $vram_after_model -lt 0 ]] && vram_after_model=0
+	local vram_total_display vram_free_display
+	if [[ $TOTAL_VRAM_MB -ge 1024 ]]; then
+		vram_total_display=$(awk "BEGIN {printf \"%.1f GB\", $TOTAL_VRAM_MB / 1024}")
+	else
+		vram_total_display="${TOTAL_VRAM_MB} MB"
+	fi
+	if [[ $free_vram_mb -ge 1024 ]]; then
+		vram_free_display=$(awk "BEGIN {printf \"%.1f GB\", $free_vram_mb / 1024}")
+	else
+		vram_free_display="${free_vram_mb} MB"
+	fi
+	print_kv "VRAM:" "${vram_total_display} total / ${vram_free_display} free" "$CYAN"
+
+	# Warnings about resource pressure
+	if [[ "$NO_KV_OFFLOAD" == "--no-kv-offload" ]] && [[ "$N_CTX" -gt 0 ]] && [[ $ESTIMATED_KV_CACHE_MB -gt 0 ]]; then
+		local ram_after_kv=$((AVAIL_RAM_MB - ESTIMATED_KV_CACHE_MB))
+		if [[ $ram_after_kv -lt 2048 ]]; then
+			echo >&2
+			log_warning "KV cache (~${kv_display}) will consume most of your available RAM (${ram_avail_display})"
+			log_warning "Consider reducing context size to free up memory"
+			# Show alternatives
+			local alt_ctx=$((N_CTX / 2))
+			while [[ $alt_ctx -ge 4096 ]]; do
+				local alt_kv_mb
+				alt_kv_mb=$(estimate_kv_cache_mb "$alt_ctx" "$MODEL_FILE_SIZE" "$KV_CACHE_TYPE_K")
+				local alt_kv_display
+				if [[ $alt_kv_mb -ge 1024 ]]; then
+					alt_kv_display=$(awk "BEGIN {printf \"%.1f GB\", $alt_kv_mb / 1024}")
+				else
+					alt_kv_display="${alt_kv_mb} MB"
+				fi
+				local alt_remaining=$((AVAIL_RAM_MB - alt_kv_mb))
+				if [[ $alt_remaining -gt 2048 ]]; then
+					print_tip "Try context $(format_tokens "$alt_ctx") → ~${alt_kv_display} KV cache (leaves ~$(awk "BEGIN {printf \"%.1f GB\", $alt_remaining / 1024}") free RAM)"
+					break
+				fi
+				alt_ctx=$((alt_ctx / 2))
+			done
+		fi
+	fi
+
+	if [[ $model_vram_mb -gt $free_vram_mb ]]; then
+		echo >&2
+		log_warning "Model (~${model_vram_display}) exceeds free VRAM (${vram_free_display})"
+		log_warning "Model will be partially offloaded to RAM — expect slower inference"
+	fi
+
+	# Use configured llama-server path from environment variable
+	if [[ ! -x "$LLAMA_SERVER_PATH" ]]; then
+		log_error "llama-server not found at: $LLAMA_SERVER_PATH"
+		exit 1
+	fi
+
+	debug_log "Using llama-server: $LLAMA_SERVER_PATH"
+
+	# Build command array
+	cmd_array=(
+		"$LLAMA_SERVER_PATH"
+		--model "$MODEL_PATH"
+		--n-gpu-layers "$N_GPU_LAYERS"
+		--ctx-size "$N_CTX"
+		$SPLIT_MODE
+		$TENSOR_SPLIT
+		--flash-attn "$FLASH_ATTN"
+		$NO_MMAP
+		$MLOCK
+		--threads "$(nproc)"
+		--temp "$TEMP"
+		--top-p "$TOP_P"
+		$CONT_BATCHING
+		$CACHE_OPTS
+		--metrics
+		--host 0.0.0.0
+		--port "$PORT"
+		$NO_KV_OFFLOAD
+	)
+
+	# Display command in debug mode
+	if [[ "$DEBUG" -eq 1 ]]; then
+		print_section "Debug: Full Command" "$DIM"
+		printf '  %b%s%b\n' "$DIM" "${cmd_array[*]}" "$RST" >&2
+	fi
+
+	# Store command for execution
+	CMD_ARRAY=("${cmd_array[@]}")
+}
+
+# Launch the server
+launch_server() {
+	print_section "Launching Server" "$BGREEN"
+
+	# Initialize logging
+	init_logging
+
+	# Log to file
+	log_to_file "Launching server with command: ${CMD_ARRAY[*]}"
+
+	# Set redirection and launch based on flags
+	if [[ "$DEBUG" -eq 1 ]]; then
+		print_status "🔧" "Debug mode — server output visible below" "$YELLOW"
+		# Launch in background and CAPTURE the PID
+		"${CMD_ARRAY[@]}" &
+		SERVER_PID=$!
+	else
+		if [[ -n "$LOG_FILE" ]]; then
+			print_status "📄" "Server output → $LOG_FILE" "$DIM"
+		else
+			print_status "🔇" "Server output suppressed (use -d for debug)" "$DIM"
+		fi
+		# Launch in background with redirection and CAPTURE the PID
+		"${CMD_ARRAY[@]}" >>"${LOG_FILE:-/dev/null}" 2>&1 &
+		SERVER_PID=$!
+	fi
+
+	# Wait briefly to check if it started successfully
+	sleep 1
+	if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+		log_error "Failed to start llama-server. Check logs for details."
+		exit 1
+	fi
+
+	# Success banner
+	echo >&2
+	printf '%b' "$BGREEN" >&2
+	printf '  ╭───────────────────────────────────────────────╮\n' >&2
+	printf '  │                                               |\n' >&2
+	printf '  │   ✔  Server is running!                       |\n' >&2
+	printf "  │   %-44s│\n" "   http://0.0.0.0:$PORT" >&2
+	printf "  │   %-44s│\n" "   PID: $SERVER_PID" >&2
+	printf '  │                                               |\n' >&2
+	printf '  ╰───────────────────────────────────────────────╯\n' >&2
+	printf '%b' "$RST" >&2
+	echo >&2
+
+	# Wait for server to finish (this keeps the script running)
+	wait "$SERVER_PID"
+}
+
+# Cleanup function
+cleanup() {
+	local exit_code=$?
+
+	if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
+		echo >&2
+		print_section "Shutting Down" "$BYELLOW"
+		log_info "Stopping llama-server (PID: $SERVER_PID)..."
+		log_to_file "Shutting down server (PID: $SERVER_PID)..."
+
+		kill -TERM "$SERVER_PID" 2>/dev/null
+
+		# Wait for graceful shutdown
+		sleep 2
+
+		# Force kill if still running
+		if kill -0 "$SERVER_PID" 2>/dev/null; then
+			log_warning "Force killing server..."
+			log_to_file "Force killing server..."
+			kill -9 "$SERVER_PID" 2>/dev/null
+		fi
+
+		print_status "✔" "Server stopped" "$GREEN"
+		log_to_file "Server shutdown complete"
+	fi
+
+	exit $exit_code
+}
+
+# Print the startup banner
+print_banner() {
+	printf '%b' "$BCYAN" >&2
+	cat >&2 <<'BANNER'
+
+    ┬─┐┬ ┬┌┐┌  ┌┬┐┌─┐┌┬┐┌─┐┬
+    ├┬┘│ ││││  ││││ │ ││├┤ │
+    ┴└─└─┘┘└┘  ┴ ┴└─┘─┴┘└─┘┴─┘
+
+BANNER
+	printf '%b' "$RST" >&2
+	printf '  %bGPU-optimized llama-server launcher%b\n' "$DIM" "$RST" >&2
+}
+
+# -----------------------------------------------------------------------------
+# Entry Point
+# -----------------------------------------------------------------------------
+
+# Set up signal handlers
+trap cleanup EXIT
+trap 'log_info "Received SIGINT"; log_to_file "Received SIGINT"; exit 130' INT
+trap 'log_info "Received SIGTERM"; log_to_file "Received SIGTERM"; exit 143' TERM
+
+# Main execution
+main() {
+	clear
+	parse_args "$@"
+	print_banner
+	validate_inputs
+	if ! detect_gpu; then
+		exit 1
+	fi
+	calculate_max_safe_ctx "$TOTAL_VRAM_MB"
+	detect_system_ram
+	extract_model_metadata "$MODEL_PATH"
+	get_performance_tips "$GPU_COUNT" "$TOTAL_VRAM_MB" "$MODEL_PATH" "$REQUESTED_CTX"
+	build_command
+	launch_server
+}
+
+main "$@"

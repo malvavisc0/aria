@@ -26,6 +26,7 @@ data/**
 !data/models/
 !data/models/.gitkeep
 !data/bin/
+!data/bin/run-model
 !data/bin/llamacpp/
 !data/bin/llamacpp/.gitkeep
 
