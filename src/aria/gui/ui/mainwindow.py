@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowWDgSaG.ui'
+## Form generated from reading UI file 'mainwindowkDJWHV.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -268,13 +268,11 @@ class Ui_MainWindow(object):
             2, QFormLayout.ItemRole.LabelRole, self.label_6
         )
 
-        self.label_DatabasePermissions = QLabel(self.formLayoutWidget)
-        self.label_DatabasePermissions.setObjectName(
-            "label_DatabasePermissions"
-        )
+        self.label_DatabaseFileExists = QLabel(self.formLayoutWidget)
+        self.label_DatabaseFileExists.setObjectName("label_DatabaseFileExists")
 
         self.formLayout.setWidget(
-            2, QFormLayout.ItemRole.FieldRole, self.label_DatabasePermissions
+            2, QFormLayout.ItemRole.FieldRole, self.label_DatabaseFileExists
         )
 
         self.label_10 = QLabel(self.formLayoutWidget)
@@ -285,11 +283,28 @@ class Ui_MainWindow(object):
             3, QFormLayout.ItemRole.LabelRole, self.label_10
         )
 
+        self.label_DatabasePermissions = QLabel(self.formLayoutWidget)
+        self.label_DatabasePermissions.setObjectName(
+            "label_DatabasePermissions"
+        )
+
+        self.formLayout.setWidget(
+            3, QFormLayout.ItemRole.FieldRole, self.label_DatabasePermissions
+        )
+
+        self.label_11 = QLabel(self.formLayoutWidget)
+        self.label_11.setObjectName("label_11")
+        self.label_11.setStyleSheet("color: rgb(61, 56, 70)")
+
+        self.formLayout.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_11
+        )
+
         self.label_DatabaseSize = QLabel(self.formLayoutWidget)
         self.label_DatabaseSize.setObjectName("label_DatabaseSize")
 
         self.formLayout.setWidget(
-            3, QFormLayout.ItemRole.FieldRole, self.label_DatabaseSize
+            4, QFormLayout.ItemRole.FieldRole, self.label_DatabaseSize
         )
 
         self.verticalLayout_3.addWidget(self.groupBox_2)
@@ -587,19 +602,25 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Location", None)
         )
         self.label_DatabaseLocation.setText(
-            QCoreApplication.translate("MainWindow", "/path", None)
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_6.setText(
+            QCoreApplication.translate("MainWindow", "Exists", None)
+        )
+        self.label_DatabaseFileExists.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.label_10.setText(
             QCoreApplication.translate("MainWindow", "Permissions", None)
         )
         self.label_DatabasePermissions.setText(
-            QCoreApplication.translate("MainWindow", "RW", None)
+            QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_10.setText(
+        self.label_11.setText(
             QCoreApplication.translate("MainWindow", "Size", None)
         )
         self.label_DatabaseSize.setText(
-            QCoreApplication.translate("MainWindow", "8MB", None)
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.groupBox.setTitle(
             QCoreApplication.translate(
@@ -616,19 +637,13 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Embeddings", None)
         )
         self.label_LLMChatAPIURL.setText(
-            QCoreApplication.translate(
-                "MainWindow", "http://127.0.0.1:7070/v1", None
-            )
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_LLMVisionAPIURL.setText(
-            QCoreApplication.translate(
-                "MainWindow", "http://127.0.0.1:7071/v1", None
-            )
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_LLMEmbeddingsAPIURL.setText(
-            QCoreApplication.translate(
-                "MainWindow", "http://127.0.0.1:7072/v1", None
-            )
+            QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_24.setText(
             QCoreApplication.translate("MainWindow", "Type", None)
