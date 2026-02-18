@@ -86,9 +86,7 @@ class ServerHandlersMixin:
         status = self._server_manager.get_status()
 
         # Update PID label
-        self.ui.label_ServicePID.setText(
-            str(status.pid) if status.pid else "-"
-        )
+        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
 
         # Update URL label
         self.ui.label_ServiceURL.setText(f"http://{status.host}:{status.port}")
@@ -105,9 +103,7 @@ class ServerHandlersMixin:
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            self.ui.label_ServiceUptime.setText(
-                f"{hours}h {minutes}m {seconds}s"
-            )
+            self.ui.label_ServiceUptime.setText(f"{hours}h {minutes}m {seconds}s")
         else:
             self.ui.label_ServiceUptime.setText("-")
 

@@ -122,9 +122,7 @@ def main(ctx: typer.Context):
         console.print("  [cyan]llamacpp[/cyan]  Llama.cpp binary management")
         console.print("  [cyan]config[/cyan]    Configuration display")
         console.print("  [cyan]server[/cyan]    Webserver management")
-        console.print(
-            "  [cyan]system[/cyan]    System information (GPU, VRAM)"
-        )
+        console.print("  [cyan]system[/cyan]    System information (GPU, VRAM)")
         console.print()
         console.print("[dim]Run 'aria --help' for more information.[/dim]")
 

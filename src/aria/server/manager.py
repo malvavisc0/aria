@@ -141,9 +141,7 @@ class ServerManager:
             "pid": self.pid,
             "host": self._host,
             "port": self._port,
-            "started_at": (
-                self._started_at.isoformat() if self._started_at else None
-            ),
+            "started_at": (self._started_at.isoformat() if self._started_at else None),
         }
 
         with open(self.PID_FILE, "w") as f:

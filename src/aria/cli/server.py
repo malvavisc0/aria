@@ -151,8 +151,7 @@ def server_restart(
     manager = get_manager()
     manager.restart(timeout)
     console.print(
-        f"[green]✓[/green] Server restarted on "
-        f"http://{manager.host}:{manager.port}"
+        f"[green]✓[/green] Server restarted on " f"http://{manager.host}:{manager.port}"
     )
     console.print(f"[dim]PID: {manager.pid}[/dim]")
 
@@ -199,9 +198,7 @@ def server_status():
 
     # Start time
     if status.started_at:
-        table.add_row(
-            "Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S")
-        )
+        table.add_row("Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S"))
     else:
         table.add_row("Started", "N/A")
 

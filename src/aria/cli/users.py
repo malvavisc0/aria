@@ -122,14 +122,10 @@ def list_users():
 def add_user(
     identifier: Annotated[
         str,
-        typer.Option(
-            prompt="User identifier (email)", help="User email address"
-        ),
+        typer.Option(prompt="User identifier (email)", help="User email address"),
     ],
     name: Annotated[str, typer.Option(help="User name)")],
-    role: Annotated[
-        str, typer.Option(help="User role (user, admin, etc.)")
-    ] = "user",
+    role: Annotated[str, typer.Option(help="User role (user, admin, etc.)")] = "user",
 ):
     """Create a new user account.
 
@@ -213,15 +209,11 @@ def add_user(
 def reset_password(
     identifier: Annotated[
         str,
-        typer.Option(
-            prompt="User identifier (email)", help="User email address"
-        ),
+        typer.Option(prompt="User identifier (email)", help="User email address"),
     ],
     password: Annotated[
         str,
-        typer.Option(
-            prompt="New password", hide_input=True, help="New password"
-        ),
+        typer.Option(prompt="New password", hide_input=True, help="New password"),
     ],
 ):
     """Reset a user's password.
@@ -287,13 +279,9 @@ def reset_password(
 def update_user(
     identifier: Annotated[
         str,
-        typer.Option(
-            prompt="User identifier (email)", help="User email address"
-        ),
+        typer.Option(prompt="User identifier (email)", help="User email address"),
     ],
-    role: Annotated[
-        Optional[str], typer.Option(help="New role for the user")
-    ] = None,
+    role: Annotated[Optional[str], typer.Option(help="New role for the user")] = None,
     metadata_json: Annotated[
         Optional[str], typer.Option(help="JSON string of metadata to merge")
     ] = None,

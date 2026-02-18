@@ -126,9 +126,7 @@ class UserHandlersMixin:
         msg_box = QMessageBox(parent_widget)
         msg_box.setIcon(QMessageBox.Icon.Warning)
         msg_box.setWindowTitle("Confirm Delete")
-        msg_box.setText(
-            f"Are you sure you want to delete user '{identifier}'?"
-        )
+        msg_box.setText(f"Are you sure you want to delete user '{identifier}'?")
         msg_box.setInformativeText("This action cannot be undone.")
         msg_box.setStandardButtons(
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
