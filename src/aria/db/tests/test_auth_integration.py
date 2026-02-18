@@ -23,6 +23,7 @@ class TestPasswordAuthentication:
         user = User(
             id=str(uuid.uuid4()),
             identifier="user@example.com",
+            display_name="Test User",
             metadata_='{"role": "user"}',
             password=password_hash,
             createdAt="2024-01-01T00:00:00Z",
@@ -52,6 +53,7 @@ class TestPasswordAuthentication:
         user1 = User(
             id=str(uuid.uuid4()),
             identifier="user1@example.com",
+            display_name="User One",
             metadata_='{"role": "user"}',
             password=hash_password(password),
             createdAt="2024-01-01T00:00:00Z",
@@ -60,6 +62,7 @@ class TestPasswordAuthentication:
         user2 = User(
             id=str(uuid.uuid4()),
             identifier="user2@example.com",
+            display_name="User Two",
             metadata_='{"role": "user"}',
             password=hash_password(password),
             createdAt="2024-01-01T00:00:00Z",
@@ -81,6 +84,7 @@ class TestPasswordAuthentication:
         user = User(
             id=str(uuid.uuid4()),
             identifier="oauth@example.com",
+            display_name="OAuth User",
             metadata_='{"role": "user", "provider": "google"}',
             password=None,
             createdAt="2024-01-01T00:00:00Z",
@@ -106,6 +110,7 @@ class TestPasswordAuthentication:
         user = User(
             id=str(uuid.uuid4()),
             identifier="user@example.com",
+            display_name="Test User",
             metadata_='{"role": "user"}',
             password=hash_password(old_password),
             createdAt="2024-01-01T00:00:00Z",

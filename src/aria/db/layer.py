@@ -62,6 +62,63 @@ def _json_loads_or(value: Any, default: Any) -> Any:
 class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
     """Chainlit SQLAlchemy data layer patched for SQLite."""
 
+    async def create_user(self, user) -> None:
+        """Override create_user to include display_name in the INSERT.
+
+        Chainlit's base implementation omits display_name from the INSERT
+        statement, which violates the NOT NULL constraint on users.display_name.
+        We fall back to the identifier when display_name is not provided.
+        """
+        import json
+        import uuid as _uuid
+
+        from chainlit.user import PersistedUser
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"SQLiteSQLAlchemyDataLayer: create_user, "
+                f"user_identifier={user.identifier}"
+            )
+
+        existing_user = await self.get_user(user.identifier)
+        display_name = getattr(user, "display_name", None) or user.identifier
+        metadata_str = json.dumps(user.metadata) if user.metadata else "{}"
+
+        if not existing_user:
+            user_id = str(_uuid.uuid4())
+            created_at = await self.get_current_timestamp()
+            query = (
+                'INSERT INTO users ("id", "identifier", "display_name", '
+                '"createdAt", "metadata") '
+                "VALUES (:id, :identifier, :display_name, :createdAt, :metadata)"
+            )
+            await self.execute_sql(
+                query=query,
+                parameters={
+                    "id": user_id,
+                    "identifier": user.identifier,
+                    "display_name": display_name,
+                    "createdAt": created_at,
+                    "metadata": metadata_str,
+                },
+            )
+        else:
+            query = (
+                'UPDATE users SET "metadata" = :metadata, '
+                '"display_name" = :display_name '
+                'WHERE "identifier" = :identifier'
+            )
+            await self.execute_sql(
+                query=query,
+                parameters={
+                    "metadata": metadata_str,
+                    "display_name": display_name,
+                    "identifier": user.identifier,
+                },
+            )
+
+        return await self.get_user(user.identifier)
+
     async def update_thread(
         self,
         thread_id: str,

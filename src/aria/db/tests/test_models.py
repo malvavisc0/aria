@@ -19,6 +19,7 @@ class TestUserModel:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_='{"key": "value"}',
             createdAt="2024-01-01T00:00:00Z",
         )
@@ -38,6 +39,7 @@ class TestUserModel:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_='{"test": true}',
             createdAt="2024-01-01T00:00:00Z",
         )
@@ -61,12 +63,14 @@ class TestUserModel:
         user1 = User(
             id=str(uuid.uuid4()),
             identifier="duplicate@example.com",
+            display_name="Duplicate User",
             metadata_="{}",
             createdAt="2024-01-01T00:00:00Z",
         )
         user2 = User(
             id=str(uuid.uuid4()),
             identifier="duplicate@example.com",
+            display_name="Duplicate User 2",
             metadata_="{}",
             createdAt="2024-01-01T00:00:00Z",
         )
@@ -87,6 +91,7 @@ class TestUserModel:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_='{"role": "user"}',
             password=password_hash,
             createdAt="2024-01-01T00:00:00Z",
@@ -106,6 +111,7 @@ class TestUserModel:
         user = User(
             id=str(uuid.uuid4()),
             identifier="oauth@example.com",
+            display_name="OAuth User",
             metadata_='{"role": "user", "provider": "google"}',
             password=None,
             createdAt="2024-01-01T00:00:00Z",
@@ -146,6 +152,7 @@ class TestThreadModel:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_="{}",
             createdAt="2024-01-01T00:00:00Z",
         )
@@ -177,6 +184,7 @@ class TestCascadeDeletes:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_="{}",
             createdAt="2024-01-01T00:00:00Z",
         )
@@ -302,6 +310,7 @@ class TestCascadeDeletes:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_="{}",
             createdAt="2024-01-01T00:00:00Z",
         )
@@ -362,6 +371,7 @@ class TestModelRelationships:
         user = User(
             id=str(uuid.uuid4()),
             identifier="test@example.com",
+            display_name="Test User",
             metadata_="{}",
             createdAt="2024-01-01T00:00:00Z",
         )
