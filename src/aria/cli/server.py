@@ -61,11 +61,27 @@ def server_run():
     This command runs the server in the foreground and blocks until
     the server is stopped (Ctrl+C). Similar to running chainlit directly.
 
+    Before starting, verifies that the llama-server binary and all
+    configured GGUF models are present. Exits with an error if any
+    prerequisite is missing.
+
     Example:
         ```bash
         aria server run
         ```
     """
+    from aria.preflight import run_preflight_checks
+
+    result = run_preflight_checks()
+    if not result.passed:
+        error_console.print(
+            "[bold red]Cannot start server — prerequisites missing:[/bold red]"
+        )
+        for failure in result.failures:
+            error_console.print(f"  [red]✗[/red] {failure.error}")
+            console.print(f"    [dim]→ {failure.hint}[/dim]")
+        raise typer.Exit(1)
+
     manager = get_manager()
     console.print(
         f"[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
@@ -85,11 +101,27 @@ def server_start():
     returns immediately. Use 'aria server status' to check if
     the server is running.
 
+    Before starting, verifies that the llama-server binary and all
+    configured GGUF models are present. Exits with an error if any
+    prerequisite is missing.
+
     Example:
         ```bash
         aria server start
         ```
     """
+    from aria.preflight import run_preflight_checks
+
+    result = run_preflight_checks()
+    if not result.passed:
+        error_console.print(
+            "[bold red]Cannot start server — prerequisites missing:[/bold red]"
+        )
+        for failure in result.failures:
+            error_console.print(f"  [red]✗[/red] {failure.error}")
+            console.print(f"    [dim]→ {failure.hint}[/dim]")
+        raise typer.Exit(1)
+
     manager = get_manager()
     if manager.start():
         console.print(

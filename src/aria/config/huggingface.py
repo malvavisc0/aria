@@ -15,22 +15,10 @@ Example:
 
     # Get the token (may be None for public models)
     token = HuggingFace.token
-
-    # Get the models directory path
-    models_dir = HuggingFace.models_dir
     ```
 """
 
 from os import getenv
-from pathlib import Path
-
-from dotenv import load_dotenv
-
-from aria.config.folders import Data
-
-load_dotenv()
-
-_DEFAULT_MODELS_DIR = "models"
 
 
 class HuggingFace:
@@ -45,4 +33,3 @@ class HuggingFace:
     """
 
     token: str | None = getenv("HUGGINGFACE_TOKEN") or None
-    models_dir: Path = Data.path / Path(getenv("GGUF_MODELS_DIR", _DEFAULT_MODELS_DIR))

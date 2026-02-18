@@ -23,6 +23,11 @@ wheels/
 # that should survive server restarts, unlike `.files/` which is temporary.
 data/**
 !data/.gitkeep
+!data/models/
+!data/models/.gitkeep
+!data/bin/
+!data/bin/llamacpp/
+!data/bin/llamacpp/.gitkeep
 
 # Binary files (track structure, not contents)
 # The `bin/` directory stores compiled binaries that can be re-downloaded
