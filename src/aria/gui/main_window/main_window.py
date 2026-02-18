@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QMainWindow
 
 from aria.config.database import SQLite
 from aria.config.folders import Debug
+from aria.config.models import Chat, Embeddings, Vision
 from aria.gui.dialogs import AboutDialog
 from aria.gui.main_window.user_handlers import UserHandlersMixin
 from aria.gui.ui.mainwindow import Ui_MainWindow
@@ -144,6 +145,10 @@ class MainWindow(UserHandlersMixin, QMainWindow):
             self.ui.label_DatabasePermissions.setText(permissions)
         else:
             self.ui.label_DatabaseFileExists.setText("No")
+
+        self.ui.label_LLMChatAPIURL.setText(Chat.api_url)
+        self.ui.label_LLMVisionAPIURL.setText(Vision.api_url)
+        self.ui.label_LLMEmbeddingsAPIURL.setText(Embeddings.api_url)
 
     def on_tab_changed(self, index: int):
         """Handle tab changes - load content when tabs are selected."""
