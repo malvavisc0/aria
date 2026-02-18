@@ -36,7 +36,15 @@ from rich.panel import Panel
 from rich.table import Table
 from sqlalchemy import text
 
-from aria.cli import config, get_db_session, llamacpp, server, system, users
+from aria.cli import (
+    config,
+    get_db_session,
+    llamacpp,
+    models,
+    server,
+    system,
+    users,
+)
 from aria.config.api import LlamaCpp as LlamaCppConfig
 from aria.config.database import SQLite as SQLiteConfig
 from aria.config.folders import Data as DataConfig
@@ -52,6 +60,7 @@ app = typer.Typer(
 )
 app.add_typer(users.app, name="users")
 app.add_typer(llamacpp.app, name="llamacpp")
+app.add_typer(models.app, name="models")
 app.add_typer(config.app, name="config")
 app.add_typer(server.app, name="server")
 app.add_typer(system.app, name="system")
@@ -120,6 +129,7 @@ def main(ctx: typer.Context):
         console.print()
         console.print("  [cyan]users[/cyan]     User management commands")
         console.print("  [cyan]llamacpp[/cyan]  Llama.cpp binary management")
+        console.print("  [cyan]models[/cyan]    GGUF model download and status")
         console.print("  [cyan]config[/cyan]    Configuration display")
         console.print("  [cyan]server[/cyan]    Webserver management")
         console.print("  [cyan]system[/cyan]    System information (GPU, VRAM)")
