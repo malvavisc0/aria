@@ -80,10 +80,18 @@ class ServerHandlersMixin:
         """Update server status display and button states.
 
         This method is called every second by the server timer to:
-        - Update PID, URL, start time, and uptime labels
+        - Update status indicator, PID, URL, start time, and uptime labels
         - Enable/disable buttons based on server running state
         """
         status = self._server_manager.get_status()
+
+        # Update status indicator label
+        if status.running:
+            self.ui.label_ServiceStatus.setText("Running")
+            self.ui.label_ServiceStatus.setStyleSheet("color: green;")
+        else:
+            self.ui.label_ServiceStatus.setText("Stopped")
+            self.ui.label_ServiceStatus.setStyleSheet("color: red;")
 
         # Update PID label
         self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
