@@ -249,8 +249,10 @@ def server_restart(
     """
     from aria.server.llama import LlamaCppServerManager
 
-    # Stop existing llama-server processes
-    llama_manager = LlamaCppServerManager()
+    # Create manager with desired context size
+    llama_manager = LlamaCppServerManager(context_size=context_size)
+
+    # Stop existing llama-server processes (tracked via PID file)
     llama_manager.stop_all()
 
     # Restart Chainlit
@@ -262,11 +264,10 @@ def server_restart(
     )
     console.print(f"[dim]PID: {manager.pid}[/dim]")
 
-    # Start new llama-server processes
-    new_llama_manager = LlamaCppServerManager(context_size=context_size)
+    # Start llama-server processes
     console.print("[cyan]Starting LlamaCPP inference servers...[/cyan]")
     try:
-        new_llama_manager.start_all()
+        llama_manager.start_all()
         console.print("[green]✓[/green] All inference servers ready.")
     except Exception as e:
         error_console.print(

@@ -4,8 +4,6 @@ This module provides the ServerManager class for starting, stopping,
 and monitoring the Aria Chainlit webserver process.
 """
 
-import json
-import os
 import signal
 import subprocess
 import sys
@@ -17,6 +15,13 @@ from pathlib import Path
 import aria
 from aria.config.folders import Data as DataConfig
 from aria.config.service import Server
+from aria.server.process_utils import (
+    clear_state,
+    is_process_running,
+    load_state,
+    save_state,
+    stop_process,
+)
 
 
 @dataclass
@@ -101,7 +106,6 @@ class ServerManager:
         self._host = host
         self._port = port
         self._process: subprocess.Popen | None = None
-        self._pid: int | None = None
         self._started_at: datetime | None = None
 
         # Resolve path to web_ui.py in the installed package
@@ -117,57 +121,33 @@ class ServerManager:
         If the PID file exists and the process is still running,
         restores the _pid and _started_at from the saved state.
         """
-        if not self.PID_FILE.exists():
-            return
+        state = load_state(self.PID_FILE)
+        pid = state.get("pid")
+        started_at_str = state.get("started_at")
 
-        try:
-            with open(self.PID_FILE, "r") as f:
-                data = json.load(f)
-
-            pid = data.get("pid")
-            started_at_str = data.get("started_at")
-
-            if pid and self._is_process_running(pid):
-                self._pid = pid
+        if pid and is_process_running(pid):
+            self._pid = pid
+            if started_at_str and isinstance(started_at_str, str):
                 self._started_at = datetime.fromisoformat(started_at_str)
-        except (json.JSONDecodeError, KeyError, ValueError):
-            pass
+        else:
+            self._pid = None
 
     def _save_state(self) -> None:
         """Save process state to the PID file."""
-        self.PID_FILE.parent.mkdir(parents=True, exist_ok=True)
-
         data = {
             "pid": self.pid,
             "host": self._host,
             "port": self._port,
-            "started_at": (self._started_at.isoformat() if self._started_at else None),
+            "started_at": (
+                self._started_at.isoformat() if self._started_at else None
+            ),
         }
-
-        with open(self.PID_FILE, "w") as f:
-            json.dump(data, f, indent=2)
+        save_state(self.PID_FILE, data)
 
     def _clear_state(self) -> None:
         """Clear the PID file and reset in-memory PID."""
         self._pid = None
-        if self.PID_FILE.exists():
-            self.PID_FILE.unlink()
-
-    @staticmethod
-    def _is_process_running(pid: int) -> bool:
-        """Check if a process with the given PID is running.
-
-        Args:
-            pid: Process ID to check.
-
-        Returns:
-            True if the process is running, False otherwise.
-        """
-        try:
-            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks existence
-            return True
-        except (OSError, ProcessLookupError):
-            return False
+        clear_state(self.PID_FILE)
 
     @property
     def host(self) -> str:
@@ -188,7 +168,7 @@ class ServerManager:
         """
         if self._process is not None:
             return self._process.pid
-        return self._pid
+        return getattr(self, "_pid", None)
 
     @property
     def started_at(self) -> datetime | None:
@@ -305,19 +285,8 @@ class ServerManager:
                 self._process.kill()
                 self._process.wait()
         else:
-            # Otherwise, kill by PID
-            try:
-                os.kill(pid, signal.SIGTERM)
-                start_time = time.time()
-                while time.time() - start_time < timeout:
-                    if not self._is_process_running(pid):
-                        break
-                    time.sleep(0.1)
-                else:
-                    # Force kill if still running
-                    os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+            # Otherwise, kill by PID using shared utility
+            stop_process(pid, timeout)
 
         self._process = None
         self._started_at = None
@@ -348,8 +317,9 @@ class ServerManager:
             return self._process.poll() is None
 
         # Check if there's a running process from the PID file
-        if self._pid is not None:
-            return self._is_process_running(self._pid)
+        pid = getattr(self, "_pid", None)
+        if pid is not None:
+            return is_process_running(pid)
 
         return False
 

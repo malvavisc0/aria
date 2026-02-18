@@ -19,12 +19,11 @@ Example:
     ```
 """
 
-from aria.server.llama import LlamaCppServerConfig, LlamaCppServerManager
+from aria.server.llama import LlamaCppServerManager
 from aria.server.manager import ServerManager, ServerStatus
 
 __all__ = [
     "ServerManager",
     "ServerStatus",
     "LlamaCppServerManager",
-    "LlamaCppServerConfig",
 ]
