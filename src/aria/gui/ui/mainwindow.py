@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowXHByqY.ui'
+## Form generated from reading UI file 'mainwindowWDgSaG.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -472,6 +472,10 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.plainTextEdit_Logs = QPlainTextEdit(self.verticalLayoutWidget_2)
         self.plainTextEdit_Logs.setObjectName("plainTextEdit_Logs")
+        font1 = QFont()
+        font1.setFamilies(["Courier New"])
+        font1.setPointSize(10)
+        self.plainTextEdit_Logs.setFont(font1)
         self.plainTextEdit_Logs.setLineWrapMode(
             QPlainTextEdit.LineWrapMode.NoWrap
         )

@@ -588,6 +588,12 @@
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
            <widget class="QPlainTextEdit" name="plainTextEdit_Logs">
+            <property name="font">
+             <font>
+              <family>Courier New</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
             <property name="lineWrapMode">
              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
             </property>
