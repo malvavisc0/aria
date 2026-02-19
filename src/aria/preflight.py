@@ -231,7 +231,7 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
 
     # Minimum hardware requirements
     MIN_VRAM_MB = 8192  # 8 GB
-    MIN_RAM_MB = 16384  # 16 GB
+    MIN_RAM_MB = 8192  # 16 GB
 
     # Check minimum VRAM
     total_vram = get_total_vram_mb()
@@ -253,7 +253,7 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
                 name="System RAM (minimum)",
                 passed=False,
                 error=f"System has {total_ram_mb} MB RAM, minimum required is {MIN_RAM_MB} MB",
-                hint="At least 16 GB RAM is required",
+                hint="At least 8 GB RAM is required",
             )
         )
 

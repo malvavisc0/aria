@@ -14,7 +14,7 @@ Understanding this separation is crucial for configuring context sizes appropria
 | Resource | Minimum | Recommended |
 |----------|---------|-------------|
 | GPU VRAM | 8 GB    | 12+ GB      |
-| System RAM | 16 GB  | 32+ GB      |
+| System RAM | 8 GB  | 16+ GB      |
 
 These requirements are validated during preflight checks. Systems below minimums will receive warnings but can still run.
 
