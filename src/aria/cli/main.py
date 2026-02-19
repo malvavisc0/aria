@@ -228,6 +228,24 @@ def health_check():
     result = run_preflight_checks()
     grouped = result.group_by_category()
 
+    # Database check (add to storage category)
+    db_check = CheckResult(name="Database", passed=True, category="storage")
+    try:
+        with get_db_session() as session:
+            session.execute(text("SELECT 1"))
+            session.execute(text("CREATE TABLE IF NOT EXISTS health (id int)"))
+            session.execute(text("DROP TABLE health"))
+            db_check.details = "connection healthy (writable)"
+    except Exception:
+        db_check.passed = False
+        db_check.error = "connection failed"
+        db_check.hint = "Check that aria.db exists and is writable"
+
+    # Add database check to storage category
+    if "storage" not in grouped:
+        grouped["storage"] = []
+    grouped["storage"].append(db_check)
+
     # Track totals
     total_passed = 0
     total_failed = 0
@@ -242,48 +260,6 @@ def health_check():
             for check in grouped[category]:
                 if not check.passed and check.hint:
                     all_hints.append(check.hint)
-
-    # Database check (special case - not in preflight)
-    db_check = CheckResult(name="Database", passed=True, category="storage")
-    try:
-        with get_db_session() as session:
-            session.execute(text("SELECT 1"))
-            session.execute(text("CREATE TABLE IF NOT EXISTS health (id int)"))
-            session.execute(text("DROP TABLE health"))
-            db_check.details = "connection healthy (writable)"
-    except Exception as e:
-        db_check.passed = False
-        db_check.error = "connection failed"
-        db_check.hint = "Check that aria.db exists and is writable"
-        all_hints.append(db_check.hint)
-
-    # Print database under storage category if it exists
-    if "storage" in grouped:
-        console.print(f"📁 Data & Storage")
-        for check in grouped["storage"]:
-            if check.passed:
-                details = f" [dim]({check.details})[/dim]" if check.details else ""
-                console.print(f"   [green]✓[/green] {check.name}{details}")
-            else:
-                console.print(
-                    f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]"
-                )
-                if check.hint:
-                    console.print(f"      [dim]→ {check.hint}[/dim]")
-
-        if db_check.passed:
-            console.print(
-                f"   [green]✓[/green] {db_check.name} [dim]({db_check.details})[/dim]"
-            )
-            total_passed += 1
-        else:
-            console.print(
-                f"   [red]✗[/red] {db_check.name} - [red]{db_check.error}[/red]"
-            )
-            if db_check.hint:
-                console.print(f"      [dim]→ {db_check.hint}[/dim]")
-            total_failed += 1
-        console.print()
 
     # Print summary
     _print_summary_panel(total_passed, total_failed, all_hints)
