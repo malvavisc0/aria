@@ -52,15 +52,18 @@ class LlamaCppServerManager:
     Process state is persisted to ``data/llama_servers.json`` so the manager
     can track servers started by other processes (e.g. CLI to GUI).
 
+    Context sizes are read from LlamaCppConfig:
+        - chat_context_size: Context for chat server
+        - vl_context_size: Context for VL server
+        - embeddings_context_size: Context for embeddings server
+
     Args:
-        context_size: Token context window for chat and VL servers.
-                      Embeddings server always uses 4096.
         gpu_layers: Number of GPU layers (default 999 = all layers on GPU).
         host: Host address for all servers.
 
     Example:
         ```python
-        manager = LlamaCppServerManager(context_size=16384)
+        manager = LlamaCppServerManager()
         manager.start_all()
         # ... run Chainlit ...
         manager.stop_all()
@@ -69,18 +72,15 @@ class LlamaCppServerManager:
 
     PID_FILE = DataConfig.path / "llama_servers.json"
     RUN_MODEL_SCRIPT = DataConfig.path / "bin" / "run-model"
-    EMBEDDINGS_CTX_SIZE = 4096
     EMBEDDINGS_PARALLEL = 4
     HEALTH_POLL_INTERVAL = 0.5
     HEALTH_TIMEOUT = 120  # seconds
 
     def __init__(
         self,
-        context_size: int = 8192,
         gpu_layers: int = 999,
         host: str = "0.0.0.0",
     ):
-        self._context_size = context_size
         self._gpu_layers = gpu_layers
         self._host = host
         self._pids: dict[str, int] = self._load_valid_pids()
@@ -145,7 +145,7 @@ class LlamaCppServerManager:
             str(model_path),
             "--embedding",
             "--ctx-size",
-            str(self.EMBEDDINGS_CTX_SIZE),
+            str(LlamaCppConfig.embeddings_context_size),
             "--threads",
             str(os.cpu_count() or 4),
             "--n-gpu-layers",
@@ -210,13 +210,19 @@ class LlamaCppServerManager:
         )
 
         servers = [
-            ("chat", chat_path, Chat.get_port(), self._context_size, True),
-            ("vl", vl_path, Vision.get_port(), self._context_size, True),
+            (
+                "chat",
+                chat_path,
+                Chat.get_port(),
+                LlamaCppConfig.chat_context_size,
+                True,
+            ),
+            ("vl", vl_path, Vision.get_port(), LlamaCppConfig.vl_context_size, True),
             (
                 "embeddings",
                 emb_path,
                 Embeddings.get_port(),
-                self.EMBEDDINGS_CTX_SIZE,
+                LlamaCppConfig.embeddings_context_size,
                 False,
             ),
         ]

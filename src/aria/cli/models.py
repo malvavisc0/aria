@@ -7,6 +7,7 @@ and stored in the configured models directory.
 Commands:
     download: Download a GGUF model from HuggingFace Hub
     list: Show configured models and their download status
+    memory: Show memory requirements for all configured models
 
 Example:
     ```bash
@@ -27,6 +28,9 @@ Example:
 
     # List all configured models and their status
     aria models list
+
+    # Show memory requirements
+    aria models memory
     ```
 """
 
@@ -44,7 +48,7 @@ from aria.scripts.gguf import download_gguf_model, is_model_downloaded
 
 app = typer.Typer(
     name="models",
-    help="GGUF model management commands (download, list).",
+    help="GGUF model management commands (download, list, memory).",
 )
 
 console = Console()
@@ -297,3 +301,241 @@ def list_command(
             border_style="cyan",
         )
     )
+
+
+@app.command("memory")
+def memory_command():
+    """Show memory requirements for all configured models.
+
+    Displays GPU VRAM requirements (model sizes) and RAM requirements
+    (KV cache sizes) for the chat, VL, and embeddings models.
+
+    Example:
+        ```bash
+        aria models memory
+        ```
+    """
+    import os
+
+    from aria.helpers.memory import (
+        detect_system_ram,
+        estimate_kv_cache_mb,
+        get_model_file_size,
+    )
+    from aria.helpers.nvidia import (
+        detect_gpus_with_details,
+        get_free_vram_per_gpu,
+    )
+    from aria.scripts.gguf import get_model_path
+
+    models_dir = LlamaCppConfig.models_path
+
+    # Model configurations with context sizes
+    model_configs = [
+        (
+            "chat",
+            os.getenv("CHAT_MODEL", ""),
+            os.getenv("CHAT_MODEL_TYPE", "Q8_0"),
+            LlamaCppConfig.chat_context_size,
+        ),
+        (
+            "vl",
+            os.getenv("VL_MODEL", ""),
+            os.getenv("VL_MODEL_TYPE", "Q8_0"),
+            LlamaCppConfig.vl_context_size,
+        ),
+        (
+            "embeddings",
+            os.getenv("EMBEDDINGS_MODEL", ""),
+            os.getenv("EMBEDDINGS_MODEL_TYPE", "Q8_0"),
+            LlamaCppConfig.embeddings_context_size,
+        ),
+    ]
+
+    # Collect model info
+    models_info = []
+    total_model_size = 0
+    total_kv_cache = 0
+
+    for alias, repo_id, quantization, ctx_size in model_configs:
+        if not repo_id:
+            models_info.append(
+                {
+                    "alias": alias,
+                    "repo_id": "[dim]not configured[/dim]",
+                    "size_mb": 0,
+                    "ctx_size": ctx_size,
+                    "kv_cache_mb": 0,
+                    "downloaded": False,
+                }
+            )
+            continue
+
+        model_path = get_model_path(repo_id, quantization, models_dir)
+        if model_path:
+            size_mb = get_model_file_size(model_path)
+            kv_cache_mb = estimate_kv_cache_mb(ctx_size, size_mb)
+            total_model_size += size_mb
+            total_kv_cache += kv_cache_mb
+            models_info.append(
+                {
+                    "alias": alias,
+                    "repo_id": repo_id,
+                    "size_mb": size_mb,
+                    "ctx_size": ctx_size,
+                    "kv_cache_mb": kv_cache_mb,
+                    "downloaded": True,
+                }
+            )
+        else:
+            models_info.append(
+                {
+                    "alias": alias,
+                    "repo_id": repo_id,
+                    "size_mb": 0,
+                    "ctx_size": ctx_size,
+                    "kv_cache_mb": 0,
+                    "downloaded": False,
+                }
+            )
+
+    # Build model requirements table
+    model_table = Table(show_header=True, header_style="bold cyan")
+    model_table.add_column("Model", style="cyan", width=12)
+    model_table.add_column("Size", style="white", width=10)
+    model_table.add_column("Context", style="yellow", width=10)
+    model_table.add_column("KV Cache", style="magenta", width=10)
+    model_table.add_column("Status", style="green", width=14)
+
+    for info in models_info:
+        if info["downloaded"]:
+            size_str = f"{info['size_mb'] / 1024:.1f} GB"
+            kv_str = f"~{info['kv_cache_mb']} MB"
+            status = "[green]✓ Downloaded[/green]"
+        elif info["size_mb"] == 0 and "not configured" in info["repo_id"]:
+            size_str = "[dim]N/A[/dim]"
+            kv_str = "[dim]N/A[/dim]"
+            status = "[dim]Not configured[/dim]"
+        else:
+            size_str = "[dim]N/A[/dim]"
+            kv_str = "[dim]N/A[/dim]"
+            status = "[red]✗ Not downl.[/red]"
+
+        model_table.add_row(
+            f"{info['alias']} ({info['repo_id'].split('/')[-1] if '/' in info['repo_id'] else info['repo_id']})",
+            size_str,
+            str(info["ctx_size"]),
+            kv_str,
+            status,
+        )
+
+    # Add totals row
+    model_table.add_row()
+    model_table.add_row(
+        "[bold]Total Model Size (GPU VRAM):[/bold]",
+        f"[bold]{total_model_size / 1024:.1f} GB[/bold]",
+        "",
+        "",
+        "",
+    )
+    model_table.add_row(
+        "[bold]Total KV Cache (RAM):[/bold]",
+        "",
+        "",
+        f"[bold]~{total_kv_cache} MB[/bold]",
+        "",
+    )
+
+    console.print(
+        Panel(
+            model_table,
+            title="[bold]Model Memory Requirements[/bold]",
+            border_style="cyan",
+        )
+    )
+
+    # Hardware availability
+    gpus = detect_gpus_with_details()
+    total_ram_mb, avail_ram_mb = detect_system_ram()
+
+    hw_table = Table(show_header=True, header_style="bold cyan")
+    hw_table.add_column("Resource", style="cyan", width=20)
+    hw_table.add_column("Total", style="white", width=12)
+    hw_table.add_column("Available", style="green", width=12)
+    hw_table.add_column("Required", style="yellow", width=12)
+    hw_table.add_column("Status", style="bold", width=12)
+
+    # GPU info
+    if gpus:
+        free_vram = get_free_vram_per_gpu()
+        for i, gpu in enumerate(gpus):
+            free_mb = free_vram[i] if i < len(free_vram) else 0
+            fits = total_model_size <= free_mb
+            status = "[green]✓ Fits[/green]" if fits else "[red]✗ Insufficient[/red]"
+            hw_table.add_row(
+                f"GPU {i}: {gpu.name}",
+                f"{gpu.total_memory} MB",
+                f"{free_mb} MB",
+                f"{total_model_size} MB",
+                status,
+            )
+    else:
+        hw_table.add_row(
+            "GPU",
+            "[dim]N/A[/dim]",
+            "[dim]N/A[/dim]",
+            f"{total_model_size} MB",
+            "[yellow]No GPU detected[/yellow]",
+        )
+
+    # RAM info
+    if total_ram_mb > 0:
+        fits = total_kv_cache <= avail_ram_mb * 0.5
+        status = "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
+        hw_table.add_row(
+            "System RAM",
+            f"{total_ram_mb} MB",
+            f"{avail_ram_mb} MB",
+            f"~{total_kv_cache} MB",
+            status,
+        )
+    else:
+        hw_table.add_row(
+            "System RAM",
+            "[dim]N/A[/dim]",
+            "[dim]N/A[/dim]",
+            f"~{total_kv_cache} MB",
+            "[dim]Unknown[/dim]",
+        )
+
+    console.print(
+        Panel(
+            hw_table,
+            title="[bold]Hardware Availability[/bold]",
+            border_style="cyan",
+        )
+    )
+
+    # Tips
+    if gpus and total_model_size > 0:
+        free_vram = get_free_vram_per_gpu()
+        total_free = sum(free_vram) if free_vram else 0
+        if total_model_size <= total_free:
+            console.print(
+                "\n[green]💡 Tips:[/green]\n"
+                "  • Models fit in GPU VRAM - all layers will be offloaded\n"
+                "  • Use 'aria server start' to launch with current configuration\n"
+            )
+        else:
+            console.print(
+                "\n[yellow]💡 Tips:[/yellow]\n"
+                "  • Models exceed available VRAM - consider smaller quantization\n"
+                "  • Or split models across multiple GPUs\n"
+                "  • Use 'aria server start' to launch with current configuration\n"
+            )
+    else:
+        console.print(
+            "\n[dim]💡 Tips:[/dim]\n"
+            "  • Download models first: aria models download --model <chat|vl|embeddings>\n"
+            "  • Use 'aria server start' to launch with current configuration\n"
+        )

@@ -364,9 +364,7 @@ async def on_app_startup() -> None:
 
         # Start LlamaCpp servers (blocking - waits for health checks)
         logger.info("Starting LlamaCpp inference servers...")
-        _state.llama_manager = LlamaCppServerManager(
-            context_size=LlamaCppConfig.context_size
-        )
+        _state.llama_manager = LlamaCppServerManager()
         _state.llama_manager.start_all()
         logger.info("All LlamaCpp servers ready")
 

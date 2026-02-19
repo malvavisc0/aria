@@ -9,7 +9,7 @@ Example:
     ```python
     from aria.server import ServerManager, LlamaCppServerManager
 
-    llama = LlamaCppServerManager(context_size=8192)
+    llama = LlamaCppServerManager()
     llama.start_all()
 
     manager = ServerManager()

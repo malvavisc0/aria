@@ -217,6 +217,7 @@ def run_preflight_checks() -> PreflightResult:
         5. Chat model is downloaded
         6. VL model is downloaded
         7. Embeddings model is downloaded
+        8. Memory requirements fit available hardware
 
     Returns:
         PreflightResult with pass/fail status and all check details.
@@ -227,8 +228,55 @@ def run_preflight_checks() -> PreflightResult:
     _check_data_folder(checks)
     _check_binaries(checks)
     _check_models(checks)
+    _check_memory_requirements(checks)
 
     return PreflightResult(
         passed=all(c.passed for c in checks),
         checks=checks,
     )
+
+
+def _check_memory_requirements(checks: List[CheckResult]) -> None:
+    """Check if models fit in available GPU VRAM and RAM."""
+    from aria.helpers.memory import (
+        detect_system_ram,
+        get_total_kv_cache_mb,
+        get_total_model_size_mb,
+    )
+    from aria.helpers.nvidia import get_free_vram_per_gpu
+
+    # Get total model size
+    total_model_mb = get_total_model_size_mb()
+    if total_model_mb == 0:
+        return  # Models not downloaded, skip check
+
+    # Check GPU VRAM
+    free_vram = get_free_vram_per_gpu()
+    if free_vram:
+        total_free_vram = sum(free_vram)
+        if total_model_mb > total_free_vram:
+            checks.append(
+                CheckResult(
+                    name="GPU VRAM",
+                    passed=False,
+                    error=f"Models require {total_model_mb} MB but only {total_free_vram} MB VRAM available",
+                    hint="Use smaller quantization or split models across GPUs",
+                )
+            )
+        else:
+            checks.append(CheckResult(name="GPU VRAM", passed=True))
+
+    # Check system RAM for KV cache
+    total_kv_mb = get_total_kv_cache_mb()
+    _, avail_ram_mb = detect_system_ram()
+    if avail_ram_mb > 0 and total_kv_mb > avail_ram_mb * 0.5:
+        checks.append(
+            CheckResult(
+                name="System RAM",
+                passed=False,
+                error=f"KV cache requires ~{total_kv_mb} MB but only {avail_ram_mb} MB RAM available",
+                hint="Reduce context size in configuration",
+            )
+        )
+    elif avail_ram_mb > 0:
+        checks.append(CheckResult(name="System RAM", passed=True))
