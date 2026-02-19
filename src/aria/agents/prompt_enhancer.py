@@ -11,7 +11,6 @@ from pathlib import Path
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
-from loguru import logger
 from pydantic import BaseModel, Field
 
 

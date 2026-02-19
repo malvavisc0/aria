@@ -20,7 +20,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, cast
 
-import chainlit as cl
+from chainlit import PersistedUser
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.step import StepDict
 from chainlit.types import PaginatedResponse, Pagination, ThreadFilter
@@ -62,7 +62,7 @@ def _json_loads_or(value: Any, default: Any) -> Any:
 class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
     """Chainlit SQLAlchemy data layer patched for SQLite."""
 
-    async def create_user(self, user) -> None:
+    async def create_user(self, user) -> Optional[PersistedUser]:
         """Override create_user to include display_name in the INSERT.
 
         Chainlit's base implementation omits display_name from the INSERT
@@ -71,8 +71,6 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         """
         import json
         import uuid as _uuid
-
-        from chainlit.user import PersistedUser
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(

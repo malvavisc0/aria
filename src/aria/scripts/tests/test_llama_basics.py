@@ -1,11 +1,8 @@
 """Tests for basic utility functions in llama.py."""
 
 import os
-import platform
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from aria.scripts.llama import (
     _is_linux,

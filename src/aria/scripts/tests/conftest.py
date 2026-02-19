@@ -1,6 +1,5 @@
 """Shared fixtures and utilities for llama.py tests."""
 
-import platform
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch

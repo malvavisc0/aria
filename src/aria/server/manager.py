@@ -4,10 +4,8 @@ This module provides the ServerManager class for starting, stopping,
 and monitoring the Aria Chainlit webserver process.
 """
 
-import signal
 import subprocess
 import sys
-import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path

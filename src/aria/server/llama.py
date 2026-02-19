@@ -103,9 +103,7 @@ class LlamaCppServerManager:
         self._pids.clear()
         clear_state(self.PID_FILE)
 
-    def _resolve_model_path(
-        self, role: str, repo_id: str, quantization: str
-    ) -> Path:
+    def _resolve_model_path(self, role: str, repo_id: str, quantization: str) -> Path:
         """Resolve model path, raising RuntimeError if not found."""
         from aria.scripts.gguf import get_model_path
 
@@ -163,9 +161,7 @@ class LlamaCppServerManager:
     def _get_env_for_run_model(self) -> dict:
         """Build environment for the run-model script."""
         env = os.environ.copy()
-        env["LLAMA_SERVER_PATH"] = str(
-            LlamaCppConfig.bin_path / "llama-server"
-        )
+        env["LLAMA_SERVER_PATH"] = str(LlamaCppConfig.bin_path / "llama-server")
         return env
 
     def _wait_for_ready(
@@ -207,12 +203,8 @@ class LlamaCppServerManager:
         from aria.config.models import Chat, Embeddings, Vision
 
         # Resolve model paths
-        chat_path = self._resolve_model_path(
-            "chat", Chat.repo_id, Chat.quantization
-        )
-        vl_path = self._resolve_model_path(
-            "vl", Vision.repo_id, Vision.quantization
-        )
+        chat_path = self._resolve_model_path("chat", Chat.repo_id, Chat.quantization)
+        vl_path = self._resolve_model_path("vl", Vision.repo_id, Vision.quantization)
         emb_path = self._resolve_model_path(
             "embeddings", Embeddings.repo_id, Embeddings.quantization
         )
@@ -238,9 +230,7 @@ class LlamaCppServerManager:
                 cmd = self._build_embedding_cmd(model_path, port)
                 env = os.environ.copy()
 
-            logger.info(
-                f"Starting {role} server on port {port}: {' '.join(cmd)}"
-            )
+            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
 
             proc = subprocess.Popen(
                 cmd,
@@ -258,9 +248,7 @@ class LlamaCppServerManager:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)
-                logger.error(
-                    f"{role} server failed to become ready on port {port}"
-                )
+                logger.error(f"{role} server failed to become ready on port {port}")
 
         if failed:
             self.stop_all()

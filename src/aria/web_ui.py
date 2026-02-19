@@ -80,9 +80,7 @@ LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{
 class AppStateNotInitializedError(RuntimeError):
     """Raised when AppState attributes are accessed before initialization."""
 
-    def __init__(
-        self, message: str = "AppState is not fully initialized"
-    ) -> None:
+    def __init__(self, message: str = "AppState is not fully initialized") -> None:
         super().__init__(message)
 
 
@@ -251,15 +249,11 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning(
-                "Prompt enhancer not available, returning original prompt"
-            )
+            logger.warning("Prompt enhancer not available, returning original prompt")
             return prompt
 
         try:
-            response = await _state.prompt_enhancer.run(
-                user_msg=message.content
-            )
+            response = await _state.prompt_enhancer.run(user_msg=message.content)
             results: PromptEnhancementResult = response.structured_response
             prompt = results.enhanced
             logger.debug("Prompt enhancement completed successfully")
@@ -298,9 +292,7 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
         raise ValueError("Thread dictionary must contain a valid 'id' field")
 
     thread_name = thread.get("name", "Unnamed")
-    logger.debug(
-        f"Restoring chat history for thread {thread_id} ({thread_name})"
-    )
+    logger.debug(f"Restoring chat history for thread {thread_id} ({thread_name})")
 
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
@@ -381,9 +373,7 @@ async def on_app_startup() -> None:
         # Initialize LLM and embeddings
         logger.info("Initializing LLM and embeddings clients...")
         _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
-        _state.embeddings = get_embeddings_model(
-            api_base=EmbeddingsConfig.api_url
-        )
+        _state.embeddings = get_embeddings_model(api_base=EmbeddingsConfig.api_url)
 
         # Initialize vector database
         logger.info("Initializing vector database...")

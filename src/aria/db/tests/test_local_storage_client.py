@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
 
 from aria.db.local_storage_client import LocalStorageClient
 

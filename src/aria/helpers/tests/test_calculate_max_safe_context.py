@@ -1,7 +1,5 @@
 """Comprehensive tests for calculate_max_safe_context function."""
 
-import pytest
-
 from aria.helpers.nvidia import calculate_max_safe_context
 
 

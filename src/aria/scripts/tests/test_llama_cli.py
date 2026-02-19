@@ -1,9 +1,7 @@
 """Tests for CLI entry point in llama.py."""
 
-import subprocess
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

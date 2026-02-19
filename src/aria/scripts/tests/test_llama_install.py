@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from aria.scripts.llama import BINARY_NAMES, download_llama_cpp
+from aria.scripts.llama import download_llama_cpp
 
 
 class TestDownloadLatestLlamaCppNonLinux:
