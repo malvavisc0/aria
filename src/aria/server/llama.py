@@ -3,10 +3,11 @@
 Manages three llama-server processes required by the Aria web UI:
   - Chat server (port 7070): launched via the bundled ``run-model`` script
   - Vision/Language server (port 7071): launched via the bundled ``run-model`` script
-  - Embeddings server (port 7072): launched directly with ``llama-server --embedding``
+  - Embeddings server (port 7072): launched via ``run-model --embedding``
 
 The ``run-model`` script handles GPU detection, KV cache tuning, flash attention,
-and dual-GPU configuration automatically for the chat and VL servers.
+and dual-GPU configuration automatically for all servers. For embeddings, it uses
+the ``--embedding`` flag for deterministic output and ``--parallel`` for batch processing.
 
 Example:
     ```python
@@ -43,11 +44,11 @@ from aria.server.process_utils import (
 class LlamaCppServerManager:
     """Manages the llama-server processes for chat, VL, and embeddings.
 
-    Chat and VL servers are launched via the bundled ``data/bin/run-model``
-    script which handles GPU detection, KV cache tuning, and flash attention.
+    All servers are launched via the bundled ``data/bin/run-model`` script
+    which handles GPU detection, KV cache tuning, and flash attention.
 
-    The embeddings server is launched directly with ``llama-server --embedding``
-    since it requires different flags (``--parallel``, no temperature/top-p).
+    The embeddings server uses ``--embedding`` flag for deterministic output
+    and ``--parallel`` for batch processing.
 
     Process state is persisted to ``data/llama_servers.json`` so the manager
     can track servers started by other processes (e.g. CLI to GUI).
@@ -130,8 +131,17 @@ class LlamaCppServerManager:
         context_size: int,
         port: int,
         mmproj_path: Optional[Path] = None,
+        embedding_mode: bool = False,
     ) -> list[str]:
-        """Build command to launch a chat/VL server via run-model script."""
+        """Build command to launch a server via run-model script.
+
+        Args:
+            model_path: Path to the GGUF model file.
+            context_size: Context size in tokens.
+            port: Port to run the server on.
+            mmproj_path: Optional path to mmproj file for vision models.
+            embedding_mode: If True, run in embedding mode (deterministic).
+        """
         cmd = [
             str(self.RUN_MODEL_SCRIPT),
             str(model_path),
@@ -140,32 +150,14 @@ class LlamaCppServerManager:
             str(port),
         ]
 
+        if embedding_mode:
+            cmd.append("--embedding")
+            cmd.extend(["--parallel", str(self.EMBEDDINGS_PARALLEL)])
+
         if mmproj_path:
             cmd.extend(["--mmproj", str(mmproj_path)])
 
         return cmd
-
-    def _build_embedding_cmd(self, model_path: Path, port: int) -> list[str]:
-        """Build command to launch the embeddings server directly."""
-        llama_server = str(LlamaCppConfig.bin_path / "llama-server")
-        return [
-            llama_server,
-            "--model",
-            str(model_path),
-            "--embedding",
-            "--ctx-size",
-            str(LlamaCppConfig.embeddings_context_size),
-            "--threads",
-            str(os.cpu_count() or 4),
-            "--n-gpu-layers",
-            str(self._gpu_layers),
-            "--parallel",
-            str(self.EMBEDDINGS_PARALLEL),
-            "--host",
-            self._host,
-            "--port",
-            str(port),
-        ]
 
     def _get_env_for_run_model(self) -> dict:
         """Build environment for the run-model script."""
@@ -236,7 +228,7 @@ class LlamaCppServerManager:
                 chat_path,
                 Chat.get_port(),
                 LlamaCppConfig.chat_context_size,
-                True,
+                False,  # not embedding mode
                 None,  # no mmproj for chat
             ),
             (
@@ -244,7 +236,7 @@ class LlamaCppServerManager:
                 vl_path,
                 Vision.get_port(),
                 LlamaCppConfig.vl_context_size,
-                True,
+                False,  # not embedding mode
                 mmproj_path,  # mmproj for vision
             ),
             (
@@ -252,19 +244,17 @@ class LlamaCppServerManager:
                 emb_path,
                 Embeddings.get_port(),
                 LlamaCppConfig.embeddings_context_size,
-                False,
+                True,  # embedding mode
                 None,  # no mmproj for embeddings
             ),
         ]
 
         # Start all processes
-        for role, model_path, port, ctx_size, use_run_model, mmproj in servers:
-            if use_run_model:
-                cmd = self._build_run_model_cmd(model_path, ctx_size, port, mmproj)
-                env = self._get_env_for_run_model()
-            else:
-                cmd = self._build_embedding_cmd(model_path, port)
-                env = os.environ.copy()
+        for role, model_path, port, ctx_size, embedding_mode, mmproj in servers:
+            cmd = self._build_run_model_cmd(
+                model_path, ctx_size, port, mmproj, embedding_mode
+            )
+            env = self._get_env_for_run_model()
 
             logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
 
@@ -280,7 +270,7 @@ class LlamaCppServerManager:
 
         # Wait for all servers to become ready
         failed = []
-        for role, _, port, _, _ in servers:
+        for role, _, port, _, _, _ in servers:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)
