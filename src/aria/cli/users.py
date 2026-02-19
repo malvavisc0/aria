@@ -8,6 +8,7 @@ Commands:
     add: Create a new user with email and password
     reset: Reset a user's password
     edit: Modify user metadata and role
+    delete: Delete a user and all associated data
 
 Example:
     ```bash
@@ -22,6 +23,9 @@ Example:
 
     # Edit user role
     aria users edit --identifier user@example.com --role admin
+
+    # Delete a user
+    aria users delete --identifier user@example.com
     ```
 """
 
@@ -68,52 +72,41 @@ def list_users():
         ```
     """
     with get_db_session() as session:
-        try:
-            users = session.execute(select(User)).scalars().all()
+        users = session.execute(select(User)).scalars().all()
 
-            if not users:
-                console.print(
-                    Panel(
-                        "[yellow]No users found in database.[/yellow]",
-                        title="[bold]Users[/bold]",
-                        border_style="yellow",
-                    )
-                )
-                return
-
-            table = Table(show_header=True, header_style="bold cyan")
-            table.add_column("ID", style="dim", width=36)
-            table.add_column("Identifier", style="green")
-            table.add_column("Role", style="yellow")
-            table.add_column("Created At", style="dim")
-
-            for user in users:
-                metadata = json.loads(user.metadata_)
-                role = metadata.get("role", "unknown")
-                table.add_row(
-                    str(user.id),
-                    str(user.identifier),
-                    role,
-                    str(user.createdAt or ""),
-                )
-
+        if not users:
             console.print(
                 Panel(
-                    table,
-                    title=f"[bold]Users[/bold] ({len(users)} total)",
-                    border_style="cyan",
+                    "[yellow]No users found in database.[/yellow]",
+                    title="[bold]Users[/bold]",
+                    border_style="yellow",
                 )
+            )
+            return
+
+        table = Table(show_header=True, header_style="bold cyan")
+        table.add_column("ID", style="dim", width=36)
+        table.add_column("Identifier", style="green")
+        table.add_column("Role", style="yellow")
+        table.add_column("Created At", style="dim")
+
+        for user in users:
+            metadata = json.loads(user.metadata_)
+            role = metadata.get("role", "unknown")
+            table.add_row(
+                str(user.id),
+                str(user.identifier),
+                role,
+                str(user.createdAt or ""),
             )
 
-        except Exception as e:
-            error_console.print(
-                Panel(
-                    f"[red]Error listing users: {e}[/red]",
-                    title="[bold]Error[/bold]",
-                    border_style="red",
-                )
+        console.print(
+            Panel(
+                table,
+                title=f"[bold]Users[/bold] ({len(users)} total)",
+                border_style="cyan",
             )
-            raise typer.Exit(1)
+        )
 
 
 @app.command("add")
@@ -132,73 +125,64 @@ def add_user(
 
     Args:
         identifier: User email address (used for login)
+        name: Display name for the user
         role: User role for access control (default: "user")
 
     Example:
         ```bash
         # Create admin user
-        aria users add --identifier admin@example.com --role admin
+        aria users add --identifier admin@example.com --name "Admin" --role admin
 
         # Create regular user (default role)
-        aria users add --identifier user@example.com
+        aria users add --identifier user@example.com --name "User"
         ```
     """
     with get_db_session() as session:
-        try:
-            user = session.execute(
-                select(User).where(User.identifier == identifier)
-            ).scalar_one_or_none()
+        existing = session.execute(
+            select(User).where(User.identifier == identifier)
+        ).scalar_one_or_none()
 
-            if user:
-                error_console.print(
-                    Panel(
-                        f"[red]User '{identifier}' already exists![/red]",
-                        title="[bold]Error[/bold]",
-                        border_style="red",
-                    )
-                )
-                raise typer.Exit(1)
-
-            password = typer.prompt(
-                text="Password",
-                confirmation_prompt=True,
-                type=str,
-                hide_input=True,
-            )
-
-            user = User(
-                id=str(uuid.uuid4()),
-                display_name=name,
-                identifier=identifier,
-                metadata_=json.dumps(
-                    {
-                        "role": role,
-                        "created_by": "cli",
-                    }
-                ),
-                password=hash_password(password),
-                createdAt=datetime.now().isoformat() + "Z",
-            )
-
-            session.add(user)
-
-            console.print(
-                Panel(
-                    f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' created successfully!\n"
-                    f"[dim]Role: {role}[/dim]",
-                    title="[bold]User Created[/bold]",
-                    border_style="green",
-                )
-            )
-
-        except Exception as e:
+        if existing:
             error_console.print(
                 Panel(
-                    f"[red]Error creating user: {e}[/red]",
+                    f"[red]User '{identifier}' already exists![/red]",
                     title="[bold]Error[/bold]",
                     border_style="red",
                 )
             )
+            raise typer.Exit(1)
+
+        password = typer.prompt(
+            text="Password",
+            confirmation_prompt=True,
+            type=str,
+            hide_input=True,
+        )
+
+        user = User(
+            id=str(uuid.uuid4()),
+            display_name=name,
+            identifier=identifier,
+            metadata_=json.dumps(
+                {
+                    "role": role,
+                    "created_by": "cli",
+                }
+            ),
+            password=hash_password(password),
+            createdAt=datetime.now().isoformat() + "Z",
+        )
+
+        session.add(user)
+
+        console.print(
+            Panel(
+                f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' created successfully!\n"
+                f"[dim]Role: {role}[/dim]",
+                title="[bold]User Created[/bold]",
+                border_style="green",
+            )
+        )
 
 
 @app.command("reset")
@@ -207,66 +191,55 @@ def reset_password(
         str,
         typer.Option(prompt="User identifier (email)", help="User email address"),
     ],
-    password: Annotated[
-        str,
-        typer.Option(prompt="New password", hide_input=True, help="New password"),
-    ],
 ):
     """Reset a user's password.
 
     Updates the password for an existing user. The password is prompted
-    securely and the metadata is updated with a timestamp for audit trail.
+    securely (with confirmation) and the metadata is updated with a
+    timestamp for audit trail.
 
     Args:
         identifier: User email address
-        password: New password (prompted securely)
 
     Example:
         ```bash
         aria users reset --identifier user@example.com
         ```
     """
+    password = typer.prompt(
+        text="New password",
+        confirmation_prompt=True,
+        hide_input=True,
+    )
+
     with get_db_session() as session:
-        try:
-            # Find user
-            user = session.execute(
-                select(User).where(User.identifier == identifier)
-            ).scalar_one_or_none()
+        user = session.execute(
+            select(User).where(User.identifier == identifier)
+        ).scalar_one_or_none()
 
-            if not user:
-                error_console.print(
-                    Panel(
-                        f"[red]User '{identifier}' not found![/red]",
-                        title="[bold]Error[/bold]",
-                        border_style="red",
-                    )
-                )
-                raise typer.Exit(1)
-
-            # Update password field
-            user.password = hash_password(password)
-
-            # Update metadata with timestamp for audit trail
-            metadata = json.loads(user.metadata_)
-            metadata["password_updated_at"] = datetime.now().isoformat()
-            user.metadata_ = json.dumps(metadata)
-
-            console.print(
-                Panel(
-                    f"[green]✓[/green] Password reset for '[cyan]{identifier}[/cyan]' successfully!",
-                    title="[bold]Password Reset[/bold]",
-                    border_style="green",
-                )
-            )
-
-        except Exception as e:
+        if not user:
             error_console.print(
                 Panel(
-                    f"[red]Error resetting password: {e}[/red]",
+                    f"[red]User '{identifier}' not found![/red]",
                     title="[bold]Error[/bold]",
                     border_style="red",
                 )
             )
+            raise typer.Exit(1)
+
+        user.password = hash_password(password)
+
+        metadata = json.loads(user.metadata_)
+        metadata["password_updated_at"] = datetime.now().isoformat()
+        user.metadata_ = json.dumps(metadata)
+
+        console.print(
+            Panel(
+                f"[green]✓[/green] Password reset for '[cyan]{identifier}[/cyan]' successfully!",
+                title="[bold]Password Reset[/bold]",
+                border_style="green",
+            )
+        )
 
 
 @app.command("edit")
@@ -302,70 +275,67 @@ def update_user(
         aria users edit --identifier user@example.com --role admin --metadata-json '{"department": "engineering"}'
         ```
     """
-    with get_db_session() as session:
-        try:
-            # Find user
-            user = session.execute(
-                select(User).where(User.identifier == identifier)
-            ).scalar_one_or_none()
+    if not role and not metadata_json:
+        error_console.print(
+            Panel(
+                "[red]Provide at least one of --role or --metadata-json.[/red]",
+                title="[bold]Error[/bold]",
+                border_style="red",
+            )
+        )
+        raise typer.Exit(1)
 
-            if not user:
+    with get_db_session() as session:
+        user = session.execute(
+            select(User).where(User.identifier == identifier)
+        ).scalar_one_or_none()
+
+        if not user:
+            error_console.print(
+                Panel(
+                    f"[red]User '{identifier}' not found![/red]",
+                    title="[bold]Error[/bold]",
+                    border_style="red",
+                )
+            )
+            raise typer.Exit(1)
+
+        metadata = json.loads(user.metadata_)
+
+        if role:
+            metadata["role"] = role
+
+        if metadata_json:
+            try:
+                new_metadata = json.loads(metadata_json)
+                metadata.update(new_metadata)
+            except json.JSONDecodeError as e:
                 error_console.print(
                     Panel(
-                        f"[red]User '{identifier}' not found![/red]",
+                        f"[red]Invalid JSON: {e}[/red]",
                         title="[bold]Error[/bold]",
                         border_style="red",
                     )
                 )
                 raise typer.Exit(1)
 
-            # Update metadata
-            metadata = json.loads(user.metadata_)
+        metadata["updated_at"] = datetime.now().isoformat()
+        user.metadata_ = json.dumps(metadata)
 
-            if role:
-                metadata["role"] = role
-
-            if metadata_json:
-                try:
-                    new_metadata = json.loads(metadata_json)
-                    metadata.update(new_metadata)
-                except json.JSONDecodeError as e:
-                    error_console.print(
-                        Panel(
-                            f"[red]Invalid JSON: {e}[/red]",
-                            title="[bold]Error[/bold]",
-                            border_style="red",
-                        )
-                    )
-                    raise typer.Exit(1)
-
-            metadata["updated_at"] = datetime.now().isoformat()
-
-            user.metadata_ = json.dumps(metadata)
-
-            console.print(
-                Panel(
-                    f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated successfully!\n\n"
-                    f"[dim]Metadata:[/dim]\n{json.dumps(metadata, indent=2)}",
-                    title="[bold]User Updated[/bold]",
-                    border_style="green",
-                )
+        console.print(
+            Panel(
+                f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated successfully!\n\n"
+                f"[dim]Metadata:[/dim]\n{json.dumps(metadata, indent=2)}",
+                title="[bold]User Updated[/bold]",
+                border_style="green",
             )
-
-        except Exception as e:
-            error_console.print(
-                Panel(
-                    f"[red]Error updating user: {e}[/red]",
-                    title="[bold]Error[/bold]",
-                    border_style="red",
-                )
-            )
+        )
 
 
 @app.command("delete")
 def delete_user(
     identifier: Annotated[str, typer.Option(help="User identifier (email)")],
-    confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
     """Delete a user and all associated data.
 
@@ -375,11 +345,11 @@ def delete_user(
 
     Args:
         identifier: User email address
-        confirm: Skip confirmation prompt
+        yes: Skip confirmation prompt
 
     Example:
         ```bash
-        # Delete with confirmation
+        # Delete with interactive confirmation
         aria users delete --identifier user@example.com
 
         # Delete without confirmation
@@ -387,58 +357,36 @@ def delete_user(
         ```
     """
     with get_db_session() as session:
-        try:
-            user = session.execute(
-                select(User).where(User.identifier == identifier)
-            ).scalar_one_or_none()
+        user = session.execute(
+            select(User).where(User.identifier == identifier)
+        ).scalar_one_or_none()
 
-            if not user:
-                error_console.print(
-                    Panel(
-                        f"[red]User '{identifier}' not found![/red]",
-                        title="[bold]Error[/bold]",
-                        border_style="red",
-                    )
-                )
-                raise typer.Exit(1)
-
-            # Count associated data
-            thread_count = len(user.threads)
-
-            if not confirm:
-                console.print(
-                    Panel(
-                        f"[yellow]Warning:[/yellow] This will delete:\n"
-                        f"  • User: [cyan]{identifier}[/cyan]\n"
-                        f"  • Threads: [cyan]{thread_count}[/cyan]\n"
-                        f"  • All associated steps, elements, feedbacks\n\n"
-                        f"[dim]Use --yes to skip confirmation[/dim]",
-                        title="[bold]Confirm Deletion[/bold]",
-                        border_style="yellow",
-                    )
-                )
-                raise typer.Exit(1)
-
-            # Delete user (cascade handles threads, steps, etc.)
-            session.delete(user)
-
-            console.print(
-                Panel(
-                    f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' deleted.\n"
-                    f"[dim]Removed {thread_count} threads and associated data.[/dim]",
-                    title="[bold]User Deleted[/bold]",
-                    border_style="green",
-                )
-            )
-
-        except typer.Exit:
-            raise
-        except Exception as e:
+        if not user:
             error_console.print(
                 Panel(
-                    f"[red]Error deleting user: {e}[/red]",
+                    f"[red]User '{identifier}' not found![/red]",
                     title="[bold]Error[/bold]",
                     border_style="red",
                 )
             )
             raise typer.Exit(1)
+
+        thread_count = len(user.threads)
+
+        if not yes:
+            console.print(
+                f"[yellow]Warning:[/yellow] This will delete user '[cyan]{identifier}[/cyan]' "
+                f"and {thread_count} thread(s) with all associated data."
+            )
+            typer.confirm("Proceed?", abort=True)
+
+        session.delete(user)
+
+        console.print(
+            Panel(
+                f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' deleted.\n"
+                f"[dim]Removed {thread_count} threads and associated data.[/dim]",
+                title="[bold]User Deleted[/bold]",
+                border_style="green",
+            )
+        )

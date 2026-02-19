@@ -1,27 +1,24 @@
 """Main CLI entry point for the Aria application.
 
 This module defines the root CLI application and core commands for managing
-the Aria AI assistant system. It provides database health checks, version
-information, and serves as the entry point for all sub-commands.
+the Aria AI assistant system. It provides database health checks and serves
+as the entry point for all sub-commands.
 
 Commands:
     check: Verify database connectivity and write permissions
-    version: Display the current Aria CLI version
-    info: Show system overview including GPU and configuration status
 
 Sub-commands:
-    users: User management (list, add, reset, edit)
+    users: User management (list, add, reset, edit, delete)
     llamacpp: Llama.cpp binary management (download, status)
-    config: Configuration display (show, paths, database)
-    system: System information (gpu, vram, nvlink)
+    config: Configuration display (show, paths, database, api)
+    system: System information (gpu, vram, nvlink, context, info)
+    models: GGUF model management (download, list, memory)
+    server: Webserver management (run, start, stop, status)
 
 Example:
     ```bash
     # Check database health
     aria check
-
-    # Show version
-    aria version
 
     # Get help
     aria --help
@@ -31,7 +28,6 @@ Example:
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from sqlalchemy import text
 
 from aria.cli import (
@@ -43,11 +39,6 @@ from aria.cli import (
     system,
     users,
 )
-from aria.config.database import SQLite as SQLiteConfig
-from aria.config.folders import Data as DataConfig
-from aria.config.folders import Debug as DebugConfig
-from aria.config.folders import Storage as StorageConfig
-from aria.helpers.nvidia import check_nvidia_smi_available, detect_gpu_count
 
 app = typer.Typer(
     name="aria",
@@ -66,10 +57,9 @@ console = Console()
 error_console = Console(stderr=True, style="bold red")
 
 
-def print_banner():
+def _print_banner():
     """Print the Aria ASCII art banner with version info."""
     try:
-        # Use importlib.metadata for a cleaner version check in modern Python
         from importlib.metadata import version
 
         v = version("aria")
@@ -95,15 +85,13 @@ def print_banner():
 [bold cyan]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠀⠛⠛⠃⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
 """
     console.print()
-    # The strip() call removes the leading/trailing newline from the raw string
     console.print(banner_art.strip())
     console.print()
-
     console.print(
         Panel(
             f"[dim]AI Assistant Management CLI[/dim] • [cyan]{version_text}[/cyan]",
             border_style="cyan",
-            expand=False,  # Keeps the panel tight around the text
+            expand=False,
             padding=(0, 2),
         )
     )
@@ -116,13 +104,11 @@ def main(ctx: typer.Context):
     Display banner and help when called without a command.
     """
     if ctx.invoked_subcommand is None:
-        print_banner()
+        _print_banner()
         console.print()
         console.print("[bold]Available commands:[/bold]")
         console.print()
         console.print("  [cyan]check[/cyan]     Verify all prerequisites")
-        console.print("  [cyan]version[/cyan]   Display CLI version")
-        console.print("  [cyan]info[/cyan]      Show system overview")
         console.print()
         console.print("  [cyan]users[/cyan]     User management commands")
         console.print("  [cyan]llamacpp[/cyan]  Llama.cpp binary management")
@@ -153,10 +139,8 @@ def health_check():
     """
     from aria.preflight import run_preflight_checks
 
-    # Run preflight checks
     result = run_preflight_checks()
 
-    # Display all checks (passed and failed)
     for check in result.checks:
         if check.passed:
             console.print(f"[green]✓[/green] {check.name}")
@@ -164,7 +148,6 @@ def health_check():
             console.print(f"[red]✗[/red] {check.name}")
             console.print(f"  [dim]{check.hint}[/dim]")
 
-    # Database connectivity check
     try:
         with get_db_session() as session:
             session.execute(text("SELECT 1"))
@@ -177,62 +160,5 @@ def health_check():
         error_console.print("[red]✗[/red] Database connection failed.")
         error_console.print_exception()
 
-    # Exit with error if any preflight check failed
     if not result.passed:
         raise typer.Exit(1)
-
-
-@app.command("version")
-def show_version():
-    """Display the current Aria CLI version.
-
-    Shows the installed version of the Aria package as defined in
-    the package metadata.
-
-    Example:
-        ```bash
-        aria version
-        ```
-    """
-    print_banner()
-
-
-@app.command("info")
-def system_info():
-    """Display system overview including GPU and configuration status.
-
-    Shows a summary of:
-    - Database status and location
-    - GPU availability and basic info
-    - Key configuration paths
-
-    Example:
-        ```bash
-        aria info
-        ```
-    """
-
-    table = Table(title="Aria System Information", show_header=True)
-    table.add_column("Component", style="cyan", width=20)
-    table.add_column("Status", style="green")
-
-    # Database info
-    table.add_row("Data Folder", str(DataConfig.path))
-    table.add_row("Database Path", str(SQLiteConfig.file_path))
-    table.add_row("Storage Path", str(StorageConfig.path))
-    table.add_row("Debug Logs", str(DebugConfig.logs_path))
-
-    # GPU info
-    if check_nvidia_smi_available():
-        gpu_count = detect_gpu_count()
-        table.add_row("NVIDIA GPU", f"✓ Available ({gpu_count} detected)")
-    else:
-        table.add_row("NVIDIA GPU", "✗ Not available")
-
-    console.print(
-        Panel(
-            table,
-            title="[bold]System Overview[/bold]",
-            border_style="cyan",
-        )
-    )

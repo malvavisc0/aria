@@ -55,8 +55,17 @@ app = typer.Typer(
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
-# Valid model aliases
-_MODEL_ALIASES = ("chat", "vl", "embeddings")
+# Maps alias -> (repo_id, filename, repo_env_var, filename_env_var)
+_MODEL_CONFIGS: dict[str, tuple[str | None, str | None, str, str]] = {
+    "chat": (Chat.repo_id, Chat.filename, "CHAT_MODEL_REPO", "CHAT_MODEL"),
+    "vl": (Vision.repo_id, Vision.filename, "VL_MODEL_REPO", "VL_MODEL"),
+    "embeddings": (
+        Embeddings.repo_id,
+        Embeddings.filename,
+        "EMBEDDINGS_MODEL_REPO",
+        "EMBEDDINGS_MODEL",
+    ),
+}
 
 
 def _resolve_model_config(alias: str) -> tuple[str, str]:
@@ -71,40 +80,23 @@ def _resolve_model_config(alias: str) -> tuple[str, str]:
     Raises:
         typer.BadParameter: If the alias is unknown or config is not set.
     """
-    if alias == "chat":
-        if not Chat.repo_id:
-            raise typer.BadParameter(
-                "CHAT_MODEL_REPO is not set. Please configure it in your .env file."
-            )
-        if not Chat.filename:
-            raise typer.BadParameter(
-                "CHAT_MODEL is not set. Please configure it in your .env file."
-            )
-        return Chat.repo_id, Chat.filename
-    elif alias == "vl":
-        if not Vision.repo_id:
-            raise typer.BadParameter(
-                "VL_MODEL_REPO is not set. Please configure it in your .env file."
-            )
-        if not Vision.filename:
-            raise typer.BadParameter(
-                "VL_MODEL is not set. Please configure it in your .env file."
-            )
-        return Vision.repo_id, Vision.filename
-    elif alias == "embeddings":
-        if not Embeddings.repo_id:
-            raise typer.BadParameter(
-                "EMBEDDINGS_MODEL_REPO is not set. Please configure it in your .env file."
-            )
-        if not Embeddings.filename:
-            raise typer.BadParameter(
-                "EMBEDDINGS_MODEL is not set. Please configure it in your .env file."
-            )
-        return Embeddings.repo_id, Embeddings.filename
-    else:
+    if alias not in _MODEL_CONFIGS:
         raise typer.BadParameter(
-            f"Unknown model alias '{alias}'. Choose from: {', '.join(_MODEL_ALIASES)}"
+            f"Unknown model alias '{alias}'. Choose from: {', '.join(_MODEL_CONFIGS)}"
         )
+
+    repo_id, filename, repo_env, filename_env = _MODEL_CONFIGS[alias]
+
+    if not repo_id:
+        raise typer.BadParameter(
+            f"{repo_env} is not set. Please configure it in your .env file."
+        )
+    if not filename:
+        raise typer.BadParameter(
+            f"{filename_env} is not set. Please configure it in your .env file."
+        )
+
+    return repo_id, filename
 
 
 @app.command("download")

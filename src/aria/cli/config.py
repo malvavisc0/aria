@@ -5,9 +5,10 @@ configuration settings for the Aria application, including database
 paths, API endpoints, and storage locations.
 
 Commands:
-    show: Display all configuration settings
+    show: Display all configuration settings (paths + database + api)
     paths: Show all configured file system paths
     database: Show database connection configuration
+    api: Show API endpoint configuration
 
 Example:
     ```bash
@@ -19,6 +20,9 @@ Example:
 
     # Show database configuration
     aria config database
+
+    # Show API configuration
+    aria config api
     ```
 """
 
@@ -44,69 +48,18 @@ console = Console()
 def show_config():
     """Display all configuration settings.
 
-    Shows a comprehensive view of all configuration settings including:
-    - Database configuration
-    - File system paths
-    - API endpoints
-    - Model settings
+    Runs paths, database, and api sub-commands in sequence.
 
     Example:
         ```bash
         aria config show
         ```
     """
-    # Paths table
-    paths_table = Table(show_header=True, header_style="bold cyan")
-    paths_table.add_column("Name", style="cyan", width=20)
-    paths_table.add_column("Path", style="green")
-    paths_table.add_row("Data Folder", str(Data.path))
-    paths_table.add_row("Storage Path", str(Storage.path))
-    paths_table.add_row("Debug Logs", str(Debug.logs_path))
-    paths_table.add_row("Database File", str(SQLite.file_path))
-    paths_table.add_row("ChromaDB Path", str(ChromaDB.db_path))
-    paths_table.add_row("Llama.cpp Binaries", str(LlamaCpp.bin_path))
-
-    # Database table
-    db_table = Table(show_header=True, header_style="bold cyan")
-    db_table.add_column("Property", style="cyan", width=20)
-    db_table.add_column("Value", style="green")
-    db_table.add_row("SQLite URL", SQLite.db_url)
-    db_table.add_row("Async URL", SQLite.conn_info)
-
-    # API table
-    api_table = Table(show_header=True, header_style="bold cyan")
-    api_table.add_column("Property", style="cyan", width=20)
-    api_table.add_column("Value", style="green")
-    api_table.add_row("Chat API URL", Chat.api_url)
-    api_table.add_row("Max Iterations", str(Chat.max_iteration))
-    api_table.add_row("Embeddings API", Embeddings.api_url)
-    api_table.add_row("Embeddings Model", Embeddings.model)
-    api_table.add_row("Token Limit", str(Embeddings.token_limit))
-    api_table.add_row("Llama.cpp Version", LlamaCpp.version)
-
-    console.print(
-        Panel(
-            paths_table,
-            title="[bold]File System Paths[/bold]",
-            border_style="cyan",
-        )
-    )
+    show_paths()
     console.print()
-    console.print(
-        Panel(
-            db_table,
-            title="[bold]Database Configuration[/bold]",
-            border_style="cyan",
-        )
-    )
+    show_database()
     console.print()
-    console.print(
-        Panel(
-            api_table,
-            title="[bold]API Configuration[/bold]",
-            border_style="cyan",
-        )
-    )
+    show_api()
 
 
 @app.command("paths")
