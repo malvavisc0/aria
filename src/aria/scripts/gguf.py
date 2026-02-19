@@ -128,6 +128,13 @@ def get_model_path(
 
     quant_upper = quantization.upper()
     repo_name = repo_id.split("/")[-1].lower()
+    # Strip common suffixes from repo name for more flexible matching
+    # e.g., "Qwen3-Embedding-0.6B-GGUF" -> "qwen3-embedding-0.6b"
+    for suffix in ["-gguf", "_gguf"]:
+        if repo_name.endswith(suffix):
+            repo_name = repo_name[: -len(suffix)]
+            break
+
     # Search for any .gguf file in the models_dir that matches both the
     # quantization string and the repository name segment.
     for f in models_dir.glob("*.gguf"):
