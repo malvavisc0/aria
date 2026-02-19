@@ -262,9 +262,24 @@ class LlamaCppServerManager:
                 cmd,
                 env=env,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
             )
             self._pids[role] = proc.pid
+
+            # Brief check: if the process exits immediately it failed validation
+            # (e.g. model file not found, port in use, bad llama-server path).
+            time.sleep(2)
+            if proc.poll() is not None:
+                stderr_output = (
+                    proc.stderr.read().decode("utf-8", errors="replace").strip()
+                    if proc.stderr
+                    else ""
+                )
+                raise RuntimeError(
+                    f"run-model script for '{role}' exited immediately "
+                    f"(exit code {proc.returncode}). "
+                    f"Error: {stderr_output or '(no stderr output)'}"
+                )
 
         self._save_pids()
 
