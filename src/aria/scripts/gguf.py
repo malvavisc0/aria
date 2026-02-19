@@ -152,16 +152,7 @@ def is_model_downloaded(
     Returns:
         True if a matching model file exists in models_dir, False otherwise.
     """
-    if not models_dir.exists():
-        return False
-
-    quant_upper = quantization.upper()
-    for f in models_dir.glob("*.gguf"):
-        if quant_upper in f.name.upper():
-            logger.debug(f"Found existing model file: {f}")
-            return True
-
-    return False
+    return get_model_path(repo_id, quantization, models_dir) is not None
 
 
 def download_gguf_model(

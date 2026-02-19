@@ -2,6 +2,7 @@ import re
 import subprocess
 from typing import List, Optional, Tuple
 
+from loguru import logger
 from pydantic import BaseModel
 
 
@@ -26,12 +27,15 @@ class GPUMetadata(BaseModel):
     compute_mode: str
 
 
-def detect_gpus_with_details() -> List[GPUMetadata]:
+def detect_gpus_with_details(log_errors: bool = False) -> List[GPUMetadata]:
     """
     Detect all installed NVIDIA GPUs with detailed information.
 
     Executes nvidia-smi query to gather comprehensive GPU information
     including memory, power, temperature, fan speed, and more.
+
+    Args:
+        log_errors: If True, log warnings when nvidia-smi fails.
 
     Returns:
         List[GPUMetadata]: A list of GPUMetadata objects, one for each detected GPU.
@@ -139,7 +143,9 @@ def detect_gpus_with_details() -> List[GPUMetadata]:
         FileNotFoundError,
         ValueError,
         IndexError,
-    ):
+    ) as e:
+        if log_errors:
+            logger.warning(f"Failed to detect GPUs: {e}")
         return []
 
 

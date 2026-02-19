@@ -22,7 +22,6 @@ import os
 import platform
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 import urllib.error
@@ -42,8 +41,6 @@ from rich.progress import (
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
-
-from aria.helpers.nvidia import check_nvidia_smi_available
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -87,28 +84,29 @@ def _is_ubuntu() -> bool:
 
 
 def _is_cuda_available() -> bool:
-    """Check if CUDA is available via nvidia-smi.
+    """Check if CUDA is available via nvcc.
+
+    NVCC is the CUDA compiler and is the definitive way to check if
+    CUDA toolkit is installed. This works on both Linux and Windows.
 
     Returns:
-        True if nvidia-smi is available and detects GPUs, False otherwise.
+        True if nvcc is found and executable, False otherwise.
     """
-    if not _is_linux():
-        return False
-
-    return check_nvidia_smi_available()
+    return _nvcc_available()
 
 
 def _nvcc_available() -> bool:
     """Check if nvcc (CUDA compiler) is available.
 
+    Uses shutil.which for cross-platform compatibility (works on both
+    Linux and Windows).
+
     Returns:
-        True if nvcc is found and executable, False otherwise.
+        True if nvcc is found in PATH, False otherwise.
     """
-    try:
-        result = subprocess.run(["which", "nvcc"], capture_output=True, text=True)
-        return result.returncode == 0
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    import shutil
+
+    return shutil.which("nvcc") is not None
 
 
 def _get_latest_release_info() -> dict:
@@ -136,7 +134,7 @@ def _get_release_by_tag(tag: str) -> dict:
         return __import__("json").loads(response.read())
 
 
-def _find_linux_binary_asset(assets: list) -> Optional[dict]:
+def _find_linux_binary_asset(assets: list, prefer_cuda: bool = False) -> Optional[dict]:
     """Find the appropriate Linux binary asset from the release assets.
 
     Searches for pre-built Linux binary archives in priority order.
@@ -147,21 +145,35 @@ def _find_linux_binary_asset(assets: list) -> Optional[dict]:
 
     Args:
         assets: List of asset dictionaries from the release.
+        prefer_cuda: If True, prefer CUDA builds over CPU builds.
 
     Returns:
         The asset dictionary for the Linux binary, or None if not found.
     """
-    # Priority order: prefer Ubuntu builds, then generic Linux
-    priority = [
-        "ubuntu-x64",  # Ubuntu CPU x64 (most common)
-        "ubuntu-vulkan",  # Ubuntu with Vulkan
-        "linux-gpu-cuda",  # Generic Linux CUDA
-        "linux-gpu",  # Generic Linux GPU
-        "linux-cuda",  # Generic Linux CUDA (alt naming)
-        "linux-x64",  # Generic Linux CPU x64
-        "ubuntu",  # Any Ubuntu build
-        "linux",  # Any Linux build
-    ]
+    # Priority order depends on CUDA preference
+    if prefer_cuda:
+        priority = [
+            "ubuntu-cuda",  # Ubuntu CUDA (best for CUDA systems)
+            "linux-gpu-cuda",  # Generic Linux CUDA
+            "linux-cuda",  # Generic Linux CUDA (alt naming)
+            "ubuntu-vulkan",  # Ubuntu with Vulkan
+            "ubuntu-x64",  # Ubuntu CPU x64 (fallback)
+            "linux-gpu",  # Generic Linux GPU (fallback)
+            "linux-x64",  # Generic Linux CPU x64 (fallback)
+            "ubuntu",  # Any Ubuntu build
+            "linux",  # Any Linux build
+        ]
+    else:
+        priority = [
+            "ubuntu-x64",  # Ubuntu CPU x64 (most common)
+            "ubuntu-vulkan",  # Ubuntu with Vulkan
+            "linux-x64",  # Generic Linux CPU x64
+            "ubuntu",  # Any Ubuntu build
+            "linux",  # Any Linux build
+            "linux-gpu-cuda",  # Generic Linux CUDA (fallback)
+            "linux-gpu",  # Generic Linux GPU (fallback)
+            "linux-cuda",  # Generic Linux CUDA (alt naming)
+        ]
 
     def _is_binary_archive(name: str) -> bool:
         return (
@@ -455,7 +467,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         console.print("[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]")
 
         assets = release.get("assets", [])
-        binary_asset = _find_linux_binary_asset(assets)
+        # Check if CUDA is available for binary selection preference
+        cuda_available = _is_cuda_available()
+        binary_asset = _find_linux_binary_asset(assets, prefer_cuda=cuda_available)
 
         if not binary_asset:
             error_console.print(
@@ -680,21 +694,3 @@ def install_llama_cpp_from_source(
     except Exception as e:
         error_console.print(f"[red]Error: {e}[/red]")
         raise
-
-
-def main(bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None) -> None:
-    """CLI entry point for llama.cpp installation.
-
-    Args:
-        bin_dir: Directory to install the binaries to.
-        version: Optional version tag to install.
-    """
-    try:
-        download_llama_cpp(bin_dir=bin_dir, version=version)
-    except Exception as e:
-        error_console.print(f"[red]Installation failed: {e}[/red]")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()

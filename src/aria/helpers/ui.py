@@ -75,12 +75,9 @@ async def send_tool_step(event: ToolCall) -> cl.Step:
 
 async def maybe_remove_step(step: Optional[cl.Step]) -> None:
     """Remove a Step if present."""
-
     if step is None:
         return
     await step.remove()
-    step = None
-    return step
 
 
 def _step_label_from_tool_call(event: ToolCall) -> str:

@@ -96,6 +96,13 @@ def stop_process(pid: int, timeout: float = 10.0) -> bool:
             time.sleep(0.1)
         # Force kill if still running
         os.kill(pid, signal.SIGKILL)
-        return True
-    except ProcessLookupError:
+        # Wait for process to actually terminate (max 2 seconds)
+        kill_start = time.time()
+        while time.time() - kill_start < 2.0:
+            if not is_process_running(pid):
+                return True
+            time.sleep(0.1)
+        # Process still running after SIGKILL (zombie?)
         return False
+    except ProcessLookupError:
+        return True  # Process already gone

@@ -99,17 +99,17 @@ class TestIsModelDownloaded:
 
     def test_returns_false_when_no_matching_gguf(self, tmp_path: Path):
         """Returns False when no .gguf file matches the quantization."""
-        (tmp_path / "model-Q4_K_M.gguf").touch()
+        (tmp_path / "repo-Q4_K_M.gguf").touch()
         assert is_model_downloaded("org/repo", "Q8_0", tmp_path) is False
 
     def test_returns_true_when_matching_gguf_exists(self, tmp_path: Path):
         """Returns True when a .gguf file matching the quantization exists."""
-        (tmp_path / "model-Q8_0.gguf").touch()
+        (tmp_path / "repo-Q8_0.gguf").touch()
         assert is_model_downloaded("org/repo", "Q8_0", tmp_path) is True
 
     def test_case_insensitive_quantization_check(self, tmp_path: Path):
         """Quantization check is case-insensitive."""
-        (tmp_path / "model-q8_0.gguf").touch()
+        (tmp_path / "repo-q8_0.gguf").touch()
         assert is_model_downloaded("org/repo", "Q8_0", tmp_path) is True
 
     def test_returns_false_when_dir_is_empty(self, tmp_path: Path):
@@ -172,14 +172,15 @@ class TestDownloadGgufModel:
 
     def test_force_redownloads_existing_model(self, tmp_path: Path):
         """Re-downloads when force=True even if model exists."""
-        existing = tmp_path / "model-Q8_0.gguf"
+        existing = tmp_path / "repo-Q8_0.gguf"
         existing.touch()
 
-        downloaded_file = tmp_path / "model-Q8_0.gguf"
+        downloaded_file = tmp_path / "repo-Q8_0.gguf"
         downloaded_file.write_text("new content")
 
         with patch(
-            "aria.scripts.gguf._find_gguf_filename", return_value="model-Q8_0.gguf"
+            "aria.scripts.gguf._find_gguf_filename",
+            return_value="repo-Q8_0.gguf",
         ):
             with patch(
                 "aria.scripts.gguf.hf_hub_download",
@@ -192,7 +193,7 @@ class TestDownloadGgufModel:
                     force=True,
                 )
 
-        assert result.name == "model-Q8_0.gguf"
+        assert result.name == "repo-Q8_0.gguf"
 
     def test_downloads_model_successfully(self, tmp_path: Path):
         """Downloads model when not already present."""
@@ -206,7 +207,8 @@ class TestDownloadGgufModel:
             return str(downloaded_file)
 
         with patch(
-            "aria.scripts.gguf._find_gguf_filename", return_value="repo-Q8_0.gguf"
+            "aria.scripts.gguf._find_gguf_filename",
+            return_value="repo-Q8_0.gguf",
         ):
             with patch(
                 "aria.scripts.gguf.hf_hub_download",
@@ -231,7 +233,8 @@ class TestDownloadGgufModel:
             return str(downloaded_file)
 
         with patch(
-            "aria.scripts.gguf._find_gguf_filename", return_value="model-Q8_0.gguf"
+            "aria.scripts.gguf._find_gguf_filename",
+            return_value="model-Q8_0.gguf",
         ):
             with patch("aria.scripts.gguf.hf_hub_download", side_effect=fake_download):
                 download_gguf_model(
@@ -255,7 +258,8 @@ class TestDownloadGgufModel:
             return str(downloaded_file)
 
         with patch(
-            "aria.scripts.gguf._find_gguf_filename", return_value="model-Q8_0.gguf"
+            "aria.scripts.gguf._find_gguf_filename",
+            return_value="model-Q8_0.gguf",
         ):
             with patch(
                 "aria.scripts.gguf.hf_hub_download",
@@ -274,7 +278,8 @@ class TestDownloadGgufModel:
     def test_raises_runtime_error_on_download_failure(self, tmp_path: Path):
         """Raises RuntimeError when hf_hub_download fails."""
         with patch(
-            "aria.scripts.gguf._find_gguf_filename", return_value="model-Q8_0.gguf"
+            "aria.scripts.gguf._find_gguf_filename",
+            return_value="model-Q8_0.gguf",
         ):
             with patch(
                 "aria.scripts.gguf.hf_hub_download",

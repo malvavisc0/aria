@@ -141,8 +141,10 @@ class ServerManager:
         save_state(self.PID_FILE, data)
 
     def _clear_state(self) -> None:
-        """Clear the PID file and reset in-memory PID."""
+        """Clear the PID file and reset all in-memory state."""
         self._pid = None
+        self._process = None
+        self._started_at = None
         clear_state(self.PID_FILE)
 
     @property
@@ -284,8 +286,6 @@ class ServerManager:
             # Otherwise, kill by PID using shared utility
             stop_process(pid, timeout)
 
-        self._process = None
-        self._started_at = None
         self._clear_state()
         return True
 
