@@ -12,23 +12,46 @@ on write and deserializing them back to `list[str]` on read.
 
 It also normalizes `metadata`, `generation`, and `props` fields to/from JSON
 strings in the same spirit as Chainlit's own SQLite handling.
+
+Naming Convention
+-----------------
+Database column names use camelCase (e.g., createdAt, userId) to match
+Chainlit's PostgreSQL schema. Python attributes use snake_case where
+possible, with suffixes for reserved names (e.g., metadata_ for the
+'metadata' column which conflicts with SQLAlchemy's DeclarativeBase).
+
+Workarounds
+-----------
+1. Message Promotion: Assistant messages are promoted to root level
+   (parentId=NULL) on read because Chainlit only displays root messages
+   in thread history. See _promote_assistant_messages().
+
+2. User ID from Context: get_all_user_threads() attempts to infer
+   user_id from Chainlit's context when not provided, supporting
+   multi-user scenarios.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import uuid as _uuid
 from typing import Any, Dict, List, Optional, cast
 
 from chainlit import PersistedUser
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.step import StepDict
 from chainlit.types import PaginatedResponse, Pagination, ThreadFilter
+from chainlit.user import User
 
 logger = logging.getLogger(__name__)
 
+# Constants
+ASSISTANT_MESSAGE_TYPE = "assistant_message"
+
 
 def _json_dumps_or_none(value: Any) -> Optional[str]:
+    """Serialize value to JSON string, returning None for None input."""
     if value is None:
         return None
     return json.dumps(value)
@@ -62,31 +85,107 @@ def _json_loads_or(value: Any, default: Any) -> Any:
 class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
     """Chainlit SQLAlchemy data layer patched for SQLite."""
 
-    async def create_user(self, user) -> Optional[PersistedUser]:
+    def _deserialize_step(self, step: StepDict) -> StepDict:
+        """Deserialize JSON fields in a step dict.
+
+        Args:
+            step: Step dictionary with potentially JSON-string fields
+
+        Returns:
+            Step dictionary with deserialized fields (modified in-place)
+        """
+        step["tags"] = _json_loads_or(step.get("tags"), default=[])
+        step["metadata"] = _json_loads_or(step.get("metadata"), default={})
+        step["generation"] = _json_loads_or(step.get("generation"), default={})
+        return step
+
+    def _deserialize_element(self, element: Dict[str, Any]) -> Dict[str, Any]:
+        """Deserialize JSON fields in an element dict.
+
+        Args:
+            element: Element dictionary with potentially JSON-string fields
+
+        Returns:
+            Element dictionary with deserialized fields (modified in-place)
+        """
+        element["props"] = _json_loads_or(element.get("props"), default={})
+        return element
+
+    def _deserialize_thread(self, thread: Dict[str, Any]) -> Dict[str, Any]:
+        """Deserialize JSON fields in a thread dict.
+
+        Args:
+            thread: Thread dictionary with potentially JSON-string fields
+
+        Returns:
+            Thread dictionary with deserialized fields (modified in-place)
+        """
+        thread["tags"] = _json_loads_or(thread.get("tags"), default=[])
+        thread["metadata"] = _json_loads_or(thread.get("metadata"), default={})
+
+        for step in thread.get("steps") or []:
+            self._deserialize_step(cast(StepDict, step))
+        for element in thread.get("elements") or []:
+            self._deserialize_element(element)
+
+        return thread
+
+    def _promote_assistant_messages(self, steps: list) -> None:
+        """Workaround: Promote assistant messages to root level for display.
+
+        Chainlit only displays root-level messages (parentId=NULL) in thread
+        history. Messages created inside workflow context get parentId set
+        automatically, but we want them visible in thread history.
+
+        This modifies steps in-place.
+
+        Args:
+            steps: List of step dictionaries to process
+        """
+        for step in steps:
+            if step.get("type") == ASSISTANT_MESSAGE_TYPE and step.get("parentId"):
+                logger.debug(
+                    f"Promoting assistant message {step.get('id')} to root level "
+                    f"(was child of {step.get('parentId')})"
+                )
+                step["parentId"] = None
+
+    async def create_user(self, user: User) -> Optional[PersistedUser]:
         """Override create_user to include display_name in the INSERT.
 
         Chainlit's base implementation omits display_name from the INSERT
         statement, which violates the NOT NULL constraint on users.display_name.
         We fall back to the identifier when display_name is not provided.
-        """
-        import json
-        import uuid as _uuid
 
+        Uses INSERT OR IGNORE to handle race conditions where concurrent
+        requests might attempt to create the same user.
+
+        Args:
+            user: Chainlit User object with identifier and optional display_name
+
+        Returns:
+            PersistedUser if successful, None otherwise
+        """
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
                 f"SQLiteSQLAlchemyDataLayer: create_user, "
                 f"user_identifier={user.identifier}"
             )
 
-        existing_user = await self.get_user(user.identifier)
         display_name = getattr(user, "display_name", None) or user.identifier
         metadata_str = json.dumps(user.metadata) if user.metadata else "{}"
+
+        # Check if user exists
+        existing_user = await self.get_user(user.identifier)
 
         if not existing_user:
             user_id = str(_uuid.uuid4())
             created_at = await self.get_current_timestamp()
+
+            # Use INSERT OR IGNORE to handle race condition
+            # If another request inserted the same user, this will be ignored
             query = (
-                'INSERT INTO users ("id", "identifier", "display_name", '
+                'INSERT OR IGNORE INTO users ("id", "identifier", "display_name", '
                 '"createdAt", "metadata") '
                 "VALUES (:id, :identifier, :display_name, :createdAt, :metadata)"
             )
@@ -100,20 +199,21 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                     "metadata": metadata_str,
                 },
             )
-        else:
-            query = (
-                'UPDATE users SET "metadata" = :metadata, '
-                '"display_name" = :display_name '
-                'WHERE "identifier" = :identifier'
-            )
-            await self.execute_sql(
-                query=query,
-                parameters={
-                    "metadata": metadata_str,
-                    "display_name": display_name,
-                    "identifier": user.identifier,
-                },
-            )
+
+        # Always update metadata (idempotent operation)
+        update_query = (
+            'UPDATE users SET "metadata" = :metadata, '
+            '"display_name" = :display_name '
+            'WHERE "identifier" = :identifier'
+        )
+        await self.execute_sql(
+            query=update_query,
+            parameters={
+                "metadata": metadata_str,
+                "display_name": display_name,
+                "identifier": user.identifier,
+            },
+        )
 
         return await self.get_user(user.identifier)
 
@@ -122,23 +222,36 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         thread_id: str,
         name: Optional[str] = None,
         user_id: Optional[str] = None,
-        metadata: Optional[Dict] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         tags: Optional[List[str]] = None,
     ):
+        """Update thread with SQLite-compatible tags serialization.
+
+        Args:
+            thread_id: Thread ID to update
+            name: Optional new name
+            user_id: Optional user ID
+            metadata: Optional metadata dict
+            tags: Optional list of tags (will be JSON-serialized for SQLite)
+        """
         # Chainlit passes `tags` as Python list; sqlite cannot bind it.
-        tags_json = _json_dumps_or_none(tags) if tags is not None else None
+        tags_json = _json_dumps_or_none(tags)
+        # Pass tags as Any to bypass type check - we intentionally pass a JSON string
+        # for SQLite compatibility, even though the base class expects List[str]
         return await super().update_thread(
             thread_id=thread_id,
             name=name,
             user_id=user_id,
             metadata=metadata,
-            # Store as JSON string (TEXT column).
-            tags=tags_json,
+            tags=cast(Any, tags_json),
         )
 
     async def create_step(self, step_dict: StepDict):
-        """Create/update a step, ensuring SQLite-safe serialization."""
+        """Create/update a step, ensuring SQLite-safe serialization.
 
+        Args:
+            step_dict: Step dictionary with potentially list-type tags
+        """
         # Chainlit does not json.dumps(tags) for steps, but for SQLite we store
         # tags as TEXT containing a JSON array.
         patched: Dict[str, Any] = dict(step_dict)
@@ -150,6 +263,15 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
     async def get_all_user_threads(
         self, user_id: Optional[str] = None, thread_id: Optional[str] = None
     ):
+        """Get all threads for a user with proper JSON deserialization.
+
+        Args:
+            user_id: Optional user ID (if None, attempts to infer from context)
+            thread_id: Optional specific thread ID
+
+        Returns:
+            List of thread dictionaries with deserialized JSON fields
+        """
         # Fix for multi-user support: If user_id is not provided, try to get it
         # from the current Chainlit session context. This ensures each user
         # only sees their own threads.
@@ -193,29 +315,11 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         # Deserialize JSON-string columns into the shapes Chainlit's types expect.
         for t in threads:
             logger.debug(f"Thread {t.get('id')}: {len(t.get('steps', []))} steps")
-            t["tags"] = _json_loads_or(t.get("tags"), default=[])
-            t["metadata"] = _json_loads_or(t.get("metadata"), default={})
+            self._deserialize_thread(cast(Dict[str, Any], t))
 
-            for s in t.get("steps") or []:
-                # `metadata`/`generation` are already normalized by Chainlit for SQLite
-                # in some codepaths, but we keep this defensive.
-                s["tags"] = _json_loads_or(s.get("tags"), default=[])
-                s["metadata"] = _json_loads_or(s.get("metadata"), default={})
-                s["generation"] = _json_loads_or(s.get("generation"), default={})
-
-                # FIX: Promote assistant messages to root level for thread display
-                # Chainlit only displays root-level messages (parentId=NULL) in thread history.
-                # Messages created inside workflow context get parentId set automatically,
-                # but we want them to appear in thread history, so we clear parentId on read.
-                if s.get("type") == "assistant_message" and s.get("parentId"):
-                    logger.debug(
-                        f"Promoting assistant message {s.get('id')} to root level "
-                        f"(was child of {s.get('parentId')})"
-                    )
-                    s["parentId"] = None
-
-            for e in t.get("elements") or []:
-                e["props"] = _json_loads_or(e.get("props"), default={})
+            # Promote assistant messages to root level for thread display
+            steps = t.get("steps") or []
+            self._promote_assistant_messages(steps)
 
         return threads
 
@@ -232,12 +336,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         if step is None:
             return None
 
-        # Deserialize JSON fields
-        step["tags"] = _json_loads_or(step.get("tags"), default=[])
-        step["metadata"] = _json_loads_or(step.get("metadata"), default={})
-        step["generation"] = _json_loads_or(step.get("generation"), default={})
-
-        return step
+        return self._deserialize_step(step)
 
     async def list_threads(
         self, pagination: Pagination, filters: ThreadFilter
@@ -255,25 +354,10 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
 
         # Deserialize JSON fields in all returned threads
         for thread in response.data:
-            thread["tags"] = _json_loads_or(thread.get("tags"), default=[])
-            thread["metadata"] = _json_loads_or(thread.get("metadata"), default={})
+            self._deserialize_thread(thread)
 
-            # Deserialize nested steps
-            for step in thread.get("steps") or []:
-                step["tags"] = _json_loads_or(step.get("tags"), default=[])
-                step["metadata"] = _json_loads_or(step.get("metadata"), default={})
-                step["generation"] = _json_loads_or(step.get("generation"), default={})
-
-                # FIX: Promote assistant messages to root level for thread display
-                if step.get("type") == "assistant_message" and step.get("parentId"):
-                    logger.debug(
-                        f"Promoting assistant message {step.get('id')} to root level "
-                        f"(was child of {step.get('parentId')})"
-                    )
-                    step["parentId"] = None
-
-            # Deserialize nested elements
-            for element in thread.get("elements") or []:
-                element["props"] = _json_loads_or(element.get("props"), default={})
+            # Promote assistant messages to root level for thread display
+            steps = thread.get("steps") or []
+            self._promote_assistant_messages(steps)
 
         return response

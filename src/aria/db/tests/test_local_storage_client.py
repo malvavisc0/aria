@@ -103,13 +103,11 @@ class TestLocalStorageClient:
             object_key="test.txt", data=b"Original", overwrite=True
         )
 
-        # Try to upload again with overwrite=False
-        result = await client.upload_file(
-            object_key="test.txt", data=b"Updated", overwrite=False
-        )
-
-        # Should return empty dict on error
-        assert result == {}
+        # Try to upload again with overwrite=False - should raise FileExistsError
+        with pytest.raises(FileExistsError, match="File already exists"):
+            await client.upload_file(
+                object_key="test.txt", data=b"Updated", overwrite=False
+            )
 
         # Verify original file was not overwritten
         file_path = client.storage_path / "test.txt"
