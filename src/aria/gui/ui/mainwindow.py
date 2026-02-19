@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowJRBjPF.ui'
+## Form generated from reading UI file 'mainwindowHWYGeD.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -151,7 +151,7 @@ class Ui_MainWindow(object):
         self.formLayout_3.setContentsMargins(0, 0, 0, 0)
         self.label_8 = QLabel(self.formLayoutWidget_3)
         self.label_8.setObjectName("label_8")
-        self.label_8.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_8.setStyleSheet("")
 
         self.formLayout_3.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_8)
 
@@ -164,7 +164,7 @@ class Ui_MainWindow(object):
 
         self.label_13 = QLabel(self.formLayoutWidget_3)
         self.label_13.setObjectName("label_13")
-        self.label_13.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_13.setStyleSheet("")
 
         self.formLayout_3.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_13)
 
@@ -177,7 +177,7 @@ class Ui_MainWindow(object):
 
         self.label_9 = QLabel(self.formLayoutWidget_3)
         self.label_9.setObjectName("label_9")
-        self.label_9.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_9.setStyleSheet("")
 
         self.formLayout_3.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_9)
 
@@ -190,7 +190,7 @@ class Ui_MainWindow(object):
 
         self.label_12 = QLabel(self.formLayoutWidget_3)
         self.label_12.setObjectName("label_12")
-        self.label_12.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_12.setStyleSheet("")
 
         self.formLayout_3.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_12)
 
@@ -203,7 +203,7 @@ class Ui_MainWindow(object):
 
         self.label_14 = QLabel(self.formLayoutWidget_3)
         self.label_14.setObjectName("label_14")
-        self.label_14.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_14.setStyleSheet("")
 
         self.formLayout_3.setWidget(4, QFormLayout.ItemRole.LabelRole, self.label_14)
 
@@ -266,7 +266,7 @@ class Ui_MainWindow(object):
         self.formLayout.setContentsMargins(0, 0, 0, 0)
         self.label_2 = QLabel(self.formLayoutWidget)
         self.label_2.setObjectName("label_2")
-        self.label_2.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_2.setStyleSheet("")
 
         self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_2)
 
@@ -279,7 +279,7 @@ class Ui_MainWindow(object):
 
         self.label_3 = QLabel(self.formLayoutWidget)
         self.label_3.setObjectName("label_3")
-        self.label_3.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_3.setStyleSheet("")
 
         self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_3)
 
@@ -292,7 +292,7 @@ class Ui_MainWindow(object):
 
         self.label_6 = QLabel(self.formLayoutWidget)
         self.label_6.setObjectName("label_6")
-        self.label_6.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_6.setStyleSheet("")
 
         self.formLayout.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_6)
 
@@ -305,7 +305,7 @@ class Ui_MainWindow(object):
 
         self.label_10 = QLabel(self.formLayoutWidget)
         self.label_10.setObjectName("label_10")
-        self.label_10.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_10.setStyleSheet("")
 
         self.formLayout.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_10)
 
@@ -318,7 +318,7 @@ class Ui_MainWindow(object):
 
         self.label_11 = QLabel(self.formLayoutWidget)
         self.label_11.setObjectName("label_11")
-        self.label_11.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_11.setStyleSheet("")
 
         self.formLayout.setWidget(4, QFormLayout.ItemRole.LabelRole, self.label_11)
 
@@ -343,19 +343,19 @@ class Ui_MainWindow(object):
         self.formLayout_2.setContentsMargins(0, 0, 0, 0)
         self.label_18 = QLabel(self.formLayoutWidget_2)
         self.label_18.setObjectName("label_18")
-        self.label_18.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_18.setStyleSheet("")
 
         self.formLayout_2.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_18)
 
         self.label_19 = QLabel(self.formLayoutWidget_2)
         self.label_19.setObjectName("label_19")
-        self.label_19.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_19.setStyleSheet("")
 
         self.formLayout_2.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_19)
 
         self.label_20 = QLabel(self.formLayoutWidget_2)
         self.label_20.setObjectName("label_20")
-        self.label_20.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_20.setStyleSheet("")
 
         self.formLayout_2.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_20)
 
@@ -382,7 +382,7 @@ class Ui_MainWindow(object):
 
         self.label_24 = QLabel(self.formLayoutWidget_2)
         self.label_24.setObjectName("label_24")
-        self.label_24.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_24.setStyleSheet("")
 
         self.formLayout_2.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_24)
 
@@ -395,7 +395,7 @@ class Ui_MainWindow(object):
 
         self.label_21 = QLabel(self.formLayoutWidget_2)
         self.label_21.setObjectName("label_21")
-        self.label_21.setStyleSheet("color: rgb(61, 56, 70)")
+        self.label_21.setStyleSheet("")
 
         self.formLayout_2.setWidget(4, QFormLayout.ItemRole.LabelRole, self.label_21)
 
@@ -450,30 +450,17 @@ class Ui_MainWindow(object):
 
         self.formLayout_4.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_26)
 
-        self.label_27 = QLabel(self.formLayoutWidget_4)
-        self.label_27.setObjectName("label_27")
-
-        self.formLayout_4.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_27)
-
-        self.label_28 = QLabel(self.formLayoutWidget_4)
-        self.label_28.setObjectName("label_28")
-
-        self.formLayout_4.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_28)
-
-        self.pushButton_CreateUser = QPushButton(self.formLayoutWidget_4)
-        self.pushButton_CreateUser.setObjectName("pushButton_CreateUser")
-        self.pushButton_CreateUser.setEnabled(False)
-
-        self.formLayout_4.setWidget(
-            3, QFormLayout.ItemRole.LabelRole, self.pushButton_CreateUser
-        )
-
         self.lineEdit_UserName = QLineEdit(self.formLayoutWidget_4)
         self.lineEdit_UserName.setObjectName("lineEdit_UserName")
 
         self.formLayout_4.setWidget(
             0, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserName
         )
+
+        self.label_27 = QLabel(self.formLayoutWidget_4)
+        self.label_27.setObjectName("label_27")
+
+        self.formLayout_4.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_27)
 
         self.lineEdit_UserEmail = QLineEdit(self.formLayoutWidget_4)
         self.lineEdit_UserEmail.setObjectName("lineEdit_UserEmail")
@@ -482,6 +469,11 @@ class Ui_MainWindow(object):
             1, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserEmail
         )
 
+        self.label_28 = QLabel(self.formLayoutWidget_4)
+        self.label_28.setObjectName("label_28")
+
+        self.formLayout_4.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_28)
+
         self.lineEdit_UserPassword = QLineEdit(self.formLayoutWidget_4)
         self.lineEdit_UserPassword.setObjectName("lineEdit_UserPassword")
         self.lineEdit_UserPassword.setMaxLength(48)
@@ -489,6 +481,14 @@ class Ui_MainWindow(object):
 
         self.formLayout_4.setWidget(
             2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword
+        )
+
+        self.pushButton_CreateUser = QPushButton(self.formLayoutWidget_4)
+        self.pushButton_CreateUser.setObjectName("pushButton_CreateUser")
+        self.pushButton_CreateUser.setEnabled(False)
+
+        self.formLayout_4.setWidget(
+            3, QFormLayout.ItemRole.FieldRole, self.pushButton_CreateUser
         )
 
         self.verticalLayout_4.addWidget(self.groupBox_4)
@@ -671,14 +671,15 @@ class Ui_MainWindow(object):
         )
         self.groupBox_4.setTitle(QCoreApplication.translate("MainWindow", "New", None))
         self.label_26.setText(QCoreApplication.translate("MainWindow", "Name", None))
+        self.lineEdit_UserName.setText("")
         self.label_27.setText(QCoreApplication.translate("MainWindow", "E-Mail", None))
         self.label_28.setText(
             QCoreApplication.translate("MainWindow", "Password", None)
         )
+        self.lineEdit_UserPassword.setInputMask("")
         self.pushButton_CreateUser.setText(
             QCoreApplication.translate("MainWindow", "Save", None)
         )
-        self.lineEdit_UserPassword.setInputMask("")
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_users),
             QCoreApplication.translate("MainWindow", "Users", None),

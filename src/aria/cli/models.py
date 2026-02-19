@@ -14,7 +14,7 @@ Example:
     # Download the chat model
     aria models download --model chat
 
-    # Download the vision-language model
+    # Download the vision-language model (includes mmproj)
     aria models download --model vl
 
     # Download the embeddings model
@@ -23,8 +23,8 @@ Example:
     # Force re-download of the chat model
     aria models download --model chat --force
 
-    # Download a custom model by repo ID and quantization
-    aria models download --repo-id "org/model-gguf" --quantization Q4_K_M
+    # Download a custom model by repo ID and filename
+    aria models download --repo-id "org/model-gguf" --filename "model-Q8_0.gguf"
 
     # List all configured models and their status
     aria models list
@@ -44,6 +44,7 @@ from rich.table import Table
 
 from aria.config.api import LlamaCpp as LlamaCppConfig
 from aria.config.huggingface import HuggingFace
+from aria.config.models import Chat, Embeddings, Vision
 from aria.scripts.gguf import download_gguf_model, is_model_downloaded
 
 app = typer.Typer(
@@ -54,45 +55,56 @@ app = typer.Typer(
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
-# Mapping of model aliases to (repo_id_env_var, quantization_env_var) pairs
-_MODEL_ALIASES = {
-    "chat": ("CHAT_MODEL", "CHAT_MODEL_TYPE"),
-    "vl": ("VL_MODEL", "VL_MODEL_TYPE"),
-    "embeddings": ("EMBEDDINGS_MODEL", "EMBEDDINGS_MODEL_TYPE"),
-}
+# Valid model aliases
+_MODEL_ALIASES = ("chat", "vl", "embeddings")
 
 
 def _resolve_model_config(alias: str) -> tuple[str, str]:
-    """Resolve a model alias to (repo_id, quantization).
+    """Resolve a model alias to (repo_id, filename) using config classes.
 
     Args:
         alias: One of 'chat', 'vl', or 'embeddings'.
 
     Returns:
-        Tuple of (repo_id, quantization).
+        Tuple of (repo_id, filename).
 
     Raises:
-        typer.BadParameter: If the alias is unknown or env vars are not set.
+        typer.BadParameter: If the alias is unknown or config is not set.
     """
-    import os
-
-    if alias not in _MODEL_ALIASES:
+    if alias == "chat":
+        if not Chat.repo_id:
+            raise typer.BadParameter(
+                "CHAT_MODEL_REPO is not set. Please configure it in your .env file."
+            )
+        if not Chat.filename:
+            raise typer.BadParameter(
+                "CHAT_MODEL is not set. Please configure it in your .env file."
+            )
+        return Chat.repo_id, Chat.filename
+    elif alias == "vl":
+        if not Vision.repo_id:
+            raise typer.BadParameter(
+                "VL_MODEL_REPO is not set. Please configure it in your .env file."
+            )
+        if not Vision.filename:
+            raise typer.BadParameter(
+                "VL_MODEL is not set. Please configure it in your .env file."
+            )
+        return Vision.repo_id, Vision.filename
+    elif alias == "embeddings":
+        if not Embeddings.repo_id:
+            raise typer.BadParameter(
+                "EMBEDDINGS_MODEL_REPO is not set. Please configure it in your .env file."
+            )
+        if not Embeddings.filename:
+            raise typer.BadParameter(
+                "EMBEDDINGS_MODEL is not set. Please configure it in your .env file."
+            )
+        return Embeddings.repo_id, Embeddings.filename
+    else:
         raise typer.BadParameter(
             f"Unknown model alias '{alias}'. Choose from: {', '.join(_MODEL_ALIASES)}"
         )
-
-    repo_env, quant_env = _MODEL_ALIASES[alias]
-
-    repo_id = os.getenv(repo_env)
-    if not repo_id:
-        raise typer.BadParameter(
-            f"Environment variable '{repo_env}' is not set. "
-            f"Please configure it in your .env file."
-        )
-
-    quantization = os.getenv(quant_env, "Q8_0")
-
-    return repo_id, quantization
 
 
 @app.command("download")
@@ -113,12 +125,12 @@ def download_command(
             "Used when not specifying --model.",
         ),
     ] = None,
-    quantization: Annotated[
+    filename: Annotated[
         Optional[str],
         typer.Option(
-            "--quantization",
-            "-q",
-            help="Quantization type to download (e.g. Q8_0, Q4_K_M). "
+            "--filename",
+            "-f",
+            help="Exact filename to download (e.g. 'model-Q8_0.gguf'). "
             "Used together with --repo-id.",
         ),
     ] = None,
@@ -141,7 +153,7 @@ def download_command(
         bool,
         typer.Option(
             "--force",
-            "-f",
+            "-F",
             help="Force re-download even if the model file already exists.",
         ),
     ] = False,
@@ -149,16 +161,18 @@ def download_command(
     """Download a GGUF model file from HuggingFace Hub.
 
     You can specify a model by alias (--model chat|vl|embeddings) which reads
-    the repo ID and quantization from your .env configuration, or provide
-    a custom --repo-id and --quantization directly.
+    the repo ID and filename from your .env configuration, or provide
+    a custom --repo-id and --filename directly.
 
     If the model is already downloaded, the command skips the download unless
     --force is specified.
 
+    For VL models, the mmproj file is also downloaded automatically.
+
     Args:
         model: Alias for a configured model ('chat', 'vl', 'embeddings').
         repo_id: Custom HuggingFace repo ID (used without --model).
-        quantization: Quantization type (used with --repo-id).
+        filename: Exact filename to download (used with --repo-id).
         models_dir: Override the default models directory.
         token: HuggingFace API token for gated/private models.
         force: Re-download even if already present.
@@ -168,29 +182,30 @@ def download_command(
         # Download configured chat model
         aria models download --model chat
 
+        # Download VL model (includes mmproj)
+        aria models download --model vl
+
         # Force re-download
         aria models download --model chat --force
 
         # Custom repo
-        aria models download --repo-id "org/model-gguf" --quantization Q4_K_M
+        aria models download --repo-id "org/model-gguf" --filename "model-Q8_0.gguf"
         ```
     """
-    # Resolve repo_id and quantization
+    # Resolve repo_id and filename
     if model:
         try:
-            resolved_repo_id, resolved_quantization = _resolve_model_config(
-                model
-            )
+            resolved_repo_id, resolved_filename = _resolve_model_config(model)
         except typer.BadParameter as e:
             error_console.print(f"[red]Error: {e}[/red]")
             raise typer.Exit(1)
-    elif repo_id:
+    elif repo_id and filename:
         resolved_repo_id = repo_id
-        resolved_quantization = quantization or "Q8_0"
+        resolved_filename = filename
     else:
         error_console.print(
             "[red]Error: Specify either --model (chat|vl|embeddings) "
-            "or --repo-id with optional --quantization.[/red]"
+            "or both --repo-id and --filename.[/red]"
         )
         raise typer.Exit(1)
 
@@ -203,7 +218,7 @@ def download_command(
     console.print(
         Panel(
             f"[bold]Repo:[/bold] {resolved_repo_id}\n"
-            f"[bold]Quantization:[/bold] {resolved_quantization}\n"
+            f"[bold]Filename:[/bold] {resolved_filename}\n"
             f"[bold]Destination:[/bold] {target_dir}\n"
             f"[bold]Token:[/bold] {'[green]set[/green]' if resolved_token else '[yellow]not set (public only)[/yellow]'}\n"
             f"[bold]Force:[/bold] {'[yellow]yes[/yellow]' if force else 'no'}",
@@ -215,7 +230,7 @@ def download_command(
     try:
         dest = download_gguf_model(
             repo_id=resolved_repo_id,
-            quantization=resolved_quantization,
+            filename=resolved_filename,
             models_dir=target_dir,
             token=resolved_token,
             force=force,
@@ -246,6 +261,53 @@ def download_command(
         )
         raise typer.Exit(1)
 
+    # For VL models, also download mmproj
+    if model == "vl":
+        mmproj_filename = Vision.mmproj_filename
+        if mmproj_filename:
+            console.print(
+                Panel(
+                    f"[bold]Repo:[/bold] {resolved_repo_id}\n"
+                    f"[bold]Filename:[/bold] {mmproj_filename}\n"
+                    f"[bold]Destination:[/bold] {target_dir}",
+                    title="[bold]MMPROJ Download (Vision Projector)[/bold]",
+                    border_style="magenta",
+                )
+            )
+            try:
+                mmproj_dest = download_gguf_model(
+                    repo_id=resolved_repo_id,
+                    filename=mmproj_filename,
+                    models_dir=target_dir,
+                    token=resolved_token,
+                    force=force,
+                )
+                console.print(
+                    Panel(
+                        f"[green]✓[/green] MMPROJ ready at: [dim]{mmproj_dest}[/dim]",
+                        title="[bold]MMPROJ Done[/bold]",
+                        border_style="green",
+                    )
+                )
+            except FileNotFoundError as e:
+                error_console.print(
+                    Panel(
+                        f"[red]MMPROJ file not found: {e}[/red]\n"
+                        "[yellow]VL model may not have vision capabilities without mmproj.[/yellow]",
+                        title="[bold]Warning[/bold]",
+                        border_style="yellow",
+                    )
+                )
+            except Exception as e:
+                error_console.print(
+                    Panel(
+                        f"[red]MMPROJ download failed: {e}[/red]\n"
+                        "[yellow]VL model may not have vision capabilities without mmproj.[/yellow]",
+                        title="[bold]Warning[/bold]",
+                        border_style="yellow",
+                    )
+                )
+
 
 @app.command("list")
 def list_command(
@@ -260,41 +322,65 @@ def list_command(
     """Show configured models and their download status.
 
     Displays a table of all models configured in the environment, showing
-    the repository ID, quantization type, and whether the model file has
-    been downloaded to the models directory.
+    the repository ID, filename, and whether the model file has been
+    downloaded to the models directory.
+
+    For VL models, also shows the mmproj file status.
 
     Example:
         ```bash
         aria models list
         ```
     """
-    import os
-
     target_dir = models_dir or LlamaCppConfig.models_path
 
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Alias", style="cyan", width=12)
     table.add_column("Repo ID", style="white")
-    table.add_column("Quantization", style="yellow", width=14)
+    table.add_column("Filename", style="yellow")
     table.add_column("Downloaded", style="green", width=12)
+    table.add_column("MMPROJ", style="magenta", width=10)
 
-    for alias, (repo_env, quant_env) in _MODEL_ALIASES.items():
-        repo_id_val = os.getenv(repo_env, "")
-        quant_val = os.getenv(quant_env, "Q8_0")
+    # Build model list from config classes
+    model_configs = [
+        ("chat", Chat.repo_id, Chat.filename),
+        ("vl", Vision.repo_id, Vision.filename),
+        ("embeddings", Embeddings.repo_id, Embeddings.filename),
+    ]
 
+    for alias, repo_id_val, filename_val in model_configs:
         if not repo_id_val:
             table.add_row(
                 alias,
-                f"[dim]not configured ({repo_env})[/dim]",
-                quant_val,
+                "[dim]not configured[/dim]",
+                filename_val or "[dim]N/A[/dim]",
                 "[dim]N/A[/dim]",
+                "",
             )
             continue
 
-        downloaded = is_model_downloaded(repo_id_val, quant_val, target_dir)
+        if not filename_val:
+            table.add_row(
+                alias,
+                repo_id_val,
+                "[dim]not configured[/dim]",
+                "[dim]N/A[/dim]",
+                "",
+            )
+            continue
+
+        downloaded = is_model_downloaded(filename_val, target_dir)
         status = "[green]✓ Yes[/green]" if downloaded else "[red]✗ No[/red]"
 
-        table.add_row(alias, repo_id_val, quant_val, status)
+        # Check mmproj for VL model
+        mmproj_status = ""
+        if alias == "vl":
+            mmproj_file = Vision.mmproj_filename
+            if mmproj_file:
+                mmproj_ok = is_model_downloaded(mmproj_file, target_dir)
+                mmproj_status = "[green]✓[/green]" if mmproj_ok else "[red]✗[/red]"
+
+        table.add_row(alias, repo_id_val, filename_val, status, mmproj_status)
 
     console.print(
         Panel(
@@ -317,8 +403,6 @@ def memory_command():
         aria models memory
         ```
     """
-    import os
-
     from aria.helpers.memory import (
         detect_system_ram,
         estimate_kv_cache_mb,
@@ -332,24 +416,24 @@ def memory_command():
 
     models_dir = LlamaCppConfig.models_path
 
-    # Model configurations with context sizes
+    # Model configurations with context sizes from config classes
     model_configs = [
         (
             "chat",
-            os.getenv("CHAT_MODEL", ""),
-            os.getenv("CHAT_MODEL_TYPE", "Q8_0"),
+            Chat.repo_id,
+            Chat.filename,
             LlamaCppConfig.chat_context_size,
         ),
         (
             "vl",
-            os.getenv("VL_MODEL", ""),
-            os.getenv("VL_MODEL_TYPE", "Q8_0"),
+            Vision.repo_id,
+            Vision.filename,
             LlamaCppConfig.vl_context_size,
         ),
         (
             "embeddings",
-            os.getenv("EMBEDDINGS_MODEL", ""),
-            os.getenv("EMBEDDINGS_MODEL_TYPE", "Q8_0"),
+            Embeddings.repo_id,
+            Embeddings.filename,
             LlamaCppConfig.embeddings_context_size,
         ),
     ]
@@ -359,12 +443,13 @@ def memory_command():
     total_model_size = 0
     total_kv_cache = 0
 
-    for alias, repo_id, quantization, ctx_size in model_configs:
-        if not repo_id:
+    for alias, repo_id, filename, ctx_size in model_configs:
+        if not repo_id or not filename:
             models_info.append(
                 {
                     "alias": alias,
-                    "repo_id": "[dim]not configured[/dim]",
+                    "repo_id": repo_id or "[dim]not configured[/dim]",
+                    "filename": filename or "[dim]not configured[/dim]",
                     "size_mb": 0,
                     "ctx_size": ctx_size,
                     "kv_cache_mb": 0,
@@ -373,7 +458,7 @@ def memory_command():
             )
             continue
 
-        model_path = get_model_path(repo_id, quantization, models_dir)
+        model_path = get_model_path(filename, models_dir)
         if model_path:
             size_mb = get_model_file_size(model_path)
             kv_cache_mb = estimate_kv_cache_mb(ctx_size, size_mb)
@@ -383,6 +468,7 @@ def memory_command():
                 {
                     "alias": alias,
                     "repo_id": repo_id,
+                    "filename": filename,
                     "size_mb": size_mb,
                     "ctx_size": ctx_size,
                     "kv_cache_mb": kv_cache_mb,
@@ -394,6 +480,7 @@ def memory_command():
                 {
                     "alias": alias,
                     "repo_id": repo_id,
+                    "filename": filename,
                     "size_mb": 0,
                     "ctx_size": ctx_size,
                     "kv_cache_mb": 0,
@@ -417,7 +504,7 @@ def memory_command():
             size_str = f"{info['size_mb'] / 1024:.1f} GB"
             kv_str = f"~{info['kv_cache_mb']} MB"
             status = "[green]✓ Downloaded[/green]"
-        elif info["size_mb"] == 0 and "not configured" in info["repo_id"]:
+        elif info["size_mb"] == 0 and "not configured" in str(info["repo_id"]):
             size_str = "[dim]N/A[/dim]"
             kv_str = "[dim]N/A[/dim]"
             status = "[dim]Not configured[/dim]"
@@ -427,7 +514,7 @@ def memory_command():
             status = "[red]✗ Not downl.[/red]"
 
         model_table.add_row(
-            f"{info['alias']} ({info['repo_id'].split('/')[-1] if '/' in info['repo_id'] else info['repo_id']})",
+            f"{info['alias']} ({info['filename'][:30]}{'...' if len(info['filename']) > 30 else ''})",
             size_str,
             str(info["ctx_size"]),
             kv_str,
@@ -476,11 +563,7 @@ def memory_command():
         for i, gpu in enumerate(gpus):
             free_mb = free_vram[i] if i < len(free_vram) else 0
             fits = total_model_size <= free_mb
-            status = (
-                "[green]✓ Fits[/green]"
-                if fits
-                else "[red]✗ Insufficient[/red]"
-            )
+            status = "[green]✓ Fits[/green]" if fits else "[red]✗ Insufficient[/red]"
             hw_table.add_row(
                 f"GPU {i}: {gpu.name}",
                 f"{gpu.total_memory} MB",
@@ -500,9 +583,7 @@ def memory_command():
     # RAM info
     if total_ram_mb > 0:
         fits = total_kv_cache <= avail_ram_mb * 0.5
-        status = (
-            "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
-        )
+        status = "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
         hw_table.add_row(
             "System RAM",
             f"{total_ram_mb} MB",

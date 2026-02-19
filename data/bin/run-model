@@ -16,6 +16,7 @@ set -euo pipefail
 #   -l, --n-gpu-layers N    Number of layers to offload to GPU (default: 999)
 #   -t, --temp TEMP         Temperature for generation (default: 0.65)
 #   --top-p TOP_P           Top-p sampling value (default: 0.95)
+#   -m, --mmproj PATH       Path to mmproj file for vision models
 #   -d, --debug             Enable debug output
 #   -f, --log-file FILE     Log output to FILE (server logs in non-debug mode)
 #   -h, --help              Show this help message
@@ -76,9 +77,11 @@ DEFAULT_CTX_SIZE=8192
 : "${CONT_BATCHING:="--cont-batching"}"
 : "${NO_KV_OFFLOAD:="--no-kv-offload"}"
 : "${LLAMA_SERVER_PATH:="llama-server"}" # Default added
+: "${MMPROJ_PATH:=""}"
 
 # Global variables
 MODEL_PATH=""
+MMPROJ_PATH=""
 REQUESTED_CTX=""
 SERVER_PID=""
 MAX_SAFE_CTX=0
@@ -829,6 +832,15 @@ parse_args() {
 				exit 1
 			fi
 			;;
+		-m | --mmproj)
+			if [[ -n "$2" ]]; then
+				MMPROJ_PATH="$2"
+				shift 2
+			else
+				log_error "Path to mmproj file required after --mmproj"
+				exit 1
+			fi
+			;;
 		*)
 			if [[ -z "$MODEL_PATH" ]]; then
 				MODEL_PATH="$1"
@@ -861,6 +873,7 @@ ${BOLD}${BCYAN}OPTIONS${RST}
   ${GREEN}-l, --n-gpu-layers${RST} N    Number of layers to offload to GPU ${DIM}(default: 999)${RST}
   ${GREEN}-t, --temp${RST} TEMP         Temperature for generation ${DIM}(default: 0.65)${RST}
   ${GREEN}--top-p${RST} TOP_P           Top-p sampling value ${DIM}(default: 0.95)${RST}
+  ${GREEN}-m, --mmproj${RST} PATH       Path to mmproj file for vision models
   ${GREEN}-d, --debug${RST}             Enable debug output
   ${GREEN}-f, --log-file${RST} FILE     Log output to FILE
   ${GREEN}-h, --help${RST}              Show this help message
@@ -1114,6 +1127,11 @@ build_command() {
 		--port "$PORT"
 		$NO_KV_OFFLOAD
 	)
+
+	# Add mmproj if specified (for vision models)
+	if [[ -n "$MMPROJ_PATH" ]]; then
+		cmd_array+=(--mmproj "$MMPROJ_PATH")
+	fi
 
 	# Display command in debug mode
 	if [[ "$DEBUG" -eq 1 ]]; then

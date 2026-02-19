@@ -100,11 +100,9 @@ def _check_env_vars(checks: List[CheckResult]) -> None:
 
 def _check_data_folder(checks: List[CheckResult]) -> None:
     """Check that the data folder exists."""
-    data_folder = os.getenv("DATA_FOLDER")
-    if not data_folder:
-        return  # Already caught by env var check
+    from aria.config.folders import Data
 
-    data_path = Path.cwd() / data_folder
+    data_path = Data.path
     if data_path.exists():
         checks.append(CheckResult(name="data folder", passed=True))
     else:
@@ -113,20 +111,17 @@ def _check_data_folder(checks: List[CheckResult]) -> None:
                 name="data folder",
                 passed=False,
                 error=f"Data folder does not exist: {data_path}",
-                hint=f"Create the directory: mkdir -p {data_folder}",
+                hint=f"Create the directory: mkdir -p {data_path}",
             )
         )
 
 
 def _check_binaries(checks: List[CheckResult]) -> None:
     """Check that required binaries exist."""
-    data_folder = os.getenv("DATA_FOLDER")
-    bin_dir = os.getenv("LLAMA_CPP_BIN_DIR")
+    from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.config.folders import Data
 
-    if not data_folder or not bin_dir:
-        return  # Already caught by env var check
-
-    bin_path = Path.cwd() / data_folder / bin_dir
+    bin_path = LlamaCppConfig.bin_path
 
     # Check llama-server
     llama_server = bin_path / "llama-server"
@@ -143,7 +138,7 @@ def _check_binaries(checks: List[CheckResult]) -> None:
         )
 
     # Check run-model script
-    run_model = Path.cwd() / data_folder / "bin" / "run-model"
+    run_model = Data.path / "bin" / "run-model"
     if run_model.exists():
         checks.append(CheckResult(name="run-model script", passed=True))
     else:
@@ -160,29 +155,18 @@ def _check_binaries(checks: List[CheckResult]) -> None:
 def _check_models(checks: List[CheckResult]) -> None:
     """Check that all required GGUF models are downloaded."""
     from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.config.models import Chat, Embeddings, Vision
     from aria.scripts.gguf import is_model_downloaded
 
     models_dir = LlamaCppConfig.models_path
     model_checks = [
-        (
-            "chat",
-            os.getenv("CHAT_MODEL", ""),
-            os.getenv("CHAT_MODEL_TYPE", "Q8_0"),
-        ),
-        (
-            "vl",
-            os.getenv("VL_MODEL", ""),
-            os.getenv("VL_MODEL_TYPE", "Q8_0"),
-        ),
-        (
-            "embeddings",
-            os.getenv("EMBEDDINGS_MODEL", ""),
-            os.getenv("EMBEDDINGS_MODEL_TYPE", "Q8_0"),
-        ),
+        ("chat", Chat.filename),
+        ("vl", Vision.filename),
+        ("embeddings", Embeddings.filename),
     ]
 
-    for alias, repo_id, quantization in model_checks:
-        if not repo_id:
+    for alias, filename in model_checks:
+        if not filename:
             checks.append(
                 CheckResult(
                     name=f"{alias} model",
@@ -193,14 +177,14 @@ def _check_models(checks: List[CheckResult]) -> None:
             )
             continue
 
-        if is_model_downloaded(repo_id, quantization, models_dir):
+        if is_model_downloaded(filename, models_dir):
             checks.append(CheckResult(name=f"{alias} model", passed=True))
         else:
             checks.append(
                 CheckResult(
                     name=f"{alias} model",
                     passed=False,
-                    error=f"Model '{alias}' ({repo_id} / {quantization}) is not downloaded.",
+                    error=f"Model '{alias}' ({filename}) is not downloaded.",
                     hint=f"Run: aria models download --model {alias}",
                 )
             )

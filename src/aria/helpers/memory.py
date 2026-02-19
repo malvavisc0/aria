@@ -148,6 +148,7 @@ def get_total_model_size_mb() -> int:
     import os
 
     from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.config.models import Chat, Embeddings, Vision
     from aria.scripts.gguf import get_model_path
 
     models_dir = LlamaCppConfig.models_path
@@ -155,16 +156,16 @@ def get_total_model_size_mb() -> int:
         return 0
 
     model_configs = [
-        (os.getenv("CHAT_MODEL", ""), os.getenv("CHAT_MODEL_TYPE", "Q8_0")),
-        (os.getenv("VL_MODEL", ""), os.getenv("VL_MODEL_TYPE", "Q8_0")),
-        (os.getenv("EMBEDDINGS_MODEL", ""), os.getenv("EMBEDDINGS_MODEL_TYPE", "Q8_0")),
+        Chat.filename,
+        Vision.filename,
+        Embeddings.filename,
     ]
 
     total_size = 0
-    for repo_id, quantization in model_configs:
-        if not repo_id:
+    for filename in model_configs:
+        if not filename:
             continue
-        model_path = get_model_path(repo_id, quantization, models_dir)
+        model_path = get_model_path(filename, models_dir)
         if model_path:
             total_size += get_model_file_size(model_path)
 
@@ -177,9 +178,8 @@ def get_total_kv_cache_mb() -> int:
     Returns:
         Total estimated KV cache size in MB for all configured models.
     """
-    import os
-
     from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.config.models import Chat, Embeddings, Vision
     from aria.scripts.gguf import get_model_path
 
     models_dir = LlamaCppConfig.models_path
@@ -187,28 +187,16 @@ def get_total_kv_cache_mb() -> int:
         return 0
 
     model_configs = [
-        (
-            os.getenv("CHAT_MODEL", ""),
-            os.getenv("CHAT_MODEL_TYPE", "Q8_0"),
-            LlamaCppConfig.chat_context_size,
-        ),
-        (
-            os.getenv("VL_MODEL", ""),
-            os.getenv("VL_MODEL_TYPE", "Q8_0"),
-            LlamaCppConfig.vl_context_size,
-        ),
-        (
-            os.getenv("EMBEDDINGS_MODEL", ""),
-            os.getenv("EMBEDDINGS_MODEL_TYPE", "Q8_0"),
-            LlamaCppConfig.embeddings_context_size,
-        ),
+        (Chat.filename, LlamaCppConfig.chat_context_size),
+        (Vision.filename, LlamaCppConfig.vl_context_size),
+        (Embeddings.filename, LlamaCppConfig.embeddings_context_size),
     ]
 
     total_kv = 0
-    for repo_id, quantization, ctx_size in model_configs:
-        if not repo_id:
+    for filename, ctx_size in model_configs:
+        if not filename:
             continue
-        model_path = get_model_path(repo_id, quantization, models_dir)
+        model_path = get_model_path(filename, models_dir)
         if model_path:
             model_size_mb = get_model_file_size(model_path)
             total_kv += estimate_kv_cache_mb(ctx_size, model_size_mb)

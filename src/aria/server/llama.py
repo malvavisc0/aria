@@ -103,38 +103,47 @@ class LlamaCppServerManager:
         self._pids.clear()
         clear_state(self.PID_FILE)
 
-    def _resolve_model_path(self, role: str, repo_id: str, quantization: str) -> Path:
-        """Resolve model path, raising RuntimeError if not found."""
+    def _resolve_model_path(self, role: str, filename: str) -> Path:
+        """Resolve model path by exact filename, raising RuntimeError if not found."""
         from aria.scripts.gguf import get_model_path
 
-        if not repo_id:
+        if not filename:
             raise RuntimeError(
-                f"Model repo_id for role '{role}' is not configured. "
+                f"Model filename for role '{role}' is not configured. "
                 f"Set the corresponding env var in your .env file."
             )
 
         models_dir = LlamaCppConfig.models_path
-        model_path = get_model_path(repo_id, quantization, models_dir)
+        model_path = get_model_path(filename, models_dir)
 
         if model_path is None:
             raise RuntimeError(
-                f"Model file for role '{role}' ({repo_id} / {quantization}) "
+                f"Model file '{filename}' for role '{role}' "
                 f"not found in {models_dir}. Run: aria models download --model {role}"
             )
 
         return model_path
 
     def _build_run_model_cmd(
-        self, model_path: Path, context_size: int, port: int
+        self,
+        model_path: Path,
+        context_size: int,
+        port: int,
+        mmproj_path: Optional[Path] = None,
     ) -> list[str]:
         """Build command to launch a chat/VL server via run-model script."""
-        return [
+        cmd = [
             str(self.RUN_MODEL_SCRIPT),
             str(model_path),
             str(context_size),
             "--port",
             str(port),
         ]
+
+        if mmproj_path:
+            cmd.extend(["--mmproj", str(mmproj_path)])
+
+        return cmd
 
     def _build_embedding_cmd(self, model_path: Path, port: int) -> list[str]:
         """Build command to launch the embeddings server directly."""
@@ -201,13 +210,25 @@ class LlamaCppServerManager:
             RuntimeError: If any server fails to start or become ready.
         """
         from aria.config.models import Chat, Embeddings, Vision
+        from aria.scripts.gguf import get_model_path
 
-        # Resolve model paths
-        chat_path = self._resolve_model_path("chat", Chat.repo_id, Chat.quantization)
-        vl_path = self._resolve_model_path("vl", Vision.repo_id, Vision.quantization)
-        emb_path = self._resolve_model_path(
-            "embeddings", Embeddings.repo_id, Embeddings.quantization
-        )
+        # Resolve model paths by filename
+        chat_path = self._resolve_model_path("chat", Chat.filename)
+        vl_path = self._resolve_model_path("vl", Vision.filename)
+        emb_path = self._resolve_model_path("embeddings", Embeddings.filename)
+
+        # Resolve mmproj for VL model (vision projector)
+        mmproj_path: Optional[Path] = None
+        if Vision.mmproj_filename:
+            mmproj_path = get_model_path(
+                Vision.mmproj_filename, LlamaCppConfig.models_path
+            )
+            if mmproj_path is None:
+                logger.warning(
+                    f"MMPROJ file '{Vision.mmproj_filename}' not found. "
+                    f"Vision capabilities may be limited. "
+                    f"Run: aria models download --model vl"
+                )
 
         servers = [
             (
@@ -216,21 +237,30 @@ class LlamaCppServerManager:
                 Chat.get_port(),
                 LlamaCppConfig.chat_context_size,
                 True,
+                None,  # no mmproj for chat
             ),
-            ("vl", vl_path, Vision.get_port(), LlamaCppConfig.vl_context_size, True),
+            (
+                "vl",
+                vl_path,
+                Vision.get_port(),
+                LlamaCppConfig.vl_context_size,
+                True,
+                mmproj_path,  # mmproj for vision
+            ),
             (
                 "embeddings",
                 emb_path,
                 Embeddings.get_port(),
                 LlamaCppConfig.embeddings_context_size,
                 False,
+                None,  # no mmproj for embeddings
             ),
         ]
 
         # Start all processes
-        for role, model_path, port, ctx_size, use_run_model in servers:
+        for role, model_path, port, ctx_size, use_run_model, mmproj in servers:
             if use_run_model:
-                cmd = self._build_run_model_cmd(model_path, ctx_size, port)
+                cmd = self._build_run_model_cmd(model_path, ctx_size, port, mmproj)
                 env = self._get_env_for_run_model()
             else:
                 cmd = self._build_embedding_cmd(model_path, port)
