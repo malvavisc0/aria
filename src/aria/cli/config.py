@@ -212,7 +212,3 @@ def show_api():
     console.print(
         Panel(table, title="[bold]API Configuration[/bold]", border_style="cyan")
     )
-
-
-if __name__ == "__main__":
-    app()

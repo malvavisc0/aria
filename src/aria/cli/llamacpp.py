@@ -72,8 +72,6 @@ def download_command(
         aria llamacpp download --bin-dir /path/to/binaries
         ```
     """
-    from pathlib import Path
-
     try:
         download_llama_cpp(bin_dir=Path(bin_dir), version=version)
         console.print(
@@ -134,7 +132,3 @@ def check_status():
             border_style="cyan",
         )
     )
-
-
-if __name__ == "__main__":
-    app()

@@ -38,6 +38,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from aria.config.api import LlamaCpp as LlamaCppConfig
 from aria.config.huggingface import HuggingFace
 from aria.scripts.gguf import download_gguf_model, is_model_downloaded
 
@@ -188,7 +189,7 @@ def download_command(
         raise typer.Exit(1)
 
     # Resolve models directory
-    target_dir = models_dir or HuggingFace.models_dir
+    target_dir = models_dir or LlamaCppConfig.models_path
 
     # Resolve token
     resolved_token = token or HuggingFace.token
@@ -263,7 +264,7 @@ def list_command(
     """
     import os
 
-    target_dir = models_dir or HuggingFace.models_dir
+    target_dir = models_dir or LlamaCppConfig.models_path
 
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Alias", style="cyan", width=12)
@@ -296,7 +297,3 @@ def list_command(
             border_style="cyan",
         )
     )
-
-
-if __name__ == "__main__":
-    app()

@@ -103,10 +103,6 @@ class LlamaCppServerManager:
         self._pids.clear()
         clear_state(self.PID_FILE)
 
-    # -------------------------------------------------------------------------
-    # Server configuration
-    # -------------------------------------------------------------------------
-
     def _resolve_model_path(
         self, role: str, repo_id: str, quantization: str
     ) -> Path:
@@ -129,10 +125,6 @@ class LlamaCppServerManager:
             )
 
         return model_path
-
-    # -------------------------------------------------------------------------
-    # Command builders
-    # -------------------------------------------------------------------------
 
     def _build_run_model_cmd(
         self, model_path: Path, context_size: int, port: int
@@ -176,10 +168,6 @@ class LlamaCppServerManager:
         )
         return env
 
-    # -------------------------------------------------------------------------
-    # Health check
-    # -------------------------------------------------------------------------
-
     def _wait_for_ready(
         self, host: str, port: int, timeout: Optional[float] = None
     ) -> bool:
@@ -209,10 +197,6 @@ class LlamaCppServerManager:
             time.sleep(self.HEALTH_POLL_INTERVAL)
 
         return False
-
-    # -------------------------------------------------------------------------
-    # Lifecycle
-    # -------------------------------------------------------------------------
 
     def start_all(self) -> None:
         """Start all three llama-server processes and wait for them to be ready.

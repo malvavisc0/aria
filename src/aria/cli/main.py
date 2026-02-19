@@ -28,8 +28,6 @@ Example:
     ```
 """
 
-from typing import Type
-
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -235,7 +233,3 @@ def system_info():
             border_style="cyan",
         )
     )
-
-
-if __name__ == "__main__":
-    app()

@@ -4,16 +4,14 @@ This module provides CLI commands to manage the Aria webserver:
 - run: Run the server in foreground (blocking)
 - start: Start the server in background
 - stop: Stop the server
-- restart: Restart the server
-- status: Show server status (PID, uptime, start time)
+- status: Show server status (web_ui and llama servers)
+
+LlamaCpp servers are managed internally by the web_ui via Chainlit lifecycle hooks.
 
 Example:
     ```bash
-    # Run in foreground (starts llama-server processes + Chainlit)
+    # Run in foreground (Ctrl+C to stop)
     aria server run
-
-    # Run with a larger context window
-    aria server run --context-size 32768
 
     # Start in background
     aria server start
@@ -26,7 +24,8 @@ Example:
     ```
 """
 
-from typing import Optional
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import typer
 from rich.console import Console
@@ -41,74 +40,15 @@ app = typer.Typer(
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
-# Global server manager instance
-_manager: Optional[ServerManager] = None
-
-
-def get_manager() -> ServerManager:
-    """Get or create the global ServerManager instance.
-
-    Returns:
-        The global ServerManager instance.
-    """
-    global _manager
-    if _manager is None:
-        _manager = ServerManager()
-    return _manager
-
 
 @app.command("run")
-def server_run(
-    context_size: int = typer.Option(
-        8192,
-        "--context-size",
-        "-c",
-        help="Context window size (tokens) for chat and VL llama-server instances",
-    ),
-):
-    """Run the Aria webserver in the foreground (blocking).
+def server_run():
+    """Run the Aria webserver in foreground (blocking).
 
-    Starts the three llama-server inference processes (chat, VL, embeddings),
-    waits for them to be ready, then starts the Chainlit web UI. Blocks until
-    Ctrl+C is pressed, then stops all processes cleanly.
-
-    Before starting, verifies that the llama-server binary and all configured
-    GGUF models are present. Exits with an error if any prerequisite is missing.
-
-    Args:
-        context_size: Token context window for chat and VL servers (default 8192).
-
-    Example:
-        ```bash
-        aria server run
-        aria server run --context-size 32768
-        ```
+    Llama-server processes are started automatically by the web_ui.
+    Press Ctrl+C to stop.
     """
-    from aria.preflight import run_preflight_checks
-    from aria.server.llama import LlamaCppServerManager
-
-    result = run_preflight_checks()
-    if not result.passed:
-        error_console.print(
-            "[bold red]Cannot start server — prerequisites missing:[/bold red]"
-        )
-        for failure in result.failures:
-            error_console.print(f"  [red]✗[/red] {failure.error}")
-            console.print(f"    [dim]→ {failure.hint}[/dim]")
-        raise typer.Exit(1)
-
-    llama_manager = LlamaCppServerManager(context_size=context_size)
-    console.print("[cyan]Starting LlamaCPP inference servers...[/cyan]")
-    try:
-        llama_manager.start_all()
-        console.print("[green]✓[/green] All inference servers ready.")
-    except Exception as e:
-        error_console.print(
-            f"[red]Failed to start inference servers: {e}[/red]"
-        )
-        raise typer.Exit(1)
-
-    manager = get_manager()
+    manager = ServerManager()
     console.print(
         f"[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
     )
@@ -117,64 +57,15 @@ def server_run(
         manager.run()
     except KeyboardInterrupt:
         console.print("\n[yellow]Server stopped[/yellow]")
-    finally:
-        console.print("[cyan]Stopping inference servers...[/cyan]")
-        llama_manager.stop_all()
-        console.print("[green]✓[/green] Inference servers stopped.")
 
 
 @app.command("start")
-def server_start(
-    context_size: int = typer.Option(
-        8192,
-        "--context-size",
-        "-c",
-        help="Context window size (tokens) for chat and VL llama-server instances",
-    ),
-):
-    """Start the Aria webserver in the background.
+def server_start():
+    """Start the Aria webserver in background.
 
-    Starts the three llama-server inference processes (chat, VL, embeddings),
-    waits for them to be ready, then starts the Chainlit web UI as a background
-    process and returns immediately.
-
-    Before starting, verifies that the llama-server binary and all configured
-    GGUF models are present. Exits with an error if any prerequisite is missing.
-
-    Args:
-        context_size: Token context window for chat and VL servers (default 8192).
-
-    Example:
-        ```bash
-        aria server start
-        aria server start --context-size 16384
-        ```
+    Llama-server processes are started automatically by the web_ui.
     """
-    from aria.preflight import run_preflight_checks
-    from aria.server.llama import LlamaCppServerManager
-
-    result = run_preflight_checks()
-    if not result.passed:
-        error_console.print(
-            "[bold red]Cannot start server — prerequisites missing:[/bold red]"
-        )
-        for failure in result.failures:
-            error_console.print(f"  [red]✗[/red] {failure.error}")
-            console.print(f"    [dim]→ {failure.hint}[/dim]")
-        raise typer.Exit(1)
-
-    llama_manager = LlamaCppServerManager(context_size=context_size)
-    console.print("[cyan]Starting LlamaCPP inference servers...[/cyan]")
-    try:
-        llama_manager.start_all()
-        console.print("[green]✓[/green] All inference servers ready.")
-    except Exception as e:
-        error_console.print(
-            f"[red]Failed to start inference servers: {e}[/red]"
-        )
-        raise typer.Exit(1)
-
-    manager = get_manager()
+    manager = ServerManager()
     if manager.start():
         console.print(
             f"[green]✓[/green] Server started on "
@@ -183,118 +74,32 @@ def server_start(
         console.print(f"[dim]PID: {manager.pid}[/dim]")
     else:
         error_console.print("[yellow]Server is already running[/yellow]")
-        llama_manager.stop_all()
         raise typer.Exit(1)
 
 
 @app.command("stop")
-def server_stop(
-    timeout: float = typer.Option(
-        10.0, "--timeout", "-t", help="Seconds to wait for graceful shutdown"
-    ),
-):
+def server_stop():
     """Stop the Aria webserver.
 
-    Sends SIGTERM to the server process. If it doesn't stop within
-    the timeout, sends SIGKILL.
-
-    Args:
-        timeout: Seconds to wait for graceful shutdown.
-
-    Example:
-        ```bash
-        aria server stop
-        aria server stop --timeout 5
-        ```
+    Also stops all llama-server processes managed by the web_ui.
     """
-    from aria.server.llama import LlamaCppServerManager
-
-    manager = get_manager()
-    if manager.stop(timeout):
+    manager = ServerManager()
+    if manager.stop():
         console.print("[green]✓[/green] Server stopped")
     else:
         error_console.print("[yellow]Server is not running[/yellow]")
         raise typer.Exit(1)
 
-    # Also stop any llama-server processes tracked in the PID file
-    llama_manager = LlamaCppServerManager()
-    llama_manager.stop_all()
-    console.print("[green]✓[/green] Inference servers stopped.")
-
-
-@app.command("restart")
-def server_restart(
-    timeout: float = typer.Option(
-        10.0, "--timeout", "-t", help="Seconds to wait for graceful shutdown"
-    ),
-    context_size: int = typer.Option(
-        8192,
-        "--context-size",
-        "-c",
-        help="Context window size (tokens) for chat and VL llama-server instances",
-    ),
-):
-    """Restart the Aria webserver.
-
-    Stops the server if running, then starts it again.
-
-    Args:
-        timeout: Seconds to wait for graceful shutdown.
-        context_size: Token context window for chat and VL servers (default 8192).
-
-    Example:
-        ```bash
-        aria server restart
-        ```
-    """
-    from aria.server.llama import LlamaCppServerManager
-
-    # Create manager with desired context size
-    llama_manager = LlamaCppServerManager(context_size=context_size)
-
-    # Stop existing llama-server processes (tracked via PID file)
-    llama_manager.stop_all()
-
-    # Restart Chainlit
-    manager = get_manager()
-    manager.restart(timeout)
-    console.print(
-        f"[green]✓[/green] Server restarted on "
-        f"http://{manager.host}:{manager.port}"
-    )
-    console.print(f"[dim]PID: {manager.pid}[/dim]")
-
-    # Start llama-server processes
-    console.print("[cyan]Starting LlamaCPP inference servers...[/cyan]")
-    try:
-        llama_manager.start_all()
-        console.print("[green]✓[/green] All inference servers ready.")
-    except Exception as e:
-        error_console.print(
-            f"[red]Failed to start inference servers: {e}[/red]"
-        )
-        raise typer.Exit(1)
-
 
 @app.command("status")
 def server_status():
-    """Show the current status of the Aria webserver.
+    """Show the current status of the Aria webserver and llama servers."""
+    from aria.config.models import Chat, Embeddings, Vision
 
-    Displays:
-    - Running status
-    - Process ID (PID)
-    - Host and port
-    - Start time
-    - Uptime
-
-    Example:
-        ```bash
-        aria server status
-        ```
-    """
-    manager = get_manager()
+    manager = ServerManager()
     status = manager.get_status()
 
+    # WebUI status table
     table = Table(title="Aria Webserver Status", show_header=True)
     table.add_column("Property", style="cyan", width=12)
     table.add_column("Value", style="green")
@@ -318,9 +123,7 @@ def server_status():
 
     # Start time
     if status.started_at:
-        table.add_row(
-            "Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S")
-        )
+        table.add_row("Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S"))
     else:
         table.add_row("Started", "N/A")
 
@@ -335,6 +138,28 @@ def server_status():
 
     console.print(table)
 
+    # Llama servers status (only if web_ui is running)
+    if status.running:
+        console.print()
+        llama_table = Table(title="Llama Servers", show_header=True)
+        llama_table.add_column("Role", style="cyan", width=12)
+        llama_table.add_column("Port", style="yellow")
+        llama_table.add_column("Status", style="green")
 
-if __name__ == "__main__":
-    app()
+        for role, get_port in [
+            ("chat", Chat.get_port),
+            ("vl", Vision.get_port),
+            ("embeddings", Embeddings.get_port),
+        ]:
+            port = get_port()
+            try:
+                with urlopen(f"http://localhost:{port}/health", timeout=2) as resp:
+                    is_running = resp.status == 200
+            except (URLError, OSError):
+                is_running = False
+
+            llama_table.add_row(
+                role, str(port), "● Running" if is_running else "○ Stopped"
+            )
+
+        console.print(llama_table)

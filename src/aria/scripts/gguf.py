@@ -40,15 +40,6 @@ from huggingface_hub import hf_hub_download, list_repo_files
 from huggingface_hub.errors import EntryNotFoundError, RepositoryNotFoundError
 from loguru import logger
 from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -91,7 +82,9 @@ def _find_gguf_filename(
     logger.debug(f"Found {len(gguf_files)} GGUF files: {gguf_files}")
 
     if not gguf_files:
-        raise FileNotFoundError(f"No .gguf files found in repository '{repo_id}'.")
+        raise FileNotFoundError(
+            f"No .gguf files found in repository '{repo_id}'."
+        )
 
     quant_upper = quantization.upper()
 
@@ -179,7 +172,7 @@ def download_gguf_model(
     models_dir: Path,
     token: Optional[str] = None,
     force: bool = False,
-) -> Path:
+) -> Path | None:
     """Download a GGUF model file from HuggingFace Hub.
 
     Downloads the GGUF file matching the given quantization type from the
@@ -216,7 +209,9 @@ def download_gguf_model(
         return existing
 
     # Find the filename in the repo
-    console.print(f"[cyan]→[/cyan] Looking up files in [bold]{repo_id}[/bold]...")
+    console.print(
+        f"[cyan]→[/cyan] Looking up files in [bold]{repo_id}[/bold]..."
+    )
     filename = _find_gguf_filename(repo_id, quantization, token=token)
     logger.info(f"Resolved filename: {filename}")
 

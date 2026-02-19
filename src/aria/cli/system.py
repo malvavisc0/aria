@@ -360,7 +360,3 @@ def system_overview():
     console.print(
         Panel(table, title="[bold]System Overview[/bold]", border_style="cyan")
     )
-
-
-if __name__ == "__main__":
-    app()

@@ -360,7 +360,3 @@ def update_user(
                     border_style="red",
                 )
             )
-
-
-if __name__ == "__main__":
-    app()

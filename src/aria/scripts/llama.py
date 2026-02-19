@@ -105,9 +105,7 @@ def _nvcc_available() -> bool:
         True if nvcc is found and executable, False otherwise.
     """
     try:
-        result = subprocess.run(
-            ["which", "nvcc"], capture_output=True, text=True
-        )
+        result = subprocess.run(["which", "nvcc"], capture_output=True, text=True)
         return result.returncode == 0
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -133,9 +131,7 @@ def _get_release_by_tag(tag: str) -> dict:
     Returns:
         dict: Release information including assets.
     """
-    api_url = (
-        f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
-    )
+    api_url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
     with urllib.request.urlopen(api_url, timeout=30) as response:
         return __import__("json").loads(response.read())
 
@@ -203,9 +199,7 @@ def _download_with_progress(
     ) as progress:
         task = progress.add_task(description, total=None)
 
-        def _reporthook(
-            block_num: int, block_size: int, total_size: int
-        ) -> None:
+        def _reporthook(block_num: int, block_size: int, total_size: int) -> None:
             if total_size > 0 and progress.tasks[task].total is None:
                 progress.update(task, total=total_size)
             progress.update(task, completed=block_num * block_size)
@@ -237,9 +231,7 @@ def _download_and_extract(
         console.print("[cyan]  Extracting archive...[/cyan]")
         with tarfile.open(archive_path, "r:gz") as tar:
             tar.extractall(dest_dir)
-            extracted_files = [
-                str(Path(dest_dir) / m.name) for m in tar.getmembers()
-            ]
+            extracted_files = [str(Path(dest_dir) / m.name) for m in tar.getmembers()]
 
     return extracted_files
 
@@ -366,13 +358,9 @@ def _test_binary(bin_dir: Path) -> None:
                     f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
                 )
         except subprocess.TimeoutExpired:
-            console.print(
-                "  [yellow]Warning: Version check timed out[/yellow]"
-            )
+            console.print("  [yellow]Warning: Version check timed out[/yellow]")
         except Exception as e:
-            console.print(
-                f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
-            )
+            console.print(f"  [yellow]Warning: Could not test binary: {e}[/yellow]")
 
 
 def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
@@ -412,19 +400,13 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     # Fetch release information (needed for both download and source paths)
     try:
         if version and version.lower() != "latest":
-            console.print(
-                f"[cyan]  Fetching release info for tag: {version}[/cyan]"
-            )
+            console.print(f"[cyan]  Fetching release info for tag: {version}[/cyan]")
             release = _get_release_by_tag(version)
         else:
-            console.print(
-                "[cyan]  Fetching latest release info from GitHub...[/cyan]"
-            )
+            console.print("[cyan]  Fetching latest release info from GitHub...[/cyan]")
             release = _get_latest_release_info()
     except urllib.error.URLError as e:
-        raise RuntimeError(
-            f"Failed to fetch release info from GitHub: {e}"
-        ) from e
+        raise RuntimeError(f"Failed to fetch release info from GitHub: {e}") from e
 
     tag = release.get("tag_name", "unknown")
     console.print(f"[green]  Found release: {tag}[/green]")
@@ -470,9 +452,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
     # --- Path 2: Ubuntu without nvcc → download pre-built binary ---
     if _is_ubuntu():
-        console.print(
-            "[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]"
-        )
+        console.print("[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]")
 
         assets = release.get("assets", [])
         binary_asset = _find_linux_binary_asset(assets)
@@ -509,9 +489,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
                 # (the tar.gz contains a top-level dir like llama-b8089/)
                 console.print("[cyan]  Installing binaries...[/cyan]")
                 for binary_name in BINARY_NAMES:
-                    binary_path = get_llama_cpp_binary(
-                        binary_name, extract_tmp_path
-                    )
+                    binary_path = get_llama_cpp_binary(binary_name, extract_tmp_path)
                     if binary_path:
                         dst = bin_dir / binary_name
                         shutil.copy2(binary_path, dst)
@@ -520,9 +498,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
                 # Copy shared libraries
                 for lib_pattern in SHARED_LIB_PATTERNS:
-                    for lib_file in extract_tmp_path.rglob(
-                        f"{lib_pattern}*.so*"
-                    ):
+                    for lib_file in extract_tmp_path.rglob(f"{lib_pattern}*.so*"):
                         dst_lib = bin_dir / lib_file.name
                         shutil.copy2(lib_file, dst_lib)
                         logger.info(f"Installed {lib_file.name} to {bin_dir}")
@@ -540,9 +516,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(
-                    f"  - [green]{binary_name}[/green]: {binary_path}"
-                )
+                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
 
         return bin_dir
 
@@ -554,9 +528,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         "[yellow]  This may take 10-30 minutes. Output is shown below.[/yellow]"
     )
 
-    zip_url = (
-        f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
-    )
+    zip_url = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -659,9 +631,7 @@ def install_llama_cpp_from_source(
                 ]
             )
 
-        console.print(
-            f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]"
-        )
+        console.print(f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]")
 
         if verbose:
             subprocess.run(cmake_args, cwd=str(repo_dir), check=True)
@@ -686,9 +656,7 @@ def install_llama_cpp_from_source(
             str(threads),
         ]
 
-        console.print(
-            f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]"
-        )
+        console.print(f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]")
 
         if verbose:
             subprocess.run(build_args, cwd=str(repo_dir), check=True)
@@ -714,9 +682,7 @@ def install_llama_cpp_from_source(
         raise
 
 
-def main(
-    bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None
-) -> None:
+def main(bin_dir: Path = Path("bin/llamacpp"), version: Optional[str] = None) -> None:
     """CLI entry point for llama.cpp installation.
 
     Args:
