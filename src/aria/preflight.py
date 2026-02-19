@@ -243,14 +243,42 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
         get_total_kv_cache_mb,
         get_total_model_size_mb,
     )
-    from aria.helpers.nvidia import get_free_vram_per_gpu
+    from aria.helpers.nvidia import get_free_vram_per_gpu, get_total_vram_mb
+
+    # Minimum hardware requirements
+    MIN_VRAM_MB = 8192  # 8 GB
+    MIN_RAM_MB = 16384  # 16 GB
+
+    # Check minimum VRAM
+    total_vram = get_total_vram_mb()
+    if total_vram > 0 and total_vram < MIN_VRAM_MB:
+        checks.append(
+            CheckResult(
+                name="GPU VRAM (minimum)",
+                passed=False,
+                error=f"GPU has {total_vram} MB VRAM, minimum required is {MIN_VRAM_MB} MB",
+                hint="A GPU with at least 8 GB VRAM is required",
+            )
+        )
+
+    # Check minimum RAM
+    total_ram_mb, _ = detect_system_ram()
+    if total_ram_mb > 0 and total_ram_mb < MIN_RAM_MB:
+        checks.append(
+            CheckResult(
+                name="System RAM (minimum)",
+                passed=False,
+                error=f"System has {total_ram_mb} MB RAM, minimum required is {MIN_RAM_MB} MB",
+                hint="At least 16 GB RAM is required",
+            )
+        )
 
     # Get total model size
     total_model_mb = get_total_model_size_mb()
     if total_model_mb == 0:
-        return  # Models not downloaded, skip check
+        return  # Models not downloaded, skip remaining checks
 
-    # Check GPU VRAM
+    # Check GPU VRAM fits models
     free_vram = get_free_vram_per_gpu()
     if free_vram:
         total_free_vram = sum(free_vram)
@@ -260,7 +288,7 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
                     name="GPU VRAM",
                     passed=False,
                     error=f"Models require {total_model_mb} MB but only {total_free_vram} MB VRAM available",
-                    hint="Use smaller quantization or split models across GPUs",
+                    hint="Use smaller quantization (Q4_K_M) or split models across GPUs",
                 )
             )
         else:
