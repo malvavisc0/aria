@@ -120,7 +120,7 @@ def main(ctx: typer.Context):
         console.print()
         console.print("[bold]Available commands:[/bold]")
         console.print()
-        console.print("  [cyan]check[/cyan]     Verify database connectivity")
+        console.print("  [cyan]check[/cyan]     Verify all prerequisites")
         console.print("  [cyan]version[/cyan]   Display CLI version")
         console.print("  [cyan]info[/cyan]      Show system overview")
         console.print()

@@ -31,6 +31,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from aria.preflight import run_preflight_checks
 from aria.server import ServerManager
 
 app = typer.Typer(
@@ -40,6 +41,50 @@ app = typer.Typer(
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
+# Health check settings
+HEALTH_CHECK_TIMEOUT = 30  # seconds
+HEALTH_CHECK_INTERVAL = 0.5  # seconds
+
+
+def _check_preflight() -> bool:
+    """Run preflight checks and return True if all pass."""
+    result = run_preflight_checks()
+    for check in result.checks:
+        if check.passed:
+            console.print(f"[green]✓[/green] {check.name}")
+        else:
+            console.print(f"[red]✗[/red] {check.name}")
+            console.print(f"  [dim]{check.hint}[/dim]")
+    return result.passed
+
+
+def _wait_for_health(host: str, port: int, timeout: float) -> bool:
+    """Wait for server to become healthy.
+
+    Args:
+        host: Server host address.
+        port: Server port.
+        timeout: Maximum seconds to wait.
+
+    Returns:
+        True if server is healthy, False if timeout.
+    """
+    import time
+
+    url = f"http://{host}:{port}/health"
+    deadline = time.time() + timeout
+
+    while time.time() < deadline:
+        try:
+            with urlopen(url, timeout=2) as resp:
+                if resp.status == 200:
+                    return True
+        except (URLError, OSError):
+            pass
+        time.sleep(HEALTH_CHECK_INTERVAL)
+
+    return False
+
 
 @app.command("run")
 def server_run():
@@ -48,9 +93,16 @@ def server_run():
     Llama-server processes are started automatically by the web_ui.
     Press Ctrl+C to stop.
     """
+    # Run preflight checks
+    if not _check_preflight():
+        error_console.print(
+            "\n[red]Preflight checks failed. Fix the issues above.[/red]"
+        )
+        raise typer.Exit(1)
+
     manager = ServerManager()
     console.print(
-        f"[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
+        f"\n[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
     )
     console.print("[dim]Press Ctrl+C to stop[/dim]")
     try:
@@ -65,15 +117,36 @@ def server_start():
 
     Llama-server processes are started automatically by the web_ui.
     """
+    # Run preflight checks
+    if not _check_preflight():
+        error_console.print(
+            "\n[red]Preflight checks failed. Fix the issues above.[/red]"
+        )
+        raise typer.Exit(1)
+
     manager = ServerManager()
-    if manager.start():
+    if manager.is_running():
+        error_console.print("[yellow]Server is already running[/yellow]")
+        raise typer.Exit(1)
+
+    console.print(
+        f"\n[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
+    )
+
+    if not manager.start():
+        error_console.print("[red]Failed to start server process[/red]")
+        raise typer.Exit(1)
+
+    # Wait for health check
+    console.print("[dim]Waiting for server to be ready...[/dim]")
+    if _wait_for_health(manager.host, manager.port, HEALTH_CHECK_TIMEOUT):
         console.print(
-            f"[green]✓[/green] Server started on "
-            f"http://{manager.host}:{manager.port}"
+            f"[green]✓[/green] Server started on http://{manager.host}:{manager.port}"
         )
         console.print(f"[dim]PID: {manager.pid}[/dim]")
     else:
-        error_console.print("[yellow]Server is already running[/yellow]")
+        error_console.print("[red]Server failed to start within timeout[/red]")
+        manager.stop()
         raise typer.Exit(1)
 
 
@@ -138,28 +211,25 @@ def server_status():
 
     console.print(table)
 
-    # Llama servers status (only if web_ui is running)
-    if status.running:
-        console.print()
-        llama_table = Table(title="Llama Servers", show_header=True)
-        llama_table.add_column("Role", style="cyan", width=12)
-        llama_table.add_column("Port", style="yellow")
-        llama_table.add_column("Status", style="green")
+    # Llama servers status (always show, not just when web_ui is running)
+    console.print()
+    llama_table = Table(title="Llama Servers", show_header=True)
+    llama_table.add_column("Role", style="cyan", width=12)
+    llama_table.add_column("Port", style="yellow")
+    llama_table.add_column("Status", style="green")
 
-        for role, get_port in [
-            ("chat", Chat.get_port),
-            ("vl", Vision.get_port),
-            ("embeddings", Embeddings.get_port),
-        ]:
-            port = get_port()
-            try:
-                with urlopen(f"http://localhost:{port}/health", timeout=2) as resp:
-                    is_running = resp.status == 200
-            except (URLError, OSError):
-                is_running = False
+    for role, get_port in [
+        ("chat", Chat.get_port),
+        ("vl", Vision.get_port),
+        ("embeddings", Embeddings.get_port),
+    ]:
+        port = get_port()
+        try:
+            with urlopen(f"http://localhost:{port}/health", timeout=2) as resp:
+                is_running = resp.status == 200
+        except (URLError, OSError):
+            is_running = False
 
-            llama_table.add_row(
-                role, str(port), "● Running" if is_running else "○ Stopped"
-            )
+        llama_table.add_row(role, str(port), "● Running" if is_running else "○ Stopped")
 
-        console.print(llama_table)
+    console.print(llama_table)
