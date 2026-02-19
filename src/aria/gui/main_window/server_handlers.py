@@ -80,6 +80,22 @@ class ServerHandlersMixin:
         self.ui.pushButton_ServiceStop.clicked.connect(self.on_stop_server)
         self.ui.pushButton_ServiceOpen.clicked.connect(self.on_open_server)
 
+    def _cleanup_llama_thread(self):
+        """Clean up the llama server thread if it exists.
+
+        This method safely stops and cleans up any existing QThread
+        to prevent memory leaks and crashes.
+        """
+        if self._llama_thread is not None:
+            if self._llama_thread.isRunning():
+                self._llama_thread.quit()
+                # Wait up to 5 seconds for graceful shutdown
+                if not self._llama_thread.wait(5000):
+                    # Force terminate if graceful shutdown fails
+                    self._llama_thread.terminate()
+                    self._llama_thread.wait()
+            self._llama_thread = None
+
     def on_start_server(self):
         """Handle Start button click.
 
@@ -87,6 +103,9 @@ class ServerHandlersMixin:
         (to avoid blocking the UI during the health-check wait), then starts
         the Chainlit webserver once all inference servers are ready.
         """
+        # Clean up any previous thread
+        self._cleanup_llama_thread()
+
         # Disable the start button while starting
         self.ui.pushButton_ServiceStart.setEnabled(False)
 
@@ -137,6 +156,9 @@ class ServerHandlersMixin:
             self._llama_manager.stop_all()
             self._llama_manager = None
 
+        # Clean up the thread
+        self._cleanup_llama_thread()
+
         self._update_server_status()
 
     def on_open_server(self):
@@ -164,7 +186,9 @@ class ServerHandlersMixin:
             self.ui.label_ServiceStatus.setStyleSheet("color: red;")
 
         # Update PID label
-        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
+        self.ui.label_ServicePID.setText(
+            str(status.pid) if status.pid else "-"
+        )
 
         # Update URL label
         self.ui.label_ServiceURL.setText(f"http://{status.host}:{status.port}")
@@ -181,7 +205,9 @@ class ServerHandlersMixin:
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            self.ui.label_ServiceUptime.setText(f"{hours}h {minutes}m {seconds}s")
+            self.ui.label_ServiceUptime.setText(
+                f"{hours}h {minutes}m {seconds}s"
+            )
         else:
             self.ui.label_ServiceUptime.setText("-")
 

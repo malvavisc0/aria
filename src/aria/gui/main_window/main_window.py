@@ -17,6 +17,15 @@ from aria.gui.ui.mainwindow import Ui_MainWindow
 
 
 def human_size(path: Path) -> str:
+    """Convert file size to human-readable format.
+
+    Args:
+        path: Path to the file
+
+    Returns:
+        Human-readable size string (e.g., "1.5 MiB") or empty string
+        if the file doesn't exist.
+    """
     if not path.exists():
         return ""
     size_bytes = path.stat().st_size
@@ -95,15 +104,25 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
     def _connect_user_management_signals(self):
         """Connect user management button signals."""
         # Button click handlers
-        self.ui.pushButton_CreateUser.clicked.connect(self.on_create_user_clicked)
+        self.ui.pushButton_CreateUser.clicked.connect(
+            self.on_create_user_clicked
+        )
         self.ui.pushButton_EditUser.clicked.connect(self.on_edit_user_clicked)
-        self.ui.pushButton_DeleteUser.clicked.connect(self.on_delete_user_clicked)
+        self.ui.pushButton_DeleteUser.clicked.connect(
+            self.on_delete_user_clicked
+        )
 
         # Enable/disable Create User button based on field content
         self.ui.pushButton_CreateUser.setEnabled(False)
-        self.ui.lineEdit_UserName.textChanged.connect(self.validate_create_fields)
-        self.ui.lineEdit_UserEmail.textChanged.connect(self.validate_create_fields)
-        self.ui.lineEdit_UserPassword.textChanged.connect(self.validate_create_fields)
+        self.ui.lineEdit_UserName.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserEmail.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserPassword.textChanged.connect(
+            self.validate_create_fields
+        )
 
         # Enable/disable Edit and Delete buttons based on user selection
         self.ui.pushButton_EditUser.setEnabled(False)
@@ -129,12 +148,16 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
     def load_overview(self):
         self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
 
-        self.ui.label_DatabaseLocation.setText(str(SQLite.file_path.absolute()))
+        self.ui.label_DatabaseLocation.setText(
+            str(SQLite.file_path.absolute())
+        )
         db_exists = SQLite.file_path.exists()
         if db_exists:
             self.ui.label_DatabaseFileExists.setText("Yes")
             self.ui.label_DatabaseSize.setText(human_size(SQLite.file_path))
-            permissions = "+".join(friendly_permissions(SQLite.file_path)["Owner"])
+            permissions = "+".join(
+                friendly_permissions(SQLite.file_path)["Owner"]
+            )
             self.ui.label_DatabasePermissions.setText(permissions)
         else:
             self.ui.label_DatabaseFileExists.setText("No")
@@ -160,3 +183,34 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
         """Show the About dialog."""
         dialog = AboutDialog(self)
         dialog.exec()
+
+    def closeEvent(self, event):
+        """Clean up resources on window close.
+
+        This method is called when the window is closed. It stops the
+        server status timer, cleans up the llama server thread, and
+        stops any running servers.
+
+        Args:
+            event: The QCloseEvent from Qt.
+        """
+        # Stop the status update timer
+        if hasattr(self, "_server_timer"):
+            self._server_timer.stop()
+
+        # Clean up llama thread
+        if hasattr(self, "_llama_thread") and self._llama_thread is not None:
+            if self._llama_thread.isRunning():
+                self._llama_thread.quit()
+                if not self._llama_thread.wait(5000):
+                    self._llama_thread.terminate()
+                    self._llama_thread.wait()
+
+        # Stop server if running
+        if hasattr(self, "_server_manager"):
+            self._server_manager.stop()
+
+        if hasattr(self, "_llama_manager") and self._llama_manager is not None:
+            self._llama_manager.stop_all()
+
+        super().closeEvent(event)

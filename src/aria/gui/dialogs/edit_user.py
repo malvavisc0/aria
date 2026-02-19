@@ -27,7 +27,11 @@ class EditUserDialog(QDialog):
         self.ui.pushButton_Cancel.clicked.connect(self.reject)
 
     def save_user(self):
-        """Validate and save user changes."""
+        """Validate and save user changes.
+
+        Performs validation and updates the user in a single database session.
+        The session is automatically committed by get_db_session() on success.
+        """
         name = self.ui.lineEdit_Name.text().strip()
         email = self.ui.lineEdit_Email.text().strip()
         password = self.ui.lineEdit_Password.text()
@@ -40,28 +44,33 @@ class EditUserDialog(QDialog):
             self.show_error("Email cannot be empty")
             return
 
-        # Check for duplicate email if email changed
-        if email != self.user.identifier:
+        # Update user in database (single session)
+        try:
             with get_db_session() as session:
-                existing_user = session.execute(
-                    select(User).where(User.identifier == email)
-                ).scalar_one_or_none()
-                if existing_user:
-                    self.show_error("A user with this email already exists")
-                    return
+                # Check for duplicate email if email changed
+                if email != self.user.identifier:
+                    existing_user = session.execute(
+                        select(User).where(User.identifier == email)
+                    ).scalar_one_or_none()
+                    if existing_user:
+                        self.show_error(
+                            "A user with this email already exists"
+                        )
+                        return
 
-        # Update user in database
-        with get_db_session() as session:
-            user = session.execute(
-                select(User).where(User.id == self.user.id)
-            ).scalar_one_or_none()
-            if user:
-                user.display_name = name
-                user.identifier = email
-                # Only update password if a new one was provided
-                if password:
-                    user.password = hash_password(password)
-                self.accept()
+                user = session.execute(
+                    select(User).where(User.id == self.user.id)
+                ).scalar_one_or_none()
+                if user:
+                    user.display_name = name
+                    user.identifier = email
+                    # Only update password if a new one was provided
+                    if password:
+                        user.password = hash_password(password)
+                    # Note: session.commit() is called automatically by get_db_session()
+                    self.accept()
+        except Exception as e:
+            self.show_error(f"Failed to save user: {e}")
 
     def show_error(self, information: str):
         """Display an error message box."""
