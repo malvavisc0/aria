@@ -360,3 +360,85 @@ def update_user(
                     border_style="red",
                 )
             )
+
+
+@app.command("delete")
+def delete_user(
+    identifier: Annotated[str, typer.Option(help="User identifier (email)")],
+    confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
+    """Delete a user and all associated data.
+
+    Deletes the user and cascades to:
+    - All threads owned by the user
+    - All steps, elements, feedbacks in those threads
+
+    Args:
+        identifier: User email address
+        confirm: Skip confirmation prompt
+
+    Example:
+        ```bash
+        # Delete with confirmation
+        aria users delete --identifier user@example.com
+
+        # Delete without confirmation
+        aria users delete --identifier user@example.com --yes
+        ```
+    """
+    with get_db_session() as session:
+        try:
+            user = session.execute(
+                select(User).where(User.identifier == identifier)
+            ).scalar_one_or_none()
+
+            if not user:
+                error_console.print(
+                    Panel(
+                        f"[red]User '{identifier}' not found![/red]",
+                        title="[bold]Error[/bold]",
+                        border_style="red",
+                    )
+                )
+                raise typer.Exit(1)
+
+            # Count associated data
+            thread_count = len(user.threads)
+
+            if not confirm:
+                console.print(
+                    Panel(
+                        f"[yellow]Warning:[/yellow] This will delete:\n"
+                        f"  • User: [cyan]{identifier}[/cyan]\n"
+                        f"  • Threads: [cyan]{thread_count}[/cyan]\n"
+                        f"  • All associated steps, elements, feedbacks\n\n"
+                        f"[dim]Use --yes to skip confirmation[/dim]",
+                        title="[bold]Confirm Deletion[/bold]",
+                        border_style="yellow",
+                    )
+                )
+                raise typer.Exit(1)
+
+            # Delete user (cascade handles threads, steps, etc.)
+            session.delete(user)
+
+            console.print(
+                Panel(
+                    f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' deleted.\n"
+                    f"[dim]Removed {thread_count} threads and associated data.[/dim]",
+                    title="[bold]User Deleted[/bold]",
+                    border_style="green",
+                )
+            )
+
+        except typer.Exit:
+            raise
+        except Exception as e:
+            error_console.print(
+                Panel(
+                    f"[red]Error deleting user: {e}[/red]",
+                    title="[bold]Error[/bold]",
+                    border_style="red",
+                )
+            )
+            raise typer.Exit(1)
