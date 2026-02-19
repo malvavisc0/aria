@@ -58,7 +58,7 @@ error_console = Console(stderr=True, style="bold red")
 
 
 def _print_banner():
-    """Print the Aria ASCII art banner with version info."""
+    """Print the Aria banner with version info."""
     try:
         from importlib.metadata import version
 
@@ -67,34 +67,48 @@ def _print_banner():
     except Exception:
         version_text = "development"
 
-    banner_art = r"""
-[bold cyan]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣠⣤⣤⣄⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠾⠛⠉⠉⠉⠉⠉⠉⠛⠳⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⠀⢀⣴⠟⠁⣠⣄⣀⣴⡦⠀⠀⠀⠀⠀⠀⠹⣦⡀⠀⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⢠⣾⠏⠀⠀⣸⡿⠛⠻⣷⣤⡄⠀⠀⠀⠀⠀⠘⣷⡄⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⢀⣾⡟⠀⠀⠿⢿⣧⣀⣠⣿⠛⠃⠀⢠⣤⠀⠀⠀⢸⣷⡀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⣸⣿⡇⠀⠀⠀⠰⣿⠛⠛⠿⢿⣷⣤⣾⣿⣦⣤⡇⢸⣿⣇⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⣿⣿⣷⠀⠀⠀⠀⠀⢰⣷⣴⣿⣿⣿⣿⣿⣿⣿⠃⣸⣿⣿⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⣿⣿⣿⣧⡀⠀⠀⠀⠀⣼⣿⣿⣿⡿⠋⠉⠻⠃⣰⣿⣿⣿⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⣿⣿⣿⣿⣷⣄⡀⠸⠿⣿⣿⣿⣿⠇⠀⠀⣠⣾⣿⣿⣿⣿⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⢹⣿⣿⣿⣿⠿⠿⣶⣤⣬⣭⣭⣥⣤⣶⠿⢿⣿⣿⣿⣿⡏⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠈⢿⣿⣿⠃⠀⠀⠘⣿⣿⣿⣿⣿⣿⠁⠀⠀⢹⣿⣿⡿⠁⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⠘⢿⣿⣧⣀⣀⣼⣿⣿⣿⣿⣿⣿⣦⣀⣠⣾⣿⡿⠃⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⠀⠀⠀⣉⠙⠛⠛⠻⠿⠿⠿⠿⠟⠛⠛⠋⢉⠁⠀⠀⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⠀⣷⣶⠀⣶⣶⡆⢀⣾⠃⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[bold cyan]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠀⠛⠛⠃⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-"""
-    console.print()
-    console.print(banner_art.strip())
     console.print()
     console.print(
         Panel(
-            f"[dim]AI Assistant Management CLI[/dim] • [cyan]{version_text}[/cyan]",
+            f"[bold]🧠 ARIA CLI[/bold]\n[dim]AI Assistant Management • {version_text}[/dim]",
             border_style="cyan",
             expand=False,
             padding=(0, 2),
         )
     )
+    console.print()
+
+
+# Command groups for display
+COMMAND_GROUPS = [
+    {
+        "title": "Quick Start",
+        "commands": [
+            ("check", "Verify system is ready"),
+        ],
+    },
+    {
+        "title": "Management",
+        "commands": [
+            ("users", "User accounts (list, add, delete)"),
+            ("models", "GGUF models (download, list)"),
+            ("llamacpp", "Binaries (download, status)"),
+        ],
+    },
+    {
+        "title": "Configuration",
+        "commands": [
+            ("config", "View settings and paths"),
+            ("system", "GPU, VRAM, hardware info"),
+        ],
+    },
+    {
+        "title": "Server",
+        "commands": [
+            ("server", "Start/stop web UI"),
+        ],
+    },
+]
 
 
 @app.callback(invoke_without_command=True)
@@ -105,19 +119,14 @@ def main(ctx: typer.Context):
     """
     if ctx.invoked_subcommand is None:
         _print_banner()
-        console.print()
-        console.print("[bold]Available commands:[/bold]")
-        console.print()
-        console.print("  [cyan]check[/cyan]     Verify all prerequisites")
-        console.print()
-        console.print("  [cyan]users[/cyan]     User management commands")
-        console.print("  [cyan]llamacpp[/cyan]  Llama.cpp binary management")
-        console.print("  [cyan]models[/cyan]    GGUF model download and status")
-        console.print("  [cyan]config[/cyan]    Configuration display")
-        console.print("  [cyan]server[/cyan]    Webserver management")
-        console.print("  [cyan]system[/cyan]    System information (GPU, VRAM)")
-        console.print()
-        console.print("[dim]Run 'aria --help' for more information.[/dim]")
+
+        for group in COMMAND_GROUPS:
+            console.print(f"[bold]{group['title']}[/bold]")
+            for cmd, desc in group["commands"]:
+                console.print(f"   [cyan]aria {cmd}[/cyan]  {desc}")
+            console.print()
+
+        console.print("[dim]Run 'aria <command> --help' for detailed usage.[/dim]")
 
 
 # Category display configuration
