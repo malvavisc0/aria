@@ -178,7 +178,9 @@ def download_command(
     # Resolve repo_id and quantization
     if model:
         try:
-            resolved_repo_id, resolved_quantization = _resolve_model_config(model)
+            resolved_repo_id, resolved_quantization = _resolve_model_config(
+                model
+            )
         except typer.BadParameter as e:
             error_console.print(f"[red]Error: {e}[/red]")
             raise typer.Exit(1)
@@ -401,9 +403,12 @@ def memory_command():
 
     # Build model requirements table
     model_table = Table(show_header=True, header_style="bold cyan")
-    model_table.add_column("Model", style="cyan", width=12)
+    model_table.add_column(
+        "Model",
+        style="cyan",
+    )
     model_table.add_column("Size", style="white", width=10)
-    model_table.add_column("Context", style="yellow", width=10)
+    model_table.add_column("Context", style="yellow", width=8)
     model_table.add_column("KV Cache", style="magenta", width=10)
     model_table.add_column("Status", style="green", width=14)
 
@@ -459,7 +464,7 @@ def memory_command():
     total_ram_mb, avail_ram_mb = detect_system_ram()
 
     hw_table = Table(show_header=True, header_style="bold cyan")
-    hw_table.add_column("Resource", style="cyan", width=20)
+    hw_table.add_column("Resource", style="cyan")
     hw_table.add_column("Total", style="white", width=12)
     hw_table.add_column("Available", style="green", width=12)
     hw_table.add_column("Required", style="yellow", width=12)
@@ -471,7 +476,11 @@ def memory_command():
         for i, gpu in enumerate(gpus):
             free_mb = free_vram[i] if i < len(free_vram) else 0
             fits = total_model_size <= free_mb
-            status = "[green]✓ Fits[/green]" if fits else "[red]✗ Insufficient[/red]"
+            status = (
+                "[green]✓ Fits[/green]"
+                if fits
+                else "[red]✗ Insufficient[/red]"
+            )
             hw_table.add_row(
                 f"GPU {i}: {gpu.name}",
                 f"{gpu.total_memory} MB",
@@ -491,7 +500,9 @@ def memory_command():
     # RAM info
     if total_ram_mb > 0:
         fits = total_kv_cache <= avail_ram_mb * 0.5
-        status = "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
+        status = (
+            "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
+        )
         hw_table.add_row(
             "System RAM",
             f"{total_ram_mb} MB",
