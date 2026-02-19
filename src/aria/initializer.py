@@ -68,11 +68,14 @@ def setup_directories() -> None:
 
     load_dotenv()
 
+    from aria.config.database import ChromaDB
     from aria.config.folders import Data, Storage
 
     Data.path.mkdir(parents=True, exist_ok=True)
     Storage.path.mkdir(parents=True, exist_ok=True)
+    ChromaDB.db_path.mkdir(parents=True, exist_ok=True)
     console.print("   [green]✓[/green] Created data directory")
+    console.print("   [green]✓[/green] Created chromadb directory")
 
 
 def setup_database() -> None:
