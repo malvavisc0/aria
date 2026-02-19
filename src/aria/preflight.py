@@ -33,14 +33,18 @@ class CheckResult:
     Attributes:
         name: Short name of the check (e.g. "llama-server binary").
         passed: True if the check passed, False otherwise.
+        category: Group for display (environment, storage, binaries, models, hardware).
         error: Human-readable description of what is missing (if failed).
         hint: Remediation command or instruction for the user (if failed).
+        details: Optional extra info to display on success (e.g. "24 GB available").
     """
 
     name: str
     passed: bool
+    category: str = "general"
     error: str = ""
     hint: str = ""
+    details: str = ""
 
 
 @dataclass
@@ -60,6 +64,19 @@ class PreflightResult:
     def failures(self) -> List[CheckResult]:
         """Return only the failed checks."""
         return [c for c in self.checks if not c.passed]
+
+    def group_by_category(self) -> dict[str, List[CheckResult]]:
+        """Group checks by category for display.
+
+        Returns:
+            Dict mapping category names to lists of checks.
+        """
+        grouped: dict[str, List[CheckResult]] = {}
+        for check in self.checks:
+            if check.category not in grouped:
+                grouped[check.category] = []
+            grouped[check.category].append(check)
+        return grouped
 
 
 # Required environment variables for the application to start
@@ -84,16 +101,29 @@ REQUIRED_ENV_VARS = [
 
 def _check_env_vars(checks: List[CheckResult]) -> None:
     """Check that all required environment variables are set."""
-    for var in REQUIRED_ENV_VARS:
-        if os.getenv(var):
-            checks.append(CheckResult(name=f"env:{var}", passed=True))
-        else:
+    passed = sum(1 for var in REQUIRED_ENV_VARS if os.getenv(var))
+    total = len(REQUIRED_ENV_VARS)
+
+    if passed == total:
+        checks.append(
+            CheckResult(
+                name="Environment variables",
+                passed=True,
+                category="environment",
+                details=f"All {total} variables configured",
+            )
+        )
+    else:
+        for var in REQUIRED_ENV_VARS:
+            if os.getenv(var):
+                continue
             checks.append(
                 CheckResult(
                     name=f"env:{var}",
                     passed=False,
-                    error=f"Environment variable '{var}' is not set.",
-                    hint=f"Add '{var}' to your .env file.",
+                    category="environment",
+                    error=f"'{var}' is not set",
+                    hint=f"Add '{var}' to your .env file",
                 )
             )
 
@@ -104,13 +134,21 @@ def _check_data_folder(checks: List[CheckResult]) -> None:
 
     data_path = Data.path
     if data_path.exists():
-        checks.append(CheckResult(name="data folder", passed=True))
+        checks.append(
+            CheckResult(
+                name="Data folder",
+                passed=True,
+                category="storage",
+                details=f"exists at {data_path}",
+            )
+        )
     else:
         checks.append(
             CheckResult(
-                name="data folder",
+                name="Data folder",
                 passed=False,
-                error=f"Data folder does not exist: {data_path}",
+                category="storage",
+                error=f"does not exist: {data_path}",
                 hint=f"Create the directory: mkdir -p {data_path}",
             )
         )
@@ -126,13 +164,21 @@ def _check_binaries(checks: List[CheckResult]) -> None:
     # Check llama-server
     llama_server = bin_path / "llama-server"
     if llama_server.exists():
-        checks.append(CheckResult(name="llama-server binary", passed=True))
+        checks.append(
+            CheckResult(
+                name="llama-server",
+                passed=True,
+                category="binaries",
+                details="installed",
+            )
+        )
     else:
         checks.append(
             CheckResult(
-                name="llama-server binary",
+                name="llama-server",
                 passed=False,
-                error=f"llama-server not found at: {llama_server}",
+                category="binaries",
+                error=f"not found at {llama_server}",
                 hint="Run: aria llamacpp download",
             )
         )
@@ -140,14 +186,22 @@ def _check_binaries(checks: List[CheckResult]) -> None:
     # Check run-model script
     run_model = Data.path / "bin" / "run-model"
     if run_model.exists():
-        checks.append(CheckResult(name="run-model script", passed=True))
+        checks.append(
+            CheckResult(
+                name="run-model script",
+                passed=True,
+                category="binaries",
+                details="ready",
+            )
+        )
     else:
         checks.append(
             CheckResult(
                 name="run-model script",
                 passed=False,
-                error=f"run-model script not found at: {run_model}",
-                hint="Ensure the data/bin directory contains the run-model script.",
+                category="binaries",
+                error=f"not found at {run_model}",
+                hint="Ensure data/bin directory contains the run-model script",
             )
         )
 
@@ -166,25 +220,35 @@ def _check_models(checks: List[CheckResult]) -> None:
     ]
 
     for alias, filename in model_checks:
+        display_name = f"{alias} model"
         if not filename:
             checks.append(
                 CheckResult(
-                    name=f"{alias} model",
+                    name=display_name,
                     passed=False,
-                    error=f"Model '{alias}' is not configured (env var not set).",
-                    hint="Set the corresponding env var in your .env file.",
+                    category="models",
+                    error="not configured (env var not set)",
+                    hint="Set the corresponding env var in your .env file",
                 )
             )
             continue
 
         if is_model_downloaded(filename, models_dir):
-            checks.append(CheckResult(name=f"{alias} model", passed=True))
+            checks.append(
+                CheckResult(
+                    name=display_name,
+                    passed=True,
+                    category="models",
+                    details=filename,
+                )
+            )
         else:
             checks.append(
                 CheckResult(
-                    name=f"{alias} model",
+                    name=display_name,
                     passed=False,
-                    error=f"Model '{alias}' ({filename}) is not downloaded.",
+                    category="models",
+                    error=f"not downloaded ({filename})",
                     hint=f"Run: aria models download --model {alias}",
                 )
             )
@@ -229,66 +293,63 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
     )
     from aria.helpers.nvidia import get_free_vram_per_gpu, get_total_vram_mb
 
-    # Minimum hardware requirements
-    MIN_VRAM_MB = 8192  # 8 GB
-    MIN_RAM_MB = 8192  # 16 GB
+    def _mb_to_gb(mb: int) -> str:
+        return f"{mb // 1024} GB"
 
-    # Check minimum VRAM
+    # Check GPU VRAM
     total_vram = get_total_vram_mb()
-    if total_vram > 0 and total_vram < MIN_VRAM_MB:
+    free_vram = get_free_vram_per_gpu()
+    if total_vram > 0:
+        total_free = sum(free_vram) if free_vram else total_vram
         checks.append(
             CheckResult(
-                name="GPU VRAM (minimum)",
-                passed=False,
-                error=f"GPU has {total_vram} MB VRAM, minimum required is {MIN_VRAM_MB} MB",
-                hint="A GPU with at least 8 GB VRAM is required",
+                name="GPU VRAM",
+                passed=True,
+                category="hardware",
+                details=f"{_mb_to_gb(total_free)} available",
             )
         )
 
-    # Check minimum RAM
-    total_ram_mb, _ = detect_system_ram()
-    if total_ram_mb > 0 and total_ram_mb < MIN_RAM_MB:
+    # Check system RAM
+    total_ram_mb, avail_ram_mb = detect_system_ram()
+    if total_ram_mb > 0:
         checks.append(
             CheckResult(
-                name="System RAM (minimum)",
-                passed=False,
-                error=f"System has {total_ram_mb} MB RAM, minimum required is {MIN_RAM_MB} MB",
-                hint="At least 8 GB RAM is required",
+                name="System RAM",
+                passed=True,
+                category="hardware",
+                details=f"{_mb_to_gb(total_ram_mb)} total",
             )
         )
 
-    # Get total model size
+    # Get total model size for VRAM check
     total_model_mb = get_total_model_size_mb()
     if total_model_mb == 0:
         return  # Models not downloaded, skip remaining checks
 
     # Check GPU VRAM fits models
-    free_vram = get_free_vram_per_gpu()
     if free_vram:
         total_free_vram = sum(free_vram)
         if total_model_mb > total_free_vram:
             checks.append(
                 CheckResult(
-                    name="GPU VRAM",
+                    name="Model memory",
                     passed=False,
-                    error=f"Models require {total_model_mb} MB but only {total_free_vram} MB VRAM available",
-                    hint="Use smaller quantization (Q4_K_M) or split models across GPUs",
+                    category="hardware",
+                    error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(total_free_vram)} VRAM available",
+                    hint="Use smaller quantization or split models across GPUs",
                 )
             )
-        else:
-            checks.append(CheckResult(name="GPU VRAM", passed=True))
 
     # Check system RAM for KV cache
     total_kv_mb = get_total_kv_cache_mb()
-    _, avail_ram_mb = detect_system_ram()
     if avail_ram_mb > 0 and total_kv_mb > avail_ram_mb * 0.5:
         checks.append(
             CheckResult(
-                name="System RAM",
+                name="KV cache memory",
                 passed=False,
-                error=f"KV cache requires ~{total_kv_mb} MB but only {avail_ram_mb} MB RAM available",
+                category="hardware",
+                error=f"KV cache needs ~{_mb_to_gb(total_kv_mb)} but only {_mb_to_gb(avail_ram_mb)} RAM available",
                 hint="Reduce context size in configuration",
             )
         )
-    elif avail_ram_mb > 0:
-        checks.append(CheckResult(name="System RAM", passed=True))
