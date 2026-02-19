@@ -46,15 +46,45 @@ HEALTH_CHECK_TIMEOUT = 30  # seconds
 HEALTH_CHECK_INTERVAL = 0.5  # seconds
 
 
-def _check_preflight() -> bool:
-    """Run preflight checks and return True if all pass."""
-    result = run_preflight_checks()
-    for check in result.checks:
-        if check.passed:
-            console.print(f"[green]✓[/green] {check.name}")
+def _print_preflight_result(result) -> bool:
+    """Print preflight results in grouped format and return True if all pass."""
+    grouped = result.group_by_category()
+
+    # Category icons and labels
+    category_config = {
+        "environment": {"icon": "📦", "label": "Environment Variables"},
+        "storage": {"icon": "📁", "label": "Data & Storage"},
+        "binaries": {"icon": "⚙️ ", "label": "Binaries"},
+        "models": {"icon": "🧠", "label": "Models"},
+        "hardware": {"icon": "🖥️ ", "label": "Hardware"},
+    }
+
+    for category in category_config.keys():
+        if category not in grouped:
+            continue
+
+        config = category_config[category]
+        checks = grouped[category]
+        passed = sum(1 for c in checks if c.passed)
+
+        if passed == len(checks):
+            console.print(
+                f"{config['icon']} {config['label']} [green]{passed}/{len(checks)}[/green]"
+            )
         else:
-            console.print(f"[red]✗[/red] {check.name}")
-            console.print(f"  [dim]{check.hint}[/dim]")
+            console.print(
+                f"{config['icon']} {config['label']} [red]{passed}/{len(checks)}[/red]"
+            )
+
+        for check in checks:
+            if check.passed:
+                details = f" [dim]({check.details})[/dim]" if check.details else ""
+                console.print(f"   [green]✓[/green] {check.name}{details}")
+            else:
+                console.print(
+                    f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]"
+                )
+
     return result.passed
 
 
@@ -94,9 +124,10 @@ def server_run():
     Press Ctrl+C to stop.
     """
     # Run preflight checks
-    if not _check_preflight():
+    result = run_preflight_checks()
+    if not _print_preflight_result(result):
         error_console.print(
-            "\n[red]Preflight checks failed. Fix the issues above.[/red]"
+            "\n[red]✗ Preflight checks failed. Fix the issues above.[/red]"
         )
         raise typer.Exit(1)
 
@@ -118,9 +149,10 @@ def server_start():
     Llama-server processes are started automatically by the web_ui.
     """
     # Run preflight checks
-    if not _check_preflight():
+    result = run_preflight_checks()
+    if not _print_preflight_result(result):
         error_console.print(
-            "\n[red]Preflight checks failed. Fix the issues above.[/red]"
+            "\n[red]✗ Preflight checks failed. Fix the issues above.[/red]"
         )
         raise typer.Exit(1)
 

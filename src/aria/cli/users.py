@@ -75,14 +75,10 @@ def list_users():
         users = session.execute(select(User)).scalars().all()
 
         if not users:
-            console.print(
-                Panel(
-                    "[yellow]No users found in database.[/yellow]",
-                    title="[bold]Users[/bold]",
-                    border_style="yellow",
-                )
-            )
+            console.print("[yellow]No users found in database.[/yellow]")
             return
+
+        console.print(f"[bold]Users[/bold] ({len(users)} total)\n")
 
         table = Table(show_header=True, header_style="bold cyan")
         table.add_column("ID", style="dim", width=36)
@@ -100,13 +96,7 @@ def list_users():
                 str(user.createdAt or ""),
             )
 
-        console.print(
-            Panel(
-                table,
-                title=f"[bold]Users[/bold] ({len(users)} total)",
-                border_style="cyan",
-            )
-        )
+        console.print(table)
 
 
 @app.command("add")
@@ -143,13 +133,7 @@ def add_user(
         ).scalar_one_or_none()
 
         if existing:
-            error_console.print(
-                Panel(
-                    f"[red]User '{identifier}' already exists![/red]",
-                    title="[bold]Error[/bold]",
-                    border_style="red",
-                )
-            )
+            error_console.print(f"[red]✗[/red] User '{identifier}' already exists")
             raise typer.Exit(1)
 
         password = typer.prompt(
@@ -176,12 +160,7 @@ def add_user(
         session.add(user)
 
         console.print(
-            Panel(
-                f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' created successfully!\n"
-                f"[dim]Role: {role}[/dim]",
-                title="[bold]User Created[/bold]",
-                border_style="green",
-            )
+            f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' created (role: {role})"
         )
 
 
@@ -218,13 +197,7 @@ def reset_password(
         ).scalar_one_or_none()
 
         if not user:
-            error_console.print(
-                Panel(
-                    f"[red]User '{identifier}' not found![/red]",
-                    title="[bold]Error[/bold]",
-                    border_style="red",
-                )
-            )
+            error_console.print(f"[red]✗[/red] User '{identifier}' not found")
             raise typer.Exit(1)
 
         user.password = hash_password(password)
@@ -234,11 +207,7 @@ def reset_password(
         user.metadata_ = json.dumps(metadata)
 
         console.print(
-            Panel(
-                f"[green]✓[/green] Password reset for '[cyan]{identifier}[/cyan]' successfully!",
-                title="[bold]Password Reset[/bold]",
-                border_style="green",
-            )
+            f"[green]✓[/green] Password reset for '[cyan]{identifier}[/cyan]'"
         )
 
 
@@ -277,11 +246,7 @@ def update_user(
     """
     if not role and not metadata_json:
         error_console.print(
-            Panel(
-                "[red]Provide at least one of --role or --metadata-json.[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
+            "[red]✗[/red] Provide at least one of --role or --metadata-json"
         )
         raise typer.Exit(1)
 
@@ -291,13 +256,7 @@ def update_user(
         ).scalar_one_or_none()
 
         if not user:
-            error_console.print(
-                Panel(
-                    f"[red]User '{identifier}' not found![/red]",
-                    title="[bold]Error[/bold]",
-                    border_style="red",
-                )
-            )
+            error_console.print(f"[red]✗[/red] User '{identifier}' not found")
             raise typer.Exit(1)
 
         metadata = json.loads(user.metadata_)
@@ -310,26 +269,13 @@ def update_user(
                 new_metadata = json.loads(metadata_json)
                 metadata.update(new_metadata)
             except json.JSONDecodeError as e:
-                error_console.print(
-                    Panel(
-                        f"[red]Invalid JSON: {e}[/red]",
-                        title="[bold]Error[/bold]",
-                        border_style="red",
-                    )
-                )
+                error_console.print(f"[red]✗[/red] Invalid JSON: {e}")
                 raise typer.Exit(1)
 
         metadata["updated_at"] = datetime.now().isoformat()
         user.metadata_ = json.dumps(metadata)
 
-        console.print(
-            Panel(
-                f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated successfully!\n\n"
-                f"[dim]Metadata:[/dim]\n{json.dumps(metadata, indent=2)}",
-                title="[bold]User Updated[/bold]",
-                border_style="green",
-            )
-        )
+        console.print(f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated")
 
 
 @app.command("delete")
@@ -362,13 +308,7 @@ def delete_user(
         ).scalar_one_or_none()
 
         if not user:
-            error_console.print(
-                Panel(
-                    f"[red]User '{identifier}' not found![/red]",
-                    title="[bold]Error[/bold]",
-                    border_style="red",
-                )
-            )
+            error_console.print(f"[red]✗[/red] User '{identifier}' not found")
             raise typer.Exit(1)
 
         thread_count = len(user.threads)
@@ -383,10 +323,5 @@ def delete_user(
         session.delete(user)
 
         console.print(
-            Panel(
-                f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' deleted.\n"
-                f"[dim]Removed {thread_count} threads and associated data.[/dim]",
-                title="[bold]User Deleted[/bold]",
-                border_style="green",
-            )
+            f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' deleted ({thread_count} threads removed)"
         )

@@ -207,17 +207,19 @@ def download_command(
     # Resolve token
     resolved_token = token or HuggingFace.token
 
-    console.print(
-        Panel(
-            f"[bold]Repo:[/bold] {resolved_repo_id}\n"
-            f"[bold]Filename:[/bold] {resolved_filename}\n"
-            f"[bold]Destination:[/bold] {target_dir}\n"
-            f"[bold]Token:[/bold] {'[green]set[/green]' if resolved_token else '[yellow]not set (public only)[/yellow]'}\n"
-            f"[bold]Force:[/bold] {'[yellow]yes[/yellow]' if force else 'no'}",
-            title="[bold]GGUF Model Download[/bold]",
-            border_style="cyan",
-        )
+    console.print(f"[bold]GGUF Model Download[/bold]")
+    console.print(f"  Repo: {resolved_repo_id}")
+    console.print(f"  Filename: {resolved_filename}")
+    console.print(f"  Destination: {target_dir}")
+    token_status = (
+        "[green]set[/green]"
+        if resolved_token
+        else "[yellow]not set (public only)[/yellow]"
     )
+    console.print(f"  Token: {token_status}")
+    if force:
+        console.print(f"  [yellow]Force: yes[/yellow]")
+    console.print()
 
     try:
         dest = download_gguf_model(
@@ -227,45 +229,24 @@ def download_command(
             token=resolved_token,
             force=force,
         )
-        console.print(
-            Panel(
-                f"[green]✓[/green] Model ready at: [dim]{dest}[/dim]",
-                title="[bold]Done[/bold]",
-                border_style="green",
-            )
-        )
+        console.print(f"[green]✓[/green] Model ready at: [dim]{dest}[/dim]")
     except FileNotFoundError as e:
-        error_console.print(
-            Panel(
-                f"[red]File not found: {e}[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
-        )
+        error_console.print(f"[red]✗[/red] File not found: {e}")
         raise typer.Exit(1)
     except Exception as e:
-        error_console.print(
-            Panel(
-                f"[red]Download failed: {e}[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
-        )
+        error_console.print(f"[red]✗[/red] Download failed: {e}")
         raise typer.Exit(1)
 
     # For VL models, also download mmproj
     if model == "vl":
         mmproj_filename = Vision.mmproj_filename
         if mmproj_filename:
-            console.print(
-                Panel(
-                    f"[bold]Repo:[/bold] {resolved_repo_id}\n"
-                    f"[bold]Filename:[/bold] {mmproj_filename}\n"
-                    f"[bold]Destination:[/bold] {target_dir}",
-                    title="[bold]MMPROJ Download (Vision Projector)[/bold]",
-                    border_style="magenta",
-                )
-            )
+            console.print(f"[bold]MMPROJ Download (Vision Projector)[/bold]")
+            console.print(f"  Repo: {resolved_repo_id}")
+            console.print(f"  Filename: {mmproj_filename}")
+            console.print(f"  Destination: {target_dir}")
+            console.print()
+
             try:
                 mmproj_dest = download_gguf_model(
                     repo_id=resolved_repo_id,
@@ -275,29 +256,17 @@ def download_command(
                     force=force,
                 )
                 console.print(
-                    Panel(
-                        f"[green]✓[/green] MMPROJ ready at: [dim]{mmproj_dest}[/dim]",
-                        title="[bold]MMPROJ Done[/bold]",
-                        border_style="green",
-                    )
+                    f"[green]✓[/green] MMPROJ ready at: [dim]{mmproj_dest}[/dim]"
                 )
             except FileNotFoundError as e:
-                error_console.print(
-                    Panel(
-                        f"[red]MMPROJ file not found: {e}[/red]\n"
-                        "[yellow]VL model may not have vision capabilities without mmproj.[/yellow]",
-                        title="[bold]Warning[/bold]",
-                        border_style="yellow",
-                    )
+                error_console.print(f"[yellow]⚠[/yellow] MMPROJ file not found: {e}")
+                console.print(
+                    "[dim]VL model may not have vision capabilities without mmproj.[/dim]"
                 )
             except Exception as e:
-                error_console.print(
-                    Panel(
-                        f"[red]MMPROJ download failed: {e}[/red]\n"
-                        "[yellow]VL model may not have vision capabilities without mmproj.[/yellow]",
-                        title="[bold]Warning[/bold]",
-                        border_style="yellow",
-                    )
+                error_console.print(f"[yellow]⚠[/yellow] MMPROJ download failed: {e}")
+                console.print(
+                    "[dim]VL model may not have vision capabilities without mmproj.[/dim]"
                 )
 
 
@@ -374,13 +343,8 @@ def list_command(
 
         table.add_row(alias, repo_id_val, filename_val, status, mmproj_status)
 
-    console.print(
-        Panel(
-            table,
-            title=f"[bold]Configured GGUF Models[/bold] — [dim]{target_dir}[/dim]",
-            border_style="cyan",
-        )
-    )
+    console.print(f"[bold]Configured GGUF Models[/bold] — [dim]{target_dir}[/dim]\n")
+    console.print(table)
 
 
 @app.command("memory")
@@ -530,13 +494,8 @@ def memory_command():
         "",
     )
 
-    console.print(
-        Panel(
-            model_table,
-            title="[bold]Model Memory Requirements[/bold]",
-            border_style="cyan",
-        )
-    )
+    console.print("[bold]Model Memory Requirements[/bold]\n")
+    console.print(model_table)
 
     # Hardware availability
     gpus = detect_gpus_with_details()
@@ -592,13 +551,8 @@ def memory_command():
             "[dim]Unknown[/dim]",
         )
 
-    console.print(
-        Panel(
-            hw_table,
-            title="[bold]Hardware Availability[/bold]",
-            border_style="cyan",
-        )
-    )
+    console.print("\n[bold]Hardware Availability[/bold]\n")
+    console.print(hw_table)
 
     # Tips
     if gpus and total_model_size > 0:

@@ -74,22 +74,9 @@ def download_command(
     """
     try:
         download_llama_cpp(bin_dir=Path(bin_dir), version=version)
-        console.print(
-            Panel(
-                f"[green]✓[/green] Llama.cpp binaries downloaded successfully!\n"
-                f"[dim]Location: {bin_dir}[/dim]",
-                title="[bold]Download Complete[/bold]",
-                border_style="green",
-            )
-        )
+        console.print(f"[green]✓[/green] Llama.cpp binaries downloaded to {bin_dir}")
     except Exception as e:
-        error_console.print(
-            Panel(
-                f"[red]Installation failed: {e}[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
-        )
+        error_console.print(f"[red]✗[/red] Installation failed: {e}")
         raise typer.Exit(1)
 
 
@@ -107,6 +94,18 @@ def check_status():
         aria llamacpp status
         ```
     """
+    # Check for common binaries
+    binaries = ["llama-cli", "llama-server", "llama-bench", "llama-quantize"]
+    installed_count = 0
+    for binary in binaries:
+        binary_path = LlamaCpp.bin_path / binary
+        if binary_path.exists():
+            installed_count += 1
+
+    console.print(
+        f"[bold]Llama.cpp Status[/bold] ({installed_count}/{len(binaries)} binaries)\n"
+    )
+
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
     table.add_column("Value", style="green")
@@ -114,21 +113,11 @@ def check_status():
     table.add_row("Binary Directory", str(LlamaCpp.bin_path))
     table.add_row("Configured Version", LlamaCpp.version)
 
-    # Check for common binaries
-    binaries = ["llama-cli", "llama-server", "llama-bench", "llama-quantize"]
-    installed_count = 0
     for binary in binaries:
         binary_path = LlamaCpp.bin_path / binary
         if binary_path.exists():
             table.add_row(f"{binary}", "[green]✓ Installed[/green]")
-            installed_count += 1
         else:
             table.add_row(f"{binary}", "[red]✗ Not found[/red]")
 
-    console.print(
-        Panel(
-            table,
-            title=f"[bold]Llama.cpp Status[/bold] ({installed_count}/{len(binaries)} binaries)",
-            border_style="cyan",
-        )
-    )
+    console.print(table)

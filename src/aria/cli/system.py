@@ -75,27 +75,19 @@ def show_gpu_info():
     """
     if not check_nvidia_smi_available():
         error_console.print(
-            Panel(
-                "[red]nvidia-smi not available. Ensure NVIDIA drivers are installed.[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
+            "[red]✗[/red] nvidia-smi not available. Ensure NVIDIA drivers are installed."
         )
         raise typer.Exit(1)
 
     gpus = detect_gpus_with_details()
 
     if not gpus:
-        console.print(
-            Panel(
-                "[yellow]No NVIDIA GPUs detected.[/yellow]",
-                title="[bold]GPU Status[/bold]",
-                border_style="yellow",
-            )
-        )
+        console.print("[yellow]No NVIDIA GPUs detected.[/yellow]")
         return
 
     # Summary table
+    console.print("[bold]GPU Summary[/bold]\n")
+
     summary_table = Table(show_header=True, header_style="bold cyan")
     summary_table.add_column("Property", style="cyan", width=20)
     summary_table.add_column("Value", style="green")
@@ -104,16 +96,12 @@ def show_gpu_info():
     summary_table.add_row("Driver Version", gpus[0].driver_version if gpus else "N/A")
     summary_table.add_row("nvidia-smi Version", get_nvidia_smi_version())
 
-    console.print(
-        Panel(
-            summary_table,
-            title="[bold]GPU Summary[/bold]",
-            border_style="cyan",
-        )
-    )
+    console.print(summary_table)
     console.print()
 
     # Detailed GPU table
+    console.print("[bold]GPU Details[/bold]\n")
+
     detail_table = Table(show_header=True, header_style="bold cyan")
     detail_table.add_column("Index", style="cyan", width=6)
     detail_table.add_column("Name", style="green")
@@ -134,9 +122,7 @@ def show_gpu_info():
             str(gpu.fan_speed),
         )
 
-    console.print(
-        Panel(detail_table, title="[bold]GPU Details[/bold]", border_style="cyan")
-    )
+    console.print(detail_table)
 
 
 @app.command("vram")
@@ -156,11 +142,7 @@ def show_vram():
     """
     if not check_nvidia_smi_available():
         error_console.print(
-            Panel(
-                "[red]nvidia-smi not available. Ensure NVIDIA drivers are installed.[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
+            "[red]✗[/red] nvidia-smi not available. Ensure NVIDIA drivers are installed."
         )
         raise typer.Exit(1)
 
@@ -169,14 +151,10 @@ def show_vram():
     gpu_count = detect_gpu_count()
 
     if gpu_count == 0:
-        console.print(
-            Panel(
-                "[yellow]No NVIDIA GPUs detected.[/yellow]",
-                title="[bold]VRAM Status[/bold]",
-                border_style="yellow",
-            )
-        )
+        console.print("[yellow]No NVIDIA GPUs detected.[/yellow]")
         return
+
+    console.print("[bold]VRAM Usage[/bold]\n")
 
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("GPU Index", style="cyan", width=10)
@@ -190,10 +168,9 @@ def show_vram():
             f"{free_vram / 1024:.2f}",
         )
 
-    console.print(Panel(table, title="[bold]VRAM Usage[/bold]", border_style="cyan"))
-    console.print()
+    console.print(table)
     console.print(
-        f"[dim]Total VRAM: {total_vram} MiB ({total_vram / 1024:.2f} GiB)[/dim]"
+        f"\n[dim]Total VRAM: {total_vram} MiB ({total_vram / 1024:.2f} GiB)[/dim]"
     )
 
 
@@ -211,15 +188,13 @@ def check_nvlink():
     """
     if not check_nvidia_smi_available():
         error_console.print(
-            Panel(
-                "[red]nvidia-smi not available. Ensure NVIDIA drivers are installed.[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
+            "[red]✗[/red] nvidia-smi not available. Ensure NVIDIA drivers are installed."
         )
         raise typer.Exit(1)
 
     has_nvlink, bond_type = detect_nvlink()
+
+    console.print("[bold]NVLink Status[/bold]\n")
 
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
@@ -234,7 +209,7 @@ def check_nvlink():
     else:
         table.add_row("NVLink Detected", "[red]✗ No[/red]")
 
-    console.print(Panel(table, title="[bold]NVLink Status[/bold]", border_style="cyan"))
+    console.print(table)
 
 
 @app.command("context")
@@ -271,25 +246,18 @@ def calculate_context(
     """
     if not check_nvidia_smi_available():
         error_console.print(
-            Panel(
-                "[red]nvidia-smi not available. Ensure NVIDIA drivers are installed.[/red]",
-                title="[bold]Error[/bold]",
-                border_style="red",
-            )
+            "[red]✗[/red] nvidia-smi not available. Ensure NVIDIA drivers are installed."
         )
         raise typer.Exit(1)
 
     free_vram_list = get_free_vram_per_gpu()
 
     if not free_vram_list:
-        console.print(
-            Panel(
-                "[yellow]No GPUs detected.[/yellow]",
-                title="[bold]Context Calculation[/bold]",
-                border_style="yellow",
-            )
-        )
+        console.print("[yellow]No GPUs detected.[/yellow]")
         return
+
+    model_type = "Embedding" if embedding else "LLM"
+    console.print(f"[bold]Context Calculation ({model_type})[/bold]\n")
 
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("GPU Index", style="cyan", width=10)
@@ -306,16 +274,8 @@ def calculate_context(
         table.add_row(str(i), str(free_vram), f"{context:,}")
         total_context = max(total_context, context)  # Use max for multi-GPU
 
-    model_type = "Embedding" if embedding else "LLM"
-    console.print(
-        Panel(
-            table,
-            title="[bold]Safe Context Size Calculation[/bold]",
-            border_style="cyan",
-        )
-    )
-    console.print()
-    console.print(f"[dim]Model type: {model_type}[/dim]")
+    console.print(table)
+    console.print(f"\n[dim]Model type: {model_type}[/dim]")
     console.print(f"[dim]Model size: {model_size} MiB[/dim]")
     console.print(f"[cyan]Recommended max context: {total_context:,} tokens[/cyan]")
 
@@ -335,6 +295,8 @@ def system_overview():
         aria system info
         ```
     """
+    console.print("[bold]System Overview[/bold]\n")
+
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
     table.add_column("Value", style="green")
@@ -357,6 +319,4 @@ def system_overview():
         table.add_row("NVIDIA Driver", "[red]✗ Not available[/red]")
         table.add_row("GPU Count", "0")
 
-    console.print(
-        Panel(table, title="[bold]System Overview[/bold]", border_style="cyan")
-    )
+    console.print(table)

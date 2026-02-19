@@ -77,6 +77,8 @@ def show_paths():
         aria config paths
         ```
     """
+    console.print("[bold]File System Paths[/bold]\n")
+
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Name", style="cyan", width=20)
     table.add_column("Path", style="green")
@@ -94,9 +96,7 @@ def show_paths():
         exists = "[green]✓[/green]" if path.exists() else "[red]✗[/red]"
         table.add_row(name, str(path), exists)
 
-    console.print(
-        Panel(table, title="[bold]File System Paths[/bold]", border_style="cyan")
-    )
+    console.print(table)
 
 
 @app.command("database")
@@ -113,6 +113,8 @@ def show_database():
         aria config database
         ```
     """
+    console.print("[bold]Database Configuration[/bold]\n")
+
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
     table.add_column("Value", style="green")
@@ -129,13 +131,7 @@ def show_database():
         "[green]✓ Yes[/green]" if db_exists else "[red]✗ No[/red]",
     )
 
-    console.print(
-        Panel(
-            table,
-            title="[bold]Database Configuration[/bold]",
-            border_style="cyan",
-        )
-    )
+    console.print(table)
 
 
 @app.command("api")
@@ -152,6 +148,8 @@ def show_api():
         aria config api
         ```
     """
+    console.print("[bold]API Configuration[/bold]\n")
+
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Property", style="cyan", width=20)
     table.add_column("Value", style="green")
@@ -162,6 +160,4 @@ def show_api():
     table.add_row("Embeddings Model", Embeddings.model)
     table.add_row("Token Limit", str(Embeddings.token_limit))
 
-    console.print(
-        Panel(table, title="[bold]API Configuration[/bold]", border_style="cyan")
-    )
+    console.print(table)
