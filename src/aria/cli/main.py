@@ -43,7 +43,6 @@ from aria.cli import (
     system,
     users,
 )
-from aria.config.api import LlamaCpp as LlamaCppConfig
 from aria.config.database import SQLite as SQLiteConfig
 from aria.config.folders import Data as DataConfig
 from aria.config.folders import Debug as DebugConfig
@@ -137,46 +136,50 @@ def main(ctx: typer.Context):
 
 @app.command("check")
 def health_check():
-    """Verify database connectivity and write permissions.
+    """Verify all prerequisites for running the Aria web UI.
 
-    Performs a comprehensive health check of the database connection:
-    1. Tests basic connectivity with a SELECT query
-    2. Verifies write permissions by creating and dropping a test table
-
-    This command is useful for diagnosing database issues and ensuring
-    the application can properly interact with its data store.
+    Performs comprehensive preflight checks:
+    1. Required environment variables are set
+    2. Data folder exists
+    3. llama-server binary is installed
+    4. run-model script exists
+    5. All GGUF models are downloaded
+    6. Database connectivity and write permissions
 
     Example:
         ```bash
         aria check
         ```
     """
+    from aria.preflight import run_preflight_checks
+
+    # Run preflight checks
+    result = run_preflight_checks()
+
+    # Display all checks (passed and failed)
+    for check in result.checks:
+        if check.passed:
+            console.print(f"[green]✓[/green] {check.name}")
+        else:
+            console.print(f"[red]✗[/red] {check.name}")
+            console.print(f"  [dim]{check.hint}[/dim]")
+
+    # Database connectivity check
     try:
         with get_db_session() as session:
-            # Check if we can talk to the engine
             session.execute(text("SELECT 1"))
-
-            # Check if we can actually WRITE
             session.execute(text("CREATE TABLE IF NOT EXISTS health (id int)"))
             session.execute(text("DROP TABLE health"))
-
             console.print(
                 "[green]✓[/green] Database connection is healthy and writable."
             )
-
     except Exception:
+        error_console.print("[red]✗[/red] Database connection failed.")
         error_console.print_exception()
 
-    llama_server_path = LlamaCppConfig.bin_path / "llama-server"
-    if not llama_server_path.exists():
-        error_console.print("[red]✗[/red] llama-server not found.")
-        console.print(
-            "[dim]Run 'aria llamacpp download' to download llama.cpp binaries.[/dim]"
-        )
-
+    # Exit with error if any preflight check failed
+    if not result.passed:
         raise typer.Exit(1)
-
-    console.print("[green]✓[/green] llama-server found.")
 
 
 @app.command("version")

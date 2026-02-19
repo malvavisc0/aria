@@ -2,7 +2,10 @@
 
 Verifies that all required dependencies are in place before starting
 the Chainlit web server:
-  - llama-server binary installed in the configured bin directory
+  - Required environment variables are set
+  - Data folder exists
+  - llama-server binary installed
+  - run-model script exists
   - All three GGUF models (chat, vl, embeddings) downloaded
 
 Example:
@@ -24,18 +27,20 @@ from typing import List
 
 
 @dataclass
-class FailedCheck:
-    """A single failed preflight check.
+class CheckResult:
+    """Result of a single preflight check.
 
     Attributes:
         name: Short name of the check (e.g. "llama-server binary").
-        error: Human-readable description of what is missing.
-        hint: Remediation command or instruction for the user.
+        passed: True if the check passed, False otherwise.
+        error: Human-readable description of what is missing (if failed).
+        hint: Remediation command or instruction for the user (if failed).
     """
 
     name: str
-    error: str
-    hint: str
+    passed: bool
+    error: str = ""
+    hint: str = ""
 
 
 @dataclass
@@ -44,43 +49,119 @@ class PreflightResult:
 
     Attributes:
         passed: True if all checks passed, False if any failed.
-        failures: List of FailedCheck instances for each failed check.
-            Empty when passed is True.
+        checks: List of all CheckResult instances.
+        failures: List of failed CheckResult instances.
     """
 
     passed: bool
-    failures: List[FailedCheck] = field(default_factory=list)
+    checks: List[CheckResult] = field(default_factory=list)
+
+    @property
+    def failures(self) -> List[CheckResult]:
+        """Return only the failed checks."""
+        return [c for c in self.checks if not c.passed]
 
 
-def run_preflight_checks() -> PreflightResult:
-    """Run all preflight checks required before starting the web UI.
+# Required environment variables for the application to start
+REQUIRED_ENV_VARS = [
+    "DATA_FOLDER",
+    "ARIA_DB_FILENAME",
+    "LOCAL_STORAGE_PATH",
+    "CHROMADB_PERSISTENT_PATH",
+    "LLAMA_CPP_BIN_DIR",
+    "LLAMA_CPP_VERSION",
+    "GGUF_MODELS_DIR",
+    "CHAT_OPENAI_API",
+    "MAX_ITERATIONS",
+    "TOKEN_LIMIT",
+    "EMBEDDINGS_API_URL",
+    "EMBEDDINGS_MODEL",
+    "VL_OPENAI_API",
+    "VL_MODEL",
+    "CHAINLIT_AUTH_SECRET",
+]
 
-    Checks performed (all run before returning so every failure is reported):
-        1. llama-server binary exists in LlamaCppConfig.bin_path
-        2. Chat model is downloaded (CHAT_MODEL / CHAT_MODEL_TYPE env vars)
-        3. VL model is downloaded (VL_MODEL / VL_MODEL_TYPE env vars)
-        4. Embeddings model is downloaded (EMBEDDINGS_MODEL / EMBEDDINGS_MODEL_TYPE env vars)
 
-    Returns:
-        PreflightResult with pass/fail status and structured failure details.
-    """
-    from aria.config.api import LlamaCpp as LlamaCppConfig
-    from aria.scripts.gguf import is_model_downloaded
+def _check_env_vars(checks: List[CheckResult]) -> None:
+    """Check that all required environment variables are set."""
+    for var in REQUIRED_ENV_VARS:
+        if os.getenv(var):
+            checks.append(CheckResult(name=f"env:{var}", passed=True))
+        else:
+            checks.append(
+                CheckResult(
+                    name=f"env:{var}",
+                    passed=False,
+                    error=f"Environment variable '{var}' is not set.",
+                    hint=f"Add '{var}' to your .env file.",
+                )
+            )
 
-    failures: List[FailedCheck] = []
 
-    # --- Check 1: llama-server binary ---
-    llama_server_path: Path = LlamaCppConfig.bin_path / "llama-server"
-    if not llama_server_path.exists():
-        failures.append(
-            FailedCheck(
+def _check_data_folder(checks: List[CheckResult]) -> None:
+    """Check that the data folder exists."""
+    data_folder = os.getenv("DATA_FOLDER")
+    if not data_folder:
+        return  # Already caught by env var check
+
+    data_path = Path.cwd() / data_folder
+    if data_path.exists():
+        checks.append(CheckResult(name="data folder", passed=True))
+    else:
+        checks.append(
+            CheckResult(
+                name="data folder",
+                passed=False,
+                error=f"Data folder does not exist: {data_path}",
+                hint=f"Create the directory: mkdir -p {data_folder}",
+            )
+        )
+
+
+def _check_binaries(checks: List[CheckResult]) -> None:
+    """Check that required binaries exist."""
+    data_folder = os.getenv("DATA_FOLDER")
+    bin_dir = os.getenv("LLAMA_CPP_BIN_DIR")
+
+    if not data_folder or not bin_dir:
+        return  # Already caught by env var check
+
+    bin_path = Path.cwd() / data_folder / bin_dir
+
+    # Check llama-server
+    llama_server = bin_path / "llama-server"
+    if llama_server.exists():
+        checks.append(CheckResult(name="llama-server binary", passed=True))
+    else:
+        checks.append(
+            CheckResult(
                 name="llama-server binary",
-                error=f"llama-server not found at: {llama_server_path}",
+                passed=False,
+                error=f"llama-server not found at: {llama_server}",
                 hint="Run: aria llamacpp download",
             )
         )
 
-    # --- Checks 2-4: GGUF models ---
+    # Check run-model script
+    run_model = Path.cwd() / data_folder / "bin" / "run-model"
+    if run_model.exists():
+        checks.append(CheckResult(name="run-model script", passed=True))
+    else:
+        checks.append(
+            CheckResult(
+                name="run-model script",
+                passed=False,
+                error=f"run-model script not found at: {run_model}",
+                hint="Ensure the data/bin directory contains the run-model script.",
+            )
+        )
+
+
+def _check_models(checks: List[CheckResult]) -> None:
+    """Check that all required GGUF models are downloaded."""
+    from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.scripts.gguf import is_model_downloaded
+
     models_dir = LlamaCppConfig.models_path
     model_checks = [
         (
@@ -102,28 +183,52 @@ def run_preflight_checks() -> PreflightResult:
 
     for alias, repo_id, quantization in model_checks:
         if not repo_id:
-            failures.append(
-                FailedCheck(
+            checks.append(
+                CheckResult(
                     name=f"{alias} model",
+                    passed=False,
                     error=f"Model '{alias}' is not configured (env var not set).",
                     hint="Set the corresponding env var in your .env file.",
                 )
             )
             continue
 
-        if not is_model_downloaded(repo_id, quantization, models_dir):
-            failures.append(
-                FailedCheck(
+        if is_model_downloaded(repo_id, quantization, models_dir):
+            checks.append(CheckResult(name=f"{alias} model", passed=True))
+        else:
+            checks.append(
+                CheckResult(
                     name=f"{alias} model",
-                    error=(
-                        f"Model '{alias}' ({repo_id} / {quantization}) "
-                        f"is not downloaded."
-                    ),
+                    passed=False,
+                    error=f"Model '{alias}' ({repo_id} / {quantization}) is not downloaded.",
                     hint=f"Run: aria models download --model {alias}",
                 )
             )
 
+
+def run_preflight_checks() -> PreflightResult:
+    """Run all preflight checks required before starting the web UI.
+
+    Checks performed (all run before returning so every failure is reported):
+        1. All required environment variables are set
+        2. Data folder exists
+        3. llama-server binary exists
+        4. run-model script exists
+        5. Chat model is downloaded
+        6. VL model is downloaded
+        7. Embeddings model is downloaded
+
+    Returns:
+        PreflightResult with pass/fail status and all check details.
+    """
+    checks: List[CheckResult] = []
+
+    _check_env_vars(checks)
+    _check_data_folder(checks)
+    _check_binaries(checks)
+    _check_models(checks)
+
     return PreflightResult(
-        passed=len(failures) == 0,
-        failures=failures,
+        passed=all(c.passed for c in checks),
+        checks=checks,
     )
