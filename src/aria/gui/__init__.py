@@ -13,9 +13,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from aria.gui.main_window import MainWindow
-
-__all__ = ["MainWindow", "main"]
+__all__ = ["main"]
 
 
 def main():
@@ -24,6 +22,8 @@ def main():
 
     if not is_initialized():
         run_initialization()
+
+    from aria.gui.main_window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("Aria")
