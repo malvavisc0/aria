@@ -1,8 +1,8 @@
-# `run-model` — GPU-Optimized llama-server Launcher
+# `run-model` — Hardware-Optimized llama-server Launcher
 
-**Location:** [`data/bin/run-model`](../data/bin/run-model)  
-**Type:** Bash script (`#!/bin/bash`, `set -euo pipefail`)  
-**Purpose:** Launch one or more `llama-server` processes with automatic GPU detection, KV cache tuning, flash attention, and dual-GPU configuration.
+**Location:** [`data/bin/run-model`](../data/bin/run-model)
+**Type:** Bash script (`#!/bin/bash`, `set -eo pipefail`)
+**Purpose:** Launch one or more `llama-server` processes with automatic hardware detection, KV cache tuning, flash attention, and multi-platform support.
 
 ---
 
@@ -11,10 +11,11 @@
 `run-model` is the central launcher for all `llama-server` instances in Aria. It wraps `llama-server` (from [llama.cpp](https://github.com/ggml-org/llama.cpp)) with:
 
 - **GGUF file validation** — magic number check, size check
-- **NVIDIA GPU detection** — VRAM inventory, multi-GPU topology
+- **Multi-platform support** — NVIDIA GPU, Apple Silicon (Metal), or CPU-only
+- **Automatic platform detection** — NVIDIA > Metal > CPU priority
 - **Context size management** — power-of-2 enforcement, safe-context capping
-- **Resource estimation** — KV cache size, VRAM headroom, RAM pressure warnings
-- **Dual-GPU support** — NVLink detection, proportional tensor splitting
+- **Resource estimation** — KV cache size, VRAM/headroom, RAM pressure warnings
+- **Dual-GPU support** — NVLink detection, proportional tensor splitting (NVIDIA only)
 - **Two operating modes** — chat (default) and embedding
 - **Signal handling** — graceful `SIGTERM`/`SIGINT` with `SIGKILL` fallback
 - **Structured terminal output** — colored, boxed sections with key-value pairs
@@ -82,7 +83,8 @@ All options can be set via environment variables. CLI flags take precedence over
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | Server port |
-| `N_GPU_LAYERS` | `999` | GPU layers to offload (999 = all) |
+| `N_GPU_LAYERS` | `999` (NVIDIA) / `99` (Metal) / `0` (CPU) | GPU layers to offload |
+| `PLATFORM` | _(auto-detect)_ | Force platform: `nvidia`, `metal`, or `cpu` |
 | `DEBUG` | `0` | Enable debug output (`1`/`0`) |
 | `STRICT_POWER_OF_2` | `1` | Enforce power-of-2 context sizes (`1`/`0`) |
 | `LOG_FILE` | _(empty)_ | Path to log file |
@@ -114,14 +116,18 @@ main()
   │     ├── validate_gguf_file()    Check file exists, size > 1MB, GGUF magic number
   │     ├── validate_context_size() Check non-negative integer, power-of-2 warning
   │     └── validate_port()         Check range 1–65535, check if port in use
-  ├── detect_gpu()          Query nvidia-smi for GPU count and VRAM
-  ├── calculate_max_safe_ctx()  Compute safe context cap from total VRAM
+  ├── detect_hardware()
+  │     ├── detect_compute_platform()  Auto-detect: NVIDIA > Metal > CPU
+  │     ├── detect_nvidia_gpu()        Query nvidia-smi for GPU count and VRAM
+  │     ├── detect_metal_gpu()         Detect Apple Silicon unified memory
+  │     └── detect_cpu_only()          Fallback for systems without GPU
   ├── detect_system_ram()   Read total and available system RAM
+  ├── calculate_max_safe_ctx()  Compute safe context cap (platform-aware)
   ├── extract_model_metadata()  Read GGUF header for architecture/quantization
-  ├── get_performance_tips()    Print topology-aware recommendations
+  ├── get_performance_tips()    Print platform-specific recommendations
   ├── build_command()
   │     ├── Cap context to MAX_SAFE_CTX if needed
-  │     ├── configure_dual_gpu()   NVLink detection, tensor split ratios
+  │     ├── configure_dual_gpu()   NVLink detection, tensor split (NVIDIA only)
   │     ├── estimate_kv_cache_mb() Estimate KV cache RAM usage
   │     └── Assemble CMD_ARRAY
   └── launch_server()
@@ -137,7 +143,7 @@ main()
 
 ### 1. GGUF Validation
 
-Before any GPU queries, the script validates the model file:
+Before any hardware queries, the script validates the model file:
 
 1. **File existence** — `[[ -f "$model_path" ]]`
 2. **Minimum size** — file must be > 1 MB (rejects symlinks to nothing, empty files)
@@ -148,23 +154,54 @@ magic=$(head -c 4 "$model_path" | od -An -tx1 | tr -d ' \n')
 # Expected: "47475546"
 ```
 
-### 2. GPU Detection
+### 2. Platform Detection
 
-Calls `nvidia-smi` to enumerate GPUs and measure VRAM:
+The script automatically detects the compute platform with priority: **NVIDIA > Metal > CPU**.
+
+#### NVIDIA Detection
+
+Checks for `nvidia-smi` and queries GPU information:
 
 ```bash
 GPU_COUNT=$(nvidia-smi -L | grep -c "GPU")
 TOTAL_VRAM_MB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | awk '{sum += $1} END {print sum}')
 ```
 
-If `nvidia-smi` is not found or returns no GPUs, the script exits with an error. This script **requires NVIDIA GPU + drivers**.
+#### Metal Detection (Apple Silicon)
+
+Checks if running on macOS with Apple Silicon:
+
+```bash
+# Check for Apple CPU brand string or arm64 architecture
+cpu_brand=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
+if [[ "$cpu_brand" == *"Apple"* ]] || [[ "$(uname -m)" == "arm64" ]]; then
+    PLATFORM="metal"
+fi
+```
+
+On Metal, unified memory means system RAM is used as VRAM equivalent.
+
+#### CPU-Only Fallback
+
+If no GPU is detected, the script falls back to CPU-only mode:
+
+```bash
+PLATFORM="cpu"
+N_GPU_LAYERS=0  # No GPU offloading
+```
 
 ### 3. Safe Context Calculation
 
-`calculate_max_safe_ctx()` maps total VRAM to a conservative maximum context size:
+`calculate_max_safe_ctx()` maps available memory to a conservative maximum context size, with platform-specific adjustments:
 
-| Total VRAM | Max Safe Context |
-|-----------|-----------------|
+| Platform | Memory Used for Calculation |
+|----------|----------------------------|
+| NVIDIA | 100% of VRAM |
+| Metal | 70% of unified memory |
+| CPU | 50% of available RAM |
+
+| Memory | Max Safe Context |
+|--------|-----------------|
 | ≤ 8 GB | 8,192 |
 | ≤ 12 GB | 16,384 |
 | ≤ 16 GB | 32,768 |
@@ -198,9 +235,9 @@ Where `kv_mult` depends on quantization:
 - 24B Q8_0 (~25 GB file), 262K ctx → ~32 GB KV cache
 - 70B Q8_0 (~70 GB file), 32K ctx → ~10 GB KV cache
 
-### 5. Dual-GPU Configuration
+### 5. Dual-GPU Configuration (NVIDIA Only)
 
-When exactly 2 GPUs are detected, `configure_dual_gpu()` checks for NVLink:
+When exactly 2 NVIDIA GPUs are detected, `configure_dual_gpu()` checks for NVLink:
 
 ```bash
 nvidia-smi topo -m | grep -q "NV"
@@ -216,6 +253,8 @@ ratio1 = free_vram_gpu1 / (free_vram_gpu0 + free_vram_gpu1)
 **Without NVLink:** Uses `--split-mode layer` (layer parallelism, no tensor split).
 
 **For 1 GPU or >2 GPUs:** No split mode is set; `llama-server` handles distribution automatically.
+
+**Note:** Dual-GPU configuration is NVIDIA-only. Metal and CPU platforms skip this step entirely.
 
 ---
 
@@ -362,7 +401,19 @@ KV_CACHE_TYPE_K=q4_k KV_CACHE_TYPE_V=q4_k ./run-model /path/to/model.gguf 65536
 ## Troubleshooting
 
 ### `nvidia-smi not found`
-Install NVIDIA drivers. The script requires NVIDIA GPU + drivers. It does not support AMD, Intel, or Apple Silicon GPUs.
+If you have an NVIDIA GPU, install the NVIDIA drivers. If you're on Apple Silicon or a system without NVIDIA GPU, the script will automatically fall back to Metal or CPU mode.
+
+### Running on Apple Silicon (Metal)
+The script automatically detects Apple Silicon and uses Metal GPU acceleration. No additional configuration is needed. Note that:
+- Unified memory means GPU and CPU share the same RAM
+- Default `N_GPU_LAYERS` is 99 (vs 999 for NVIDIA)
+- Flash attention works on Metal
+
+### Running in CPU-only mode
+If no GPU is detected, the script runs in CPU-only mode:
+- `N_GPU_LAYERS` is forced to 0
+- Inference will be significantly slower than GPU
+- Consider using smaller models and Q4_K_M quantization
 
 ### `Port N is already in use`
 Another process is listening on the port. Either stop it or use a different port:

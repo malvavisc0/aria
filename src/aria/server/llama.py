@@ -171,18 +171,30 @@ class LlamaCppServerManager:
         """Build environment for the run-model script.
 
         Sets ``LLAMA_SERVER_PATH`` to the absolute path of the llama-server
-        binary and prepends the binary directory to ``LD_LIBRARY_PATH`` so
-        that the shared libraries bundled alongside the binary
-        (``libllama.so``, ``libggml*.so``, etc.) are found at runtime.
+        binary and prepends the binary directory to ``LD_LIBRARY_PATH`` (Linux)
+        or ``DYLD_LIBRARY_PATH`` (macOS) so that the shared libraries bundled
+        alongside the binary (``libllama.so``, ``libggml*.so``, etc.) are found
+        at runtime.
         """
+        import platform
+
         env = os.environ.copy()
         bin_path = LlamaCppConfig.bin_path
         env["LLAMA_SERVER_PATH"] = str(bin_path / "llama-server")
 
-        # Prepend the bin directory to LD_LIBRARY_PATH so the bundled
+        # Prepend the bin directory to library path so the bundled
         # shared libraries are resolved when llama-server is executed.
-        existing = env.get("LD_LIBRARY_PATH", "")
-        env["LD_LIBRARY_PATH"] = f"{bin_path}:{existing}" if existing else str(bin_path)
+        # Linux uses LD_LIBRARY_PATH, macOS uses DYLD_LIBRARY_PATH.
+        if platform.system() == "Darwin":
+            existing = env.get("DYLD_LIBRARY_PATH", "")
+            env["DYLD_LIBRARY_PATH"] = (
+                f"{bin_path}:{existing}" if existing else str(bin_path)
+            )
+        else:
+            existing = env.get("LD_LIBRARY_PATH", "")
+            env["LD_LIBRARY_PATH"] = (
+                f"{bin_path}:{existing}" if existing else str(bin_path)
+            )
         return env
 
     def _wait_for_ready(

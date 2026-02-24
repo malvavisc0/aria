@@ -284,8 +284,48 @@ def run_preflight_checks() -> PreflightResult:
     )
 
 
+def _detect_compute_platform() -> str:
+    """Detect the compute platform: nvidia, metal, or cpu.
+
+    Priority: NVIDIA > Metal > CPU.
+    """
+    import platform
+
+    # Check for NVIDIA GPU
+    try:
+        from aria.helpers.nvidia import get_total_vram_mb
+
+        if get_total_vram_mb() > 0:
+            return "nvidia"
+    except Exception:
+        pass
+
+    # Check for Apple Silicon (Metal)
+    if platform.system() == "Darwin":
+        import subprocess
+
+        try:
+            # Check if running on Apple Silicon
+            arch = subprocess.check_output(
+                ["uname", "-m"], stderr=subprocess.DEVNULL
+            ).decode()
+            if arch.strip() == "arm64":
+                return "metal"
+        except Exception:
+            pass
+
+    # Fallback to CPU
+    return "cpu"
+
+
 def _check_memory_requirements(checks: List[CheckResult]) -> None:
-    """Check if models fit in available GPU VRAM and RAM."""
+    """Check if models fit in available GPU VRAM and RAM.
+
+    Platform-aware:
+        - NVIDIA: Check VRAM and RAM separately
+        - Metal: Use unified memory (system RAM)
+        - CPU: Only check system RAM
+    """
     from aria.helpers.memory import (
         detect_system_ram,
         get_total_kv_cache_mb,
@@ -296,21 +336,10 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
     def _mb_to_gb(mb: int) -> str:
         return f"{mb // 1024} GB"
 
-    # Check GPU VRAM
-    total_vram = get_total_vram_mb()
-    free_vram = get_free_vram_per_gpu()
-    if total_vram > 0:
-        total_free = sum(free_vram) if free_vram else total_vram
-        checks.append(
-            CheckResult(
-                name="GPU VRAM",
-                passed=True,
-                category="hardware",
-                details=f"{_mb_to_gb(total_free)} available",
-            )
-        )
+    # Detect platform
+    platform_type = _detect_compute_platform()
 
-    # Check system RAM
+    # Check system RAM (all platforms)
     total_ram_mb, avail_ram_mb = detect_system_ram()
     if total_ram_mb > 0:
         checks.append(
@@ -322,26 +351,92 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
             )
         )
 
-    # Get total model size for VRAM check
+    # Platform-specific checks
+    if platform_type == "nvidia":
+        # Check GPU VRAM for NVIDIA
+        total_vram = get_total_vram_mb()
+        free_vram = get_free_vram_per_gpu()
+        if total_vram > 0:
+            total_free = sum(free_vram) if free_vram else total_vram
+            checks.append(
+                CheckResult(
+                    name="GPU VRAM",
+                    passed=True,
+                    category="hardware",
+                    details=f"{_mb_to_gb(total_free)} available (NVIDIA)",
+                )
+            )
+    elif platform_type == "metal":
+        # Metal uses unified memory
+        if total_ram_mb > 0:
+            checks.append(
+                CheckResult(
+                    name="Unified Memory",
+                    passed=True,
+                    category="hardware",
+                    details=f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)",
+                )
+            )
+    else:
+        # CPU-only mode
+        checks.append(
+            CheckResult(
+                name="Compute Platform",
+                passed=True,
+                category="hardware",
+                details="CPU-only mode (no GPU acceleration)",
+            )
+        )
+
+    # Get total model size for memory check
     total_model_mb = get_total_model_size_mb()
     if total_model_mb == 0:
         return  # Models not downloaded, skip remaining checks
 
-    # Check GPU VRAM fits models
-    if free_vram:
-        total_free_vram = sum(free_vram)
-        if total_model_mb > total_free_vram:
+    # Platform-specific memory checks
+    if platform_type == "nvidia":
+        # Check GPU VRAM fits models
+        free_vram = get_free_vram_per_gpu()
+        if free_vram:
+            total_free_vram = sum(free_vram)
+            if total_model_mb > total_free_vram:
+                checks.append(
+                    CheckResult(
+                        name="Model memory",
+                        passed=False,
+                        category="hardware",
+                        error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(total_free_vram)} VRAM available",
+                        hint="Use smaller quantization or split models across GPUs",
+                    )
+                )
+    elif platform_type == "metal":
+        # Metal: check unified memory (use 70% of total RAM as safe limit)
+        safe_memory_mb = int(total_ram_mb * 0.7)
+        if total_model_mb > safe_memory_mb:
             checks.append(
                 CheckResult(
                     name="Model memory",
                     passed=False,
                     category="hardware",
-                    error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(total_free_vram)} VRAM available",
-                    hint="Use smaller quantization or split models across GPUs",
+                    error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(safe_memory_mb)} safe unified memory available",
+                    hint="Use smaller quantization or close other applications",
+                )
+            )
+    else:
+        # CPU-only: check available RAM (use 50% as safe limit)
+        safe_memory_mb = int(avail_ram_mb * 0.5) if avail_ram_mb > 0 else 0
+        if safe_memory_mb > 0 and total_model_mb > safe_memory_mb:
+            checks.append(
+                CheckResult(
+                    name="Model memory",
+                    passed=False,
+                    category="hardware",
+                    error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(safe_memory_mb)} RAM available for CPU inference",
+                    hint="Use smaller quantization or add more RAM",
                 )
             )
 
-    # Check system RAM for KV cache
+    # Check system RAM for KV cache (all platforms)
     total_kv_mb = get_total_kv_cache_mb()
     if avail_ram_mb > 0 and total_kv_mb > avail_ram_mb * 0.5:
         checks.append(

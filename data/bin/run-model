@@ -81,6 +81,7 @@ DEFAULT_EMBEDDING_PARALLEL=4
 : "${MMPROJ_PATH:=""}"
 : "${EMBEDDING_MODE:=0}"
 : "${EMBEDDING_PARALLEL:=$DEFAULT_EMBEDDING_PARALLEL}"
+: "${PLATFORM:=""}"  # Force platform: nvidia, metal, cpu (auto-detect if empty)
 
 # Global variables
 MODEL_PATH=""
@@ -95,6 +96,7 @@ GPU_COUNT=0
 TOTAL_VRAM_MB=0
 SPLIT_MODE=""
 TENSOR_SPLIT=""
+PLATFORM=""  # nvidia, metal, cpu — auto-detected or overridden via env
 
 # -----------------------------------------------------------------------------
 # Terminal Output / Colors
@@ -393,7 +395,6 @@ validate_port() {
 # Check if nvidia-smi is available
 check_nvidia_smi() {
 	if ! command -v nvidia-smi &>/dev/null; then
-		log_error "nvidia-smi not found. Please install NVIDIA drivers."
 		return 1
 	fi
 	return 0
@@ -500,15 +501,46 @@ estimate_kv_cache_mb() {
 	echo "$kv_cache_mb"
 }
 
-# Detect GPU count and VRAM
-detect_gpu() {
-	print_section "Hardware Detection" "$BCYAN"
-
-	# Check nvidia-smi availability
-	if ! check_nvidia_smi; then
-		return 1
+# Detect compute platform (NVIDIA, Metal, or CPU)
+# Sets PLATFORM global variable
+detect_compute_platform() {
+	# If PLATFORM was explicitly set via env var, validate and use it
+	if [[ -n "$PLATFORM" ]]; then
+		case "$PLATFORM" in
+			nvidia|metal|cpu)
+				debug_log "Platform override: $PLATFORM"
+				return 0
+				;;
+			*)
+				log_error "Invalid PLATFORM value: $PLATFORM (expected: nvidia, metal, cpu)"
+				return 1
+				;;
+		esac
 	fi
+	
+	# Auto-detect: Priority NVIDIA > Metal > CPU
+	if check_nvidia_smi; then
+		PLATFORM="nvidia"
+		return 0
+	fi
+	
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		# Check for Apple Silicon
+		local cpu_brand
+		cpu_brand=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "")
+		if [[ "$cpu_brand" == *"Apple"* ]] || [[ "$(uname -m)" == "arm64" ]]; then
+			PLATFORM="metal"
+			return 0
+		fi
+	fi
+	
+	# Fallback to CPU
+	PLATFORM="cpu"
+	return 0
+}
 
+# Detect NVIDIA GPU count and VRAM
+detect_nvidia_gpu() {
 	# Detect GPU count
 	local gpu_info
 	if ! gpu_info=$(nvidia-smi -L 2>&1); then
@@ -575,23 +607,133 @@ detect_gpu() {
 	return 0
 }
 
-# Calculate safe maximum context based on VRAM
-calculate_max_safe_ctx() {
-	local vram=$1
+# Detect Apple Metal GPU (Apple Silicon)
+detect_metal_gpu() {
+	# Apple Silicon — unified memory architecture
+	GPU_COUNT=1
+	
+	# Get GPU name
+	local gpu_name
+	gpu_name=$(system_profiler SPDisplaysDataType 2>/dev/null | grep "Chipset Model" | head -n1 | sed 's/.*: //' || echo "Apple GPU")
+	
+	print_kv "GPU:" "$gpu_name (Metal)" "$CYAN" "$BWHITE"
+	
+	# On Apple Silicon, unified memory = system RAM is GPU memory
+	# Use total system RAM as VRAM equivalent
+	local total_bytes
+	total_bytes=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+	TOTAL_VRAM_MB=$((total_bytes / 1048576))
+	
+	print_kv "Unified Memory:" "${TOTAL_VRAM_MB} MiB" "$CYAN" "$GREEN"
+	print_tip "Apple Silicon uses unified memory — GPU and CPU share the same RAM"
+	
+	# Set default N_GPU_LAYERS for Metal if not explicitly overridden
+	if [[ "$N_GPU_LAYERS" -eq "$DEFAULT_N_GPU_LAYERS" ]]; then
+		N_GPU_LAYERS=99
+		debug_log "Metal: using default N_GPU_LAYERS=99"
+	fi
+	
+	return 0
+}
 
-	if [[ $vram -le 8192 ]]; then # ≤8GB
+# Detect CPU-only configuration
+detect_cpu_only() {
+	GPU_COUNT=0
+	TOTAL_VRAM_MB=0
+	
+	local cpu_info
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "Unknown CPU")
+	else
+		cpu_info=$(grep -m1 "model name" /proc/cpuinfo 2>/dev/null | sed 's/.*: //' || echo "Unknown CPU")
+	fi
+	
+	local cpu_count
+	cpu_count=$(get_cpu_count)
+	
+	print_kv "CPU:" "$cpu_info" "$CYAN" "$BWHITE"
+	print_kv "Threads:" "$cpu_count" "$CYAN"
+	print_kv "GPU:" "none (CPU-only mode)" "$CYAN" "$YELLOW"
+	
+	log_warning "Running in CPU-only mode — inference will be significantly slower than GPU"
+	
+	# Force N_GPU_LAYERS to 0 for CPU-only
+	N_GPU_LAYERS=0
+	debug_log "CPU-only: forcing N_GPU_LAYERS=0"
+	
+	return 0
+}
+
+# Main hardware detection dispatcher
+detect_hardware() {
+	print_section "Hardware Detection" "$BCYAN"
+	
+	if ! detect_compute_platform; then
+		return 1
+	fi
+	
+	print_kv "Platform:" "$PLATFORM" "$CYAN" "$BWHITE"
+	
+	case "$PLATFORM" in
+		nvidia)
+			if ! detect_nvidia_gpu; then
+				return 1
+			fi
+			;;
+		metal)
+			if ! detect_metal_gpu; then
+				return 1
+			fi
+			;;
+		cpu)
+			if ! detect_cpu_only; then
+				return 1
+			fi
+			;;
+		*)
+			log_error "Unknown platform: $PLATFORM"
+			return 1
+			;;
+	esac
+	
+	return 0
+}
+
+# Calculate safe maximum context based on available memory and platform
+calculate_max_safe_ctx() {
+	local memory_mb=$1
+
+	# Apply platform-specific memory adjustment
+	case "$PLATFORM" in
+		metal)
+			# Use 70% of unified memory for context calculation
+			memory_mb=$((memory_mb * 7 / 10))
+			debug_log "Metal: using 70% of unified memory for context: ${memory_mb} MiB"
+			;;
+		cpu)
+			# Use 50% of available RAM for context calculation
+			memory_mb=$((AVAIL_RAM_MB * 5 / 10))
+			debug_log "CPU: using 50% of available RAM for context: ${memory_mb} MiB"
+			;;
+		nvidia)
+			# Use full VRAM for NVIDIA
+			debug_log "NVIDIA: using full VRAM for context: ${memory_mb} MiB"
+			;;
+	esac
+
+	if [[ $memory_mb -le 8192 ]]; then # ≤8GB
 		MAX_SAFE_CTX=8192
-	elif [[ $vram -le 12288 ]]; then # ≤12GB
+	elif [[ $memory_mb -le 12288 ]]; then # ≤12GB
 		MAX_SAFE_CTX=16384
-	elif [[ $vram -le 16384 ]]; then # ≤16GB
+	elif [[ $memory_mb -le 16384 ]]; then # ≤16GB
 		MAX_SAFE_CTX=32768
-	elif [[ $vram -le 24576 ]]; then # ≤24GB
+	elif [[ $memory_mb -le 24576 ]]; then # ≤24GB
 		MAX_SAFE_CTX=65536
-	elif [[ $vram -le 32768 ]]; then # ≤32GB
+	elif [[ $memory_mb -le 32768 ]]; then # ≤32GB
 		MAX_SAFE_CTX=262144
-	elif [[ $vram -le 49152 ]]; then # ≤48GB
+	elif [[ $memory_mb -le 49152 ]]; then # ≤48GB
 		MAX_SAFE_CTX=524288
-	elif [[ $vram -le 98304 ]]; then # ≤96GB
+	elif [[ $memory_mb -le 98304 ]]; then # ≤96GB
 		MAX_SAFE_CTX=1048576
 	else # >96GB
 		MAX_SAFE_CTX=2097152
@@ -609,38 +751,58 @@ get_performance_tips() {
 
 	print_section "Performance Tips" "$BYELLOW"
 
-	# GPU-specific recommendations
-	if [[ $gpu_count -eq 1 ]]; then
-		print_kv "Topology:" "Single GPU" "$CYAN"
-		if [[ $total_vram -lt 8192 ]]; then
-			print_bullet "Consider using smaller models (7B parameters)"
-			print_bullet "Use Q4_K_M or Q5_K_M quantization"
-			print_bullet "Reduce context size if experiencing OOM"
-		elif [[ $total_vram -lt 16384 ]]; then
-			print_bullet "Good for 8B-13B models with proper quantization"
-			print_bullet "Q5_K_M recommended for best quality/VRAM balance"
-		else
-			print_bullet "Can handle 70B models with quantization"
-			print_bullet "Use --n-gpu-layers to control offloading"
-		fi
-	elif [[ $gpu_count -eq 2 ]]; then
-		print_kv "Topology:" "Dual GPU" "$CYAN"
-		if nvidia-smi topo -m 2>/dev/null | grep -q "NV"; then
-			print_bullet "NVLink detected — optimal for tensor parallelism"
-			print_bullet "Consider --tensor-split for balanced loading"
-		else
-			print_bullet "No NVLink — using layer parallelism"
-			print_bullet "Performance may be limited for large models"
-		fi
-	else
-		print_kv "Topology:" "Multi-GPU ($gpu_count GPUs)" "$CYAN"
-		print_bullet "Consider --tensor-split for balanced loading"
-	fi
+	# Platform-specific recommendations
+	case "$PLATFORM" in
+		nvidia)
+			# GPU-specific recommendations
+			if [[ $gpu_count -eq 1 ]]; then
+				print_kv "Topology:" "Single GPU (NVIDIA)" "$CYAN"
+				if [[ $total_vram -lt 8192 ]]; then
+					print_bullet "Consider using smaller models (7B parameters)"
+					print_bullet "Use Q4_K_M or Q5_K_M quantization"
+					print_bullet "Reduce context size if experiencing OOM"
+				elif [[ $total_vram -lt 16384 ]]; then
+					print_bullet "Good for 8B-13B models with proper quantization"
+					print_bullet "Q5_K_M recommended for best quality/VRAM balance"
+				else
+					print_bullet "Can handle 70B models with quantization"
+					print_bullet "Use --n-gpu-layers to control offloading"
+				fi
+			elif [[ $gpu_count -eq 2 ]]; then
+				print_kv "Topology:" "Dual GPU (NVIDIA)" "$CYAN"
+				if nvidia-smi topo -m 2>/dev/null | grep -q "NV"; then
+					print_bullet "NVLink detected — optimal for tensor parallelism"
+					print_bullet "Consider --tensor-split for balanced loading"
+				else
+					print_bullet "No NVLink — using layer parallelism"
+					print_bullet "Performance may be limited for large models"
+				fi
+			else
+				print_kv "Topology:" "Multi-GPU ($gpu_count GPUs)" "$CYAN"
+				print_bullet "Consider --tensor-split for balanced loading"
+			fi
+			;;
+		metal)
+			print_kv "Topology:" "Apple Silicon (Metal)" "$CYAN"
+			print_bullet "Metal GPU acceleration active — unified memory architecture"
+			print_bullet "No VRAM/RAM split — model and KV cache share system memory"
+			print_bullet "For best performance, ensure model fits comfortably in RAM"
+			if [[ $total_vram -lt 16384 ]]; then
+				print_bullet "Consider Q4_K_M or Q5_K_M quantizations for 8GB systems"
+			fi
+			;;
+		cpu)
+			print_kv "Topology:" "CPU-only" "$CYAN"
+			print_bullet "Running in CPU-only mode — no GPU acceleration"
+			print_bullet "Consider using smaller models and Q4_K_M quantization"
+			print_bullet "Inference will be significantly slower than GPU"
+			print_bullet "Thread count: $(get_cpu_count)"
+			;;
+	esac
 
-	# Context size recommendations
+	# Context size recommendations (shared across platforms)
 	if [[ $n_ctx -gt 32768 ]]; then
-		print_bullet "Large context enabled — flash attention active for performance"
-		print_bullet "Consider --n-batch to optimize memory usage"
+		print_bullet "Large context enabled — monitor memory usage"
 	fi
 }
 
@@ -718,8 +880,14 @@ extract_model_metadata() {
 # Dual GPU Functions
 # -----------------------------------------------------------------------------
 
-# Configure dual GPU settings
+# Configure dual GPU settings (NVIDIA-only)
 configure_dual_gpu() {
+	# Only applies to NVIDIA GPUs
+	if [[ "$PLATFORM" != "nvidia" ]]; then
+		debug_log "configure_dual_gpu: skipping (platform=$PLATFORM)"
+		return 0
+	fi
+
 	local gpu_count=$1
 	SPLIT_MODE=""
 	TENSOR_SPLIT=""
@@ -911,6 +1079,7 @@ ${BOLD}${BCYAN}OPTIONS${RST}
 ${BOLD}${BCYAN}ENVIRONMENT VARIABLES${RST}
   ${CYAN}PORT${RST}                    Port to run the server on ${DIM}(default: 8080)${RST}
   ${CYAN}N_GPU_LAYERS${RST}            Number of GPU layers ${DIM}(default: 999)${RST}
+  ${CYAN}PLATFORM${RST}                Force platform ${DIM}(nvidia, metal, cpu; auto-detect if empty)${RST}
   ${CYAN}DEBUG${RST}                   Enable debug mode ${DIM}(1/0, default: 0)${RST}
   ${CYAN}LOG_FILE${RST}                Log file path
   ${CYAN}KV_CACHE_TYPE_K${RST}         KV cache type for keys ${DIM}(default: q8_0)${RST}
@@ -1092,23 +1261,37 @@ build_command() {
 	fi
 	print_kv "System RAM:" "${ram_total_display} total / ${ram_avail_display} available" "$CYAN"
 
-	# VRAM after model
-	local free_vram_mb
-	free_vram_mb=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | awk '{sum += $1} END {print sum+0}')
-	local vram_after_model=$((free_vram_mb - model_vram_mb))
-	[[ $vram_after_model -lt 0 ]] && vram_after_model=0
-	local vram_total_display vram_free_display
-	if [[ $TOTAL_VRAM_MB -ge 1024 ]]; then
-		vram_total_display=$(awk "BEGIN {printf \"%.1f GB\", $TOTAL_VRAM_MB / 1024}")
+	# VRAM after model (NVIDIA-only)
+	if [[ "$PLATFORM" == "nvidia" ]]; then
+		local free_vram_mb
+		free_vram_mb=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | awk '{sum += $1} END {print sum+0}')
+		local vram_after_model=$((free_vram_mb - model_vram_mb))
+		[[ $vram_after_model -lt 0 ]] && vram_after_model=0
+		local vram_total_display vram_free_display
+		if [[ $TOTAL_VRAM_MB -ge 1024 ]]; then
+			vram_total_display=$(awk "BEGIN {printf \"%.1f GB\", $TOTAL_VRAM_MB / 1024}")
+		else
+			vram_total_display="${TOTAL_VRAM_MB} MB"
+		fi
+		if [[ $free_vram_mb -ge 1024 ]]; then
+			vram_free_display=$(awk "BEGIN {printf \"%.1f GB\", $free_vram_mb / 1024}")
+		else
+			vram_free_display="${free_vram_mb} MB"
+		fi
+		print_kv "VRAM:" "${vram_total_display} total / ${vram_free_display} free" "$CYAN"
+	elif [[ "$PLATFORM" == "metal" ]]; then
+		# Metal: unified memory
+		local unified_display
+		if [[ $TOTAL_VRAM_MB -ge 1024 ]]; then
+			unified_display=$(awk "BEGIN {printf \"%.1f GB\", $TOTAL_VRAM_MB / 1024}")
+		else
+			unified_display="${TOTAL_VRAM_MB} MB"
+		fi
+		print_kv "Unified Memory:" "${unified_display}" "$CYAN"
 	else
-		vram_total_display="${TOTAL_VRAM_MB} MB"
+		# CPU-only: no VRAM
+		print_kv "VRAM:" "N/A (CPU-only)" "$CYAN" "$DIM"
 	fi
-	if [[ $free_vram_mb -ge 1024 ]]; then
-		vram_free_display=$(awk "BEGIN {printf \"%.1f GB\", $free_vram_mb / 1024}")
-	else
-		vram_free_display="${free_vram_mb} MB"
-	fi
-	print_kv "VRAM:" "${vram_total_display} total / ${vram_free_display} free" "$CYAN"
 
 	# Warnings about resource pressure
 	if [[ "$NO_KV_OFFLOAD" == "--no-kv-offload" ]] && [[ "$N_CTX" -gt 0 ]] && [[ $ESTIMATED_KV_CACHE_MB -gt 0 ]]; then
@@ -1138,7 +1321,8 @@ build_command() {
 		fi
 	fi
 
-	if [[ $model_vram_mb -gt $free_vram_mb ]]; then
+	# Model vs VRAM warning (NVIDIA-only)
+	if [[ "$PLATFORM" == "nvidia" ]] && [[ $model_vram_mb -gt ${free_vram_mb:-0} ]]; then
 		echo >&2
 		log_warning "Model (~${model_vram_display}) exceeds free VRAM (${vram_free_display})"
 		log_warning "Model will be partially offloaded to RAM — expect slower inference"
@@ -1291,7 +1475,7 @@ print_banner() {
 
 BANNER
 	printf '%b' "$RST" >&2
-	printf '  %bGPU-optimized llama-server launcher%b\n' "$DIM" "$RST" >&2
+	printf '  %bHardware-optimized llama-server launcher%b\n' "$DIM" "$RST" >&2
 }
 
 # -----------------------------------------------------------------------------
@@ -1309,11 +1493,11 @@ main() {
 	parse_args "$@"
 	print_banner
 	validate_inputs
-	if ! detect_gpu; then
+	if ! detect_hardware; then
 		exit 1
 	fi
-	calculate_max_safe_ctx "$TOTAL_VRAM_MB"
 	detect_system_ram
+	calculate_max_safe_ctx "$TOTAL_VRAM_MB"
 	extract_model_metadata "$MODEL_PATH"
 	get_performance_tips "$GPU_COUNT" "$TOTAL_VRAM_MB" "$MODEL_PATH" "$REQUESTED_CTX"
 	build_command
