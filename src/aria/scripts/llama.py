@@ -66,6 +66,24 @@ def _is_linux() -> bool:
     return platform.system() == "Linux"
 
 
+def _is_macos() -> bool:
+    """Check if the current OS is macOS.
+
+    Returns:
+        True if running on macOS (Darwin), False otherwise.
+    """
+    return platform.system() == "Darwin"
+
+
+def _is_windows() -> bool:
+    """Check if the current OS is Windows.
+
+    Returns:
+        True if running on Windows, False otherwise.
+    """
+    return platform.system() == "Windows"
+
+
 def _is_ubuntu() -> bool:
     """Check if the current Linux distribution is Ubuntu.
 
@@ -186,16 +204,12 @@ def _get_release_by_tag(tag: str) -> dict:
     Returns:
         dict: Release information including assets.
     """
-    api_url = (
-        f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
-    )
+    api_url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
     with urllib.request.urlopen(api_url, timeout=30) as response:
         return __import__("json").loads(response.read())
 
 
-def _find_linux_binary_asset(
-    assets: list, prefer_cuda: bool = False
-) -> Optional[dict]:
+def _find_linux_binary_asset(assets: list, prefer_cuda: bool = False) -> Optional[dict]:
     """Find the appropriate Linux binary asset from the release assets.
 
     Searches for pre-built Linux binary archives in priority order.
@@ -250,6 +264,126 @@ def _find_linux_binary_asset(
     return None
 
 
+def _find_macos_binary_asset(assets: list, arch: str = "arm64") -> Optional[dict]:
+    """Find the appropriate macOS binary asset from the release assets.
+
+    Searches for pre-built macOS binary archives in priority order.
+    Matches current llama.cpp release naming conventions (e.g. b5000+):
+      llama-{tag}-bin-macos-arm64.tar.gz  (Apple Silicon)
+      llama-{tag}-bin-macos-x64.tar.gz    (Intel)
+
+    Both ``.tar.gz`` and ``.zip`` formats are accepted to remain compatible
+    with past and future release packaging changes.
+
+    Args:
+        assets: List of asset dictionaries from the release.
+        arch: CPU architecture string — "arm64" (Apple Silicon) or
+              "x86_64" / "x64" (Intel). Defaults to "arm64".
+
+    Returns:
+        The asset dictionary for the macOS binary, or None if not found.
+    """
+    # Normalise architecture
+    if arch.lower() in ("arm64", "aarch64"):
+        priority = [
+            "macos-arm64",  # Apple Silicon — exact match
+            "macos-arm",  # Alternative arm naming
+            "macos",  # Any macOS build (fallback, excluding xcframework)
+        ]
+    else:
+        # Intel / x86_64
+        priority = [
+            "macos-x64",  # Intel — most common naming
+            "macos-x86_64",  # Alternative x86_64 naming
+            "macos",  # Any macOS build (fallback)
+        ]
+
+    def _is_binary_archive(name: str) -> bool:
+        return (
+            (name.endswith(".tar.gz") or name.endswith(".zip"))
+            and "src" not in name.lower()
+            and "xcframework" not in name.lower()
+        )
+
+    for keyword in priority:
+        for asset in assets:
+            name = asset.get("name", "").lower()
+            if keyword in name and _is_binary_archive(name):
+                return asset
+
+    return None
+
+
+def _find_windows_binary_asset(
+    assets: list, prefer_cuda: bool = False
+) -> Optional[dict]:
+    """Find the appropriate Windows binary asset from the release assets.
+
+    Searches for pre-built Windows binary zip archives in priority order.
+    Matches current llama.cpp release naming conventions (b8000+):
+      llama-{tag}-bin-win-cuda-{version}-x64.zip  (CUDA)
+      llama-{tag}-bin-win-vulkan-x64.zip           (Vulkan)
+      llama-{tag}-bin-win-sycl-x64.zip             (SYCL/Intel)
+      llama-{tag}-bin-win-hip-radeon-x64.zip       (HIP/AMD ROCm)
+      llama-{tag}-bin-win-cpu-x64.zip              (CPU, x86_64)
+      llama-{tag}-bin-win-cpu-arm64.zip            (CPU, ARM64)
+
+    Also handles older naming conventions for backwards compatibility:
+      llama-{tag}-bin-win-avx2-x64.zip
+      llama-{tag}-bin-win-avx-x64.zip
+      llama-{tag}-bin-win-openblas-x64.zip
+      llama-{tag}-bin-win-noavx-x64.zip
+
+    Args:
+        assets: List of asset dictionaries from the release.
+        prefer_cuda: If True, prefer CUDA-enabled builds over CPU builds.
+
+    Returns:
+        The asset dictionary for the Windows binary, or None if not found.
+    """
+    if prefer_cuda:
+        priority = [
+            "win-cuda",  # Windows CUDA (best for CUDA systems)
+            "win-vulkan",  # Windows Vulkan
+            "win-sycl",  # Windows SYCL (Intel)
+            "win-hip",  # Windows HIP (AMD ROCm)
+            "win-cpu",  # Windows CPU (broadest compatibility)
+            # Legacy naming (pre-b8000)
+            "win-avx2",  # Windows AVX2
+            "win-avx512",  # Windows AVX-512
+            "win-avx",  # Windows AVX
+            "win-openblas",  # Windows OpenBLAS
+            "win-noavx",  # Windows no AVX
+            "win",  # Any Windows build
+        ]
+    else:
+        priority = [
+            "win-cpu",  # Windows CPU — standard build (b8000+)
+            "win-vulkan",  # Windows Vulkan
+            "win-sycl",  # Windows SYCL (Intel)
+            "win-hip",  # Windows HIP (AMD ROCm)
+            "win-cuda",  # Windows CUDA (fallback)
+            # Legacy naming (pre-b8000)
+            "win-avx2",  # Windows AVX2
+            "win-avx512",  # Windows AVX-512
+            "win-avx",  # Windows AVX
+            "win-openblas",  # Windows OpenBLAS
+            "win-noavx",  # Windows no AVX
+            "win",  # Any Windows build
+        ]
+
+    def _is_zip_binary(name: str) -> bool:
+        return name.endswith(".zip") and "src" not in name.lower()
+
+    for keyword in priority:
+        for asset in assets:
+            name = asset.get("name", "").lower()
+            if keyword in name and _is_zip_binary(name):
+                return asset
+
+    return None
+
+
 def _download_with_progress(
     url: str, dest_path: Path, description: str = "Downloading"
 ) -> None:
@@ -276,9 +410,7 @@ def _download_with_progress(
     ) as progress:
         task = progress.add_task(description, total=None)
 
-        def _reporthook(
-            block_num: int, block_size: int, total_size: int
-        ) -> None:
+        def _reporthook(block_num: int, block_size: int, total_size: int) -> None:
             if total_size > 0 and progress.tasks[task].total is None:
                 progress.update(task, total=total_size)
             progress.update(task, completed=block_num * block_size)
@@ -310,9 +442,7 @@ def _download_and_extract(
         console.print("[cyan]  Extracting archive...[/cyan]")
         with tarfile.open(archive_path, "r:gz") as tar:
             tar.extractall(dest_dir)
-            extracted_files = [
-                str(Path(dest_dir) / m.name) for m in tar.getmembers()
-            ]
+            extracted_files = [str(Path(dest_dir) / m.name) for m in tar.getmembers()]
 
     return extracted_files
 
@@ -373,6 +503,9 @@ def _make_executable(file_path: Path) -> None:
 def get_llama_cpp_binary(binary_name: str, bin_dir: Path) -> Optional[Path]:
     """Get the path to a llama.cpp binary.
 
+    On Windows the binary may carry a ``.exe`` suffix; both the bare name
+    and the ``{name}.exe`` variant are searched.
+
     Args:
         binary_name: Name of the binary (e.g., "llama-cli").
         bin_dir: Directory containing the llama.cpp binaries.
@@ -380,14 +513,19 @@ def get_llama_cpp_binary(binary_name: str, bin_dir: Path) -> Optional[Path]:
     Returns:
         Path to the binary if found, None otherwise.
     """
-    binary_path = bin_dir / binary_name
-    if _verify_binary(binary_path):
-        return binary_path
+    # Candidates: bare name and Windows .exe variant
+    candidates = [binary_name, f"{binary_name}.exe"]
+
+    for candidate in candidates:
+        binary_path = bin_dir / candidate
+        if _verify_binary(binary_path):
+            return binary_path
 
     # Also check in subdirectories (for extracted archives)
-    for item in bin_dir.rglob(binary_name):
-        if _verify_binary(item):
-            return item
+    for candidate in candidates:
+        for item in bin_dir.rglob(candidate):
+            if _verify_binary(item):
+                return item
 
     return None
 
@@ -395,23 +533,34 @@ def get_llama_cpp_binary(binary_name: str, bin_dir: Path) -> Optional[Path]:
 def _copy_binaries_and_libs(build_bin_dir: Path, dest_dir: Path) -> None:
     """Copy compiled binaries and shared libraries to the destination directory.
 
+    Handles all three major platforms:
+    - Linux: ``.so*`` shared libraries
+    - macOS: ``.dylib`` shared libraries
+    - Windows: ``.dll`` shared libraries and ``.exe`` binaries
+
     Args:
         build_bin_dir: The build output bin/ directory.
         dest_dir: The destination directory.
     """
+    # Copy named binaries (with optional .exe for Windows)
     for binary_name in BINARY_NAMES:
-        src_binary = build_bin_dir / binary_name
-        if src_binary.exists():
-            dst_binary = dest_dir / binary_name
-            shutil.copy2(src_binary, dst_binary)
-            _make_executable(dst_binary)
-            logger.info(f"Copied {binary_name} to {dest_dir}")
+        for candidate in (binary_name, f"{binary_name}.exe"):
+            src_binary = build_bin_dir / candidate
+            if src_binary.exists():
+                dst_binary = dest_dir / candidate
+                shutil.copy2(src_binary, dst_binary)
+                _make_executable(dst_binary)
+                logger.info(f"Copied {candidate} to {dest_dir}")
+                break  # found the binary, no need to check .exe variant
 
+    # Copy shared libraries — Linux .so*, macOS .dylib, Windows .dll
+    lib_extensions = ["*.so*", "*.dylib", "*.dll"]
     for lib_pattern in SHARED_LIB_PATTERNS:
-        for lib_file in build_bin_dir.glob(f"{lib_pattern}*.so*"):
-            dst_lib = dest_dir / lib_file.name
-            shutil.copy2(lib_file, dst_lib)
-            logger.info(f"Copied {lib_file.name} to {dest_dir}")
+        for ext in lib_extensions:
+            for lib_file in build_bin_dir.glob(f"{lib_pattern}{ext[1:]}"):
+                dst_lib = dest_dir / lib_file.name
+                shutil.copy2(lib_file, dst_lib)
+                logger.info(f"Copied {lib_file.name} to {dest_dir}")
 
 
 def _test_binary(bin_dir: Path) -> None:
@@ -439,25 +588,94 @@ def _test_binary(bin_dir: Path) -> None:
                     f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
                 )
         except subprocess.TimeoutExpired:
-            console.print(
-                "  [yellow]Warning: Version check timed out[/yellow]"
-            )
+            console.print("  [yellow]Warning: Version check timed out[/yellow]")
         except Exception as e:
-            console.print(
-                f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
-            )
+            console.print(f"  [yellow]Warning: Could not test binary: {e}[/yellow]")
+
+
+def _install_from_archive(
+    download_url: str,
+    asset_name: str,
+    bin_dir: Path,
+) -> None:
+    """Download a pre-built binary archive and install its binaries.
+
+    Supports both ``.zip`` (Windows) and ``.tar.gz`` (macOS / Linux) archives.
+    Used by the macOS and Windows pre-built download paths.
+
+    Args:
+        download_url: Direct download URL for the archive.
+        asset_name: Human-readable name of the asset (for progress display).
+        bin_dir: Destination directory for installed binaries.
+
+    Raises:
+        RuntimeError: If the download fails.
+    """
+    console.print(f"[cyan]  Downloading: {asset_name}[/cyan]")
+
+    try:
+        with tempfile.TemporaryDirectory() as extract_tmp:
+            extract_tmp_path = Path(extract_tmp)
+            extract_dir = extract_tmp_path / "extracted"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+
+            # Choose extractor based on file extension
+            is_tar = asset_name.endswith(".tar.gz") or asset_name.endswith(".gz")
+            if is_tar:
+                _download_and_extract(
+                    download_url,
+                    extract_dir,
+                    description=f"Downloading {asset_name}",
+                )
+            else:
+                _download_and_extract_zip(
+                    download_url,
+                    extract_dir,
+                    description=f"Downloading {asset_name}",
+                )
+
+            # Flatten: copy binaries directly into bin_dir
+            console.print("[cyan]  Installing binaries...[/cyan]")
+            for binary_name in BINARY_NAMES:
+                binary_path = get_llama_cpp_binary(binary_name, extract_dir)
+                if binary_path:
+                    dst = bin_dir / binary_path.name
+                    shutil.copy2(binary_path, dst)
+                    _make_executable(dst)
+                    logger.info(f"Installed {binary_path.name} to {bin_dir}")
+
+            # Copy shared libraries (.dylib / .dll / .so*)
+            lib_extensions_globs = ["*.so*", "*.dylib", "*.dll"]
+            for lib_pattern in SHARED_LIB_PATTERNS:
+                for ext_glob in lib_extensions_globs:
+                    for lib_file in extract_dir.rglob(f"{lib_pattern}{ext_glob[1:]}"):
+                        dst_lib = bin_dir / lib_file.name
+                        shutil.copy2(lib_file, dst_lib)
+                        logger.info(f"Installed {lib_file.name} to {bin_dir}")
+
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Failed to download binary: {e}") from e
 
 
 def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     """Download and install llama.cpp binaries.
 
-    Installation strategy:
-    - If ``nvcc`` is available: compile from source with CUDA support (produces
-      a CUDA-enabled binary optimised for the local GPU architecture)
-    - Otherwise on Ubuntu: download the pre-built Ubuntu binary from GitHub releases
-    - Otherwise on other Linux: compile from source without CUDA
+    Installation strategy by platform:
 
-    Note: Compilation can take 10-30 minutes. Progress is streamed to the console.
+    **Linux**
+      - If ``nvcc`` is available: compile from source with CUDA support.
+      - If running on Ubuntu: download the pre-built Ubuntu binary.
+      - Otherwise: compile from source without CUDA.
+
+    **macOS**
+      - Download the pre-built macOS binary for the current architecture
+        (``arm64`` for Apple Silicon, ``x86_64`` for Intel).
+
+    **Windows**
+      - If ``nvcc`` is available: prefer the CUDA-enabled pre-built binary.
+      - Otherwise: download the AVX2 (or best available) pre-built binary.
+
+    Note: Source compilation on Linux can take 10-30 minutes.
 
     Args:
         bin_dir: Directory to install the binaries to.
@@ -469,41 +687,33 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
     Raises:
         RuntimeError: If download, extraction, or compilation fails.
-        NotImplementedError: If running on a non-Linux OS.
+        NotImplementedError: If running on an unsupported OS (not Linux,
+            macOS, or Windows).
     """
     logger.info("Starting llama.cpp installation")
 
     # Ensure bin directory exists
     bin_dir.mkdir(parents=True, exist_ok=True)
 
-    if not _is_linux():
-        raise NotImplementedError(
-            "Source compilation is required for non-Linux systems. "
-            "Please clone the llama.cpp repository and run cmake build manually."
-        )
-
-    # Fetch release information (needed for both download and source paths)
+    # Fetch release information (needed for all paths)
     try:
         if version and version.lower() != "latest":
-            console.print(
-                f"[cyan]  Fetching release info for tag: {version}[/cyan]"
-            )
+            console.print(f"[cyan]  Fetching release info for tag: {version}[/cyan]")
             release = _get_release_by_tag(version)
         else:
-            console.print(
-                "[cyan]  Fetching latest release info from GitHub...[/cyan]"
-            )
+            console.print("[cyan]  Fetching latest release info from GitHub...[/cyan]")
             release = _get_latest_release_info()
     except urllib.error.URLError as e:
-        raise RuntimeError(
-            f"Failed to fetch release info from GitHub: {e}"
-        ) from e
+        raise RuntimeError(f"Failed to fetch release info from GitHub: {e}") from e
 
     tag = release.get("tag_name", "unknown")
     console.print(f"[green]  Found release: {tag}[/green]")
+    assets = release.get("assets", [])
 
-    # --- Path 1: nvcc available → compile from source with CUDA ---
-    if _nvcc_available():
+    # -----------------------------------------------------------------------
+    # Path 1: nvcc available on Linux → compile from source with CUDA
+    # -----------------------------------------------------------------------
+    if _nvcc_available() and _is_linux():
         console.print(
             "[cyan]  nvcc detected — compiling from source with CUDA support[/cyan]"
         )
@@ -546,18 +756,99 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         console.print(f"  Location: {bin_dir}")
         return bin_dir
 
-    # --- Path 2: Ubuntu without nvcc → download pre-built binary ---
-    if _is_ubuntu():
+    # -----------------------------------------------------------------------
+    # Path 2: macOS → download pre-built binary
+    # -----------------------------------------------------------------------
+    if _is_macos():
+        arch = platform.machine()  # "arm64" on Apple Silicon, "x86_64" on Intel
         console.print(
-            "[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]"
+            f"[cyan]  macOS detected (arch: {arch}) — downloading pre-built binary[/cyan]"
         )
 
-        assets = release.get("assets", [])
+        binary_asset = _find_macos_binary_asset(assets, arch=arch)
+
+        if not binary_asset:
+            error_console.print(
+                "[red]Error: No suitable macOS binary found in release[/red]"
+            )
+            error_console.print("Available assets:")
+            for asset in assets:
+                error_console.print(f"  - {asset.get('name', 'unknown')}")
+            raise RuntimeError("No suitable macOS binary found")
+
+        download_url = binary_asset.get("browser_download_url")
+        if not download_url:
+            raise RuntimeError(
+                f"Could not find download URL for binary asset: {binary_asset.get('name')}"
+            )
+
+        _install_from_archive(
+            download_url, binary_asset.get("name", "unknown"), bin_dir
+        )
+        _test_binary(bin_dir)
+
+        console.print("[green]✓[/green] llama.cpp installed successfully!")
+        console.print(f"  Version: {tag}")
+        console.print(f"  Location: {bin_dir}")
+
+        console.print("\nInstalled binaries:")
+        for binary_name in BINARY_NAMES:
+            binary_path = get_llama_cpp_binary(binary_name, bin_dir)
+            if binary_path:
+                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+
+        return bin_dir
+
+    # -----------------------------------------------------------------------
+    # Path 3: Windows → download pre-built binary
+    # -----------------------------------------------------------------------
+    if _is_windows():
+        cuda_available = _is_cuda_available()
+        console.print("[cyan]  Windows detected — downloading pre-built binary[/cyan]")
+
+        binary_asset = _find_windows_binary_asset(assets, prefer_cuda=cuda_available)
+
+        if not binary_asset:
+            error_console.print(
+                "[red]Error: No suitable Windows binary found in release[/red]"
+            )
+            error_console.print("Available assets:")
+            for asset in assets:
+                error_console.print(f"  - {asset.get('name', 'unknown')}")
+            raise RuntimeError("No suitable Windows binary found")
+
+        download_url = binary_asset.get("browser_download_url")
+        if not download_url:
+            raise RuntimeError(
+                f"Could not find download URL for binary asset: {binary_asset.get('name')}"
+            )
+
+        _install_from_archive(
+            download_url, binary_asset.get("name", "unknown"), bin_dir
+        )
+        _test_binary(bin_dir)
+
+        console.print("[green]✓[/green] llama.cpp installed successfully!")
+        console.print(f"  Version: {tag}")
+        console.print(f"  Location: {bin_dir}")
+
+        console.print("\nInstalled binaries:")
+        for binary_name in BINARY_NAMES:
+            binary_path = get_llama_cpp_binary(binary_name, bin_dir)
+            if binary_path:
+                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+
+        return bin_dir
+
+    # -----------------------------------------------------------------------
+    # Path 4: Ubuntu without nvcc → download pre-built binary
+    # -----------------------------------------------------------------------
+    if _is_ubuntu():
+        console.print("[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]")
+
         # Check if CUDA is available for binary selection preference
         cuda_available = _is_cuda_available()
-        binary_asset = _find_linux_binary_asset(
-            assets, prefer_cuda=cuda_available
-        )
+        binary_asset = _find_linux_binary_asset(assets, prefer_cuda=cuda_available)
 
         if not binary_asset:
             error_console.print(
@@ -591,9 +882,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
                 # (the tar.gz contains a top-level dir like llama-b8089/)
                 console.print("[cyan]  Installing binaries...[/cyan]")
                 for binary_name in BINARY_NAMES:
-                    binary_path = get_llama_cpp_binary(
-                        binary_name, extract_tmp_path
-                    )
+                    binary_path = get_llama_cpp_binary(binary_name, extract_tmp_path)
                     if binary_path:
                         dst = bin_dir / binary_name
                         shutil.copy2(binary_path, dst)
@@ -602,9 +891,7 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
                 # Copy shared libraries
                 for lib_pattern in SHARED_LIB_PATTERNS:
-                    for lib_file in extract_tmp_path.rglob(
-                        f"{lib_pattern}*.so*"
-                    ):
+                    for lib_file in extract_tmp_path.rglob(f"{lib_pattern}*.so*"):
                         dst_lib = bin_dir / lib_file.name
                         shutil.copy2(lib_file, dst_lib)
                         logger.info(f"Installed {lib_file.name} to {bin_dir}")
@@ -622,51 +909,58 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(
-                    f"  - [green]{binary_name}[/green]: {binary_path}"
-                )
+                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
 
         return bin_dir
 
-    # --- Path 3: Non-Ubuntu Linux without nvcc → compile from source (CPU only) ---
-    console.print(
-        "[cyan]  Non-Ubuntu Linux without nvcc — compiling from source (CPU only)[/cyan]"
-    )
-    console.print(
-        "[yellow]  This may take 10-30 minutes. Output is shown below.[/yellow]"
-    )
-
-    zip_url = (
-        f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
-    )
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir)
-        source_dir = _download_and_extract_zip(
-            zip_url,
-            tmp_path / "source",
-            description=f"Downloading source {tag}",
+    # -----------------------------------------------------------------------
+    # Path 5: Linux (non-Ubuntu, no nvcc) → compile from source (CPU only)
+    # -----------------------------------------------------------------------
+    if _is_linux():
+        console.print(
+            "[cyan]  Non-Ubuntu Linux without nvcc — compiling from source (CPU only)[/cyan]"
         )
-        logger.info(f"Source extracted to {source_dir}")
-
-        build_dir = install_llama_cpp_from_source(
-            repo_dir=source_dir,
-            build_dir=source_dir / "build",
-            use_cuda=False,
-            use_blas=False,
-            verbose=True,
+        console.print(
+            "[yellow]  This may take 10-30 minutes. Output is shown below.[/yellow]"
         )
 
-        _copy_binaries_and_libs(build_dir / "bin", bin_dir)
-        _test_binary(bin_dir)
+        zip_url = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
 
-        console.print("[green]✓[/green] Cleaning up source directory")
-        shutil.rmtree(source_dir, ignore_errors=True)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            source_dir = _download_and_extract_zip(
+                zip_url,
+                tmp_path / "source",
+                description=f"Downloading source {tag}",
+            )
+            logger.info(f"Source extracted to {source_dir}")
 
-    console.print("[green]✓[/green] llama.cpp installed successfully!")
-    console.print(f"  Version: {tag}")
-    console.print(f"  Location: {bin_dir}")
-    return bin_dir
+            build_dir = install_llama_cpp_from_source(
+                repo_dir=source_dir,
+                build_dir=source_dir / "build",
+                use_cuda=False,
+                use_blas=False,
+                verbose=True,
+            )
+
+            _copy_binaries_and_libs(build_dir / "bin", bin_dir)
+            _test_binary(bin_dir)
+
+            console.print("[green]✓[/green] Cleaning up source directory")
+            shutil.rmtree(source_dir, ignore_errors=True)
+
+        console.print("[green]✓[/green] llama.cpp installed successfully!")
+        console.print(f"  Version: {tag}")
+        console.print(f"  Location: {bin_dir}")
+        return bin_dir
+
+    # -----------------------------------------------------------------------
+    # Unsupported platform
+    # -----------------------------------------------------------------------
+    raise NotImplementedError(
+        f"Unsupported platform: {platform.system()}. "
+        "Supported platforms are Linux, macOS, and Windows."
+    )
 
 
 def install_llama_cpp_from_source(
@@ -741,9 +1035,7 @@ def install_llama_cpp_from_source(
                 ]
             )
 
-        console.print(
-            f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]"
-        )
+        console.print(f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]")
 
         if verbose:
             subprocess.run(cmake_args, cwd=str(repo_dir), check=True)
@@ -768,9 +1060,7 @@ def install_llama_cpp_from_source(
             str(threads),
         ]
 
-        console.print(
-            f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]"
-        )
+        console.print(f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]")
 
         if verbose:
             subprocess.run(build_args, cwd=str(repo_dir), check=True)

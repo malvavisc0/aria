@@ -182,9 +182,7 @@ class LlamaCppServerManager:
         # Prepend the bin directory to LD_LIBRARY_PATH so the bundled
         # shared libraries are resolved when llama-server is executed.
         existing = env.get("LD_LIBRARY_PATH", "")
-        env["LD_LIBRARY_PATH"] = (
-            f"{bin_path}:{existing}" if existing else str(bin_path)
-        )
+        env["LD_LIBRARY_PATH"] = f"{bin_path}:{existing}" if existing else str(bin_path)
         return env
 
     def _wait_for_ready(
@@ -285,9 +283,7 @@ class LlamaCppServerManager:
             )
             env = self._get_env_for_run_model()
 
-            logger.info(
-                f"Starting {role} server on port {port}: {' '.join(cmd)}"
-            )
+            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
 
             proc = subprocess.Popen(
                 cmd,
@@ -305,9 +301,7 @@ class LlamaCppServerManager:
 
                 log_file = DebugConfig.logs_path.parent / f"llama-{role}.log"
                 stderr_output = (
-                    proc.stderr.read()
-                    .decode("utf-8", errors="replace")
-                    .strip()
+                    proc.stderr.read().decode("utf-8", errors="replace").strip()
                     if proc.stderr
                     else ""
                 )
@@ -326,9 +320,7 @@ class LlamaCppServerManager:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)
-                logger.error(
-                    f"{role} server failed to become ready on port {port}"
-                )
+                logger.error(f"{role} server failed to become ready on port {port}")
 
         if failed:
             self.stop_all()

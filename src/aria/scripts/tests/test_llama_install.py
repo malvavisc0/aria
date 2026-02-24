@@ -10,25 +10,23 @@ import pytest
 from aria.scripts.llama import download_llama_cpp
 
 
-class TestDownloadLatestLlamaCppNonLinux:
-    """Tests for download_llama_cpp() on non-Linux systems."""
+class TestDownloadLatestLlamaCppUnsupportedPlatform:
+    """Tests for download_llama_cpp() on unsupported platforms."""
 
-    def test_raises_not_implemented_on_windows(self, tmp_path: Path):
-        """Test that download_llama_cpp raises NotImplementedError on Windows."""
-        with patch("platform.system", return_value="Windows"):
+    def test_raises_not_implemented_on_freebsd(self, tmp_path: Path):
+        """Test that download_llama_cpp raises NotImplementedError on FreeBSD."""
+        with (
+            patch("platform.system", return_value="FreeBSD"),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [],
+            }
             with pytest.raises(NotImplementedError) as exc_info:
                 download_llama_cpp(bin_dir=tmp_path)
 
-            assert "Source compilation is required" in str(exc_info.value)
-            assert "non-Linux systems" in str(exc_info.value)
-
-    def test_raises_not_implemented_on_macos(self, tmp_path: Path):
-        """Test that download_llama_cpp raises NotImplementedError on macOS."""
-        with patch("platform.system", return_value="Darwin"):
-            with pytest.raises(NotImplementedError) as exc_info:
-                download_llama_cpp(bin_dir=tmp_path)
-
-            assert "Source compilation is required" in str(exc_info.value)
+            assert "Unsupported platform" in str(exc_info.value)
 
 
 class TestDownloadLatestLlamaCppUbuntuNoNvcc:
@@ -40,13 +38,9 @@ class TestDownloadLatestLlamaCppUbuntuNoNvcc:
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("shutil.copy2"),
             patch("subprocess.run") as mock_run,
@@ -97,9 +91,7 @@ VERSION_ID="22.04"
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -116,7 +108,7 @@ ID=ubuntu
                 "assets": [
                     {
                         "name": "macos-x64.zip",
-                        "browser_download_url": "https://example.com/macos-x64.zip",
+                        "browser_download_url": "https://example.com/macos-x64.tar.gz",
                     }
                 ],
             }
@@ -132,9 +124,7 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -162,9 +152,7 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
         ):
             # Mock Ubuntu OS release
             mock_file = MagicMock()
@@ -195,18 +183,10 @@ class TestDownloadLatestLlamaCppUbuntuWithNvcc:
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=True),
-            patch(
-                "aria.scripts.llama._is_openblas_available", return_value=True
-            ),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
+            patch("aria.scripts.llama._is_openblas_available", return_value=True),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
             patch("aria.scripts.llama._copy_binaries_and_libs"),
             patch("aria.scripts.llama._test_binary"),
             patch("shutil.rmtree"),
@@ -232,9 +212,7 @@ ID=ubuntu
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-b5000"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-b5000"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -255,18 +233,10 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=True),
-            patch(
-                "aria.scripts.llama._is_openblas_available", return_value=False
-            ),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
+            patch("aria.scripts.llama._is_openblas_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
             patch("aria.scripts.llama._copy_binaries_and_libs"),
             patch("aria.scripts.llama._test_binary"),
             patch("shutil.rmtree"),
@@ -292,9 +262,7 @@ ID=ubuntu
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-b5000"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-b5000"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -318,15 +286,9 @@ class TestDownloadLatestLlamaCppNonUbuntuLinux:
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
             patch("aria.scripts.llama._is_ubuntu", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
             patch("aria.scripts.llama._copy_binaries_and_libs"),
             patch("aria.scripts.llama._test_binary"),
             patch("shutil.rmtree"),
@@ -352,9 +314,7 @@ ID=arch
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-b5000"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-b5000"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -376,19 +336,11 @@ ID=arch
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=True),
-            patch(
-                "aria.scripts.llama._is_openblas_available", return_value=True
-            ),
+            patch("aria.scripts.llama._is_openblas_available", return_value=True),
             patch("aria.scripts.llama._is_ubuntu", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
             patch("aria.scripts.llama._copy_binaries_and_libs"),
             patch("aria.scripts.llama._test_binary"),
             patch("shutil.rmtree"),
@@ -414,9 +366,7 @@ ID=arch
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-b5000"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-b5000"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -437,19 +387,11 @@ ID=arch
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=True),
-            patch(
-                "aria.scripts.llama._is_openblas_available", return_value=False
-            ),
+            patch("aria.scripts.llama._is_openblas_available", return_value=False),
             patch("aria.scripts.llama._is_ubuntu", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
-            patch(
-                "aria.scripts.llama._download_and_extract_zip"
-            ) as mock_extract_zip,
-            patch(
-                "aria.scripts.llama.install_llama_cpp_from_source"
-            ) as mock_compile,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._download_and_extract_zip") as mock_extract_zip,
+            patch("aria.scripts.llama.install_llama_cpp_from_source") as mock_compile,
             patch("aria.scripts.llama._copy_binaries_and_libs"),
             patch("aria.scripts.llama._test_binary"),
             patch("shutil.rmtree"),
@@ -475,9 +417,7 @@ ID=arch
             }
 
             # Mock extract_zip
-            mock_extract_zip.return_value = (
-                tmp_path / "source" / "llama.cpp-b5000"
-            )
+            mock_extract_zip.return_value = tmp_path / "source" / "llama.cpp-b5000"
 
             # Mock compile
             mock_compile.return_value = tmp_path / "build"
@@ -502,9 +442,7 @@ class TestDownloadLatestLlamaCppVersionParameter:
             patch("aria.scripts.llama._nvcc_available", return_value=False),
             patch("aria.scripts.llama._get_release_by_tag") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("shutil.copy2"),
             patch("subprocess.run") as mock_run,
@@ -552,13 +490,9 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("shutil.copy2"),
             patch("subprocess.run") as mock_run,
@@ -611,13 +545,9 @@ class TestDownloadLatestLlamaCppBinaryTesting:
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
             patch("aria.scripts.llama._is_cuda_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("shutil.copy2"),
             patch("subprocess.run") as mock_run,
@@ -667,13 +597,9 @@ ID=ubuntu
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
             patch("aria.scripts.llama._is_cuda_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("shutil.copy2"),
             patch("subprocess.run") as mock_run,
@@ -705,9 +631,7 @@ ID=ubuntu
             mock_get_binary.return_value = tmp_path / "llama-server"
 
             # Mock subprocess.run to raise TimeoutExpired
-            mock_run.side_effect = subprocess.TimeoutExpired(
-                "llama-server", 10
-            )
+            mock_run.side_effect = subprocess.TimeoutExpired("llama-server", 10)
 
             # Should not raise — timeout is handled gracefully
             result = download_llama_cpp(bin_dir=tmp_path)
@@ -720,13 +644,9 @@ ID=ubuntu
             patch("platform.system", return_value="Linux"),
             patch("builtins.open") as mock_open,
             patch("aria.scripts.llama._nvcc_available", return_value=False),
-            patch(
-                "aria.scripts.llama._get_latest_release_info"
-            ) as mock_release,
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
             patch("aria.scripts.llama._download_and_extract") as mock_extract,
-            patch(
-                "aria.scripts.llama.get_llama_cpp_binary"
-            ) as mock_get_binary,
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
             patch("aria.scripts.llama._make_executable"),
             patch("shutil.copy2"),
             patch("subprocess.run") as mock_run,
@@ -767,3 +687,271 @@ ID=ubuntu
             result = download_llama_cpp(bin_dir=tmp_path)
 
             assert result == tmp_path
+
+
+class TestDownloadLatestLlamaCppMacOS:
+    """Tests for download_llama_cpp() on macOS."""
+
+    def test_downloads_prebuilt_binary_on_macos_arm64(self, tmp_path: Path):
+        """Test that download_llama_cpp downloads arm64 binary on Apple Silicon macOS."""
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch("platform.machine", return_value="arm64"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._install_from_archive") as mock_install_archive,
+            patch("aria.scripts.llama._test_binary"),
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                        "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+                    },
+                    {
+                        "name": "llama-b5000-bin-macos-x64.tar.gz",
+                        "browser_download_url": "https://example.com/macos-x64.tar.gz",
+                    },
+                ],
+            }
+            mock_get_binary.return_value = None
+
+            result = download_llama_cpp(bin_dir=tmp_path)
+
+            assert result == tmp_path
+            mock_install_archive.assert_called_once_with(
+                "https://example.com/macos-arm64.tar.gz",
+                "llama-b5000-bin-macos-arm64.tar.gz",
+                tmp_path,
+            )
+
+    def test_downloads_prebuilt_binary_on_macos_x64(self, tmp_path: Path):
+        """Test that download_llama_cpp downloads x64 binary on Intel macOS."""
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch("platform.machine", return_value="x86_64"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._install_from_archive") as mock_install_archive,
+            patch("aria.scripts.llama._test_binary"),
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                        "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+                    },
+                    {
+                        "name": "llama-b5000-bin-macos-x64.tar.gz",
+                        "browser_download_url": "https://example.com/macos-x64.tar.gz",
+                    },
+                ],
+            }
+            mock_get_binary.return_value = None
+
+            result = download_llama_cpp(bin_dir=tmp_path)
+
+            assert result == tmp_path
+            mock_install_archive.assert_called_once_with(
+                "https://example.com/macos-x64.tar.gz",
+                "llama-b5000-bin-macos-x64.tar.gz",
+                tmp_path,
+            )
+
+    def test_raises_error_when_no_macos_binary(self, tmp_path: Path):
+        """Test that download_llama_cpp raises RuntimeError when no macOS binary found."""
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch("platform.machine", return_value="arm64"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-ubuntu-x64.tar.gz",
+                        "browser_download_url": "https://example.com/ubuntu-x64.tar.gz",
+                    }
+                ],
+            }
+
+            with pytest.raises(RuntimeError) as exc_info:
+                download_llama_cpp(bin_dir=tmp_path)
+
+            assert "No suitable macOS binary found" in str(exc_info.value)
+
+    def test_raises_error_when_no_macos_download_url(self, tmp_path: Path):
+        """Test that download_llama_cpp raises RuntimeError when asset has no URL."""
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch("platform.machine", return_value="arm64"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                        # No browser_download_url
+                    }
+                ],
+            }
+
+            with pytest.raises(RuntimeError) as exc_info:
+                download_llama_cpp(bin_dir=tmp_path)
+
+            assert "Could not find download URL" in str(exc_info.value)
+
+    def test_raises_runtime_error_on_network_failure_macos(self, tmp_path: Path):
+        """Test that download_llama_cpp raises RuntimeError on GitHub API failure (macOS)."""
+        with (
+            patch("platform.system", return_value="Darwin"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.side_effect = urllib.error.URLError("Network error")
+
+            with pytest.raises(RuntimeError) as exc_info:
+                download_llama_cpp(bin_dir=tmp_path)
+
+            assert "Failed to fetch release info" in str(exc_info.value)
+
+
+class TestDownloadLatestLlamaCppWindows:
+    """Tests for download_llama_cpp() on Windows."""
+
+    def test_downloads_prebuilt_avx2_binary_on_windows(self, tmp_path: Path):
+        """Test that download_llama_cpp downloads avx2 binary on Windows without CUDA."""
+        with (
+            patch("platform.system", return_value="Windows"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._is_cuda_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._install_from_archive") as mock_install_archive,
+            patch("aria.scripts.llama._test_binary"),
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-win-cpu-x64.zip",
+                        "browser_download_url": "https://example.com/win-cpu-x64.zip",
+                    },
+                    {
+                        "name": "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip",
+                        "browser_download_url": "https://example.com/win-cuda-x64.zip",
+                    },
+                ],
+            }
+            mock_get_binary.return_value = None
+
+            result = download_llama_cpp(bin_dir=tmp_path)
+
+            assert result == tmp_path
+            mock_install_archive.assert_called_once_with(
+                "https://example.com/win-cpu-x64.zip",
+                "llama-b5000-bin-win-cpu-x64.zip",
+                tmp_path,
+            )
+
+    def test_downloads_prebuilt_cuda_binary_on_windows_with_nvcc(self, tmp_path: Path):
+        """Test that download_llama_cpp prefers CUDA binary on Windows when nvcc is available."""
+        with (
+            patch("platform.system", return_value="Windows"),
+            patch("aria.scripts.llama._nvcc_available", return_value=True),
+            patch("aria.scripts.llama._is_cuda_available", return_value=True),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+            patch("aria.scripts.llama._install_from_archive") as mock_install_archive,
+            patch("aria.scripts.llama._test_binary"),
+            patch("aria.scripts.llama.get_llama_cpp_binary") as mock_get_binary,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-win-cpu-x64.zip",
+                        "browser_download_url": "https://example.com/win-cpu-x64.zip",
+                    },
+                    {
+                        "name": "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip",
+                        "browser_download_url": "https://example.com/win-cuda-x64.zip",
+                    },
+                ],
+            }
+            mock_get_binary.return_value = None
+
+            result = download_llama_cpp(bin_dir=tmp_path)
+
+            assert result == tmp_path
+            mock_install_archive.assert_called_once_with(
+                "https://example.com/win-cuda-x64.zip",
+                "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip",
+                tmp_path,
+            )
+
+    def test_raises_error_when_no_windows_binary(self, tmp_path: Path):
+        """Test that download_llama_cpp raises RuntimeError when no Windows binary found."""
+        with (
+            patch("platform.system", return_value="Windows"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._is_cuda_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-ubuntu-x64.tar.gz",
+                        "browser_download_url": "https://example.com/ubuntu-x64.tar.gz",
+                    }
+                ],
+            }
+
+            with pytest.raises(RuntimeError) as exc_info:
+                download_llama_cpp(bin_dir=tmp_path)
+
+            assert "No suitable Windows binary found" in str(exc_info.value)
+
+    def test_raises_error_when_no_windows_download_url(self, tmp_path: Path):
+        """Test that download_llama_cpp raises RuntimeError when Windows asset has no URL."""
+        with (
+            patch("platform.system", return_value="Windows"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._is_cuda_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.return_value = {
+                "tag_name": "b5000",
+                "assets": [
+                    {
+                        "name": "llama-b5000-bin-win-cpu-x64.zip",
+                        # No browser_download_url
+                    }
+                ],
+            }
+
+            with pytest.raises(RuntimeError) as exc_info:
+                download_llama_cpp(bin_dir=tmp_path)
+
+            assert "Could not find download URL" in str(exc_info.value)
+
+    def test_raises_runtime_error_on_network_failure_windows(self, tmp_path: Path):
+        """Test that download_llama_cpp raises RuntimeError on GitHub API failure (Windows)."""
+        with (
+            patch("platform.system", return_value="Windows"),
+            patch("aria.scripts.llama._nvcc_available", return_value=False),
+            patch("aria.scripts.llama._get_latest_release_info") as mock_release,
+        ):
+            mock_release.side_effect = urllib.error.URLError("Network error")
+
+            with pytest.raises(RuntimeError) as exc_info:
+                download_llama_cpp(bin_dir=tmp_path)
+
+            assert "Failed to fetch release info" in str(exc_info.value)

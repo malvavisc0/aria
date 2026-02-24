@@ -6,8 +6,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 from aria.scripts.llama import (
     _is_linux,
+    _is_macos,
     _is_openblas_available,
     _is_ubuntu,
+    _is_windows,
     _make_executable,
     _verify_binary,
 )
@@ -87,9 +89,7 @@ ID=fedora
     def test_handles_missing_os_release(self, mock_platform_linux):
         """Test that _is_ubuntu handles missing /etc/os-release gracefully."""
         with patch("builtins.open") as mock_open:
-            mock_open.side_effect = FileNotFoundError(
-                "/etc/os-release not found"
-            )
+            mock_open.side_effect = FileNotFoundError("/etc/os-release not found")
             assert _is_ubuntu() is False
 
     def test_handles_io_error(self, mock_platform_linux):
@@ -145,9 +145,7 @@ class TestVerifyBinary:
 
         assert _verify_binary(dir_path) is False
 
-    def test_returns_true_for_directory_with_execute_permission(
-        self, tmp_path: Path
-    ):
+    def test_returns_true_for_directory_with_execute_permission(self, tmp_path: Path):
         """Returns True for a directory with execute permission."""
         dir_path = tmp_path / "test_dir"
         dir_path.mkdir()
@@ -277,8 +275,7 @@ class TestIsOpenblasAvailable:
         mock_ldconfig = Mock()
         mock_ldconfig.returncode = 0
         mock_ldconfig.stdout = (
-            "\tlibopenblas.so.0 (libc6,x86-64)"
-            " => /usr/lib/libopenblas.so.0\n"
+            "\tlibopenblas.so.0 (libc6,x86-64)" " => /usr/lib/libopenblas.so.0\n"
         )
 
         def fake_exists(self):
@@ -348,3 +345,51 @@ class TestIsOpenblasAvailable:
             patch("pathlib.Path.exists", fake_exists),
         ):
             assert _is_openblas_available() is False
+
+
+class TestIsMacos:
+    """Tests for _is_macos() function."""
+
+    def test_returns_true_on_macos(self):
+        """Test that _is_macos returns True on macOS (Darwin)."""
+        with patch("platform.system", return_value="Darwin"):
+            assert _is_macos() is True
+
+    def test_returns_false_on_linux(self):
+        """Test that _is_macos returns False on Linux."""
+        with patch("platform.system", return_value="Linux"):
+            assert _is_macos() is False
+
+    def test_returns_false_on_windows(self):
+        """Test that _is_macos returns False on Windows."""
+        with patch("platform.system", return_value="Windows"):
+            assert _is_macos() is False
+
+    def test_returns_false_on_other_os(self):
+        """Test that _is_macos returns False on other OS."""
+        with patch("platform.system", return_value="FreeBSD"):
+            assert _is_macos() is False
+
+
+class TestIsWindows:
+    """Tests for _is_windows() function."""
+
+    def test_returns_true_on_windows(self):
+        """Test that _is_windows returns True on Windows."""
+        with patch("platform.system", return_value="Windows"):
+            assert _is_windows() is True
+
+    def test_returns_false_on_linux(self):
+        """Test that _is_windows returns False on Linux."""
+        with patch("platform.system", return_value="Linux"):
+            assert _is_windows() is False
+
+    def test_returns_false_on_macos(self):
+        """Test that _is_windows returns False on macOS."""
+        with patch("platform.system", return_value="Darwin"):
+            assert _is_windows() is False
+
+    def test_returns_false_on_other_os(self):
+        """Test that _is_windows returns False on other OS."""
+        with patch("platform.system", return_value="FreeBSD"):
+            assert _is_windows() is False

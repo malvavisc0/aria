@@ -43,7 +43,7 @@ MOCK_GITHUB_RELEASE_NO_LINUX = {
     "assets": [
         {
             "name": "macos-x64.zip",
-            "browser_download_url": "https://example.com/macos-x64.zip",
+            "browser_download_url": "https://example.com/macos-x64.tar.gz",
         },
         {
             "name": "windows-x64.zip",
@@ -55,6 +55,42 @@ MOCK_GITHUB_RELEASE_NO_LINUX = {
 MOCK_GITHUB_RELEASE_EMPTY = {
     "tag_name": "v1.2.3",
     "assets": [],
+}
+
+MOCK_GITHUB_RELEASE_MACOS = {
+    "tag_name": "b5000",
+    "assets": [
+        {
+            "name": "llama-b5000-bin-macos-arm64.tar.gz",
+            "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+        },
+        {
+            "name": "llama-b5000-bin-macos-x64.tar.gz",
+            "browser_download_url": "https://example.com/macos-x64.tar.gz",
+        },
+        {
+            "name": "llama-b5000-bin-ubuntu-x64.tar.gz",
+            "browser_download_url": "https://example.com/ubuntu-x64.tar.gz",
+        },
+    ],
+}
+
+MOCK_GITHUB_RELEASE_WINDOWS = {
+    "tag_name": "b5000",
+    "assets": [
+        {
+            "name": "llama-b5000-bin-win-cpu-x64.zip",
+            "browser_download_url": "https://example.com/win-cpu-x64.zip",
+        },
+        {
+            "name": "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip",
+            "browser_download_url": "https://example.com/win-cuda-x64.zip",
+        },
+        {
+            "name": "llama-b5000-bin-ubuntu-x64.tar.gz",
+            "browser_download_url": "https://example.com/ubuntu-x64.tar.gz",
+        },
+    ],
 }
 
 MOCK_NVIDIA_SMI_GPU_LIST = "GPU 0: NVIDIA GeForce RTX 3090 (UUID: GPU-xxx)"

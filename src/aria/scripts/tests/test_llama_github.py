@@ -7,6 +7,8 @@ import pytest
 
 from aria.scripts.llama import (
     _find_linux_binary_asset,
+    _find_macos_binary_asset,
+    _find_windows_binary_asset,
     _get_latest_release_info,
     _get_release_by_tag,
 )
@@ -205,7 +207,7 @@ class TestFindLinuxBinaryAsset:
         assets = [
             {
                 "name": "macos-x64.zip",
-                "browser_download_url": "https://example.com/macos-x64.zip",
+                "browser_download_url": "https://example.com/macos-x64.tar.gz",
             },
             {
                 "name": "windows-x64.zip",
@@ -287,3 +289,278 @@ class TestFindLinuxBinaryAsset:
 
         assert result is not None
         assert result["name"] == "linux.tar.gz"
+
+
+class TestFindMacosBinaryAsset:
+    """Tests for _find_macos_binary_asset() function."""
+
+    def test_finds_arm64_asset_by_default(self):
+        """Test that _find_macos_binary_asset finds arm64 asset on Apple Silicon."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+            },
+            {
+                "name": "llama-b5000-bin-macos-x64.tar.gz",
+                "browser_download_url": "https://example.com/macos-x64.tar.gz",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos-arm64.tar.gz"
+
+    def test_finds_x64_asset_for_intel(self):
+        """Test that _find_macos_binary_asset finds x64 asset on Intel Mac."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+            },
+            {
+                "name": "llama-b5000-bin-macos-x64.tar.gz",
+                "browser_download_url": "https://example.com/macos-x64.tar.gz",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="x86_64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos-x64.tar.gz"
+
+    def test_falls_back_to_generic_macos(self):
+        """Test that _find_macos_binary_asset falls back to any macos asset."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos.zip",
+                "browser_download_url": "https://example.com/macos.zip",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos.zip"
+
+    def test_returns_none_when_no_macos_asset(self):
+        """Test that _find_macos_binary_asset returns None when no macOS asset."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-ubuntu-x64.tar.gz",
+                "browser_download_url": "https://example.com/ubuntu-x64.tar.gz",
+            },
+            {
+                "name": "llama-b5000-bin-win-cpu-x64.zip",
+                "browser_download_url": "https://example.com/win-cpu-x64.zip",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is None
+
+    def test_returns_none_for_empty_assets(self):
+        """Test that _find_macos_binary_asset returns None for empty assets list."""
+        result = _find_macos_binary_asset([], arch="arm64")
+        assert result is None
+
+    def test_accepts_tar_gz_format(self):
+        """Test that _find_macos_binary_asset accepts .tar.gz format (current b8000+ releases)."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos-arm64.tar.gz"
+
+    def test_accepts_zip_format(self):
+        """Test that _find_macos_binary_asset also accepts .zip format (older releases)."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos-arm64.zip",
+                "browser_download_url": "https://example.com/macos-arm64.zip",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos-arm64.zip"
+
+    def test_ignores_other_archive_formats(self):
+        """Test that _find_macos_binary_asset ignores unsupported archive formats."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos-arm64.7z",
+                "browser_download_url": "https://example.com/macos-arm64.7z",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is None
+
+    def test_ignores_src_archives(self):
+        """Test that _find_macos_binary_asset ignores source archives."""
+        assets = [
+            {
+                "name": "llama-b5000-macos-src.zip",
+                "browser_download_url": "https://example.com/macos-src.zip",
+            },
+            {
+                "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="arm64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos-arm64.tar.gz"
+
+    def test_treats_aarch64_as_arm64(self):
+        """Test that _find_macos_binary_asset treats aarch64 as arm64."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+            },
+        ]
+
+        result = _find_macos_binary_asset(assets, arch="aarch64")
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-macos-arm64.tar.gz"
+
+
+class TestFindWindowsBinaryAsset:
+    """Tests for _find_windows_binary_asset() function."""
+
+    def test_finds_avx2_asset_without_cuda(self):
+        """Test that _find_windows_binary_asset finds avx2 asset when CUDA not preferred."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-win-cpu-x64.zip",
+                "browser_download_url": "https://example.com/win-cpu-x64.zip",
+            },
+            {
+                "name": "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip",
+                "browser_download_url": "https://example.com/win-cuda-x64.zip",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=False)
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-win-cpu-x64.zip"
+
+    def test_finds_cuda_asset_when_cuda_preferred(self):
+        """Test that _find_windows_binary_asset finds CUDA asset when CUDA preferred."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-win-cpu-x64.zip",
+                "browser_download_url": "https://example.com/win-cpu-x64.zip",
+            },
+            {
+                "name": "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip",
+                "browser_download_url": "https://example.com/win-cuda-x64.zip",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=True)
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-win-cuda-cu12.4.1-x64.zip"
+
+    def test_finds_vulkan_asset(self):
+        """Test that _find_windows_binary_asset finds vulkan asset."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-win-vulkan-x64.zip",
+                "browser_download_url": "https://example.com/win-vulkan-x64.zip",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=False)
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-win-vulkan-x64.zip"
+
+    def test_finds_noavx_as_fallback(self):
+        """Test that _find_windows_binary_asset falls back to noavx."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-win-noavx-x64.zip",
+                "browser_download_url": "https://example.com/win-noavx-x64.zip",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=False)
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-win-noavx-x64.zip"
+
+    def test_returns_none_when_no_windows_asset(self):
+        """Test that _find_windows_binary_asset returns None when no Windows asset."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-ubuntu-x64.tar.gz",
+                "browser_download_url": "https://example.com/ubuntu-x64.tar.gz",
+            },
+            {
+                "name": "llama-b5000-bin-macos-arm64.tar.gz",
+                "browser_download_url": "https://example.com/macos-arm64.tar.gz",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=False)
+
+        assert result is None
+
+    def test_returns_none_for_empty_assets(self):
+        """Test that _find_windows_binary_asset returns None for empty assets."""
+        result = _find_windows_binary_asset([], prefer_cuda=False)
+        assert result is None
+
+    def test_ignores_non_zip_files(self):
+        """Test that _find_windows_binary_asset ignores non-zip files."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-win-avx2-x64.tar.gz",
+                "browser_download_url": "https://example.com/win-avx2-x64.tar.gz",
+            },
+            {
+                "name": "llama-b5000-bin-win-cpu-x64.zip",
+                "browser_download_url": "https://example.com/win-cpu-x64.zip",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=False)
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-win-cpu-x64.zip"
+
+    def test_priority_cpu_over_avx(self):
+        """Test that win-cpu is preferred over win-avx when CUDA not requested."""
+        assets = [
+            {
+                "name": "llama-b5000-bin-win-avx-x64.zip",
+                "browser_download_url": "https://example.com/win-avx-x64.zip",
+            },
+            {
+                "name": "llama-b5000-bin-win-cpu-x64.zip",
+                "browser_download_url": "https://example.com/win-cpu-x64.zip",
+            },
+        ]
+
+        result = _find_windows_binary_asset(assets, prefer_cuda=False)
+
+        assert result is not None
+        assert result["name"] == "llama-b5000-bin-win-cpu-x64.zip"
