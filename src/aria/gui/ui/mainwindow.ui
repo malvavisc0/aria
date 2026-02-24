@@ -6,20 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>750</width>
-    <height>695</height>
+    <width>800</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>750</width>
-    <height>695</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>750</width>
-    <height>695</height>
+    <height>650</height>
    </size>
   </property>
   <property name="focusPolicy">
@@ -31,666 +25,1104 @@
   <property name="windowIcon">
    <iconset theme="emblem-system"/>
   </property>
-  <property name="unifiedTitleAndToolBarOnMac">
-   <bool>false</bool>
-  </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="verticalLayoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>731</width>
-      <height>631</height>
-     </rect>
+   <layout class="QVBoxLayout" name="verticalLayout_main">
+    <property name="spacing">
+     <number>6</number>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="font">
-          <font>
-           <pointsize>16</pointsize>
-           <bold>false</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Aria Service Manager</string>
-         </property>
-         <property name="textFormat">
-          <enum>Qt::TextFormat::PlainText</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Orientation::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton_ServiceStop">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Stop</string>
-         </property>
-         <property name="icon">
-          <iconset theme="QIcon::ThemeIcon::SystemShutdown"/>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton_ServiceStart">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Start</string>
-         </property>
-         <property name="icon">
-          <iconset theme="QIcon::ThemeIcon::MediaPlaybackStart"/>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <widget class="QTabWidget" name="tabWidget">
-       <property name="tabPosition">
-        <enum>QTabWidget::TabPosition::North</enum>
-       </property>
-       <property name="currentIndex">
-        <number>0</number>
-       </property>
-       <widget class="QWidget" name="tab_overview">
-        <attribute name="title">
-         <string>Overview</string>
-        </attribute>
-        <widget class="QWidget" name="verticalLayoutWidget_3">
-         <property name="geometry">
-          <rect>
-           <x>9</x>
-           <y>9</y>
-           <width>2988</width>
-           <height>541</height>
-          </rect>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout_3">
-          <item>
-           <widget class="QGroupBox" name="groupBox_3">
-            <property name="title">
-             <string>Service</string>
-            </property>
-            <widget class="QWidget" name="formLayoutWidget_3">
-             <property name="geometry">
-              <rect>
-               <x>9</x>
-               <y>29</y>
-               <width>471</width>
-               <height>141</height>
-              </rect>
+    <property name="leftMargin">
+     <number>10</number>
+    </property>
+    <property name="topMargin">
+     <number>10</number>
+    </property>
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>10</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_topbar">
+      <item>
+       <widget class="QLabel" name="label_title">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Aria Service Manager</string>
+        </property>
+        <property name="textFormat">
+         <enum>Qt::TextFormat::PlainText</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_topbar">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_ServiceStop">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Stop</string>
+        </property>
+        <property name="icon">
+         <iconset theme="QIcon::ThemeIcon::SystemShutdown"/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_ServiceStart">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Start</string>
+        </property>
+        <property name="icon">
+         <iconset theme="QIcon::ThemeIcon::MediaPlaybackStart"/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="tabPosition">
+       <enum>QTabWidget::TabPosition::North</enum>
+      </property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+
+      <!-- TAB 1: Overview -->
+      <widget class="QWidget" name="tab_overview">
+       <attribute name="title">
+        <string>Overview</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_overview">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>8</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>8</number>
+        </property>
+
+        <!-- Service group: full width on top -->
+        <item>
+         <widget class="QGroupBox" name="groupBox_Service">
+          <property name="title">
+           <string>Service</string>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_service">
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>8</number>
+           </property>
+           <property name="bottomMargin">
+            <number>8</number>
+           </property>
+           <!-- Left: 4-row form (URL, PID, Uptime, Started) -->
+           <item>
+            <layout class="QFormLayout" name="formLayout_service">
+             <property name="horizontalSpacing">
+              <number>20</number>
              </property>
-             <layout class="QFormLayout" name="formLayout_3">
-              <property name="horizontalSpacing">
-               <number>20</number>
-              </property>
-              <property name="verticalSpacing">
-               <number>10</number>
-              </property>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_8">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>URL</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_ServiceURL">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_13">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>PID</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_ServicePID">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_9">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Uptime</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="label_ServiceUptime">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_12">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Started</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="label_ServiceStarted">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="label_14">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Logs Path</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_DebugLogsPath">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-             <zorder>label_13</zorder>
-             <zorder>label_8</zorder>
-             <zorder>label_9</zorder>
-             <zorder>label_12</zorder>
-             <zorder>label_ServiceURL</zorder>
-             <zorder>label_ServicePID</zorder>
-             <zorder>label_ServiceUptime</zorder>
-             <zorder>label_ServiceStarted</zorder>
-             <zorder>label_14</zorder>
-             <zorder>label_DebugLogsPath</zorder>
-            </widget>
-            <widget class="QWidget" name="verticalLayoutWidget_5">
-             <property name="geometry">
-              <rect>
-               <x>490</x>
-               <y>30</y>
-               <width>211</width>
-               <height>141</height>
-              </rect>
+             <property name="verticalSpacing">
+              <number>8</number>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_5">
-              <item>
-               <widget class="QLabel" name="label_ServiceStatus">
-                <property name="font">
-                 <font>
-                  <pointsize>16</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_ServiceOpen">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>Open</string>
-                </property>
-                <property name="icon">
-                 <iconset theme="QIcon::ThemeIcon::UserAvailable"/>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </widget>
-          </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_svc_url_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>URL</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_ServiceURL">
+               <property name="textFormat">
+                <enum>Qt::TextFormat::RichText</enum>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+               <property name="openExternalLinks">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_svc_pid_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>PID</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_ServicePID">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_svc_uptime_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Uptime</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_ServiceUptime">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_svc_started_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Started</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLabel" name="label_ServiceStarted">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_service">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <!-- Right: status badge + Open button -->
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout_serviceStatus">
+             <item>
+              <widget class="QLabel" name="label_ServiceStatus">
+               <property name="styleSheet">
+                <string notr="true">QLabel {
+    background-color: #616161;
+    color: white;
+    font-size: 13pt;
+    padding: 4px 14px;
+    border-radius: 6px;
+}</string>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_ServiceOpen">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Open</string>
+               </property>
+               <property name="icon">
+                <iconset theme="QIcon::ThemeIcon::UserAvailable"/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="verticalSpacer_serviceStatus">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+
+        <!-- Bottom row: Database + LLM APIs side by side -->
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_overview_bottom">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+
+          <!-- Database group -->
           <item>
-           <widget class="QGroupBox" name="groupBox_2">
+           <widget class="QGroupBox" name="groupBox_Database">
             <property name="title">
              <string>Database</string>
             </property>
-            <widget class="QWidget" name="formLayoutWidget">
-             <property name="geometry">
-              <rect>
-               <x>10</x>
-               <y>30</y>
-               <width>471</width>
-               <height>166</height>
-              </rect>
+            <layout class="QFormLayout" name="formLayout_database">
+             <property name="horizontalSpacing">
+              <number>20</number>
              </property>
-             <layout class="QFormLayout" name="formLayout">
-              <property name="horizontalSpacing">
-               <number>20</number>
-              </property>
-              <property name="verticalSpacing">
-               <number>10</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_2">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Type</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_DatabaseType">
-                <property name="text">
-                 <string>SQLite</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_3">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Location</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_DatabaseLocation">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_6">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Exists</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="label_DatabaseFileExists">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_10">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Permissions</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="label_DatabasePermissions">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="label_11">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Size</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_DatabaseSize">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
+             <property name="verticalSpacing">
+              <number>8</number>
+             </property>
+             <property name="leftMargin">
+              <number>8</number>
+             </property>
+             <property name="topMargin">
+              <number>8</number>
+             </property>
+             <property name="rightMargin">
+              <number>8</number>
+             </property>
+             <property name="bottomMargin">
+              <number>8</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_db_type_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Type</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_DatabaseType">
+               <property name="text">
+                <string>SQLite</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_db_location_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Location</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_DatabaseLocation">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_db_exists_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Exists</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_DatabaseFileExists">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_db_size_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Size</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLabel" name="label_DatabaseSize">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
+
+          <!-- LLM Inference APIs group -->
           <item>
-           <widget class="QGroupBox" name="groupBox">
+           <widget class="QGroupBox" name="groupBox_LLMAPIs">
             <property name="title">
              <string>LLM Inference APIs</string>
             </property>
-            <widget class="QWidget" name="formLayoutWidget_2">
-             <property name="geometry">
-              <rect>
-               <x>10</x>
-               <y>30</y>
-               <width>471</width>
-               <height>141</height>
-              </rect>
+            <layout class="QFormLayout" name="formLayout_llmapis">
+             <property name="horizontalSpacing">
+              <number>20</number>
              </property>
-             <layout class="QFormLayout" name="formLayout_2">
-              <property name="horizontalSpacing">
-               <number>20</number>
-              </property>
-              <property name="verticalSpacing">
-               <number>10</number>
-              </property>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_18">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Chat</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_19">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Vision/OCR</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_20">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Embeddings</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_LLMChatAPIURL">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="label_LLMVisionAPIURL">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="label_LLMEmbeddingsAPIURL">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_24">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Type</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_LLMType">
-                <property name="text">
-                 <string>llama.cpp</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="label_21">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>VectorDB</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_VectorDB">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
+             <property name="verticalSpacing">
+              <number>8</number>
+             </property>
+             <property name="leftMargin">
+              <number>8</number>
+             </property>
+             <property name="topMargin">
+              <number>8</number>
+             </property>
+             <property name="rightMargin">
+              <number>8</number>
+             </property>
+             <property name="bottomMargin">
+              <number>8</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_llm_type_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Type</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_LLMType">
+               <property name="text">
+                <string>llama.cpp</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_llm_chat_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Chat</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_LLMChatAPIURL">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_llm_vision_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Vision/OCR</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_LLMVisionAPIURL">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_llm_embeddings_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>Embeddings</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLabel" name="label_LLMEmbeddingsAPIURL">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_llm_vectordb_lbl">
+               <property name="styleSheet">
+                <string notr="true">color: #888;</string>
+               </property>
+               <property name="text">
+                <string>VectorDB</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLabel" name="label_VectorDB">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
+
          </layout>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="tab_users">
-        <attribute name="title">
-         <string>Users</string>
-        </attribute>
-        <widget class="QWidget" name="horizontalLayoutWidget_2">
-         <property name="geometry">
-          <rect>
-           <x>30</x>
-           <y>60</y>
-           <width>631</width>
-           <height>145</height>
-          </rect>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_5">
+        </item>
+
+        <!-- Dummy labels to satisfy handler references (hidden) -->
+        <item>
+         <widget class="QLabel" name="label_DebugLogsPath">
+          <property name="visible">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>-</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_DatabasePermissions">
+          <property name="visible">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>-</string>
+          </property>
+         </widget>
+        </item>
+
+        <item>
+         <spacer name="verticalSpacer_overview">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- TAB 2: Setup (LlamaCpp + Models) -->
+      <widget class="QWidget" name="tab_setup">
+       <attribute name="title">
+        <string>Setup</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_setup">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>8</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QGroupBox" name="groupBox_LlamaCpp">
+          <property name="title">
+           <string>LlamaCpp Binaries</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_llamacpp">
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>8</number>
+           </property>
+           <property name="bottomMargin">
+            <number>8</number>
+           </property>
+           <item>
+            <layout class="QFormLayout" name="formLayout_llamacpp_info">
+             <property name="horizontalSpacing">
+              <number>20</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>6</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_llama_bindir_lbl">
+               <property name="text">
+                <string>Binary Dir</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_LlamaBinDir">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_llama_version_lbl">
+               <property name="text">
+                <string>Version</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_LlamaVersion">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_llamabins">
+             <item>
+              <widget class="QLabel" name="label_LlamaBin_cli">
+               <property name="text">
+                <string>llama-cli: -</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_LlamaBin_server">
+               <property name="text">
+                <string>llama-server: -</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_LlamaBin_bench">
+               <property name="text">
+                <string>llama-bench: -</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_LlamaBin_quantize">
+               <property name="text">
+                <string>llama-quantize: -</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_llamabins">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_llamaDownload">
+             <item>
+              <widget class="QLabel" name="label_llama_dl_version_lbl">
+               <property name="text">
+                <string>Version (optional):</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit_LlamaVersion">
+               <property name="placeholderText">
+                <string>e.g. b4500 (leave blank for latest)</string>
+               </property>
+               <property name="maximumWidth">
+                <number>220</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_LlamaDownload">
+               <property name="text">
+                <string>Download Binaries</string>
+               </property>
+               <property name="icon">
+                <iconset theme="QIcon::ThemeIcon::GoDown"/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_llamaDl">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QPlainTextEdit" name="plainTextEdit_LlamaOutput">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="maximumHeight">
+              <number>80</number>
+             </property>
+             <property name="font">
+              <font>
+               <family>Courier New</family>
+               <pointsize>9</pointsize>
+              </font>
+             </property>
+             <property name="placeholderText">
+              <string>Download output will appear here...</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_Models">
+          <property name="title">
+           <string>GGUF Models</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_models">
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>8</number>
+           </property>
+           <property name="bottomMargin">
+            <number>8</number>
+           </property>
+           <item>
+            <layout class="QFormLayout" name="formLayout_models_status">
+             <property name="horizontalSpacing">
+              <number>20</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>6</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_model_chat_lbl">
+               <property name="text">
+                <string>Chat</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_ModelChat_Status">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_model_vl_lbl">
+               <property name="text">
+                <string>Vision/VL</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_ModelVL_Status">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_model_emb_lbl">
+               <property name="text">
+                <string>Embeddings</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_ModelEmbeddings_Status">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_modelDownload">
+             <item>
+              <widget class="QLabel" name="label_model_select_lbl">
+               <property name="text">
+                <string>Model:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBox_ModelSelect">
+               <item>
+                <property name="text">
+                 <string>chat</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>vl</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>embeddings</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_hf_token_lbl">
+               <property name="text">
+                <string>HF Token (optional):</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit_HFToken">
+               <property name="echoMode">
+                <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
+               </property>
+               <property name="placeholderText">
+                <string>HuggingFace token</string>
+               </property>
+               <property name="maximumWidth">
+                <number>200</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkBox_ModelForce">
+               <property name="text">
+                <string>Force re-download</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_ModelDownload">
+               <property name="text">
+                <string>Download Model</string>
+               </property>
+               <property name="icon">
+                <iconset theme="QIcon::ThemeIcon::GoDown"/>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QPlainTextEdit" name="plainTextEdit_ModelOutput">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="maximumHeight">
+              <number>80</number>
+             </property>
+             <property name="font">
+              <font>
+               <family>Courier New</family>
+               <pointsize>9</pointsize>
+              </font>
+             </property>
+             <property name="placeholderText">
+              <string>Download output will appear here...</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_setup">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- TAB 3: Users -->
+      <widget class="QWidget" name="tab_users">
+       <attribute name="title">
+        <string>Users</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout_users">
+        <property name="spacing">
+         <number>12</number>
+        </property>
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>8</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QGroupBox" name="groupBox_CreateUser">
+          <property name="title">
+           <string>Create User</string>
+          </property>
+          <property name="maximumWidth">
+           <number>280</number>
+          </property>
+          <layout class="QFormLayout" name="formLayout_createUser">
+           <property name="horizontalSpacing">
+            <number>12</number>
+           </property>
+           <property name="verticalSpacing">
+            <number>8</number>
+           </property>
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>8</number>
+           </property>
+           <property name="bottomMargin">
+            <number>8</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_user_name_lbl">
+             <property name="text">
+              <string>Name</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="lineEdit_UserName"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_user_email_lbl">
+             <property name="text">
+              <string>E-Mail</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineEdit_UserEmail"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_user_password_lbl">
+             <property name="text">
+              <string>Password</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="lineEdit_UserPassword">
+             <property name="maxLength">
+              <number>48</number>
+             </property>
+             <property name="echoMode">
+              <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QPushButton" name="pushButton_CreateUser">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Create</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_userList">
           <item>
-           <layout class="QFormLayout" name="formLayout_5">
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_26">
-              <property name="text">
-               <string>Name</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QLineEdit" name="lineEdit_UserName">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_27">
-              <property name="text">
-               <string>E-Mail</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLineEdit" name="lineEdit_UserEmail"/>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_28">
-              <property name="text">
-               <string>Password</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLineEdit" name="lineEdit_UserPassword">
-              <property name="inputMask">
-               <string/>
-              </property>
-              <property name="maxLength">
-               <number>48</number>
-              </property>
-              <property name="echoMode">
-               <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QPushButton" name="pushButton_CreateUser">
+           <widget class="QListWidget" name="listWidget_CurrentUsers"/>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_userButtons">
+            <item>
+             <widget class="QPushButton" name="pushButton_EditUser">
               <property name="enabled">
                <bool>false</bool>
               </property>
               <property name="text">
-               <string>Create</string>
+               <string>Edit</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_DeleteUser">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Delete</string>
+              </property>
+              <property name="icon">
+               <iconset theme="QIcon::ThemeIcon::EditDelete"/>
               </property>
              </widget>
             </item>
            </layout>
           </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <item>
-             <widget class="QListWidget" name="listWidget_CurrentUsers"/>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_6">
-              <item>
-               <widget class="QPushButton" name="pushButton_EditUser">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>Edit</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_DeleteUser">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>Delete</string>
-                </property>
-                <property name="icon">
-                 <iconset theme="QIcon::ThemeIcon::EditDelete"/>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
          </layout>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="tab_logs">
-        <attribute name="title">
-         <string>Logs</string>
-        </attribute>
-        <widget class="QWidget" name="verticalLayoutWidget_2">
-         <property name="geometry">
-          <rect>
-           <x>9</x>
-           <y>9</y>
-           <width>711</width>
-           <height>541</height>
-          </rect>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
-          <item>
-           <widget class="QPlainTextEdit" name="plainTextEdit_Logs">
-            <property name="font">
-             <font>
-              <family>Courier New</family>
-              <pointsize>10</pointsize>
-             </font>
-            </property>
-            <property name="lineWrapMode">
-             <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
-            </property>
-            <property name="readOnly">
-             <bool>true</bool>
-            </property>
-            <property name="maximumBlockCount">
-             <number>1000</number>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pushButton_RefreshLogs">
-            <property name="text">
-             <string>Refresh</string>
-            </property>
-            <property name="icon">
-             <iconset theme="QIcon::ThemeIcon::ViewRefresh"/>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </widget>
+        </item>
+       </layout>
       </widget>
-     </item>
-    </layout>
-   </widget>
+
+      <!-- TAB 4: Logs -->
+      <widget class="QWidget" name="tab_logs">
+       <attribute name="title">
+        <string>Logs</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_logs">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>8</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QPlainTextEdit" name="plainTextEdit_Logs">
+          <property name="font">
+           <font>
+            <family>Courier New</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="lineWrapMode">
+           <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+          <property name="maximumBlockCount">
+           <number>1000</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_RefreshLogs">
+          <property name="text">
+           <string>Refresh</string>
+          </property>
+          <property name="icon">
+           <iconset theme="QIcon::ThemeIcon::ViewRefresh"/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>750</width>
+     <width>800</width>
      <height>24</height>
     </rect>
    </property>

@@ -23,7 +23,7 @@ def main():
     if not is_initialized():
         run_initialization()
 
-    from aria.gui.main_window import MainWindow
+    from aria.gui.windows import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("Aria")

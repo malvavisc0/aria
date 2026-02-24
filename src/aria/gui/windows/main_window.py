@@ -11,9 +11,9 @@ from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
 from aria.config.models import Chat, Embeddings, Vision
 from aria.gui.dialogs import AboutDialog
-from aria.gui.main_window.server_handlers import ServerHandlersMixin
-from aria.gui.main_window.user_handlers import UserHandlersMixin
 from aria.gui.ui.mainwindow import Ui_MainWindow
+from aria.gui.windows.server_handlers import ServerHandlersMixin
+from aria.gui.windows.user_handlers import UserHandlersMixin
 
 
 def human_size(path: Path) -> str:

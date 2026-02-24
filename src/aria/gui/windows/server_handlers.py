@@ -177,19 +177,28 @@ class ServerHandlersMixin:
         """
         status = self._server_manager.get_status()
 
-        # Update status indicator label
+        # Update status indicator label (pill badge)
+        _BADGE_BASE = (
+            "color: white; font-size: 13pt;" " padding: 4px 14px; border-radius: 6px;"
+        )
         if status.running:
             self.ui.label_ServiceStatus.setText("Running")
-            self.ui.label_ServiceStatus.setStyleSheet("color: green;")
+            self.ui.label_ServiceStatus.setStyleSheet(
+                f"QLabel {{ background-color: #2e7d32; {_BADGE_BASE} }}"
+            )
         else:
             self.ui.label_ServiceStatus.setText("Stopped")
-            self.ui.label_ServiceStatus.setStyleSheet("color: red;")
+            self.ui.label_ServiceStatus.setStyleSheet(
+                f"QLabel {{ background-color: #c62828; {_BADGE_BASE} }}"
+            )
 
         # Update PID label
         self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
 
-        # Update URL label
-        self.ui.label_ServiceURL.setText(f"http://{status.host}:{status.port}")
+        # Update URL label as a clickable hyperlink
+        url = f"http://{status.host}:{status.port}"
+        self.ui.label_ServiceURL.setText(f'<a href="{url}">{url}</a>')
+        self.ui.label_ServiceURL.setOpenExternalLinks(True)
 
         # Update start time label
         if status.started_at:
