@@ -554,13 +554,15 @@ def _copy_binaries_and_libs(build_bin_dir: Path, dest_dir: Path) -> None:
                 break  # found the binary, no need to check .exe variant
 
     # Copy shared libraries — Linux .so*, macOS .dylib, Windows .dll
-    lib_extensions = ["*.so*", "*.dylib", "*.dll"]
+    # Match both versioned (libmtmd.0.dylib) and unversioned (libmtmd.dylib)
+    lib_extensions = [".so", ".dylib", ".dll"]
     for lib_pattern in SHARED_LIB_PATTERNS:
         for ext in lib_extensions:
-            for lib_file in build_bin_dir.glob(f"{lib_pattern}{ext[1:]}"):
-                dst_lib = dest_dir / lib_file.name
-                shutil.copy2(lib_file, dst_lib)
-                logger.info(f"Copied {lib_file.name} to {dest_dir}")
+            for lib_file in build_bin_dir.glob(f"{lib_pattern}*{ext}*"):
+                if lib_file.is_file():
+                    dst_lib = dest_dir / lib_file.name
+                    shutil.copy2(lib_file, dst_lib)
+                    logger.info(f"Copied {lib_file.name} to {dest_dir}")
 
 
 def _test_binary(bin_dir: Path) -> None:
@@ -645,13 +647,15 @@ def _install_from_archive(
                     logger.info(f"Installed {binary_path.name} to {bin_dir}")
 
             # Copy shared libraries (.dylib / .dll / .so*)
-            lib_extensions_globs = ["*.so*", "*.dylib", "*.dll"]
+            # Match both versioned (libmtmd.0.dylib) and unversioned (libmtmd.dylib)
+            lib_extensions = [".so", ".dylib", ".dll"]
             for lib_pattern in SHARED_LIB_PATTERNS:
-                for ext_glob in lib_extensions_globs:
-                    for lib_file in extract_dir.rglob(f"{lib_pattern}{ext_glob[1:]}"):
-                        dst_lib = bin_dir / lib_file.name
-                        shutil.copy2(lib_file, dst_lib)
-                        logger.info(f"Installed {lib_file.name} to {bin_dir}")
+                for ext in lib_extensions:
+                    for lib_file in extract_dir.rglob(f"{lib_pattern}*{ext}*"):
+                        if lib_file.is_file():
+                            dst_lib = bin_dir / lib_file.name
+                            shutil.copy2(lib_file, dst_lib)
+                            logger.info(f"Installed {lib_file.name} to {bin_dir}")
 
     except urllib.error.URLError as e:
         raise RuntimeError(f"Failed to download binary: {e}") from e

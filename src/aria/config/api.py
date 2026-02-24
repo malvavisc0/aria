@@ -13,6 +13,3 @@ class LlamaCpp:
     chat_context_size = int(get_optional_env("CHAT_CONTEXT_SIZE", "65536"))
     vl_context_size = int(get_optional_env("VL_CONTEXT_SIZE", "8192"))
     embeddings_context_size = int(get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192"))
-
-    # Legacy: single context size (use chat_context_size for backward compatibility)
-    context_size = int(get_optional_env("LLAMA_CONTEXT_SIZE", "8192"))
