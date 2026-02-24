@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowqdaUzK.ui'
+## Form generated from reading UI file 'mainwindowgZxnCC.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -539,7 +539,6 @@ class Ui_MainWindow(object):
         font1.setFamilies(["Courier New"])
         font1.setPointSize(9)
         self.plainTextEdit_LlamaOutput.setFont(font1)
-        self.plainTextEdit_LlamaOutput.setMaximumHeight(120)
         self.plainTextEdit_LlamaOutput.setLineWrapMode(
             QPlainTextEdit.LineWrapMode.NoWrap
         )
@@ -648,7 +647,6 @@ class Ui_MainWindow(object):
         self.plainTextEdit_ModelOutput = QPlainTextEdit(self.groupBox_Models)
         self.plainTextEdit_ModelOutput.setObjectName("plainTextEdit_ModelOutput")
         self.plainTextEdit_ModelOutput.setFont(font1)
-        self.plainTextEdit_ModelOutput.setMaximumHeight(120)
         self.plainTextEdit_ModelOutput.setLineWrapMode(
             QPlainTextEdit.LineWrapMode.NoWrap
         )
@@ -778,12 +776,29 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_logs.addWidget(self.plainTextEdit_Logs)
 
+        self.horizontalLayout_logsToolbar = QHBoxLayout()
+        self.horizontalLayout_logsToolbar.setObjectName("horizontalLayout_logsToolbar")
+        self.pushButton_AutoRefresh = QPushButton(self.tab_logs)
+        self.pushButton_AutoRefresh.setObjectName("pushButton_AutoRefresh")
+        icon8 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackPause))
+        self.pushButton_AutoRefresh.setIcon(icon8)
+
+        self.horizontalLayout_logsToolbar.addWidget(self.pushButton_AutoRefresh)
+
+        self.horizontalSpacer_logsToolbar = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_logsToolbar.addItem(self.horizontalSpacer_logsToolbar)
+
         self.pushButton_RefreshLogs = QPushButton(self.tab_logs)
         self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
-        icon8 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
-        self.pushButton_RefreshLogs.setIcon(icon8)
+        icon9 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
+        self.pushButton_RefreshLogs.setIcon(icon9)
 
-        self.verticalLayout_logs.addWidget(self.pushButton_RefreshLogs)
+        self.horizontalLayout_logsToolbar.addWidget(self.pushButton_RefreshLogs)
+
+        self.verticalLayout_logs.addLayout(self.horizontalLayout_logsToolbar)
 
         self.tabWidget.addTab(self.tab_logs, "")
 
@@ -1060,6 +1075,9 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_users),
             QCoreApplication.translate("MainWindow", "Users", None),
+        )
+        self.pushButton_AutoRefresh.setText(
+            QCoreApplication.translate("MainWindow", "Pause Auto-Refresh", None)
         )
         self.pushButton_RefreshLogs.setText(
             QCoreApplication.translate("MainWindow", "Refresh", None)

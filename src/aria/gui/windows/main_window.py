@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMainWindow
 
 from aria.config.database import ChromaDB, SQLite
@@ -107,6 +108,7 @@ class MainWindow(
         """Connect tab-related signals."""
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
         self.ui.pushButton_RefreshLogs.clicked.connect(self.load_logs)
+        self.ui.pushButton_AutoRefresh.clicked.connect(self.toggle_auto_refresh)
 
         self._logs_timer = QTimer()
         self._logs_timer.timeout.connect(self.load_logs)
@@ -127,6 +129,33 @@ class MainWindow(
         self.ui.listWidget_CurrentUsers.itemSelectionChanged.connect(
             self.validate_user_selection
         )
+
+    def _set_auto_refresh_running(self, running: bool):
+        """Update the Auto-Refresh button to reflect the current timer state.
+
+        Args:
+            running: True if auto-refresh is active, False if paused.
+        """
+        if running:
+            self.ui.pushButton_AutoRefresh.setText("Pause Auto-Refresh")
+            self.ui.pushButton_AutoRefresh.setIcon(
+                QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackPause))
+            )
+        else:
+            self.ui.pushButton_AutoRefresh.setText("Resume Auto-Refresh")
+            self.ui.pushButton_AutoRefresh.setIcon(
+                QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackStart))
+            )
+
+    def toggle_auto_refresh(self):
+        """Toggle the auto-refresh timer on or off."""
+        if self._logs_timer.isActive():
+            self._logs_timer.stop()
+            self._set_auto_refresh_running(False)
+        else:
+            self.load_logs()
+            self._logs_timer.start(5000)
+            self._set_auto_refresh_running(True)
 
     def load_logs(self):
         """Load logs content into the plainTextEdit_Logs widget."""
@@ -183,6 +212,7 @@ class MainWindow(
             case self.ui.tab_logs:
                 self.load_logs()
                 self._logs_timer.start(5000)
+                self._set_auto_refresh_running(True)
                 self.statusBar().showMessage(str(Debug.logs_path))
             case _:
                 self._logs_timer.stop()

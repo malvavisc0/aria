@@ -8,12 +8,26 @@ from __future__ import annotations
 
 import webbrowser
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QThread, QTimer, Signal
 from PySide6.QtWidgets import QMessageBox
 
 from aria.config.service import Server
 from aria.gui.ui.mainwindow import Ui_MainWindow
 from aria.server import ServerManager
+
+
+class _StopWorker(QObject):
+    """Background worker that calls ServerManager.stop() off the GUI thread."""
+
+    finished = Signal()
+
+    def __init__(self, server_manager):
+        super().__init__()
+        self._server_manager = server_manager
+
+    def run(self):
+        self._server_manager.stop()
+        self.finished.emit()
 
 
 class ServerHandlersMixin:
@@ -95,12 +109,24 @@ class ServerHandlersMixin:
     def on_stop_server(self):
         """Handle Stop button click.
 
-        Stops the Chainlit webserver. The llama-server inference processes
-        are stopped automatically by the web UI via the Chainlit
-        ``on_app_shutdown`` lifecycle hook.
+        Stops the Chainlit webserver off the GUI thread to avoid blocking.
+        The llama-server inference processes are stopped automatically by
+        the web UI via the Chainlit ``on_app_shutdown`` lifecycle hook.
         """
-        self._server_manager.stop()
-        self._update_server_status()
+        # Disable both buttons immediately to prevent double-clicks
+        self.ui.pushButton_ServiceStop.setEnabled(False)
+        self.ui.pushButton_ServiceStart.setEnabled(False)
+        self.statusBar().showMessage("Stopping Aria server\u2026")
+
+        self._stop_thread = QThread()
+        self._stop_worker = _StopWorker(self._server_manager)
+        self._stop_worker.moveToThread(self._stop_thread)
+        self._stop_thread.started.connect(self._stop_worker.run)
+        self._stop_worker.finished.connect(self._stop_thread.quit)
+        self._stop_worker.finished.connect(self._stop_worker.deleteLater)
+        self._stop_thread.finished.connect(self._stop_thread.deleteLater)
+        self._stop_thread.finished.connect(self._update_server_status)
+        self._stop_thread.start()
 
     def on_open_server(self):
         """Handle Open button click.

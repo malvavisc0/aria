@@ -74,6 +74,10 @@ if TYPE_CHECKING:
 ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
 LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}"
 
+# Loguru sink ID — kept at module level so we only add the file sink once,
+# even if on_app_startup() is called multiple times (e.g. Chainlit hot-reload).
+_log_sink_id: int | None = None
+
 
 class AppStateNotInitializedError(RuntimeError):
     """Raised when AppState attributes are accessed before initialization."""
@@ -353,15 +357,18 @@ async def on_app_startup() -> None:
         All services are stored in the global _state instance.
         The startup_complete flag is only set if all steps succeed.
     """
+    global _log_sink_id
     try:
-        # Initialize logging
-        log_path = DebugConfig.logs_path
-        logger.add(
-            log_path,
-            rotation="10 MB",
-            level="DEBUG",
-            format=LOG_FORMAT,
-        )
+        # Initialize logging — guard against adding the sink more than once
+        # (Chainlit may call on_app_startup multiple times on hot-reload).
+        if _log_sink_id is None:
+            log_path = DebugConfig.logs_path
+            _log_sink_id = logger.add(
+                log_path,
+                rotation="10 MB",
+                level="DEBUG",
+                format=LOG_FORMAT,
+            )
         logger.info("Starting Aria web UI...")
 
         # Initialize database engine (shared across requests)
