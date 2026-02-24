@@ -74,8 +74,9 @@ if TYPE_CHECKING:
 ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
 LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}"
 
-# Loguru sink ID — kept at module level so we only add the file sink once,
-# even if on_app_startup() is called multiple times (e.g. Chainlit hot-reload).
+# Loguru sink ID — kept at module level for cleanup in on_app_shutdown().
+# Note: We use logger.remove() at startup to clear all handlers, so this
+# tracks only the current sink for proper shutdown cleanup.
 _log_sink_id: int | None = None
 
 
@@ -368,16 +369,18 @@ async def on_app_startup() -> None:
     """
     global _log_sink_id
     try:
-        # Initialize logging — guard against adding the sink more than once
-        # (Chainlit may call on_app_startup multiple times on hot-reload).
-        if _log_sink_id is None:
-            log_path = DebugConfig.logs_path
-            _log_sink_id = logger.add(
-                log_path,
-                rotation="10 MB",
-                level="DEBUG",
-                format=LOG_FORMAT,
-            )
+        # Initialize logging — remove all existing handlers first to prevent
+        # duplicates from hot-reload or the default stderr handler.
+        # This ensures a clean slate before adding our file handler.
+        logger.remove()
+
+        log_path = DebugConfig.logs_path
+        _log_sink_id = logger.add(
+            log_path,
+            rotation="10 MB",
+            level="DEBUG",
+            format=LOG_FORMAT,
+        )
         logger.info("Starting Aria web UI...")
 
         # Initialize database engine (shared across requests)
@@ -436,6 +439,7 @@ async def on_app_shutdown() -> None:
     Stops all LlamaCpp servers and resets the global state.
     This function is called once when the Chainlit app stops.
     """
+    global _log_sink_id
     logger.info("Shutting down Aria web UI...")
 
     if _state.llama_manager:
@@ -460,6 +464,11 @@ async def on_app_shutdown() -> None:
         _state.db_engine = None
 
     logger.info("Aria web UI shutdown complete")
+
+    # Remove the log handler to prevent accumulation across restarts
+    if _log_sink_id is not None:
+        logger.remove(_log_sink_id)
+        _log_sink_id = None
 
 
 @cl.data_layer

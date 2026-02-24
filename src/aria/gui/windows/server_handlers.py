@@ -55,6 +55,7 @@ class ServerHandlersMixin:
         """
         self._server_manager = ServerManager()
         self._preflight_result = None
+        self._is_stopping = False  # Track stopping state for UI feedback
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
         self._server_timer.start(1000)
@@ -116,6 +117,7 @@ class ServerHandlersMixin:
         # Disable both buttons immediately to prevent double-clicks
         self.ui.pushButton_ServiceStop.setEnabled(False)
         self.ui.pushButton_ServiceStart.setEnabled(False)
+        self._is_stopping = True  # Track that we're in stopping state
         self.statusBar().showMessage("Stopping Aria server\u2026")
 
         self._stop_thread = QThread()
@@ -125,8 +127,13 @@ class ServerHandlersMixin:
         self._stop_worker.finished.connect(self._stop_thread.quit)
         self._stop_worker.finished.connect(self._stop_worker.deleteLater)
         self._stop_thread.finished.connect(self._stop_thread.deleteLater)
-        self._stop_thread.finished.connect(self._update_server_status)
+        self._stop_thread.finished.connect(self._on_stop_finished)
         self._stop_thread.start()
+
+    def _on_stop_finished(self):
+        """Called when the stop worker thread finishes."""
+        self._is_stopping = False
+        self._update_server_status()
 
     def on_open_server(self):
         """Handle Open button click.
@@ -142,9 +149,10 @@ class ServerHandlersMixin:
         - Update status indicator, PID, URL, start time, and uptime labels
         - Enable/disable buttons based on server running state
 
-        Three distinct states are shown:
+        Four distinct states are shown:
         - Stopped (red): process is not running
         - Starting\u2026 (orange): process is alive but /health not yet responding
+        - Stopping\u2026 (orange): process is alive during shutdown
         - Running (green): process is alive and /health returns HTTP 200
         """
         status = self._server_manager.get_status()
@@ -159,13 +167,21 @@ class ServerHandlersMixin:
             )
             self.statusBar().clearMessage()
         elif status.running:
-            self.ui.label_ServiceStatus.setText("Starting\u2026")
-            self.ui.label_ServiceStatus.setStyleSheet(
-                f"QLabel {{ background-color: #e65100; {_BADGE_BASE} }}"
-            )
-            self.statusBar().showMessage(
-                "Starting Aria server\u2026 this may take a few minutes."
-            )
+            # Check if we're in stopping state to show appropriate message
+            if self._is_stopping:
+                self.ui.label_ServiceStatus.setText("Stopping\u2026")
+                self.ui.label_ServiceStatus.setStyleSheet(
+                    f"QLabel {{ background-color: #e65100; {_BADGE_BASE} }}"
+                )
+                self.statusBar().showMessage("Stopping Aria server\u2026")
+            else:
+                self.ui.label_ServiceStatus.setText("Starting\u2026")
+                self.ui.label_ServiceStatus.setStyleSheet(
+                    f"QLabel {{ background-color: #e65100; {_BADGE_BASE} }}"
+                )
+                self.statusBar().showMessage(
+                    "Starting Aria server\u2026 this may take a few minutes."
+                )
         else:
             self.ui.label_ServiceStatus.setText("Stopped")
             self.ui.label_ServiceStatus.setStyleSheet(
