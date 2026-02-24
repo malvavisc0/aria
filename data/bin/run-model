@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 # =============================================================================
 # run-model - Launch llama-server with GPU optimization
@@ -242,12 +242,11 @@ print_warn_bullet() {
 # Logging Functions
 # -----------------------------------------------------------------------------
 
-log_info() { printf '  %b●%b  %s\n' "$CYAN" "$RST" "$*" >&2; }
-log_warning() { printf '  %b▲%b  %b%s%b\n' "$YELLOW" "$RST" "$YELLOW" "$*" "$RST" >&2; }
-log_error() { printf '  %b✖%b  %b%s%b\n' "$BRED" "$RST" "$RED" "$*" "$RST" >&2; }
+log_info() { printf '  %b●%b  %s\n' "$CYAN" "$RST" "${*:-}" >&2; }
+log_warning() { printf '  %b▲%b  %b%s%b\n' "$YELLOW" "$RST" "$YELLOW" "${*:-}" "$RST" >&2; }
+log_error() { printf '  %b✖%b  %b%s%b\n' "$BRED" "$RST" "$RED" "${*:-}" "$RST" >&2; }
 debug_log() {
-	[[ "$DEBUG" -eq 1 ]] && printf '  %b⋯%b  %b%s%b\n' "$DIM" "$RST" "$DIM" "$*" "$RST" >&2
-	true
+	[[ "$DEBUG" -eq 1 ]] && printf '  %b⋯%b  %b%s%b\n' "$DIM" "$RST" "$DIM" "${*:-}" "$RST" >&2 || true
 }
 
 # Log to file if LOG_FILE is set
@@ -261,7 +260,7 @@ log_to_file() {
 				return 1
 			}
 		fi
-		echo "[$(date -Iseconds)] $*" >>"$LOG_FILE"
+		echo "[$(date -Iseconds)] ${*:-}" >>"$LOG_FILE"
 	fi
 }
 
@@ -1159,11 +1158,13 @@ build_command() {
 		--model "$MODEL_PATH"
 		--n-gpu-layers "$N_GPU_LAYERS"
 		--ctx-size "$N_CTX"
-		$SPLIT_MODE
-		$TENSOR_SPLIT
-		$([[ "$FLASH_ATTN" -eq 1 ]] && echo "--flash-attn" || true)
-		$NO_MMAP
-		$MLOCK
+	)
+	[[ -n "${SPLIT_MODE:-}" ]] && cmd_array+=($SPLIT_MODE)
+	[[ -n "${TENSOR_SPLIT:-}" ]] && cmd_array+=($TENSOR_SPLIT)
+	[[ "$FLASH_ATTN" -eq 1 ]] && cmd_array+=(--flash-attn)
+	cmd_array+=(
+		${NO_MMAP:+$NO_MMAP}
+		${MLOCK:+$MLOCK}
 		--threads "$(get_cpu_count)"
 	)
 

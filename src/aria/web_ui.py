@@ -29,7 +29,6 @@ Attributes:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import chainlit as cl
@@ -79,15 +78,16 @@ LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{
 class AppStateNotInitializedError(RuntimeError):
     """Raised when AppState attributes are accessed before initialization."""
 
-    def __init__(self, message: str = "AppState is not fully initialized") -> None:
+    def __init__(
+        self, message: str = "AppState is not fully initialized"
+    ) -> None:
         super().__init__(message)
 
 
-@dataclass
 class AppState:
     """Application state initialized at startup.
 
-    This dataclass holds all shared services and resources for the web UI.
+    This class holds all shared services and resources for the web UI.
     All attributes default to None and are initialized during app startup.
 
     Attributes:
@@ -98,10 +98,11 @@ class AppState:
         prompt_enhancer: Agent for enhancing user prompts.
         llama_manager: Manager for LlamaCpp inference servers.
         db_engine: SQLAlchemy engine for database operations.
+        startup_complete: True once on_app_startup() completes successfully.
 
     Warning:
-        All attributes are None by default. Always call [`validate()`](validate)
-        before accessing attributes, or use [`is_initialized()`](is_initialized)
+        All attributes are None by default. Always call ``validate()``
+        before accessing attributes, or use ``is_initialized()``
         to check the state.
 
     Example:
@@ -116,14 +117,15 @@ class AppState:
         ```
     """
 
-    llm: OpenAI | None = None
-    embeddings: OpenAIEmbedding | None = None
-    vector_db: ClientAPI | None = None
-    agents_workflow: AgentWorkflow | None = None
-    prompt_enhancer: PromptEnhancerAgent | None = None
-    llama_manager: LlamaCppServerManager | None = None
-    db_engine: Engine | None = None
-    _startup_complete: bool = field(default=False, repr=False)
+    def __init__(self) -> None:
+        self.llm: OpenAI | None = None
+        self.embeddings: OpenAIEmbedding | None = None
+        self.vector_db: ClientAPI | None = None
+        self.agents_workflow: AgentWorkflow | None = None
+        self.prompt_enhancer: PromptEnhancerAgent | None = None
+        self.llama_manager: LlamaCppServerManager | None = None
+        self.db_engine: Engine | None = None
+        self.startup_complete: bool = False
 
     def is_initialized(self) -> bool:
         """Check if all required attributes are initialized.
@@ -149,7 +151,7 @@ class AppState:
                 self.vector_db is not None,
                 self.agents_workflow is not None,
                 self.db_engine is not None,
-                self._startup_complete,
+                self.startup_complete,
             ]
         )
 
@@ -177,7 +179,7 @@ class AppState:
                 "Ensure on_app_startup() completed successfully."
             )
 
-        if not self._startup_complete:
+        if not self.startup_complete:
             raise AppStateNotInitializedError(
                 "AppState startup not marked complete. "
                 "Ensure on_app_startup() completed successfully."
@@ -248,11 +250,15 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning("Prompt enhancer not available, returning original prompt")
+            logger.warning(
+                "Prompt enhancer not available, returning original prompt"
+            )
             return prompt
 
         try:
-            response = await _state.prompt_enhancer.run(user_msg=message.content)
+            response = await _state.prompt_enhancer.run(
+                user_msg=message.content
+            )
             results: PromptEnhancementResult = response.structured_response
             prompt = results.enhanced
             logger.debug("Prompt enhancement completed successfully")
@@ -291,7 +297,9 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
         raise ValueError("Thread dictionary must contain a valid 'id' field")
 
     thread_name = thread.get("name", "Unnamed")
-    logger.debug(f"Restoring chat history for thread {thread_id} ({thread_name})")
+    logger.debug(
+        f"Restoring chat history for thread {thread_id} ({thread_name})"
+    )
 
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
@@ -343,7 +351,7 @@ async def on_app_startup() -> None:
     Note:
         This function is called once when the Chainlit app starts.
         All services are stored in the global _state instance.
-        The _startup_complete flag is only set if all steps succeed.
+        The startup_complete flag is only set if all steps succeed.
     """
     try:
         # Initialize logging
@@ -370,7 +378,9 @@ async def on_app_startup() -> None:
         # Initialize LLM and embeddings
         logger.info("Initializing LLM and embeddings clients...")
         _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
-        _state.embeddings = get_embeddings_model(api_base=EmbeddingsConfig.api_url)
+        _state.embeddings = get_embeddings_model(
+            api_base=EmbeddingsConfig.api_url
+        )
 
         # Initialize vector database
         logger.info("Initializing vector database...")
@@ -391,7 +401,7 @@ async def on_app_startup() -> None:
         _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
 
         # Mark startup complete
-        _state._startup_complete = True
+        _state.startup_complete = True
         logger.info("Aria web UI startup complete")
 
     except Exception as e:
@@ -428,7 +438,7 @@ async def on_app_shutdown() -> None:
     _state.vector_db = None
     _state.agents_workflow = None
     _state.prompt_enhancer = None
-    _state._startup_complete = False
+    _state.startup_complete = False
 
     # Dispose database engine
     if _state.db_engine:

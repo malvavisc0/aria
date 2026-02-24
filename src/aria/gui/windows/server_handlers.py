@@ -7,35 +7,13 @@ for the Aria GUI application.
 from __future__ import annotations
 
 import webbrowser
-from typing import Optional
 
-from PySide6.QtCore import QObject, QThread, QTimer, Signal
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QMessageBox
 
 from aria.config.service import Server
 from aria.gui.ui.mainwindow import Ui_MainWindow
-from aria.server import LlamaCppServerManager, ServerManager
-
-
-class _LlamaStartWorker(QObject):
-    """Worker that starts llama-server processes in a background thread.
-
-    Emits ``finished`` when all servers are ready, or ``error`` if any fail.
-    """
-
-    finished = Signal()
-    error = Signal(str)
-
-    def __init__(self, llama_manager: LlamaCppServerManager):
-        super().__init__()
-        self._llama_manager = llama_manager
-
-    def run(self) -> None:
-        """Start all llama-server processes (runs in a QThread)."""
-        try:
-            self._llama_manager.start_all()
-            self.finished.emit()
-        except Exception as exc:
-            self.error.emit(str(exc))
+from aria.server import ServerManager
 
 
 class ServerHandlersMixin:
@@ -47,11 +25,9 @@ class ServerHandlersMixin:
     - Server start/stop/open button handlers
     - Periodic status updates via QTimer
     - Button state management based on server running state
-    - LlamaCPP inference server lifecycle management (via QThread)
 
     Attributes:
         _server_manager: ServerManager instance for controlling the webserver.
-        _llama_manager: LlamaCppServerManager instance for inference servers.
         _server_timer: QTimer for periodic status updates.
     """
 
@@ -64,8 +40,6 @@ class ServerHandlersMixin:
         after the UI is set up.
         """
         self._server_manager = ServerManager()
-        self._llama_manager: Optional[LlamaCppServerManager] = None
-        self._llama_thread: Optional[QThread] = None
         self._preflight_result = None
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
@@ -98,74 +72,34 @@ class ServerHandlersMixin:
         self._preflight_result = run_preflight_checks()
         self._update_server_status()
 
-    def _cleanup_llama_thread(self):
-        """Clean up the llama server thread if it exists.
-
-        This method safely stops and cleans up any existing QThread
-        to prevent memory leaks and crashes.
-        """
-        if self._llama_thread is not None:
-            if self._llama_thread.isRunning():
-                self._llama_thread.quit()
-                if not self._llama_thread.wait(5000):
-                    self._llama_thread.terminate()
-                    self._llama_thread.wait()
-            self._llama_thread = None
-
     def on_start_server(self):
         """Handle Start button click.
 
-        Starts the llama-server inference processes in a background QThread
-        (to avoid blocking the UI during the health-check wait), then starts
-        the Chainlit webserver once all inference servers are ready.
+        Starts the Chainlit webserver as a background subprocess.
+        The llama-server inference processes are started automatically
+        by the web UI via the Chainlit ``on_app_startup`` lifecycle hook.
         """
-        self._cleanup_llama_thread()
         self.ui.pushButton_ServiceStart.setEnabled(False)
-        self._llama_manager = LlamaCppServerManager()
-        self._llama_thread = QThread()
-        worker = _LlamaStartWorker(self._llama_manager)
-        worker.moveToThread(self._llama_thread)
+        self.statusBar().showMessage("Starting Aria server\u2026")
 
-        self._llama_thread.started.connect(worker.run)
-        worker.finished.connect(self._on_llama_started)
-        worker.error.connect(self._on_llama_error)
-        worker.finished.connect(self._llama_thread.quit)
-        worker.error.connect(self._llama_thread.quit)
-        self._llama_thread.finished.connect(worker.deleteLater)
+        started = self._server_manager.start()
+        if not started:
+            QMessageBox.warning(
+                self,
+                "Already Running",
+                "The server is already running.",
+            )
 
-        self._llama_thread.start()
-
-    def _on_llama_started(self):
-        """Called when all llama-server processes are ready.
-
-        Starts the Chainlit webserver.
-        """
-        self._server_manager.start()
-        self._update_server_status()
-
-    def _on_llama_error(self, error_message: str):
-        """Called when llama-server startup fails.
-
-        Re-enables the start button and logs the error.
-        """
-        from loguru import logger
-
-        logger.error(f"Failed to start inference servers: {error_message}")
-        self.ui.pushButton_ServiceStart.setEnabled(True)
         self._update_server_status()
 
     def on_stop_server(self):
         """Handle Stop button click.
 
-        Stops the Chainlit webserver and all llama-server inference processes.
+        Stops the Chainlit webserver. The llama-server inference processes
+        are stopped automatically by the web UI via the Chainlit
+        ``on_app_shutdown`` lifecycle hook.
         """
         self._server_manager.stop()
-
-        if self._llama_manager is not None:
-            self._llama_manager.stop_all()
-            self._llama_manager = None
-
-        self._cleanup_llama_thread()
         self._update_server_status()
 
     def on_open_server(self):
@@ -181,16 +115,30 @@ class ServerHandlersMixin:
         This method is called every second by the server timer to:
         - Update status indicator, PID, URL, start time, and uptime labels
         - Enable/disable buttons based on server running state
+
+        Three distinct states are shown:
+        - Stopped (red): process is not running
+        - Starting\u2026 (orange): process is alive but /health not yet responding
+        - Running (green): process is alive and /health returns HTTP 200
         """
         status = self._server_manager.get_status()
 
         _BADGE_BASE = (
-            "color: white; font-size: 13pt;" " padding: 4px 14px; border-radius: 6px;"
+            "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
         )
-        if status.running:
+        if status.healthy:
             self.ui.label_ServiceStatus.setText("Running")
             self.ui.label_ServiceStatus.setStyleSheet(
                 f"QLabel {{ background-color: #2e7d32; {_BADGE_BASE} }}"
+            )
+            self.statusBar().clearMessage()
+        elif status.running:
+            self.ui.label_ServiceStatus.setText("Starting\u2026")
+            self.ui.label_ServiceStatus.setStyleSheet(
+                f"QLabel {{ background-color: #e65100; {_BADGE_BASE} }}"
+            )
+            self.statusBar().showMessage(
+                "Starting Aria server\u2026 this may take a few minutes."
             )
         else:
             self.ui.label_ServiceStatus.setText("Stopped")
@@ -224,19 +172,20 @@ class ServerHandlersMixin:
         can_start = not status.running and preflight_ok
         self.ui.pushButton_ServiceStart.setEnabled(can_start)
         self.ui.pushButton_ServiceStop.setEnabled(status.running)
-        self.ui.pushButton_ServiceOpen.setEnabled(status.running)
+        self.ui.pushButton_ServiceOpen.setEnabled(status.healthy)
 
         if not status.running and not preflight_ok:
             if self._preflight_result is not None:
                 failures = "\n".join(
-                    f"  • {c.name}: {c.error}" for c in self._preflight_result.failures
+                    f"  \u2022 {c.name}: {c.error}"
+                    for c in self._preflight_result.failures
                 )
                 self.ui.pushButton_ServiceStart.setToolTip(
-                    f"Cannot start — fix these issues first:\n{failures}"
+                    f"Cannot start \u2014 fix these issues first:\n{failures}"
                 )
             else:
                 self.ui.pushButton_ServiceStart.setToolTip(
-                    "Cannot start — preflight checks have not run yet"
+                    "Cannot start \u2014 preflight checks have not run yet"
                 )
         else:
             self.ui.pushButton_ServiceStart.setToolTip("")

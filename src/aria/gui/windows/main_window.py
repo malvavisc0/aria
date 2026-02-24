@@ -197,8 +197,12 @@ class MainWindow(
         """Clean up resources on window close.
 
         This method is called when the window is closed. It stops the
-        server status timer, cleans up the llama server thread, and
-        stops any running servers.
+        server status timer and any active download threads.
+
+        The Chainlit webserver and llama-server inference processes are
+        intentionally left running so that the service continues to be
+        available after the GUI is closed. Use the Stop button or
+        ``aria server stop`` to shut them down explicitly.
 
         Args:
             event: The QCloseEvent from Qt.
@@ -206,20 +210,9 @@ class MainWindow(
         if hasattr(self, "_server_timer"):
             self._server_timer.stop()
 
-        if hasattr(self, "_llama_thread") and self._llama_thread is not None:
-            if self._llama_thread.isRunning():
-                self._llama_thread.quit()
-                if not self._llama_thread.wait(5000):
-                    self._llama_thread.terminate()
-                    self._llama_thread.wait()
         if hasattr(self, "_llama_dl_thread"):
             self._cleanup_llama_dl_thread()
         if hasattr(self, "_model_dl_thread"):
             self._cleanup_model_dl_thread()
-
-        if hasattr(self, "_server_manager"):
-            self._server_manager.stop()
-        if hasattr(self, "_llama_manager") and self._llama_manager is not None:
-            self._llama_manager.stop_all()
 
         super().closeEvent(event)

@@ -160,9 +160,23 @@ class LlamaCppServerManager:
         return cmd
 
     def _get_env_for_run_model(self) -> dict:
-        """Build environment for the run-model script."""
+        """Build environment for the run-model script.
+
+        Sets ``LLAMA_SERVER_PATH`` to the absolute path of the llama-server
+        binary and prepends the binary directory to ``LD_LIBRARY_PATH`` so
+        that the shared libraries bundled alongside the binary
+        (``libllama.so``, ``libggml*.so``, etc.) are found at runtime.
+        """
         env = os.environ.copy()
-        env["LLAMA_SERVER_PATH"] = str(LlamaCppConfig.bin_path / "llama-server")
+        bin_path = LlamaCppConfig.bin_path
+        env["LLAMA_SERVER_PATH"] = str(bin_path / "llama-server")
+
+        # Prepend the bin directory to LD_LIBRARY_PATH so the bundled
+        # shared libraries are resolved when llama-server is executed.
+        existing = env.get("LD_LIBRARY_PATH", "")
+        env["LD_LIBRARY_PATH"] = (
+            f"{bin_path}:{existing}" if existing else str(bin_path)
+        )
         return env
 
     def _wait_for_ready(
@@ -250,13 +264,22 @@ class LlamaCppServerManager:
         ]
 
         # Start all processes
-        for role, model_path, port, ctx_size, embedding_mode, mmproj in servers:
+        for (
+            role,
+            model_path,
+            port,
+            ctx_size,
+            embedding_mode,
+            mmproj,
+        ) in servers:
             cmd = self._build_run_model_cmd(
                 model_path, ctx_size, port, mmproj, embedding_mode
             )
             env = self._get_env_for_run_model()
 
-            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
+            logger.info(
+                f"Starting {role} server on port {port}: {' '.join(cmd)}"
+            )
 
             proc = subprocess.Popen(
                 cmd,
@@ -271,7 +294,9 @@ class LlamaCppServerManager:
             time.sleep(2)
             if proc.poll() is not None:
                 stderr_output = (
-                    proc.stderr.read().decode("utf-8", errors="replace").strip()
+                    proc.stderr.read()
+                    .decode("utf-8", errors="replace")
+                    .strip()
                     if proc.stderr
                     else ""
                 )
@@ -289,7 +314,9 @@ class LlamaCppServerManager:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)
-                logger.error(f"{role} server failed to become ready on port {port}")
+                logger.error(
+                    f"{role} server failed to become ready on port {port}"
+                )
 
         if failed:
             self.stop_all()
