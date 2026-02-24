@@ -5,6 +5,7 @@ from collections import deque
 from pathlib import Path
 from typing import Dict, List
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QMainWindow
 
 from aria.config.database import ChromaDB, SQLite
@@ -101,6 +102,9 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
         self.ui.pushButton_RefreshLogs.clicked.connect(self.load_logs)
 
+        self._logs_timer = QTimer()
+        self._logs_timer.timeout.connect(self.load_logs)
+
     def _connect_user_management_signals(self):
         """Connect user management button signals."""
         # Button click handlers
@@ -126,7 +130,7 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
         try:
             content = ""
             with open(Debug.logs_path, "r") as file:
-                # Use deque with maxlen to efficiently keep only the last N lines
+                # Use deque with maxlen to keep only the last N lines
                 last_lines = deque(file, maxlen=500)
                 content = "".join(last_lines)
             self.ui.plainTextEdit_Logs.setPlainText(content)
@@ -134,6 +138,10 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
             self.ui.plainTextEdit_Logs.setPlainText("Log file not found.")
         except Exception as e:
             self.ui.plainTextEdit_Logs.setPlainText(f"Error loading logs: {e}")
+        # Scroll to bottom so the most recent lines are visible
+        self.ui.plainTextEdit_Logs.verticalScrollBar().setValue(
+            self.ui.plainTextEdit_Logs.verticalScrollBar().maximum()
+        )
 
     def load_overview(self):
         self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
@@ -157,13 +165,17 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
         """Handle tab changes - load content when tabs are selected."""
         match self.ui.tabWidget.widget(index):
             case self.ui.tab_overview:
+                self._logs_timer.stop()
                 self.load_overview()
             case self.ui.tab_users:
+                self._logs_timer.stop()
                 self.load_users()
             case self.ui.tab_logs:
                 self.load_logs()
+                self._logs_timer.start(5000)
+                self.statusBar().showMessage(str(Debug.logs_path))
             case _:
-                return
+                self._logs_timer.stop()
 
     def show_about_dialog(self):
         """Show the About dialog."""

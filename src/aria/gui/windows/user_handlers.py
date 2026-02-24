@@ -85,11 +85,12 @@ class UserHandlersMixin:
                     self.ui.lineEdit_UserName.clear()
                     self.ui.lineEdit_UserEmail.clear()
                     self.ui.lineEdit_UserPassword.clear()
+                    self.ui.statusBar.showMessage(f"User '{identifier}' created.", 3000)
         except Exception as e:
             self.ui.statusBar.showMessage(f"Error creating user: {e}")
 
     def on_edit_user_clicked(self) -> None:
-        """Handle edit user button click - open edit dialog for selected user."""
+        """Open edit dialog for the selected user."""
         selected_items = self.ui.listWidget_CurrentUsers.selectedItems()
         if not selected_items:
             self.show_error("Please select a user to edit")
@@ -142,6 +143,9 @@ class UserHandlersMixin:
                     if user:
                         session.delete(user)
                         self.load_users()
+                        self.ui.statusBar.showMessage(
+                            f"User '{identifier}' deleted.", 3000
+                        )
             except Exception as e:
                 self.ui.statusBar.showMessage(f"Error deleting user: {e}")
 
