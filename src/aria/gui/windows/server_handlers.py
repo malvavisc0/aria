@@ -171,6 +171,15 @@ class ServerHandlersMixin:
             self.ui.label_ServiceStatus.setStyleSheet(
                 f"QLabel {{ background-color: #c62828; {_BADGE_BASE} }}"
             )
+            # Show preflight failures in status bar when server is stopped
+            if self._preflight_result is not None and not self._preflight_result.passed:
+                failure_count = len(self._preflight_result.failures)
+                self.statusBar().showMessage(
+                    f"Cannot start: {failure_count} preflight check(s) failed. "
+                    "Hover over Start button for details."
+                )
+            else:
+                self.statusBar().clearMessage()
 
         self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
 
