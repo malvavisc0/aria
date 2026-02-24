@@ -6,18 +6,51 @@ GUI application, including llama.cpp binary downloads and GGUF model downloads.
 
 from __future__ import annotations
 
+import io
+import sys
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
 from aria.gui.ui.mainwindow import Ui_MainWindow
 
 
+class _SignalStream(io.TextIOBase):
+    """A writable text stream that emits each completed line via a callback.
+
+    Used to redirect ``sys.stdout`` / ``sys.stderr`` inside worker threads so
+    that all console output (rich, print, loguru) is forwarded to the GUI text
+    area instead of the terminal.
+
+    Args:
+        emit_fn: Callable that receives a single non-empty stripped line.
+    """
+
+    def __init__(self, emit_fn: Callable[[str], None]):
+        super().__init__()
+        self._emit = emit_fn
+        self._buf = ""
+
+    def write(self, text: str) -> int:  # type: ignore[override]
+        self._buf += text
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            stripped = line.rstrip()
+            if stripped:
+                self._emit(stripped)
+        return len(text)
+
+    def flush(self) -> None:
+        if self._buf.strip():
+            self._emit(self._buf.strip())
+            self._buf = ""
+
+
 class _LlamaDownloadWorker(QObject):
     """Worker that downloads llama.cpp binaries in a background thread.
 
-    Emits ``log_line`` for each progress message, ``finished`` on success,
+    Emits ``log_line`` for each line of output, ``finished`` on success,
     or ``error`` with a message string on failure.
     """
 
@@ -32,32 +65,27 @@ class _LlamaDownloadWorker(QObject):
 
     def run(self) -> None:
         """Download llama.cpp binaries (runs in a QThread)."""
-        from loguru import logger
-
         from aria.scripts.llama import download_llama_cpp
 
-        # Add a loguru sink that forwards log records to the log_line signal
-        sink_id = logger.add(
-            lambda msg: self.log_line.emit(msg.strip()),
-            format="{level}: {message}",
-            level="DEBUG",
-        )
-
+        stream = _SignalStream(self.log_line.emit)
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = stream  # type: ignore[assignment]
+        sys.stderr = stream  # type: ignore[assignment]
         try:
-            self.log_line.emit("Starting llama.cpp download...")
             download_llama_cpp(bin_dir=self._bin_dir, version=self._version)
-            self.log_line.emit("Download complete.")
             self.finished.emit()
         except Exception as exc:
             self.error.emit(str(exc))
         finally:
-            logger.remove(sink_id)
+            stream.flush()
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 
 class _ModelDownloadWorker(QObject):
     """Worker that downloads a GGUF model in a background thread.
 
-    Emits ``log_line`` for each progress message, ``finished`` on success,
+    Emits ``log_line`` for each line of output, ``finished`` on success,
     or ``error`` with a message string on failure.
 
     For the ``vl`` alias the mmproj file is also downloaded when configured.
@@ -80,8 +108,6 @@ class _ModelDownloadWorker(QObject):
 
     def run(self) -> None:
         """Download the selected GGUF model (runs in a QThread)."""
-        from loguru import logger
-
         from aria.config.api import LlamaCpp
         from aria.config.models import Chat, Embeddings, Vision
         from aria.scripts.gguf import download_gguf_model
@@ -122,16 +148,12 @@ class _ModelDownloadWorker(QObject):
             self.error.emit(f"Unknown model alias: {self._alias!r}")
             return
 
-        # Add a loguru sink that forwards log records to the log_line signal
-        sink_id = logger.add(
-            lambda msg: self.log_line.emit(msg.strip()),
-            format="{level}: {message}",
-            level="DEBUG",
-        )
-
+        stream = _SignalStream(self.log_line.emit)
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = stream  # type: ignore[assignment]
+        sys.stderr = stream  # type: ignore[assignment]
         try:
             for repo_id, filename in downloads:
-                self.log_line.emit(f"Downloading {filename} from {repo_id}...")
                 download_gguf_model(
                     repo_id=repo_id,
                     filename=filename,
@@ -139,12 +161,13 @@ class _ModelDownloadWorker(QObject):
                     token=self._token,
                     force=self._force,
                 )
-                self.log_line.emit(f"Done: {filename}")
             self.finished.emit()
         except Exception as exc:
             self.error.emit(str(exc))
         finally:
-            logger.remove(sink_id)
+            stream.flush()
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 
 class SetupHandlersMixin:
@@ -159,7 +182,9 @@ class SetupHandlersMixin:
 
     Attributes:
         _llama_dl_thread: QThread for the llama.cpp download worker.
+        _llama_dl_worker: The active llama download worker (kept alive).
         _model_dl_thread: QThread for the model download worker.
+        _model_dl_worker: The active model download worker (kept alive).
     """
 
     ui: Ui_MainWindow
@@ -176,7 +201,9 @@ class SetupHandlersMixin:
         self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
         self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
         self._llama_dl_thread: Optional[QThread] = None
+        self._llama_dl_worker: Optional[_LlamaDownloadWorker] = None
         self._model_dl_thread: Optional[QThread] = None
+        self._model_dl_worker: Optional[_ModelDownloadWorker] = None
 
     # ------------------------------------------------------------------
     # Status population
@@ -248,6 +275,11 @@ class SetupHandlersMixin:
     def _cleanup_llama_dl_thread(self) -> None:
         """Safely stop and clean up the llama download thread."""
         self._cleanup_thread("_llama_dl_thread")
+        self._llama_dl_worker = None
+
+    # ------------------------------------------------------------------
+    # LlamaCpp download
+    # ------------------------------------------------------------------
 
     def on_llama_download_clicked(self) -> None:
         """Handle Download Binaries button click.
@@ -262,19 +294,27 @@ class SetupHandlersMixin:
 
         version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
 
-        worker = _LlamaDownloadWorker(bin_dir=LlamaCpp.bin_path, version=version_text)
+        # Store as instance attribute to prevent garbage collection
+        self._llama_dl_worker = _LlamaDownloadWorker(
+            bin_dir=LlamaCpp.bin_path, version=version_text
+        )
         self._llama_dl_thread = QThread()
-        worker.moveToThread(self._llama_dl_thread)
+        self._llama_dl_worker.moveToThread(self._llama_dl_thread)
 
-        self._llama_dl_thread.started.connect(worker.run)
-        worker.log_line.connect(self._on_llama_log_line)
-        worker.finished.connect(self._on_llama_dl_finished)
-        worker.error.connect(self._on_llama_dl_error)
-        worker.finished.connect(self._llama_dl_thread.quit)
-        worker.error.connect(self._llama_dl_thread.quit)
-        self._llama_dl_thread.finished.connect(worker.deleteLater)
+        self._llama_dl_thread.started.connect(self._llama_dl_worker.run)
+        self._llama_dl_worker.log_line.connect(self._on_llama_log_line)
+        self._llama_dl_worker.finished.connect(self._on_llama_dl_finished)
+        self._llama_dl_worker.error.connect(self._on_llama_dl_error)
+        self._llama_dl_worker.finished.connect(self._llama_dl_thread.quit)
+        self._llama_dl_worker.error.connect(self._llama_dl_thread.quit)
+        # Release Python reference only after Qt has finished with the object
+        self._llama_dl_thread.finished.connect(self._llama_dl_worker.deleteLater)
+        self._llama_dl_thread.finished.connect(self._clear_llama_dl_worker)
 
         self._llama_dl_thread.start()
+
+    def _clear_llama_dl_worker(self) -> None:
+        self._llama_dl_worker = None
 
     def _on_llama_log_line(self, line: str) -> None:
         self.ui.plainTextEdit_LlamaOutput.appendPlainText(line)
@@ -294,6 +334,7 @@ class SetupHandlersMixin:
     def _cleanup_model_dl_thread(self) -> None:
         """Safely stop and clean up the model download thread."""
         self._cleanup_thread("_model_dl_thread")
+        self._model_dl_worker = None
 
     def on_model_download_clicked(self) -> None:
         """Handle Download Model button click.
@@ -310,19 +351,27 @@ class SetupHandlersMixin:
         token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
         force = self.ui.checkBox_ModelForce.isChecked()
 
-        worker = _ModelDownloadWorker(alias=alias, token=token_text, force=force)
+        # Store as instance attribute to prevent garbage collection
+        self._model_dl_worker = _ModelDownloadWorker(
+            alias=alias, token=token_text, force=force
+        )
         self._model_dl_thread = QThread()
-        worker.moveToThread(self._model_dl_thread)
+        self._model_dl_worker.moveToThread(self._model_dl_thread)
 
-        self._model_dl_thread.started.connect(worker.run)
-        worker.log_line.connect(self._on_model_log_line)
-        worker.finished.connect(self._on_model_dl_finished)
-        worker.error.connect(self._on_model_dl_error)
-        worker.finished.connect(self._model_dl_thread.quit)
-        worker.error.connect(self._model_dl_thread.quit)
-        self._model_dl_thread.finished.connect(worker.deleteLater)
+        self._model_dl_thread.started.connect(self._model_dl_worker.run)
+        self._model_dl_worker.log_line.connect(self._on_model_log_line)
+        self._model_dl_worker.finished.connect(self._on_model_dl_finished)
+        self._model_dl_worker.error.connect(self._on_model_dl_error)
+        self._model_dl_worker.finished.connect(self._model_dl_thread.quit)
+        self._model_dl_worker.error.connect(self._model_dl_thread.quit)
+        # Release Python reference only after Qt has finished with the object
+        self._model_dl_thread.finished.connect(self._model_dl_worker.deleteLater)
+        self._model_dl_thread.finished.connect(self._clear_model_dl_worker)
 
         self._model_dl_thread.start()
+
+    def _clear_model_dl_worker(self) -> None:
+        self._model_dl_worker = None
 
     def _on_model_log_line(self, line: str) -> None:
         self.ui.plainTextEdit_ModelOutput.appendPlainText(line)

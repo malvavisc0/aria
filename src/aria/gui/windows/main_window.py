@@ -174,12 +174,15 @@ class MainWindow(
         match self.ui.tabWidget.widget(index):
             case self.ui.tab_overview:
                 self._logs_timer.stop()
+                self.statusBar().clearMessage()
                 self.load_overview()
             case self.ui.tab_setup:
                 self._logs_timer.stop()
+                self.statusBar().clearMessage()
                 self.load_setup()
             case self.ui.tab_users:
                 self._logs_timer.stop()
+                self.statusBar().clearMessage()
                 self.load_users()
             case self.ui.tab_logs:
                 self.load_logs()
@@ -187,6 +190,7 @@ class MainWindow(
                 self.statusBar().showMessage(str(Debug.logs_path))
             case _:
                 self._logs_timer.stop()
+                self.statusBar().clearMessage()
 
     def show_about_dialog(self):
         """Show the About dialog."""
