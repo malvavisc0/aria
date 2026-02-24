@@ -186,11 +186,14 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
         FileSecurityError: If path resolution fails due to security violations
     """
     try:
+        # Resolve BASE_DIR to handle symlinks (e.g., /var -> /private/var on macOS)
+        base_dir_resolved = BASE_DIR.resolve()
+
         # Resolve the path securely
         file_path = (BASE_DIR / file_name).resolve()
 
         # Check for path traversal attacks
-        if not str(file_path).startswith(str(BASE_DIR)):
+        if not str(file_path).startswith(str(base_dir_resolved)):
             raise FileSecurityError("Path traversal attempt detected")
 
         # Check for symlinks
@@ -226,9 +229,12 @@ def _secure_resolve_dir(dir_name: str) -> Path:
         FileSecurityError: If path resolution fails
     """
     try:
+        # Resolve BASE_DIR to handle symlinks (e.g., /var -> /private/var on macOS)
+        base_dir_resolved = BASE_DIR.resolve()
+
         dir_path = (BASE_DIR / dir_name).resolve()
 
-        if not str(dir_path).startswith(str(BASE_DIR)):
+        if not str(dir_path).startswith(str(base_dir_resolved)):
             raise FileSecurityError("Path traversal attempt detected")
 
         if dir_path.is_symlink():
