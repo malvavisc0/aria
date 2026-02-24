@@ -132,7 +132,8 @@ class _ModelDownloadWorker(QObject):
         if self._alias == "chat":
             if not Chat.repo_id or not Chat.filename:
                 self.error.emit(
-                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured "
+                    "(CHAT_MODEL_REPO / CHAT_MODEL)."
                 )
                 return
             downloads.append((Chat.repo_id, Chat.filename))
@@ -140,7 +141,8 @@ class _ModelDownloadWorker(QObject):
         elif self._alias == "vl":
             if not Vision.repo_id or not Vision.filename:
                 self.error.emit(
-                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured "
+                    "(VL_MODEL_REPO / VL_MODEL)."
                 )
                 return
             downloads.append((Vision.repo_id, Vision.filename))
@@ -204,25 +206,21 @@ class SetupHandlersMixin:
     # Provided by ServerHandlersMixin when combined in MainWindow
     def _run_preflight(self) -> None: ...
 
-    # ------------------------------------------------------------------
-    # Initialisation
-    # ------------------------------------------------------------------
-
     def _connect_setup_signals(self) -> None:
         """Wire Setup tab button signals and initialise thread handles.
 
         Call this from ``MainWindow.__init__()`` after ``setupUi()``.
         """
-        self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
-        self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
+        self.ui.pushButton_LlamaDownload.clicked.connect(
+            self.on_llama_download_clicked
+        )
+        self.ui.pushButton_ModelDownload.clicked.connect(
+            self.on_model_download_clicked
+        )
         self._llama_dl_thread: Optional[QThread] = None
         self._llama_dl_worker: Optional[_LlamaDownloadWorker] = None
         self._model_dl_thread: Optional[QThread] = None
         self._model_dl_worker: Optional[_ModelDownloadWorker] = None
-
-    # ------------------------------------------------------------------
-    # Status population
-    # ------------------------------------------------------------------
 
     def load_setup(self) -> None:
         """Populate all Setup tab status labels from current configuration."""
@@ -244,7 +242,9 @@ class SetupHandlersMixin:
             icon = "✓" if exists else "✗"
             color = "green" if exists else "red"
             label = getattr(self.ui, label_name)
-            label.setText(f'<span style="color:{color}">{icon}</span> {binary}')
+            label.setText(
+                f'<span style="color:{color}">{icon}</span> {binary}'
+            )
 
         models_dir = LlamaCpp.models_path
         model_configs = [
@@ -264,11 +264,9 @@ class SetupHandlersMixin:
             downloaded = is_model_downloaded(filename, models_dir)
             icon = "✓" if downloaded else "✗"
             color = "green" if downloaded else "red"
-            label.setText(f'<span style="color:{color}">{icon}</span> {filename}')
-
-    # ------------------------------------------------------------------
-    # Thread helpers
-    # ------------------------------------------------------------------
+            label.setText(
+                f'<span style="color:{color}">{icon}</span> {filename}'
+            )
 
     def _cleanup_thread(self, attr: str) -> None:
         """Safely stop and clean up a QThread stored as an instance attribute.
@@ -289,10 +287,6 @@ class SetupHandlersMixin:
         """Safely stop and clean up the llama download thread."""
         self._cleanup_thread("_llama_dl_thread")
         self._llama_dl_worker = None
-
-    # ------------------------------------------------------------------
-    # LlamaCpp download
-    # ------------------------------------------------------------------
 
     def on_llama_download_clicked(self) -> None:
         """Handle Download Binaries button click.
@@ -319,7 +313,9 @@ class SetupHandlersMixin:
         self._llama_dl_worker.error.connect(self._on_llama_dl_error)
         self._llama_dl_worker.finished.connect(self._llama_dl_thread.quit)
         self._llama_dl_worker.error.connect(self._llama_dl_thread.quit)
-        self._llama_dl_thread.finished.connect(self._llama_dl_worker.deleteLater)
+        self._llama_dl_thread.finished.connect(
+            self._llama_dl_worker.deleteLater
+        )
         self._llama_dl_thread.finished.connect(self._clear_llama_dl_worker)
 
         self._llama_dl_thread.start()
@@ -339,10 +335,6 @@ class SetupHandlersMixin:
         self.ui.plainTextEdit_LlamaOutput.appendPlainText(f"ERROR: {message}")
         self.ui.pushButton_LlamaDownload.setEnabled(True)
 
-    # ------------------------------------------------------------------
-    # Model download
-    # ------------------------------------------------------------------
-
     def _cleanup_model_dl_thread(self) -> None:
         """Safely stop and clean up the model download thread."""
         self._cleanup_thread("_model_dl_thread")
@@ -360,7 +352,9 @@ class SetupHandlersMixin:
         self.ui.plainTextEdit_ModelOutput.clear()
 
         alias = self.ui.comboBox_ModelSelect.currentText()
-        token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        token_text = (
+            self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        )
         force = self.ui.checkBox_ModelForce.isChecked()
 
         self._model_dl_worker = _ModelDownloadWorker(
@@ -375,7 +369,9 @@ class SetupHandlersMixin:
         self._model_dl_worker.error.connect(self._on_model_dl_error)
         self._model_dl_worker.finished.connect(self._model_dl_thread.quit)
         self._model_dl_worker.error.connect(self._model_dl_thread.quit)
-        self._model_dl_thread.finished.connect(self._model_dl_worker.deleteLater)
+        self._model_dl_thread.finished.connect(
+            self._model_dl_worker.deleteLater
+        )
         self._model_dl_thread.finished.connect(self._clear_model_dl_worker)
 
         self._model_dl_thread.start()
