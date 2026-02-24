@@ -187,20 +187,42 @@ def get_default_memory(
     thread_id: str,
     token_limit: int = 5120,
 ) -> Memory:
+    """Create a Memory instance backed by a per-thread ChromaDB vector store.
 
+    Args:
+        vector_db: ChromaDB client used to get or create the thread collection.
+        embed_model: Embedding model for encoding queries and documents.
+        thread_id: Unique thread identifier; used as both the ChromaDB
+            collection name (for vector store isolation) and the LlamaIndex
+            ``Memory.session_id`` (so the ``VectorMemoryBlock`` metadata
+            filter always matches embeddings from the same thread, across
+            all sessions).
+        token_limit: Total token budget shared between the short-term chat
+            buffer and the vector-retrieved context.
+
+    Returns:
+        A configured :class:`Memory` instance.
+    """
     memory = Memory.from_defaults(
-        insert_method=InsertMethod.SYSTEM,  # Insert retrieved memory as system prompts
+        session_id=thread_id,
+        # Insert retrieved memory as system prompts
+        insert_method=InsertMethod.SYSTEM,
         memory_blocks=[
             VectorMemoryBlock(
                 vector_store=ChromaVectorStore(
-                    chroma_collection=vector_db.get_or_create_collection(thread_id)
+                    chroma_collection=vector_db.get_or_create_collection(
+                        thread_id
+                    )
                 ),
                 embed_model=embed_model,
-                similarity_top_k=3,  # Retrieve top 3 similar messages
+                # Retrieve top 3 similar messages
+                similarity_top_k=3,
             )
         ],
-        token_limit=token_limit,  # Total tokens for (Recent History + Vector Results)
-        chat_history_token_ratio=0.7,  # 70% for Recent History, 30% for Vector Result
+        # Total tokens for (Recent History + Vector Results)
+        token_limit=token_limit,
+        # 70% for Recent History, 30% for Vector Results
+        chat_history_token_ratio=0.7,
         token_flush_size=512,
     )
 

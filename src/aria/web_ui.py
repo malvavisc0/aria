@@ -201,8 +201,11 @@ def _create_memory(thread_id: str) -> Memory:
     and vector database from the application state.
 
     Args:
-        thread_id: Unique identifier for the chat thread. Used as the
-            collection name in the vector database.
+        thread_id: Unique identifier for the chat thread. Used as both the
+            ChromaDB collection name (for vector store isolation per thread)
+            and the LlamaIndex ``Memory.session_id`` (so the
+            ``VectorMemoryBlock`` metadata filter always matches embeddings
+            from the same thread, across all sessions).
 
     Returns:
         A Memory instance configured with vector storage.
@@ -295,6 +298,17 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
     Note:
         Only root-level messages (those with no parentId) are restored.
         This filters out tool calls and other nested interactions.
+
+        :func:`_create_memory` uses ``thread_id`` as both the ChromaDB
+        collection name and the LlamaIndex ``Memory.session_id``, so the
+        ``VectorMemoryBlock`` metadata filter always matches embeddings from
+        the same thread across all sessions.
+
+        ``memory.aset()`` is used instead of ``memory.aput()`` to populate
+        the short-term sql buffer directly, without triggering the waterfall
+        to ChromaDB.  The vector store already holds the embeddings from
+        previous sessions; re-embedding on every resume would create
+        duplicate entries.
     """
     thread_id = thread.get("id")
     if not thread_id:
@@ -308,14 +322,14 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
 
-    # Filter for root-level messages only
+    # Filter for root-level messages only (excludes tool calls etc.)
     root_messages = [m for m in chat_steps if m.get("parentId") is None]
     logger.debug(f"Found {len(root_messages)} root-level messages")
 
     memory = _create_memory(thread_id)
 
-    # Restore conversation history
-    steps_restored = 0
+    # Build the chat history list from root-level steps
+    chat_history: list[ChatMessage] = []
     for message_step in root_messages:
         content = message_step.get("output", "")
         message_type = message_step.get("type")
@@ -328,11 +342,16 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
             if message_type == "user_message"
             else MessageRole.ASSISTANT
         )
+        chat_history.append(ChatMessage(role=role, content=content))
 
-        await memory.aput(ChatMessage(role=role, content=content))
-        steps_restored += 1
+    # Populate the short-term sql buffer directly — no ChromaDB writes.
+    # The vector store already holds embeddings from previous sessions;
+    # re-embedding here would create duplicates on every resume.
+    await memory.aset(chat_history)
 
-    logger.info(f"Restored {steps_restored} messages for thread {thread_id}")
+    logger.info(
+        f"Restored {len(chat_history)} messages for thread {thread_id}"
+    )
     return memory
 
 
