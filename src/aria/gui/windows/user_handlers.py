@@ -40,7 +40,7 @@ class UserHandlersMixin:
         """Enable Create User button only when all fields are filled."""
         name = self.ui.lineEdit_UserName.text().strip()
         email = self.ui.lineEdit_UserEmail.text().strip()
-        password = self.ui.lineEdit_UserPassword.text().strip()
+        password = self.ui.lineEdit_UserPassword.text()
 
         all_filled = bool(name and email and password)
         self.ui.pushButton_CreateUser.setEnabled(all_filled)
@@ -60,32 +60,30 @@ class UserHandlersMixin:
 
         try:
             with get_db_session() as session:
-                user = session.execute(
+                existing = session.execute(
                     select(User).where(User.identifier == identifier)
                 ).scalar_one_or_none()
 
-                if user:
+                if existing:
                     self.show_error("User already exists")
-                else:
-                    user = User(
+                    return
+
+                session.add(
+                    User(
                         id=str(uuid.uuid4()),
                         display_name=name,
                         identifier=identifier,
-                        metadata_=json.dumps(
-                            {
-                                "role": role,
-                                "created_by": "cli",
-                            }
-                        ),
+                        metadata_=json.dumps({"role": role, "created_by": "cli"}),
                         password=hash_password(password),
                         createdAt=datetime.now().isoformat() + "Z",
                     )
-                    session.add(user)
-                    self.load_users()
-                    self.ui.lineEdit_UserName.clear()
-                    self.ui.lineEdit_UserEmail.clear()
-                    self.ui.lineEdit_UserPassword.clear()
-                    self.ui.statusBar.showMessage(f"User '{identifier}' created.", 3000)
+                )
+            # Session committed — now refresh UI
+            self.load_users()
+            self.ui.lineEdit_UserName.clear()
+            self.ui.lineEdit_UserEmail.clear()
+            self.ui.lineEdit_UserPassword.clear()
+            self.ui.statusBar.showMessage(f"User '{identifier}' created.", 3000)
         except Exception as e:
             self.ui.statusBar.showMessage(f"Error creating user: {e}")
 
@@ -136,16 +134,18 @@ class UserHandlersMixin:
 
         if msg_box.exec() == QMessageBox.StandardButton.Yes:
             try:
+                deleted = False
                 with get_db_session() as session:
                     user = session.execute(
                         select(User).where(User.identifier == identifier)
                     ).scalar_one_or_none()
                     if user:
                         session.delete(user)
-                        self.load_users()
-                        self.ui.statusBar.showMessage(
-                            f"User '{identifier}' deleted.", 3000
-                        )
+                        deleted = True
+                # Session committed — now refresh UI
+                if deleted:
+                    self.load_users()
+                    self.ui.statusBar.showMessage(f"User '{identifier}' deleted.", 3000)
             except Exception as e:
                 self.ui.statusBar.showMessage(f"Error deleting user: {e}")
 

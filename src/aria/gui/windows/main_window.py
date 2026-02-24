@@ -14,6 +14,7 @@ from aria.config.models import Chat, Embeddings, Vision
 from aria.gui.dialogs import AboutDialog
 from aria.gui.ui.mainwindow import Ui_MainWindow
 from aria.gui.windows.server_handlers import ServerHandlersMixin
+from aria.gui.windows.setup_handlers import SetupHandlersMixin
 from aria.gui.windows.user_handlers import UserHandlersMixin
 
 
@@ -74,7 +75,9 @@ def friendly_permissions(path: Path) -> Dict[str, List[str]]:
         return {"Owner": [], "Group": [], "Others": []}
 
 
-class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
+class MainWindow(
+    UserHandlersMixin, ServerHandlersMixin, SetupHandlersMixin, QMainWindow
+):
     """Main application window with user management and logs."""
 
     def __init__(self):
@@ -90,7 +93,11 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
         self._init_server_manager()
         self._connect_server_signals()
 
+        # Setup tab
+        self._connect_setup_signals()
+
         self.load_overview()
+        self.load_setup()
 
     def _connect_menu_signals(self):
         """Connect menu action signals."""
@@ -128,7 +135,6 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
     def load_logs(self):
         """Load logs content into the plainTextEdit_Logs widget."""
         try:
-            content = ""
             with open(Debug.logs_path, "r") as file:
                 # Use deque with maxlen to keep only the last N lines
                 last_lines = deque(file, maxlen=500)
@@ -155,6 +161,8 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
             self.ui.label_DatabasePermissions.setText(permissions)
         else:
             self.ui.label_DatabaseFileExists.setText("No")
+            self.ui.label_DatabaseSize.setText("-")
+            self.ui.label_DatabasePermissions.setText("-")
 
         self.ui.label_LLMChatAPIURL.setText(Chat.api_url)
         self.ui.label_LLMVisionAPIURL.setText(Vision.api_url)
@@ -167,6 +175,9 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
             case self.ui.tab_overview:
                 self._logs_timer.stop()
                 self.load_overview()
+            case self.ui.tab_setup:
+                self._logs_timer.stop()
+                self.load_setup()
             case self.ui.tab_users:
                 self._logs_timer.stop()
                 self.load_users()
@@ -196,18 +207,21 @@ class MainWindow(UserHandlersMixin, ServerHandlersMixin, QMainWindow):
         if hasattr(self, "_server_timer"):
             self._server_timer.stop()
 
-        # Clean up llama thread
+        # Clean up all background threads
         if hasattr(self, "_llama_thread") and self._llama_thread is not None:
             if self._llama_thread.isRunning():
                 self._llama_thread.quit()
                 if not self._llama_thread.wait(5000):
                     self._llama_thread.terminate()
                     self._llama_thread.wait()
+        if hasattr(self, "_llama_dl_thread"):
+            self._cleanup_llama_dl_thread()
+        if hasattr(self, "_model_dl_thread"):
+            self._cleanup_model_dl_thread()
 
-        # Stop server if running
+        # Stop servers
         if hasattr(self, "_server_manager"):
             self._server_manager.stop()
-
         if hasattr(self, "_llama_manager") and self._llama_manager is not None:
             self._llama_manager.stop_all()
 
