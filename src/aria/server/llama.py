@@ -130,6 +130,7 @@ class LlamaCppServerManager:
         model_path: Path,
         context_size: int,
         port: int,
+        role: str,
         mmproj_path: Optional[Path] = None,
         embedding_mode: bool = False,
     ) -> list[str]:
@@ -139,15 +140,22 @@ class LlamaCppServerManager:
             model_path: Path to the GGUF model file.
             context_size: Context size in tokens.
             port: Port to run the server on.
+            role: Server role name (chat/vl/embeddings), used for log file naming.
             mmproj_path: Optional path to mmproj file for vision models.
             embedding_mode: If True, run in embedding mode (deterministic).
         """
+        from aria.config.folders import Debug as DebugConfig
+
+        log_file = DebugConfig.logs_path.parent / f"llama-{role}.log"
+
         cmd = [
             str(self.RUN_MODEL_SCRIPT),
             str(model_path),
             str(context_size),
             "--port",
             str(port),
+            "--log-file",
+            str(log_file),
         ]
 
         if embedding_mode:
@@ -273,7 +281,7 @@ class LlamaCppServerManager:
             mmproj,
         ) in servers:
             cmd = self._build_run_model_cmd(
-                model_path, ctx_size, port, mmproj, embedding_mode
+                model_path, ctx_size, port, role, mmproj, embedding_mode
             )
             env = self._get_env_for_run_model()
 
@@ -293,6 +301,9 @@ class LlamaCppServerManager:
             # (e.g. model file not found, port in use, bad llama-server path).
             time.sleep(2)
             if proc.poll() is not None:
+                from aria.config.folders import Debug as DebugConfig
+
+                log_file = DebugConfig.logs_path.parent / f"llama-{role}.log"
                 stderr_output = (
                     proc.stderr.read()
                     .decode("utf-8", errors="replace")
@@ -303,7 +314,8 @@ class LlamaCppServerManager:
                 raise RuntimeError(
                     f"run-model script for '{role}' exited immediately "
                     f"(exit code {proc.returncode}). "
-                    f"Error: {stderr_output or '(no stderr output)'}"
+                    f"llama-server log: {log_file}. "
+                    f"run-model stderr: {stderr_output or '(none)'}"
                 )
 
         self._save_pids()

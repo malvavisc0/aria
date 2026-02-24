@@ -1161,7 +1161,7 @@ build_command() {
 	)
 	[[ -n "${SPLIT_MODE:-}" ]] && cmd_array+=($SPLIT_MODE)
 	[[ -n "${TENSOR_SPLIT:-}" ]] && cmd_array+=($TENSOR_SPLIT)
-	[[ "$FLASH_ATTN" -eq 1 ]] && cmd_array+=(--flash-attn)
+	[[ "$FLASH_ATTN" -eq 1 ]] && cmd_array+=(--flash-attn on)
 	cmd_array+=(
 		${NO_MMAP:+$NO_MMAP}
 		${MLOCK:+$MLOCK}
