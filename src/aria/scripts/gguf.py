@@ -32,7 +32,6 @@ Example:
     ```
 """
 
-import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -41,8 +40,8 @@ from huggingface_hub.errors import EntryNotFoundError, RepositoryNotFoundError
 from loguru import logger
 from rich.console import Console
 
-console = Console()
-error_console = Console(stderr=True, style="bold red")
+console = Console(width=200)
+error_console = Console(stderr=True, style="bold red", width=200)
 
 
 def get_model_path(
@@ -134,23 +133,19 @@ def download_gguf_model(
         logger.debug("No HuggingFace token provided (public model)")
 
     try:
-        # hf_hub_download downloads to HF cache; we use local_dir to place it directly
-        cached_path = hf_hub_download(
-            repo_id=repo_id,
-            filename=filename,
-            token=token,
-            local_dir=str(models_dir),
+        # hf_hub_download with local_dir places the file directly in models_dir.
+        # force_download mirrors the caller's force flag so HF's own cache logic
+        # also re-downloads when requested.
+        dest_path = Path(
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                token=token,
+                local_dir=str(models_dir),
+                force_download=force,
+            )
         )
-        cached_path = Path(cached_path)
-        logger.info(f"Downloaded to: {cached_path}")
-
-        # If hf_hub_download placed it in a subdirectory, move it to models_dir root
-        dest_path = models_dir / cached_path.name
-        if cached_path != dest_path and cached_path.exists():
-            shutil.move(str(cached_path), str(dest_path))
-            logger.info(f"Moved to: {dest_path}")
-        else:
-            dest_path = cached_path
+        logger.info(f"Downloaded to: {dest_path}")
 
         console.print(
             f"[green]✓[/green] Model downloaded successfully!\n"

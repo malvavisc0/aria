@@ -66,9 +66,10 @@ class ServerHandlersMixin:
         self._server_manager = ServerManager()
         self._llama_manager: Optional[LlamaCppServerManager] = None
         self._llama_thread: Optional[QThread] = None
+        self._preflight_result = None
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
-        self._server_timer.start(1000)  # Update every second
+        self._server_timer.start(1000)
 
     def _connect_server_signals(self):
         """Connect server control button signals.
@@ -80,6 +81,23 @@ class ServerHandlersMixin:
         self.ui.pushButton_ServiceStop.clicked.connect(self.on_stop_server)
         self.ui.pushButton_ServiceOpen.clicked.connect(self.on_open_server)
 
+    def _run_preflight(self) -> None:
+        """Run preflight checks and cache the result.
+
+        Calls ``run_preflight_checks()`` (which may invoke nvidia-smi and
+        other subprocess calls) and stores the result in
+        ``self._preflight_result``.  Triggers a status-bar refresh so the
+        Start button state is updated immediately.
+
+        Call this on startup and whenever the environment may have changed
+        (e.g. after a binary or model download completes, or when the user
+        switches to the Overview / Setup tab).
+        """
+        from aria.preflight import run_preflight_checks
+
+        self._preflight_result = run_preflight_checks()
+        self._update_server_status()
+
     def _cleanup_llama_thread(self):
         """Clean up the llama server thread if it exists.
 
@@ -89,9 +107,7 @@ class ServerHandlersMixin:
         if self._llama_thread is not None:
             if self._llama_thread.isRunning():
                 self._llama_thread.quit()
-                # Wait up to 5 seconds for graceful shutdown
                 if not self._llama_thread.wait(5000):
-                    # Force terminate if graceful shutdown fails
                     self._llama_thread.terminate()
                     self._llama_thread.wait()
             self._llama_thread = None
@@ -103,16 +119,9 @@ class ServerHandlersMixin:
         (to avoid blocking the UI during the health-check wait), then starts
         the Chainlit webserver once all inference servers are ready.
         """
-        # Clean up any previous thread
         self._cleanup_llama_thread()
-
-        # Disable the start button while starting
         self.ui.pushButton_ServiceStart.setEnabled(False)
-
-        # Create a new LlamaCppServerManager
         self._llama_manager = LlamaCppServerManager()
-
-        # Run start_all() in a background thread
         self._llama_thread = QThread()
         worker = _LlamaStartWorker(self._llama_manager)
         worker.moveToThread(self._llama_thread)
@@ -156,9 +165,7 @@ class ServerHandlersMixin:
             self._llama_manager.stop_all()
             self._llama_manager = None
 
-        # Clean up the thread
         self._cleanup_llama_thread()
-
         self._update_server_status()
 
     def on_open_server(self):
@@ -177,7 +184,6 @@ class ServerHandlersMixin:
         """
         status = self._server_manager.get_status()
 
-        # Update status indicator label (pill badge)
         _BADGE_BASE = (
             "color: white; font-size: 13pt;" " padding: 4px 14px; border-radius: 6px;"
         )
@@ -192,15 +198,12 @@ class ServerHandlersMixin:
                 f"QLabel {{ background-color: #c62828; {_BADGE_BASE} }}"
             )
 
-        # Update PID label
         self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
 
-        # Update URL label as a clickable hyperlink
         url = f"http://{status.host}:{status.port}"
         self.ui.label_ServiceURL.setText(f'<a href="{url}">{url}</a>')
         self.ui.label_ServiceURL.setOpenExternalLinks(True)
 
-        # Update start time label
         if status.started_at:
             self.ui.label_ServiceStarted.setText(
                 status.started_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -208,7 +211,6 @@ class ServerHandlersMixin:
         else:
             self.ui.label_ServiceStarted.setText("-")
 
-        # Update uptime label
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
@@ -216,7 +218,25 @@ class ServerHandlersMixin:
         else:
             self.ui.label_ServiceUptime.setText("-")
 
-        # Update button states
-        self.ui.pushButton_ServiceStart.setEnabled(not status.running)
+        preflight_ok = (
+            self._preflight_result is not None and self._preflight_result.passed
+        )
+        can_start = not status.running and preflight_ok
+        self.ui.pushButton_ServiceStart.setEnabled(can_start)
         self.ui.pushButton_ServiceStop.setEnabled(status.running)
         self.ui.pushButton_ServiceOpen.setEnabled(status.running)
+
+        if not status.running and not preflight_ok:
+            if self._preflight_result is not None:
+                failures = "\n".join(
+                    f"  • {c.name}: {c.error}" for c in self._preflight_result.failures
+                )
+                self.ui.pushButton_ServiceStart.setToolTip(
+                    f"Cannot start — fix these issues first:\n{failures}"
+                )
+            else:
+                self.ui.pushButton_ServiceStart.setToolTip(
+                    "Cannot start — preflight checks have not run yet"
+                )
+        else:
+            self.ui.pushButton_ServiceStart.setToolTip("")

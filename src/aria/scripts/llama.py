@@ -42,8 +42,8 @@ from rich.progress import (
     TransferSpeedColumn,
 )
 
-console = Console()
-error_console = Console(stderr=True, style="bold red")
+console = Console(width=200)
+error_console = Console(stderr=True, style="bold red", width=200)
 
 # Binary names to copy to bin/llamacpp/
 BINARY_NAMES = [
@@ -109,6 +109,63 @@ def _nvcc_available() -> bool:
     return shutil.which("nvcc") is not None
 
 
+def _is_openblas_available() -> bool:
+    """Check if OpenBLAS development libraries are installed.
+
+    Probes the system using multiple methods in priority order so that
+    the check works on both Linux and macOS (Homebrew):
+
+    1. ``pkg-config --exists openblas`` — most reliable when pkg-config is
+       present (common on Linux distros and macOS with Homebrew).
+    2. Known header file locations — covers systems without pkg-config.
+    3. ``ldconfig -p | grep libopenblas`` — Linux-only shared-library cache.
+
+    Returns:
+        True if OpenBLAS development files appear to be installed,
+        False otherwise.
+    """
+    # 1. pkg-config (cross-platform)
+    try:
+        result = subprocess.run(
+            ["pkg-config", "--exists", "openblas"],
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return True
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    # 2. Header file presence (Linux and macOS Homebrew paths)
+    header_paths = [
+        # Linux
+        Path("/usr/include/openblas/cblas.h"),
+        Path("/usr/include/cblas.h"),
+        Path("/usr/local/include/openblas/cblas.h"),
+        # macOS Homebrew (Apple Silicon)
+        Path("/opt/homebrew/opt/openblas/include/cblas.h"),
+        # macOS Homebrew (Intel)
+        Path("/usr/local/opt/openblas/include/cblas.h"),
+    ]
+    if any(p.exists() for p in header_paths):
+        return True
+
+    # 3. ldconfig shared-library cache (Linux only)
+    try:
+        result = subprocess.run(
+            ["ldconfig", "-p"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and "libopenblas" in result.stdout:
+            return True
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    return False
+
+
 def _get_latest_release_info() -> dict:
     """Fetch the latest release information from GitHub API.
 
@@ -129,12 +186,16 @@ def _get_release_by_tag(tag: str) -> dict:
     Returns:
         dict: Release information including assets.
     """
-    api_url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
+    api_url = (
+        f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
+    )
     with urllib.request.urlopen(api_url, timeout=30) as response:
         return __import__("json").loads(response.read())
 
 
-def _find_linux_binary_asset(assets: list, prefer_cuda: bool = False) -> Optional[dict]:
+def _find_linux_binary_asset(
+    assets: list, prefer_cuda: bool = False
+) -> Optional[dict]:
     """Find the appropriate Linux binary asset from the release assets.
 
     Searches for pre-built Linux binary archives in priority order.
@@ -199,6 +260,9 @@ def _download_with_progress(
         dest_path: Local path to save the file to.
         description: Label shown in the progress bar.
     """
+    import sys
+
+    in_tty = sys.stdout.isatty()
     with Progress(
         SpinnerColumn(),
         TextColumn(f"[bold cyan]{description}[/bold cyan]"),
@@ -208,10 +272,13 @@ def _download_with_progress(
         TimeRemainingColumn(),
         console=console,
         transient=True,
+        disable=not in_tty,
     ) as progress:
         task = progress.add_task(description, total=None)
 
-        def _reporthook(block_num: int, block_size: int, total_size: int) -> None:
+        def _reporthook(
+            block_num: int, block_size: int, total_size: int
+        ) -> None:
             if total_size > 0 and progress.tasks[task].total is None:
                 progress.update(task, total=total_size)
             progress.update(task, completed=block_num * block_size)
@@ -243,7 +310,9 @@ def _download_and_extract(
         console.print("[cyan]  Extracting archive...[/cyan]")
         with tarfile.open(archive_path, "r:gz") as tar:
             tar.extractall(dest_dir)
-            extracted_files = [str(Path(dest_dir) / m.name) for m in tar.getmembers()]
+            extracted_files = [
+                str(Path(dest_dir) / m.name) for m in tar.getmembers()
+            ]
 
     return extracted_files
 
@@ -370,9 +439,13 @@ def _test_binary(bin_dir: Path) -> None:
                     f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
                 )
         except subprocess.TimeoutExpired:
-            console.print("  [yellow]Warning: Version check timed out[/yellow]")
+            console.print(
+                "  [yellow]Warning: Version check timed out[/yellow]"
+            )
         except Exception as e:
-            console.print(f"  [yellow]Warning: Could not test binary: {e}[/yellow]")
+            console.print(
+                f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
+            )
 
 
 def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
@@ -412,13 +485,19 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     # Fetch release information (needed for both download and source paths)
     try:
         if version and version.lower() != "latest":
-            console.print(f"[cyan]  Fetching release info for tag: {version}[/cyan]")
+            console.print(
+                f"[cyan]  Fetching release info for tag: {version}[/cyan]"
+            )
             release = _get_release_by_tag(version)
         else:
-            console.print("[cyan]  Fetching latest release info from GitHub...[/cyan]")
+            console.print(
+                "[cyan]  Fetching latest release info from GitHub...[/cyan]"
+            )
             release = _get_latest_release_info()
     except urllib.error.URLError as e:
-        raise RuntimeError(f"Failed to fetch release info from GitHub: {e}") from e
+        raise RuntimeError(
+            f"Failed to fetch release info from GitHub: {e}"
+        ) from e
 
     tag = release.get("tag_name", "unknown")
     console.print(f"[green]  Found release: {tag}[/green]")
@@ -443,11 +522,16 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
             )
             logger.info(f"Source extracted to {source_dir}")
 
+            blas_available = _is_openblas_available()
+            if blas_available:
+                console.print(
+                    "[cyan]  OpenBLAS detected — enabling BLAS support[/cyan]"
+                )
             build_dir = install_llama_cpp_from_source(
                 repo_dir=source_dir,
                 build_dir=source_dir / "build",
                 use_cuda=True,
-                use_blas=True,
+                use_blas=blas_available,
                 verbose=True,
             )
 
@@ -464,12 +548,16 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
     # --- Path 2: Ubuntu without nvcc → download pre-built binary ---
     if _is_ubuntu():
-        console.print("[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]")
+        console.print(
+            "[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]"
+        )
 
         assets = release.get("assets", [])
         # Check if CUDA is available for binary selection preference
         cuda_available = _is_cuda_available()
-        binary_asset = _find_linux_binary_asset(assets, prefer_cuda=cuda_available)
+        binary_asset = _find_linux_binary_asset(
+            assets, prefer_cuda=cuda_available
+        )
 
         if not binary_asset:
             error_console.print(
@@ -503,7 +591,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
                 # (the tar.gz contains a top-level dir like llama-b8089/)
                 console.print("[cyan]  Installing binaries...[/cyan]")
                 for binary_name in BINARY_NAMES:
-                    binary_path = get_llama_cpp_binary(binary_name, extract_tmp_path)
+                    binary_path = get_llama_cpp_binary(
+                        binary_name, extract_tmp_path
+                    )
                     if binary_path:
                         dst = bin_dir / binary_name
                         shutil.copy2(binary_path, dst)
@@ -512,7 +602,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
                 # Copy shared libraries
                 for lib_pattern in SHARED_LIB_PATTERNS:
-                    for lib_file in extract_tmp_path.rglob(f"{lib_pattern}*.so*"):
+                    for lib_file in extract_tmp_path.rglob(
+                        f"{lib_pattern}*.so*"
+                    ):
                         dst_lib = bin_dir / lib_file.name
                         shutil.copy2(lib_file, dst_lib)
                         logger.info(f"Installed {lib_file.name} to {bin_dir}")
@@ -530,7 +622,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+                console.print(
+                    f"  - [green]{binary_name}[/green]: {binary_path}"
+                )
 
         return bin_dir
 
@@ -542,7 +636,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         "[yellow]  This may take 10-30 minutes. Output is shown below.[/yellow]"
     )
 
-    zip_url = f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
+    zip_url = (
+        f"https://github.com/ggml-org/llama.cpp/archive/refs/tags/{tag}.zip"
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -645,7 +741,9 @@ def install_llama_cpp_from_source(
                 ]
             )
 
-        console.print(f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]")
+        console.print(
+            f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]"
+        )
 
         if verbose:
             subprocess.run(cmake_args, cwd=str(repo_dir), check=True)
@@ -670,7 +768,9 @@ def install_llama_cpp_from_source(
             str(threads),
         ]
 
-        console.print(f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]")
+        console.print(
+            f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]"
+        )
 
         if verbose:
             subprocess.run(build_args, cwd=str(repo_dir), check=True)

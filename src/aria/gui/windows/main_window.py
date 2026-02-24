@@ -89,15 +89,14 @@ class MainWindow(
         self._connect_tab_signals()
         self._connect_user_management_signals()
 
-        # Server management
         self._init_server_manager()
         self._connect_server_signals()
 
-        # Setup tab
         self._connect_setup_signals()
 
         self.load_overview()
         self.load_setup()
+        self._run_preflight()
 
     def _connect_menu_signals(self):
         """Connect menu action signals."""
@@ -114,18 +113,15 @@ class MainWindow(
 
     def _connect_user_management_signals(self):
         """Connect user management button signals."""
-        # Button click handlers
         self.ui.pushButton_CreateUser.clicked.connect(self.on_create_user_clicked)
         self.ui.pushButton_EditUser.clicked.connect(self.on_edit_user_clicked)
         self.ui.pushButton_DeleteUser.clicked.connect(self.on_delete_user_clicked)
 
-        # Enable/disable Create User button based on field content
         self.ui.pushButton_CreateUser.setEnabled(False)
         self.ui.lineEdit_UserName.textChanged.connect(self.validate_create_fields)
         self.ui.lineEdit_UserEmail.textChanged.connect(self.validate_create_fields)
         self.ui.lineEdit_UserPassword.textChanged.connect(self.validate_create_fields)
 
-        # Enable/disable Edit and Delete buttons based on user selection
         self.ui.pushButton_EditUser.setEnabled(False)
         self.ui.pushButton_DeleteUser.setEnabled(False)
         self.ui.listWidget_CurrentUsers.itemSelectionChanged.connect(
@@ -136,7 +132,6 @@ class MainWindow(
         """Load logs content into the plainTextEdit_Logs widget."""
         try:
             with open(Debug.logs_path, "r") as file:
-                # Use deque with maxlen to keep only the last N lines
                 last_lines = deque(file, maxlen=500)
                 content = "".join(last_lines)
             self.ui.plainTextEdit_Logs.setPlainText(content)
@@ -144,7 +139,6 @@ class MainWindow(
             self.ui.plainTextEdit_Logs.setPlainText("Log file not found.")
         except Exception as e:
             self.ui.plainTextEdit_Logs.setPlainText(f"Error loading logs: {e}")
-        # Scroll to bottom so the most recent lines are visible
         self.ui.plainTextEdit_Logs.verticalScrollBar().setValue(
             self.ui.plainTextEdit_Logs.verticalScrollBar().maximum()
         )
@@ -176,10 +170,12 @@ class MainWindow(
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()
                 self.load_overview()
+                self._run_preflight()
             case self.ui.tab_setup:
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()
                 self.load_setup()
+                self._run_preflight()
             case self.ui.tab_users:
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()
@@ -207,11 +203,9 @@ class MainWindow(
         Args:
             event: The QCloseEvent from Qt.
         """
-        # Stop the status update timer
         if hasattr(self, "_server_timer"):
             self._server_timer.stop()
 
-        # Clean up all background threads
         if hasattr(self, "_llama_thread") and self._llama_thread is not None:
             if self._llama_thread.isRunning():
                 self._llama_thread.quit()
@@ -223,7 +217,6 @@ class MainWindow(
         if hasattr(self, "_model_dl_thread"):
             self._cleanup_model_dl_thread()
 
-        # Stop servers
         if hasattr(self, "_server_manager"):
             self._server_manager.stop()
         if hasattr(self, "_llama_manager") and self._llama_manager is not None:

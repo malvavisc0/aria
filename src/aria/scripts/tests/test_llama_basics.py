@@ -2,10 +2,11 @@
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from aria.scripts.llama import (
     _is_linux,
+    _is_openblas_available,
     _is_ubuntu,
     _make_executable,
     _verify_binary,
@@ -86,7 +87,9 @@ ID=fedora
     def test_handles_missing_os_release(self, mock_platform_linux):
         """Test that _is_ubuntu handles missing /etc/os-release gracefully."""
         with patch("builtins.open") as mock_open:
-            mock_open.side_effect = FileNotFoundError("/etc/os-release not found")
+            mock_open.side_effect = FileNotFoundError(
+                "/etc/os-release not found"
+            )
             assert _is_ubuntu() is False
 
     def test_handles_io_error(self, mock_platform_linux):
@@ -134,7 +137,7 @@ class TestVerifyBinary:
     def test_returns_false_for_directory_without_execute_permission(
         self, tmp_path: Path
     ):
-        """Test that _verify_binary returns False for directory without execute permission."""
+        """Returns False for a directory without execute permission."""
         dir_path = tmp_path / "test_dir"
         dir_path.mkdir()
         # Remove execute permission
@@ -142,8 +145,10 @@ class TestVerifyBinary:
 
         assert _verify_binary(dir_path) is False
 
-    def test_returns_true_for_directory_with_execute_permission(self, tmp_path: Path):
-        """Test that _verify_binary returns True for directory with execute permission."""
+    def test_returns_true_for_directory_with_execute_permission(
+        self, tmp_path: Path
+    ):
+        """Returns True for a directory with execute permission."""
         dir_path = tmp_path / "test_dir"
         dir_path.mkdir()
         # Add execute permission (directories need execute to be traversable)
@@ -196,3 +201,150 @@ class TestMakeExecutable:
         # Check that execute permission is set
         mode = os.stat(file_path).st_mode
         assert mode & 0o111 != 0
+
+
+class TestIsOpenblasAvailable:
+    """Tests for _is_openblas_available() function."""
+
+    def test_returns_true_when_pkg_config_succeeds(self):
+        """Returns True when pkg-config reports openblas is present."""
+        mock_result = Mock()
+        mock_result.returncode = 0
+        with patch("subprocess.run", return_value=mock_result):
+            assert _is_openblas_available() is True
+
+    def test_returns_true_when_linux_openblas_header_exists(self):
+        """Returns True when /usr/include/openblas/cblas.h exists."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        def fake_exists(self):
+            return str(self) == "/usr/include/openblas/cblas.h"
+
+        with (
+            patch("subprocess.run", return_value=mock_pkg_fail),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is True
+
+    def test_returns_true_when_linux_cblas_header_exists(self):
+        """Returns True when /usr/include/cblas.h exists."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        def fake_exists(self):
+            return str(self) == "/usr/include/cblas.h"
+
+        with (
+            patch("subprocess.run", return_value=mock_pkg_fail),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is True
+
+    def test_returns_true_when_macos_homebrew_arm_header_exists(self):
+        """Returns True for macOS Apple Silicon Homebrew path."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        def fake_exists(self):
+            return str(self) == "/opt/homebrew/opt/openblas/include/cblas.h"
+
+        with (
+            patch("subprocess.run", return_value=mock_pkg_fail),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is True
+
+    def test_returns_true_when_macos_homebrew_intel_header_exists(self):
+        """Returns True for macOS Intel Homebrew path."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        def fake_exists(self):
+            return str(self) == "/usr/local/opt/openblas/include/cblas.h"
+
+        with (
+            patch("subprocess.run", return_value=mock_pkg_fail),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is True
+
+    def test_returns_true_when_ldconfig_finds_libopenblas(self):
+        """Returns True when ldconfig output contains libopenblas."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        mock_ldconfig = Mock()
+        mock_ldconfig.returncode = 0
+        mock_ldconfig.stdout = (
+            "\tlibopenblas.so.0 (libc6,x86-64)"
+            " => /usr/lib/libopenblas.so.0\n"
+        )
+
+        def fake_exists(self):
+            return False
+
+        with (
+            patch(
+                "subprocess.run",
+                side_effect=[mock_pkg_fail, mock_ldconfig],
+            ),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is True
+
+    def test_returns_false_when_all_checks_fail(self):
+        """Returns False when pkg-config, headers, and ldconfig all fail."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        mock_ldconfig_fail = Mock()
+        mock_ldconfig_fail.returncode = 1
+        mock_ldconfig_fail.stdout = ""
+
+        def fake_exists(self):
+            return False
+
+        with (
+            patch(
+                "subprocess.run",
+                side_effect=[mock_pkg_fail, mock_ldconfig_fail],
+            ),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is False
+
+    def test_returns_false_when_pkg_config_not_installed(self):
+        """Returns False gracefully when pkg-config binary is not installed."""
+
+        def fake_exists(self):
+            return False
+
+        with (
+            patch(
+                "subprocess.run",
+                side_effect=FileNotFoundError("pkg-config not found"),
+            ),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is False
+
+    def test_returns_false_when_ldconfig_not_available(self):
+        """Returns False gracefully when ldconfig is absent (e.g. macOS)."""
+        mock_pkg_fail = Mock()
+        mock_pkg_fail.returncode = 1
+
+        def fake_exists(self):
+            return False
+
+        with (
+            patch(
+                "subprocess.run",
+                side_effect=[
+                    mock_pkg_fail,
+                    FileNotFoundError("ldconfig not found"),
+                ],
+            ),
+            patch("pathlib.Path.exists", fake_exists),
+        ):
+            assert _is_openblas_available() is False

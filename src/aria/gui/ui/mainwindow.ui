@@ -734,7 +734,10 @@
               <bool>true</bool>
              </property>
              <property name="maximumHeight">
-              <number>80</number>
+              <number>120</number>
+             </property>
+             <property name="lineWrapMode">
+              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
              </property>
              <property name="font">
               <font>
@@ -893,7 +896,10 @@
               <bool>true</bool>
              </property>
              <property name="maximumHeight">
-              <number>80</number>
+              <number>120</number>
+             </property>
+             <property name="lineWrapMode">
+              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
              </property>
              <property name="font">
               <font>

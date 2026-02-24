@@ -66,7 +66,9 @@ class TestGetModelPath:
 class TestIsModelDownloaded:
     """Tests for is_model_downloaded()."""
 
-    def test_returns_false_when_models_dir_does_not_exist(self, tmp_path: Path):
+    def test_returns_false_when_models_dir_does_not_exist(
+        self, tmp_path: Path
+    ):
         """Returns False when the models directory does not exist."""
         missing_dir = tmp_path / "nonexistent"
         assert is_model_downloaded("model-Q8_0.gguf", missing_dir) is False
@@ -138,6 +140,7 @@ class TestDownloadGgufModel:
             filename="model-Q8_0.gguf",
             token=None,
             local_dir=str(models_dir),
+            force_download=False,
         )
         assert result.name == "model-Q8_0.gguf"
 
@@ -187,6 +190,7 @@ class TestDownloadGgufModel:
             filename="model-Q8_0.gguf",
             token="hf_abc123",
             local_dir=str(models_dir),
+            force_download=False,
         )
 
     def test_raises_file_not_found_on_entry_not_found(self, tmp_path: Path):

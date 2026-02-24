@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowmNDagG.ui'
+## Form generated from reading UI file 'mainwindowqdaUzK.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -77,14 +77,14 @@ class Ui_MainWindow(object):
         MainWindow.setWindowIcon(icon)
         self.actionAbout = QAction(MainWindow)
         self.actionAbout.setObjectName("actionAbout")
-        self.actionAbout.setMenuRole(QAction.MenuRole.AboutRole)
         icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.HelpAbout))
         self.actionAbout.setIcon(icon1)
+        self.actionAbout.setMenuRole(QAction.MenuRole.AboutRole)
         self.actionQuit = QAction(MainWindow)
         self.actionQuit.setObjectName("actionQuit")
-        self.actionQuit.setMenuRole(QAction.MenuRole.QuitRole)
         icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ApplicationExit))
         self.actionQuit.setIcon(icon2)
+        self.actionQuit.setMenuRole(QAction.MenuRole.QuitRole)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout_main = QVBoxLayout(self.centralwidget)
@@ -539,6 +539,10 @@ class Ui_MainWindow(object):
         font1.setFamilies(["Courier New"])
         font1.setPointSize(9)
         self.plainTextEdit_LlamaOutput.setFont(font1)
+        self.plainTextEdit_LlamaOutput.setMaximumHeight(120)
+        self.plainTextEdit_LlamaOutput.setLineWrapMode(
+            QPlainTextEdit.LineWrapMode.NoWrap
+        )
         self.plainTextEdit_LlamaOutput.setReadOnly(True)
 
         self.verticalLayout_llamacpp.addWidget(self.plainTextEdit_LlamaOutput)
@@ -644,6 +648,10 @@ class Ui_MainWindow(object):
         self.plainTextEdit_ModelOutput = QPlainTextEdit(self.groupBox_Models)
         self.plainTextEdit_ModelOutput.setObjectName("plainTextEdit_ModelOutput")
         self.plainTextEdit_ModelOutput.setFont(font1)
+        self.plainTextEdit_ModelOutput.setMaximumHeight(120)
+        self.plainTextEdit_ModelOutput.setLineWrapMode(
+            QPlainTextEdit.LineWrapMode.NoWrap
+        )
         self.plainTextEdit_ModelOutput.setReadOnly(True)
 
         self.verticalLayout_models.addWidget(self.plainTextEdit_ModelOutput)

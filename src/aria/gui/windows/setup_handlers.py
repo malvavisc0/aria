@@ -7,9 +7,23 @@ GUI application, including llama.cpp binary downloads and GGUF model downloads.
 from __future__ import annotations
 
 import io
+import re
 import sys
 from pathlib import Path
 from typing import Callable, Optional
+
+_ANSI_ESCAPE = re.compile(
+    r"\x1b\[[0-9;?]*[a-zA-Z]"
+    r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"
+    r"|\x1b[@-Z\\-_]"
+    r"|\r"
+)
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI/VT100 escape sequences and carriage returns from *text*."""
+    return _ANSI_ESCAPE.sub("", text)
+
 
 from PySide6.QtCore import QObject, QThread, Signal
 
@@ -113,8 +127,6 @@ class _ModelDownloadWorker(QObject):
         from aria.scripts.gguf import download_gguf_model
 
         models_dir = LlamaCpp.models_path
-
-        # Resolve alias → (repo_id, filename) pairs to download
         downloads: list[tuple[str, str]] = []
 
         if self._alias == "chat":
@@ -189,6 +201,9 @@ class SetupHandlersMixin:
 
     ui: Ui_MainWindow
 
+    # Provided by ServerHandlersMixin when combined in MainWindow
+    def _run_preflight(self) -> None: ...
+
     # ------------------------------------------------------------------
     # Initialisation
     # ------------------------------------------------------------------
@@ -215,7 +230,6 @@ class SetupHandlersMixin:
         from aria.config.models import Chat, Embeddings, Vision
         from aria.scripts.gguf import is_model_downloaded
 
-        # --- LlamaCpp binary status ---
         self.ui.label_LlamaBinDir.setText(str(LlamaCpp.bin_path))
         self.ui.label_LlamaVersion.setText(LlamaCpp.version)
 
@@ -232,7 +246,6 @@ class SetupHandlersMixin:
             label = getattr(self.ui, label_name)
             label.setText(f'<span style="color:{color}">{icon}</span> {binary}')
 
-        # --- GGUF model status ---
         models_dir = LlamaCpp.models_path
         model_configs = [
             ("label_ModelChat_Status", Chat.filename, Chat.repo_id),
@@ -294,7 +307,6 @@ class SetupHandlersMixin:
 
         version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
 
-        # Store as instance attribute to prevent garbage collection
         self._llama_dl_worker = _LlamaDownloadWorker(
             bin_dir=LlamaCpp.bin_path, version=version_text
         )
@@ -307,7 +319,6 @@ class SetupHandlersMixin:
         self._llama_dl_worker.error.connect(self._on_llama_dl_error)
         self._llama_dl_worker.finished.connect(self._llama_dl_thread.quit)
         self._llama_dl_worker.error.connect(self._llama_dl_thread.quit)
-        # Release Python reference only after Qt has finished with the object
         self._llama_dl_thread.finished.connect(self._llama_dl_worker.deleteLater)
         self._llama_dl_thread.finished.connect(self._clear_llama_dl_worker)
 
@@ -317,11 +328,12 @@ class SetupHandlersMixin:
         self._llama_dl_worker = None
 
     def _on_llama_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_LlamaOutput.appendPlainText(line)
+        self.ui.plainTextEdit_LlamaOutput.appendPlainText(_strip_ansi(line))
 
     def _on_llama_dl_finished(self) -> None:
         self.ui.pushButton_LlamaDownload.setEnabled(True)
         self.load_setup()
+        self._run_preflight()
 
     def _on_llama_dl_error(self, message: str) -> None:
         self.ui.plainTextEdit_LlamaOutput.appendPlainText(f"ERROR: {message}")
@@ -351,7 +363,6 @@ class SetupHandlersMixin:
         token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
         force = self.ui.checkBox_ModelForce.isChecked()
 
-        # Store as instance attribute to prevent garbage collection
         self._model_dl_worker = _ModelDownloadWorker(
             alias=alias, token=token_text, force=force
         )
@@ -364,7 +375,6 @@ class SetupHandlersMixin:
         self._model_dl_worker.error.connect(self._on_model_dl_error)
         self._model_dl_worker.finished.connect(self._model_dl_thread.quit)
         self._model_dl_worker.error.connect(self._model_dl_thread.quit)
-        # Release Python reference only after Qt has finished with the object
         self._model_dl_thread.finished.connect(self._model_dl_worker.deleteLater)
         self._model_dl_thread.finished.connect(self._clear_model_dl_worker)
 
@@ -374,11 +384,12 @@ class SetupHandlersMixin:
         self._model_dl_worker = None
 
     def _on_model_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_ModelOutput.appendPlainText(line)
+        self.ui.plainTextEdit_ModelOutput.appendPlainText(_strip_ansi(line))
 
     def _on_model_dl_finished(self) -> None:
         self.ui.pushButton_ModelDownload.setEnabled(True)
         self.load_setup()
+        self._run_preflight()
 
     def _on_model_dl_error(self, message: str) -> None:
         self.ui.plainTextEdit_ModelOutput.appendPlainText(f"ERROR: {message}")
