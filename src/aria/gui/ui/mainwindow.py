@@ -77,10 +77,12 @@ class Ui_MainWindow(object):
         MainWindow.setWindowIcon(icon)
         self.actionAbout = QAction(MainWindow)
         self.actionAbout.setObjectName("actionAbout")
+        self.actionAbout.setMenuRole(QAction.MenuRole.AboutRole)
         icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.HelpAbout))
         self.actionAbout.setIcon(icon1)
         self.actionQuit = QAction(MainWindow)
         self.actionQuit.setObjectName("actionQuit")
+        self.actionQuit.setMenuRole(QAction.MenuRole.QuitRole)
         icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ApplicationExit))
         self.actionQuit.setIcon(icon2)
         self.centralwidget = QWidget(MainWindow)
@@ -1059,7 +1061,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Logs", None),
         )
         self.menuApplication.setTitle(
-            QCoreApplication.translate("MainWindow", "&Application", None)
+            QCoreApplication.translate("MainWindow", "&File", None)
         )
         self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", "&Help", None))
 
