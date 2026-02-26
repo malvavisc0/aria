@@ -158,13 +158,6 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
         llm=llm, extras=get_instructions_extras(agent_name="aria")
     )
 
-    initial_state = {
-        "research_notes": [],
-        "reports": [],
-        "code_changes": [],
-        "reasoning_summaries": [],
-    }
-
     # Initialize Workflow (Chatter is the root agent)
     workflow = AgentWorkflow(
         agents=[
@@ -176,7 +169,6 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
             web_researcher,
         ],
         root_agent=chatter.name,
-        initial_state=initial_state,
     )
     return workflow
 
@@ -210,7 +202,9 @@ def get_default_memory(
         memory_blocks=[
             VectorMemoryBlock(
                 vector_store=ChromaVectorStore(
-                    chroma_collection=vector_db.get_or_create_collection(thread_id)
+                    chroma_collection=vector_db.get_or_create_collection(
+                        thread_id
+                    )
                 ),
                 embed_model=embed_model,
                 # Retrieve top 3 similar messages
@@ -221,7 +215,7 @@ def get_default_memory(
         token_limit=token_limit,
         # 70% for Recent History, 30% for Vector Results
         chat_history_token_ratio=0.7,
-        token_flush_size=512,
+        token_flush_size=1024,
     )
 
     return memory
