@@ -143,14 +143,10 @@ def _validate_working_dir(working_dir: Optional[str]) -> Path:
     try:
         path = Path(working_dir).resolve()
     except (OSError, ValueError) as exc:
-        raise WorkingDirectoryError(
-            f"Invalid working directory path: {exc}"
-        ) from exc
+        raise WorkingDirectoryError(f"Invalid working directory path: {exc}") from exc
 
     if not path.exists():
-        raise WorkingDirectoryError(
-            f"Working directory does not exist: {working_dir}"
-        )
+        raise WorkingDirectoryError(f"Working directory does not exist: {working_dir}")
     if not path.is_dir():
         raise WorkingDirectoryError(
             f"Working directory is not a directory: {working_dir}"
@@ -342,9 +338,7 @@ def execute_command_safe(
         JSON string with execution results
     """
     if command_name not in SAFE_COMMANDS_SET:
-        raise CommandBlockedError(
-            f"Command '{command_name}' is not in the safe list"
-        )
+        raise CommandBlockedError(f"Command '{command_name}' is not in the safe list")
 
     logger.info(f"Executing safe command: {command_name} {args}")
     logger.debug(f"Safe command to achieve: {intent}")
@@ -394,9 +388,7 @@ def execute_command_safe(
             return_code=result.returncode,
             execution_time=elapsed,
         )
-        logger.info(
-            "Safe command executed with return code %s", result.returncode
-        )
+        logger.info("Safe command executed with return code %s", result.returncode)
         return _safe_json(response)
 
     except subprocess.TimeoutExpired:
