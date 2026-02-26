@@ -1,31 +1,35 @@
-"""Document analysis tool for the Docling vision-language agent.
+"""Document analysis tool for the vision-language model.
 
-Provides :func:`make_analyze_document`, which returns an async
-``analyze_document`` closure bound to a vision-language LLM.
+Provides :func:`make_parse_pdf`, which returns an async ``parse_pdf``
+closure bound to a VL server URL and model name.
 
-The tool accepts a local file path to a PDF and calls the VL model with
-rendered PNG bytes via :class:`~llama_index.core.base.llms.types.ImageBlock`.
+The tool accepts a local file path to a PDF, renders each page to PNG
+via ``pypdfium2``, base64-encodes the PNG bytes, and sends them directly
+to the VL server using the OpenAI multimodal chat format over ``httpx``.
+No LlamaIndex LLM wrapper is involved — the HTTP call is made directly.
 
 PDF rendering uses ``pypdfium2`` (pure-Python, no system dependencies).
 Each page is rendered at 150 DPI and sent to the VL model individually;
 results are concatenated into a single markdown document.
 """
 
+import base64
 import io
 from pathlib import Path
 from typing import Callable
 
-from llama_index.core.base.llms.types import (
-    ChatMessage,
-    ImageBlock,
-    MessageRole,
-    TextBlock,
-)
-from llama_index.llms.openai_like import OpenAILike
+import httpx
 from loguru import logger
 
 # DPI used when rendering PDF pages to PNG.
 _PDF_RENDER_DPI = 150
+
+# Default extraction instruction sent alongside each page image.
+_DEFAULT_PROMPT = (
+    "Extract all text, tables, and structured content from this "
+    "document page. Return the result as clean markdown, preserving "
+    "headings, lists, and table structure."
+)
 
 
 def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
@@ -51,7 +55,7 @@ def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
     pages_png: list[bytes] = []
     doc = pdfium.PdfDocument(str(pdf_path))
     try:
-        scale = _PDF_RENDER_DPI / 72.0  # pdfium uses 72 DPI as base
+        scale = int(_PDF_RENDER_DPI / 72.0)  # pdfium uses 72 DPI as base
         for page_index in range(len(doc)):
             page = doc[page_index]
             bitmap = page.render(scale=scale, rotation=0)
@@ -69,69 +73,47 @@ def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
     return pages_png
 
 
-async def _call_vl_llm(
-    llm: OpenAILike,
-    image_bytes: bytes,
-    mime: str,
-    user_prompt: str,
-) -> str:
-    """Send a single image to the VL LLM and return the text response.
+def make_parse_pdf(api_base: str, model: str) -> Callable:
+    """Return a ``parse_pdf`` async function bound to the VL server.
+
+    This factory creates a closure so the tool function captures the VL server
+    URL and model name without needing them as parameters (LlamaIndex tools
+    must have plain, serialisable signatures).
+
+    Each PDF page is rendered to PNG via ``pypdfium2``, base64-encoded, and
+    sent to the VL server as an OpenAI multimodal chat completion request
+    using ``httpx`` directly — no LlamaIndex LLM wrapper is involved.
 
     Args:
-        llm: The vision-language :class:`OpenAILike` instance.
-        image_bytes: Raw image bytes (PNG, JPEG, etc.).
-        mime: MIME type of the image (e.g. ``"image/png"``).
-        user_prompt: Instruction to send alongside the image.
-
-    Returns:
-        The model's text response.
-    """
-    message = ChatMessage(
-        role=MessageRole.USER,
-        blocks=[
-            ImageBlock(image=image_bytes, image_mimetype=mime),
-            TextBlock(text=user_prompt),
-        ],
-    )
-    response = await llm.achat(messages=[message])
-    return response.message.content or ""
-
-
-def make_analyze_document(vl_llm: OpenAILike) -> Callable:
-    """Return a ``parse_file_with_ocr`` async function bound to *vl_llm*.
-
-    This factory creates a closure so the tool function captures the VL LLM
-    instance without needing it as a parameter (LlamaIndex tools must have
-    plain, serialisable signatures).
-
-    Args:
-        vl_llm: The vision-language :class:`OpenAILike` instance to use for
-            inference.
+        api_base: Base URL of the OpenAI-compatible VL server, e.g.
+            ``"http://localhost:9091/v1"``.
+        model: Model name to pass in the request body, e.g.
+            ``"granite-docling-258M-Q8_0.gguf"``.
 
     Returns:
         An async callable suitable for wrapping with
         :class:`~llama_index.core.tools.FunctionTool`.
     """
 
-    async def parse_file_with_ocr(file_path: str, prompt: str = "") -> str:
-        """Extract structured content from a PDF document using OCR.
+    async def parse_pdf(file_path: str, prompt: str = "") -> str:
+        """Extract text and tables from a PDF using the vision-language model.
 
-        Renders each PDF page to PNG and sends it to the vision-language
-        model, returning the concatenated markdown extraction.
+        Renders each page to PNG via pypdfium2, base64-encodes it, and sends
+        it to the VL server at api_base using the OpenAI multimodal chat
+        format.
 
         Args:
-            file_path: Absolute path to the PDF file to analyse.
-                Supported format: PDF only.
-            prompt: Optional instruction to guide extraction (e.g.
-                ``"Extract all table data"``). Defaults to a generic
-                document extraction prompt.
+            file_path: Absolute path to the PDF file.
+            prompt: Optional extraction instruction. Defaults to full
+                extraction of text, tables, and structured content.
 
         Returns:
-            Extracted content as markdown. Each page is separated by a
-            ``--- Page N ---`` heading.
+            Extracted content as markdown. Each page is separated by
+            a ``--- Page N ---`` heading.
 
         Raises:
             ValueError: If the file does not exist or is not a PDF.
+            httpx.HTTPStatusError: If the VL server returns an error response.
         """
         path = Path(file_path)
         if not path.exists():
@@ -143,19 +125,56 @@ def make_analyze_document(vl_llm: OpenAILike) -> Callable:
                 f"Unsupported file format '{suffix}'. " "Only PDF files are supported."
             )
 
-        user_prompt = prompt or (
-            "Extract all text, tables, and structured content from this "
-            "document page. Return the result as clean markdown, preserving "
-            "headings, lists, and table structure."
-        )
+        user_prompt = prompt or _DEFAULT_PROMPT
 
         logger.info(f"Rendering PDF: {path.name}")
         pages = _render_pdf_pages(path)
+
+        endpoint = api_base.rstrip("/") + "/chat/completions"
         parts: list[str] = []
-        for i, png_bytes in enumerate(pages, start=1):
-            logger.info(f"Analysing PDF page {i}/{len(pages)}: {path.name}")
-            text = await _call_vl_llm(vl_llm, png_bytes, "image/png", user_prompt)
-            parts.append(f"--- Page {i} ---\n\n{text.strip()}")
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            for i, png_bytes in enumerate(pages, start=1):
+                logger.info(f"Analysing PDF page {i}/{len(pages)}: {path.name}")
+
+                b64 = base64.b64encode(png_bytes).decode("ascii")
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/png;base64,{b64}"
+                                    },
+                                },
+                                {
+                                    "type": "text",
+                                    "text": user_prompt,
+                                },
+                            ],
+                        }
+                    ],
+                }
+
+                response = await client.post(
+                    endpoint,
+                    json=payload,
+                    headers={"Authorization": "Bearer sk-dummy"},
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                text: str = (
+                    data.get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                    .strip()
+                )
+                parts.append(f"--- Page {i} ---\n\n{text}")
+
         return "\n\n".join(parts)
 
-    return parse_file_with_ocr
+    return parse_pdf

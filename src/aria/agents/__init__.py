@@ -14,8 +14,6 @@ from .python_developer import PythonDeveloperAgent
 from .python_developer import get_agent as get_python_developer_agent
 from .shell_executor import ShellExecutorAgent
 from .shell_executor import get_agent as get_shell_executor_agent
-from .vl_expert import VLAgent
-from .vl_expert import get_agent as get_vl_agent
 from .web_researcher import WebResearcherAgent
 from .web_researcher import get_agent as get_web_researcher_agent
 
@@ -29,7 +27,6 @@ __all__ = [
     "WebResearcherAgent",
     "ChatterAgent",
     "ShellExecutorAgent",
-    "VLAgent",
     "get_file_editor_agent",
     "get_python_developer_agent",
     "get_reasoning_agent",
@@ -39,5 +36,4 @@ __all__ = [
     "get_chatter_agent",
     "get_shell_executor_agent",
     "get_imdb_exper_agent",
-    "get_vl_agent",
 ]

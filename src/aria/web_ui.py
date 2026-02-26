@@ -59,7 +59,6 @@ from aria.config.folders import Debug as DebugConfig
 from aria.config.folders import Storage as StorageConfig
 from aria.config.models import Chat as ChatConfig
 from aria.config.models import Embeddings as EmbeddingsConfig
-from aria.config.models import Vision as VisionConfig
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
@@ -69,7 +68,6 @@ from aria.llm import (
     get_chat_llm,
     get_default_memory,
     get_embeddings_model,
-    get_vl_llm,
 )
 from aria.server.llama import LlamaCppServerManager
 from aria.tools.constants import BASE_DIR
@@ -83,7 +81,7 @@ ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
 # Hardcoded MIME-to-extension map for uploaded file renaming.
 # mimetypes.guess_extension() is unreliable on Linux (reads /etc/mime.types,
 # can return None or platform-specific values like ".jpe").  This map covers
-# exactly the formats supported by parse_file_with_ocr.
+# exactly the formats supported by parse_pdf.
 # Only PDF is accepted — image uploads are disabled in config.toml.
 _MIME_TO_EXT: dict[str, str] = {
     "application/pdf": ".pdf",
@@ -119,7 +117,6 @@ class AppState:
 
     Attributes:
         llm: OpenAI-compatible LLM client for chat completions.
-        vl_llm: Vision-language LLM client for document intelligence (Docling).
         embeddings: Embedding model for vector memory operations.
         vector_db: ChromaDB client for persistent vector storage.
         agents_workflow: Multi-agent workflow for conversation handling.
@@ -147,7 +144,6 @@ class AppState:
 
     def __init__(self) -> None:
         self.llm: OpenAILike | None = None
-        self.vl_llm: OpenAILike | None = None
         self.embeddings: OpenAIEmbedding | None = None
         self.vector_db: ClientAPI | None = None
         self.agents_workflow: AgentWorkflow | None = None
@@ -332,7 +328,7 @@ async def _handle_message(message: cl.Message) -> str:
     Handles special commands like "Enhance" that modify the user's input
     before it's processed by the agent workflow.  If the message contains
     uploaded file elements, their absolute paths are appended to the
-    prompt so the Docling agent can locate and process them.
+    prompt so the parse_pdf tool can locate and process them.
 
     Args:
         message: The incoming Chainlit message with content, optional
@@ -364,16 +360,11 @@ async def _handle_message(message: cl.Message) -> str:
             logger.error(f"Prompt enhancement failed: {e}")
             # Return original prompt on failure
 
-    # Append uploaded file paths so the Docling agent can process them.
+    # Append uploaded file paths so the parse_pdf tool can process them.
     file_paths = _extract_file_paths(message)
     if file_paths:
         paths_block = "\n".join(f"- {p}" for p in file_paths)
-        prompt = (
-            f"{prompt}\n\n"
-            "[Uploaded files — pass these paths to"
-            " parse_file_with_ocr]:\n"
-            f"{paths_block}"
-        )
+        prompt = f"{prompt}\n\n" "[Uploaded files]:\n" f"{paths_block}"
         logger.debug(f"Appended {len(file_paths)} file path(s) to prompt")
 
     return prompt
@@ -513,7 +504,6 @@ async def on_app_startup() -> None:
         # Initialize LLM and embeddings
         logger.info("Initializing LLM and embeddings clients...")
         _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
-        _state.vl_llm = get_vl_llm(api_base=VisionConfig.api_url)
         _state.embeddings = get_embeddings_model(
             api_base=EmbeddingsConfig.api_url,
             model_name=EmbeddingsConfig.model,
@@ -534,10 +524,7 @@ async def on_app_startup() -> None:
         logger.info("Initializing agent workflows...")
         from aria.agents import get_prompt_enhancer_agent
 
-        _state.agents_workflow = get_agent_workflow(
-            llm=_state.llm,
-            vl_llm=_state.vl_llm,
-        )
+        _state.agents_workflow = get_agent_workflow(llm=_state.llm)
         _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
 
         # Mark startup complete
@@ -575,7 +562,6 @@ async def on_app_shutdown() -> None:
     # Reset state
     _state.llama_manager = None
     _state.llm = None
-    _state.vl_llm = None
     _state.embeddings = None
     _state.vector_db = None
     _state.agents_workflow = None
@@ -796,8 +782,8 @@ async def on_message(message: cl.Message) -> None:
                 await output.stream_token(event.delta)
                 streamed_tokens = True
             elif isinstance(event, AgentOutput):
-                # Non-streaming agents (e.g. VLAgent with streaming=False)
-                # emit AgentOutput without preceding AgentStream deltas.
+                # Non-streaming agents emit AgentOutput without preceding
+                # AgentStream deltas.
                 # Only write the response here when no stream tokens were
                 # already received, to avoid duplicating streamed output.
                 if not event.tool_calls and not streamed_tokens:

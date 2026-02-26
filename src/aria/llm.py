@@ -24,9 +24,9 @@ from aria.agents import (
     get_python_developer_agent,
     get_reasoning_agent,
     get_shell_executor_agent,
-    get_vl_agent,
     get_web_researcher_agent,
 )
+from aria.config.models import Vision as VisionConfig
 
 
 class ToolCallRecord(TypedDict):
@@ -259,42 +259,17 @@ def get_chat_llm(api_base: str) -> OpenAILike:
     return llm
 
 
-def get_vl_llm(api_base: str) -> OpenAILike:
-    """Create the vision-language LLM client for document intelligence.
-
-    Args:
-        api_base: Base URL for the VL OpenAI-compatible API (default port
-            9091, configured via ``VL_OPENAI_API``).
-
-    Returns:
-        An :class:`OpenAILike` LLM instance pointing at the VL server.
-
-    Notes:
-        Uses the same dummy-key pattern as :func:`get_chat_llm`.
-        ``is_function_calling_model`` is set to ``True`` so that
-        :class:`FunctionAgent` accepts the LLM without raising
-        ``ValueError: LLM must be a FunctionCallingLLM``.
-    """
-    llm = OpenAILike(
-        api_base=api_base,
-        api_key="sk-dummy",
-        is_chat_model=True,
-        is_function_calling_model=True,
-    )
-    return llm
-
-
-def get_agent_workflow(llm: OpenAILike, vl_llm: OpenAILike) -> AgentWorkflow:
+def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     """Build the multi-agent workflow used by the UI.
 
     This wires together the project's agent factory functions and returns a
     single :class:`AgentWorkflow` with Chatter as the root agent. Chatter
-    routes requests to specialist agents through handoffs.
+    routes requests to specialist agents through handoffs. PDF parsing is
+    handled directly by Chatter via the ``parse_pdf`` tool — no VL agent
+    handoff is needed.
 
     Args:
         llm: LLM instance shared across all chat/reasoning agents.
-        vl_llm: Vision-language LLM instance used exclusively by the
-            :class:`VLAgent` (Docling) for document intelligence tasks.
 
     Returns:
         A fully constructed :class:`AgentWorkflow`.
@@ -336,16 +311,11 @@ def get_agent_workflow(llm: OpenAILike, vl_llm: OpenAILike) -> AgentWorkflow:
         extras=get_instructions_extras(agent_name="wanderer"),
         can_handoff_to=["Wizard", "Developer", "Spielberg"],
     )
-    vl_expert = get_vl_agent(
-        llm=llm,
-        vl_llm=vl_llm,
-        extras=get_instructions_extras(agent_name="docling"),
-        can_handoff_to=["Notepad", "Developer"],
-    )
-
     # Create Chatter as root agent
     chatter = get_chatter_agent(
         llm=llm,
+        vl_api_base=VisionConfig.api_url,
+        vl_model=VisionConfig.model,
         extras=get_instructions_extras(agent_name="aria"),
         can_handoff_to=[
             "Developer",
@@ -355,7 +325,6 @@ def get_agent_workflow(llm: OpenAILike, vl_llm: OpenAILike) -> AgentWorkflow:
             "Socrates",
             "Shell",
             "Spielberg",
-            "Docling",
         ],
     )
 
@@ -370,7 +339,6 @@ def get_agent_workflow(llm: OpenAILike, vl_llm: OpenAILike) -> AgentWorkflow:
             web_researcher,
             shell_executor,
             imdb_expert,
-            vl_expert,
         ],
         root_agent=chatter.name,
         # Cast to plain dict: AgentWorkflow expects Dict, WorkflowState is

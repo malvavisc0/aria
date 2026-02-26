@@ -1,10 +1,11 @@
 """Vision tools for document intelligence.
 
-Provides :func:`make_analyze_document`, a factory that returns an async
-``analyze_document`` tool closure bound to a vision-language LLM.
-Used by the Docling agent to extract structured content from images and PDFs.
+Provides :func:`make_parse_pdf`, a factory that returns an async
+``parse_pdf`` tool closure bound to a VL server URL and model name.
+Used by the ChatterAgent to extract structured content from PDF files
+via direct HTTP calls to the VL server.
 """
 
-from .functions import make_analyze_document
+from .functions import make_parse_pdf
 
-__all__ = ["make_analyze_document"]
+__all__ = ["make_parse_pdf"]

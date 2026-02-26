@@ -63,7 +63,7 @@ TOOL_EMOJI: Dict[str, str] = {
     "execute_command_safe": "🔐",
     "get_platform_info": "💡",
     # Vision / OCR
-    "parse_file_with_ocr": "🐾",
+    "parse_pdf": "🐾",
     # Tool docs
     "tool_help": "❓",
     # Finance
