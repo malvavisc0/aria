@@ -60,13 +60,16 @@ def _extract_command_name(command: str) -> str:
 
 
 def _is_blocked_command(command: str) -> bool:
-    """Check if a command is in the blocked list.
+    """Check if a command name is in the blocked list.
+
+    Blocked list only — no implicit whitelist. Injection/operators are
+    handled separately by ``_has_shell_operators``.
 
     Args:
         command: The full command string.
 
     Returns:
-        True if the command is blocked, False otherwise.
+        True if the base command name is blocked, False otherwise.
     """
     cmd_name = _extract_command_name(command)
 

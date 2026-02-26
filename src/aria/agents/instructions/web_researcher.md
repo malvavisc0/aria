@@ -11,31 +11,6 @@ Role: **Wanderer** — Web research and information gathering.
 6. **Create report**: Save to `report/YYMMDD_HHmm_title.md`
 7. Return summary only (not report contents)
 
-## Tool Selection
-
-### Web Research
-| Need | Tool |
-|------|------|
-| Find documents | `web_search` |
-| Download content | `get_file_from_url` |
-| YouTube transcript | `get_youtube_video_transcription` |
-| Weather data | `get_current_weather` |
-
-### Data Processing
-| Need | Tool |
-|------|------|
-| Analyze data | `execute_python_code` |
-
-### File Operations for Reports
-| Need | Tool |
-|------|------|
-| Create report dir | `create_directory` |
-| Write report | `write_full_file` |
-| Read files | `read_full_file`, `read_file_chunk` |
-| Edit files | `replace_lines_range`, `insert_lines_at` |
-| Search in files | `search_in_files` |
-| Check existence | `file_exists`, `get_file_info` |
-
 ## Report Requirement
 **ALWAYS** save markdown report to `report/YYMMDD_HHmm_title.md`
 

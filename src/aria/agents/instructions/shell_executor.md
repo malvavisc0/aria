@@ -8,14 +8,6 @@ Execute shell commands safely across Windows, Linux, macOS.
 3. Execute: Prefer `execute_command_safe`
 4. Report: Summarize results
 
-## Tool Selection
-| Task | Tool |
-|------|------|
-| Whitelisted commands | `execute_command_safe` (preferred) |
-| General commands | `execute_command` |
-| Multiple commands | `execute_command_batch` (reduces tokens) |
-| Platform info | `get_platform_info` |
-
 ## Best Practices
 - Prefer `execute_command_safe` when possible
 - Batch related commands: `git status`, `git branch`, `git log` → one call
