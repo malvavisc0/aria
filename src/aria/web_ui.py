@@ -29,6 +29,8 @@ Attributes:
 from __future__ import annotations
 
 import json
+import shutil
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import chainlit as cl
@@ -37,6 +39,7 @@ from chromadb import PersistentClient as ChromaDBPersistentClient
 from chromadb.api import ClientAPI
 from chromadb.config import Settings as ChromaDBSettings
 from llama_index.core.agent.workflow import (
+    AgentOutput,
     AgentStream,
     AgentWorkflow,
     ToolCall,
@@ -44,7 +47,7 @@ from llama_index.core.agent.workflow import (
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.memory import Memory
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike
 from loguru import logger
 from sqlalchemy import Engine, create_engine
 
@@ -56,6 +59,7 @@ from aria.config.folders import Debug as DebugConfig
 from aria.config.folders import Storage as StorageConfig
 from aria.config.models import Chat as ChatConfig
 from aria.config.models import Embeddings as EmbeddingsConfig
+from aria.config.models import Vision as VisionConfig
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
 from aria.db.models import Base
@@ -65,14 +69,30 @@ from aria.llm import (
     get_chat_llm,
     get_default_memory,
     get_embeddings_model,
+    get_vl_llm,
 )
 from aria.server.llama import LlamaCppServerManager
+from aria.tools.constants import BASE_DIR
 
 if TYPE_CHECKING:
     from aria.agents.prompt_enhancer import PromptEnhancementResult
 
 # Constants
 ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
+
+# Hardcoded MIME-to-extension map for uploaded file renaming.
+# mimetypes.guess_extension() is unreliable on Linux (reads /etc/mime.types,
+# can return None or platform-specific values like ".jpe").  This map covers
+# exactly the formats supported by parse_file_with_ocr.
+# Only PDF is accepted — image uploads are disabled in config.toml.
+_MIME_TO_EXT: dict[str, str] = {
+    "application/pdf": ".pdf",
+}
+
+# Subdirectory inside BASE_DIR where uploaded files are moved so that all
+# tools (vision and file-editor) can access them via a stable, safe path.
+_UPLOADS_DIR: Path = BASE_DIR / "uploads"
+_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FORMAT = (
     "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
     "{name}:{function}:{line} - {message}"
@@ -99,6 +119,7 @@ class AppState:
 
     Attributes:
         llm: OpenAI-compatible LLM client for chat completions.
+        vl_llm: Vision-language LLM client for document intelligence (Docling).
         embeddings: Embedding model for vector memory operations.
         vector_db: ChromaDB client for persistent vector storage.
         agents_workflow: Multi-agent workflow for conversation handling.
@@ -125,7 +146,8 @@ class AppState:
     """
 
     def __init__(self) -> None:
-        self.llm: OpenAI | None = None
+        self.llm: OpenAILike | None = None
+        self.vl_llm: OpenAILike | None = None
         self.embeddings: OpenAIEmbedding | None = None
         self.vector_db: ClientAPI | None = None
         self.agents_workflow: AgentWorkflow | None = None
@@ -238,18 +260,88 @@ def _create_memory(thread_id: str) -> Memory:
     )
 
 
+def _extract_file_paths(message: cl.Message) -> list[str]:
+    """Return absolute file paths for any uploaded elements in *message*.
+
+    Chainlit stores uploaded files as :class:`~chainlit.element.Element`
+    objects on ``message.elements``.  Each element exposes a ``path``
+    attribute pointing to the file on disk.  Only elements that have a
+    non-empty ``path`` are included.
+
+    Chainlit saves uploaded files without a file extension (the filename
+    is a bare UUID).  When the element has a ``mime`` attribute, this
+    function copies the file into ``_UPLOADS_DIR`` (``BASE_DIR/uploads``)
+    with the correct extension added.  The original file is left in
+    ``.files/`` so Chainlit can still serve it to the browser.  The copy
+    in ``BASE_DIR/uploads`` is what is passed to agents: it lives in a
+    stable, tool-accessible location that persists across Chainlit
+    restarts and is within the workspace all agents are allowed to read.
+
+    Args:
+        message: The incoming Chainlit message.
+
+    Returns:
+        List of absolute file path strings, one per uploaded file.
+        Empty list if no files were uploaded.
+    """
+    paths: list[str] = []
+    for element in message.elements or []:
+        path = getattr(element, "path", None)
+        if not path:
+            continue
+
+        path_str = str(path)
+
+        # Determine the correct extension from the MIME type.
+        mime = getattr(element, "mime", None)
+        ext = _MIME_TO_EXT.get(mime or "", "")
+
+        # Build the destination filename: use the element name when
+        # available (preserves the original filename the user uploaded),
+        # otherwise fall back to the bare UUID stem + extension.
+        src = Path(path_str)
+        element_name = getattr(element, "name", None)
+        if element_name:
+            dest_name = element_name
+            # Ensure the destination has the correct extension.
+            if ext and not dest_name.lower().endswith(ext):
+                dest_name = Path(dest_name).stem + ext
+        else:
+            dest_name = src.stem + ext
+
+        dest = _UPLOADS_DIR / dest_name
+
+        try:
+            shutil.copy2(path_str, str(dest))
+            path_str = str(dest)
+            logger.debug(f"Copied uploaded file to safe path: {dest}")
+        except OSError as e:
+            logger.warning(
+                f"Could not copy uploaded file {path_str}"
+                f" to {dest}: {e} — using original path"
+            )
+
+        paths.append(path_str)
+        logger.debug(f"Uploaded file path: {path_str}")
+    return paths
+
+
 async def _handle_message(message: cl.Message) -> str:
     """Process an incoming message and return the prompt to use.
 
     Handles special commands like "Enhance" that modify the user's input
-    before it's processed by the agent workflow.
+    before it's processed by the agent workflow.  If the message contains
+    uploaded file elements, their absolute paths are appended to the
+    prompt so the Docling agent can locate and process them.
 
     Args:
-        message: The incoming Chainlit message with content and optional command.
+        message: The incoming Chainlit message with content, optional
+            command, and optional file elements.
 
     Returns:
         The prompt to use for agent processing. This may be the original
-        message content or an enhanced version if the Enhance command was used.
+        message content, an enhanced version (Enhance command), and/or
+        augmented with uploaded file paths.
 
     Note:
         If prompt enhancement fails or is unavailable, the original
@@ -271,6 +363,18 @@ async def _handle_message(message: cl.Message) -> str:
         except Exception as e:
             logger.error(f"Prompt enhancement failed: {e}")
             # Return original prompt on failure
+
+    # Append uploaded file paths so the Docling agent can process them.
+    file_paths = _extract_file_paths(message)
+    if file_paths:
+        paths_block = "\n".join(f"- {p}" for p in file_paths)
+        prompt = (
+            f"{prompt}\n\n"
+            "[Uploaded files — pass these paths to"
+            " parse_file_with_ocr]:\n"
+            f"{paths_block}"
+        )
+        logger.debug(f"Appended {len(file_paths)} file path(s) to prompt")
 
     return prompt
 
@@ -373,6 +477,14 @@ async def on_app_startup() -> None:
     """
     global _log_sink_id
     try:
+        # Ensure Chainlit's file upload directory exists. Chainlit creates it
+        # at import time but deletes it on shutdown (shutil.rmtree). Without
+        # this, session.files_dir.mkdir(exist_ok=True) raises FileNotFoundError
+        # because the parent .files/ directory no longer exists.
+        from chainlit.config import FILES_DIRECTORY
+
+        FILES_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
         # Initialize logging — remove all existing handlers first to prevent
         # duplicates from hot-reload or the default stderr handler.
         # This ensures a clean slate before adding our file handler.
@@ -401,6 +513,7 @@ async def on_app_startup() -> None:
         # Initialize LLM and embeddings
         logger.info("Initializing LLM and embeddings clients...")
         _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
+        _state.vl_llm = get_vl_llm(api_base=VisionConfig.api_url)
         _state.embeddings = get_embeddings_model(
             api_base=EmbeddingsConfig.api_url,
             model_name=EmbeddingsConfig.model,
@@ -421,7 +534,10 @@ async def on_app_startup() -> None:
         logger.info("Initializing agent workflows...")
         from aria.agents import get_prompt_enhancer_agent
 
-        _state.agents_workflow = get_agent_workflow(llm=_state.llm)
+        _state.agents_workflow = get_agent_workflow(
+            llm=_state.llm,
+            vl_llm=_state.vl_llm,
+        )
         _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
 
         # Mark startup complete
@@ -459,6 +575,7 @@ async def on_app_shutdown() -> None:
     # Reset state
     _state.llama_manager = None
     _state.llm = None
+    _state.vl_llm = None
     _state.embeddings = None
     _state.vector_db = None
     _state.agents_workflow = None
@@ -565,7 +682,18 @@ async def on_chat_start() -> None:
 
     Sets up the available slash commands for the chat interface.
     Currently only the "Enhance" command is available.
+
+    Also ensures Chainlit's file-upload directory exists.  Chainlit
+    deletes ``.files/`` on shutdown (``shutil.rmtree``) but its
+    ``upload_file`` endpoint calls ``session.files_dir.mkdir(exist_ok=True)``
+    without ``parents=True``, so if the parent ``.files/`` was removed
+    the next upload raises ``FileNotFoundError``.  Re-creating it here
+    (at the start of every session) prevents that race.
     """
+    from chainlit.config import FILES_DIRECTORY
+
+    FILES_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
     logger.debug("Starting new chat session")
     await cl.context.emitter.set_commands(
         [
@@ -650,14 +778,35 @@ async def on_message(message: cl.Message) -> None:
         )
 
         current_step: cl.Step | None = None
+        # Tracks whether AgentStream tokens were received for the current
+        # agent turn. Used to avoid double-printing: streaming agents emit
+        # both AgentStream deltas AND a final AgentOutput, so we only fall
+        # back to AgentOutput.response.content when no stream tokens arrived.
+        streamed_tokens: bool = False
 
         # Stream events as they arrive
         async for event in handler.stream_events():
             if isinstance(event, ToolCall):
+                await maybe_remove_step(current_step)
                 current_step = await send_tool_step(event)
+                streamed_tokens = False
             elif isinstance(event, AgentStream):
-                current_step = await maybe_remove_step(current_step)
+                await maybe_remove_step(current_step)
+                current_step = None
                 await output.stream_token(event.delta)
+                streamed_tokens = True
+            elif isinstance(event, AgentOutput):
+                # Non-streaming agents (e.g. VLAgent with streaming=False)
+                # emit AgentOutput without preceding AgentStream deltas.
+                # Only write the response here when no stream tokens were
+                # already received, to avoid duplicating streamed output.
+                if not event.tool_calls and not streamed_tokens:
+                    await maybe_remove_step(current_step)
+                    current_step = None
+                    content = (event.response.content or "").strip()
+                    if content:
+                        await output.stream_token(content)
+                streamed_tokens = False
 
         # Finalize and send the message
         await output.send()

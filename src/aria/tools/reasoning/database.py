@@ -9,6 +9,8 @@ from loguru import logger
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from aria.config.folders import Data
+
 from .models import (
     Base,
     ReasoningReflectionModel,
@@ -17,6 +19,8 @@ from .models import (
     ReasoningStepModel,
     ReasoningToolEventModel,
 )
+
+_DEFAULT_DB_PATH = str(Data.path / "reasoning.db")
 
 
 class ReasoningDatabase:
@@ -29,14 +33,14 @@ class ReasoningDatabase:
     _engine = None
     _session_factory = None
 
-    def __new__(cls, db_path: str = "./.files/reasoning.db"):
+    def __new__(cls, db_path: str = _DEFAULT_DB_PATH):
         """Singleton pattern for database instance."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, db_path: str = "./.files/reasoning.db"):
+    def __init__(self, db_path: str = _DEFAULT_DB_PATH):
         """Initialize database connection."""
         # Ensure the attribute exists before accessing it (pylint-friendly).
         self._initialized = getattr(self, "_initialized", False)

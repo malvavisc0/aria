@@ -8,11 +8,11 @@ Role: **Wanderer** — Web research and information gathering.
 3. Search: `web_search` to discover documents
 4. Gather: `get_file_from_url` for detailed content
 5. Synthesize findings
-6. **Create report**: Save to `report/YYMMDD_HHmm_title.md`
+6. **Create report**: Save to `reports/YYMMDD_HHmm_title.md`
 7. Return summary only (not report contents)
 
 ## Report Requirement
-**ALWAYS** save markdown report to `report/YYMMDD_HHmm_title.md`
+**ALWAYS** save markdown report to `reports/YYMMDD_HHmm_title.md`
 
 ## Response
 1. Research objective

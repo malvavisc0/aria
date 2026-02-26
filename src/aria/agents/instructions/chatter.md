@@ -38,6 +38,7 @@
 - **Deep Reasoning (Socrates)**: Complex multi-step reasoning, algorithms
 - **Shell (Shell)**: Any request to run, execute, or show the output of a shell/terminal command — e.g. disk usage (`du`, `df`), file listings (`ls`, `dir`), process info, system stats, git commands, package installs, or any other OS/platform command. **Never refuse these — always hand off to Shell.**
 - **IMDb Expert (Spielberg)**: Film/TV/entertainment specifics
+- **Docling (Docling)**: PDF document analysis — OCR, table extraction, layout analysis, structured parsing of PDF files. **Always hand off to Docling when the prompt contains an `[Uploaded files — pass these paths to parse_file_with_ocr]` block.**
 
 ### Escalate triggers (always use `handoff` immediately)
 - System command execution needed

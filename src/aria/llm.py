@@ -12,7 +12,7 @@ from llama_index.core.agent.workflow import (
 from llama_index.core.memory import InsertMethod, Memory, VectorMemoryBlock
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.embeddings.openai_like import OpenAILikeEmbedding
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from typing_extensions import TypedDict
 
@@ -24,6 +24,7 @@ from aria.agents import (
     get_python_developer_agent,
     get_reasoning_agent,
     get_shell_executor_agent,
+    get_vl_agent,
     get_web_researcher_agent,
 )
 
@@ -234,37 +235,69 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     return "\n".join(lines)
 
 
-def get_chat_llm(api_base: str) -> OpenAI:
+def get_chat_llm(api_base: str) -> OpenAILike:
     """Create the chat LLM client used by the application.
 
     Args:
         api_base: Base URL for the OpenAI-compatible API.
 
     Returns:
-        An [`OpenAI`](src/aria2/utils.py:79) LLM instance configured to talk
-        to ``api_base``.
+        An :class:`OpenAILike` LLM instance configured to talk to
+        ``api_base``.
 
     Notes:
         The application supplies a dummy API key here because some
         OpenAI-compatible servers require the header to be present even when
         authentication is handled elsewhere (e.g., via a reverse proxy).
     """
-    llm = OpenAI(api_base=api_base, api_key="sk-dummy")
+    llm = OpenAILike(
+        api_base=api_base,
+        api_key="sk-dummy",
+        is_chat_model=True,
+        is_function_calling_model=True,
+    )
     return llm
 
 
-def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
+def get_vl_llm(api_base: str) -> OpenAILike:
+    """Create the vision-language LLM client for document intelligence.
+
+    Args:
+        api_base: Base URL for the VL OpenAI-compatible API (default port
+            9091, configured via ``VL_OPENAI_API``).
+
+    Returns:
+        An :class:`OpenAILike` LLM instance pointing at the VL server.
+
+    Notes:
+        Uses the same dummy-key pattern as :func:`get_chat_llm`.
+        ``is_function_calling_model`` is set to ``True`` so that
+        :class:`FunctionAgent` accepts the LLM without raising
+        ``ValueError: LLM must be a FunctionCallingLLM``.
+    """
+    llm = OpenAILike(
+        api_base=api_base,
+        api_key="sk-dummy",
+        is_chat_model=True,
+        is_function_calling_model=True,
+    )
+    return llm
+
+
+def get_agent_workflow(llm: OpenAILike, vl_llm: OpenAILike) -> AgentWorkflow:
     """Build the multi-agent workflow used by the UI.
 
     This wires together the project's agent factory functions and returns a
-    single [`AgentWorkflow`](src/aria2/utils.py:6) with Chatter as the root
-    agent. Chatter routes requests to specialist agents through handoffs.
+    single :class:`AgentWorkflow` with Chatter as the root agent. Chatter
+    routes requests to specialist agents through handoffs.
 
     Args:
-        llm: LLM instance shared across all agents.
+        llm: LLM instance shared across all chat/reasoning agents.
+        vl_llm: Vision-language LLM instance used exclusively by the
+            :class:`VLAgent` (Docling) for document intelligence tasks.
 
     Returns:
-        A fully constructed [`AgentWorkflow`](src/aria2/utils.py:6).
+        A fully constructed :class:`AgentWorkflow`.
     """
 
     # Specialist agents
@@ -303,6 +336,12 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
         extras=get_instructions_extras(agent_name="wanderer"),
         can_handoff_to=["Wizard", "Developer", "Spielberg"],
     )
+    vl_expert = get_vl_agent(
+        llm=llm,
+        vl_llm=vl_llm,
+        extras=get_instructions_extras(agent_name="docling"),
+        can_handoff_to=["Notepad", "Developer"],
+    )
 
     # Create Chatter as root agent
     chatter = get_chatter_agent(
@@ -316,6 +355,7 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
             "Socrates",
             "Shell",
             "Spielberg",
+            "Docling",
         ],
     )
 
@@ -330,6 +370,7 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
             web_researcher,
             shell_executor,
             imdb_expert,
+            vl_expert,
         ],
         root_agent=chatter.name,
         # Cast to plain dict: AgentWorkflow expects Dict, WorkflowState is

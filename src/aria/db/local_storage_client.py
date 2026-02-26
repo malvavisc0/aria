@@ -21,17 +21,18 @@ class LocalStorageClient(BaseStorageClient):
     Useful for development, testing, and self-hosted deployments.
 
     Args:
-        storage_path: Path to directory for storing files (default: ".files/storage")
+        storage_path: Path to directory for storing files
+            (e.g. ``data/storage``)
         base_url: Base URL for serving files (default: "file://")
 
     Example:
-        >>> client = LocalStorageClient(storage_path=".files/storage")
+        >>> client = LocalStorageClient(storage_path="data/storage")
         >>> await client.upload_file("image.png", b"...", mime="image/png")
-        {'object_key': 'image.png', 'url': 'file://.../.files/storage/image.png'}
+        {'object_key': 'image.png', 'url': 'file://.../data/storage/image.png'}
 
     Can be used as an async context manager:
 
-        async with LocalStorageClient(".files/storage") as client:
+        async with LocalStorageClient("data/storage") as client:
             await client.upload_file("test.txt", b"data")
     """
 

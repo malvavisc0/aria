@@ -20,6 +20,7 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.5.5",
     "loguru>=0.7.3",
     "markitdown>=0.1.4",
+    "pypdfium2>=4.30.0",
     "python-dotenv>=1.2.1",
     "sqlalchemy>=2.0.46",
     "typer>=0.24.0",

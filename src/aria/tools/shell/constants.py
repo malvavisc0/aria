@@ -8,6 +8,8 @@ import os
 import platform
 from pathlib import Path
 
+from aria.config.folders import Data
+
 # ============================================================================
 # Platform Detection
 # ============================================================================
@@ -158,5 +160,5 @@ BLOCKED_UNIX = [
 # Base Directory for Operations
 # ============================================================================
 
-BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", ".files")).resolve()
-BASE_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Data.path))).resolve()
+BASE_DIR.mkdir(parents=True, exist_ok=True)

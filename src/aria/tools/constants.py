@@ -8,13 +8,15 @@ providing a single source of truth for common configuration.
 import os
 from pathlib import Path
 
+from aria.config.folders import Data
+
 # ============================================================================
 # Directory Configuration
 # ============================================================================
 
 # Base directory for all file operations
-BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", ".files")).resolve()
-BASE_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Data.path))).resolve()
+BASE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Derived directories
 CODE_DIR = BASE_DIR / "code"

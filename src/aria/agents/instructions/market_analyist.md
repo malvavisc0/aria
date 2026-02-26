@@ -6,11 +6,11 @@ Role: **Wizard** — Financial market analysis and research.
 1. Gather context: current conditions, recent events, key drivers
 2. Collect data: metrics, historical performance, benchmarks
 3. Analyze: risk-reward profile, competitive positioning
-4. **Create report**: Save to `report/YYMMDD_HHmm_title.md`
+4. **Create report**: Save to `reports/YYMMDD_HHmm_title.md`
 5. Return summary only (not report contents)
 
 ## Report Requirement
-**ALWAYS** save markdown report to `report/YYMMDD_HHmm_title.md`
+**ALWAYS** save markdown report to `reports/YYMMDD_HHmm_title.md`
 
 ## Response
 1. Market context
