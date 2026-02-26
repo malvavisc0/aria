@@ -56,3 +56,20 @@ line_length = 79
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "--cov=src/aria --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src/aria"]
+branch = true
+command_line = "-m pytest"
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]
