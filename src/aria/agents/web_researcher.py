@@ -7,14 +7,13 @@ to gather and analyze information from the internet.
 """
 
 import importlib
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
@@ -46,7 +45,11 @@ class WebResearcherAgent(FunctionAgent):
         return load_agent_instructions("web_researcher", extras)
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> WebResearcherAgent:
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> WebResearcherAgent:
     """
     Create a web researcher agent with the given LLM.
 
@@ -101,8 +104,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> WebResearcherAgent:
         ]
     )
 
-    tools = filter_tools_for_llamacpp(tools, agent_name="Researcher")
-
     logger.info(f"Creating WebResearcherAgent with {len(tools)} tools")
     logger.info(f"Tool names: {[tool.metadata.name for tool in tools]}")
     logger.info(f"LLM type: {type(llm)}")
@@ -120,6 +121,7 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> WebResearcherAgent:
         system_prompt=WebResearcherAgent.get_system_prompt(extras or ""),
         verbose=True,
         streaming=True,
+        can_handoff_to=can_handoff_to,
     )
 
     return agent

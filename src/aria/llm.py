@@ -205,15 +205,15 @@ def get_default_memory(
     Returns:
         A configured :class:`Memory` instance.
     """
+    collection = vector_db.get_or_create_collection(thread_id)
+
     memory = Memory.from_defaults(
         session_id=thread_id,
         # Insert retrieved memory as system prompts
         insert_method=InsertMethod.SYSTEM,
         memory_blocks=[
             VectorMemoryBlock(
-                vector_store=ChromaVectorStore(
-                    chroma_collection=vector_db.get_or_create_collection(thread_id)
-                ),
+                vector_store=ChromaVectorStore(chroma_collection=collection),
                 embed_model=embed_model,
                 # Retrieve top 3 similar messages
                 similarity_top_k=3,

@@ -5,13 +5,12 @@ safely across Windows, Linux, and macOS platforms with proper security
 constraints, timeout handling, and output capture.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
-from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
 from aria.tools.shell import (
     execute_command,
@@ -49,7 +48,11 @@ class ShellExecutorAgent(FunctionAgent):
         return load_agent_instructions("shell_executor", extras)
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> ShellExecutorAgent:
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> ShellExecutorAgent:
     """Create a shell executor agent with the given LLM.
 
     Args:
@@ -73,8 +76,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> ShellExecutorAgent:
         FunctionTool.from_defaults(fn=execute_command_batch),
     ]
 
-    tools = filter_tools_for_llamacpp(tools, agent_name="Shell")
-
     agent = ShellExecutorAgent(
         name="Shell",
         description=(
@@ -87,6 +88,7 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> ShellExecutorAgent:
         system_prompt=ShellExecutorAgent.get_system_prompt(extras or ""),
         streaming=True,
         verbose=True,
+        can_handoff_to=can_handoff_to,
     )
 
     return agent

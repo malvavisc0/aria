@@ -6,14 +6,13 @@ assistant that responds to user queries without using external tools, making it
 suitable for casual conversation, support, and information sharing.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
 from aria.tools.files.functions import read_full_file
 from aria.tools.search import (
@@ -50,7 +49,11 @@ class ChatterAgent(FunctionAgent):
         return load_agent_instructions("chatter", extras)
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> ChatterAgent:
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> ChatterAgent:
     """Factory function to create and return a ChatterAgent instance.
 
     This function initializes a ChatterAgent with the provided LLM and optional
@@ -71,7 +74,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> ChatterAgent:
         FunctionTool.from_defaults(fn=get_file_from_url),
         FunctionTool.from_defaults(fn=read_full_file),
     ]
-    tools = filter_tools_for_llamacpp(tools, agent_name="Aria")
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
     logger.debug(f"LLM type: {type(llm)}")
@@ -85,6 +87,7 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> ChatterAgent:
         system_prompt=ChatterAgent.get_system_prompt(extras or ""),
         streaming=True,
         verbose=True,
+        can_handoff_to=can_handoff_to,
     )
 
     return agent

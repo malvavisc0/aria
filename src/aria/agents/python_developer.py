@@ -6,14 +6,13 @@ a secure sandboxed environment.
 """
 
 import importlib
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
@@ -45,7 +44,11 @@ class PythonDeveloperAgent(FunctionAgent):
         return load_agent_instructions("python_developer", extras)
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> PythonDeveloperAgent:
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> PythonDeveloperAgent:
     """
     Create a python developer agent with the given LLM.
 
@@ -113,8 +116,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> PythonDeveloperAgent:
         ]
     )
 
-    tools = filter_tools_for_llamacpp(tools, agent_name="Developer")
-
     logger.debug(f"Creating PythonDeveloperAgent with {len(tools)} tools")
     logger.debug(f"Tool names: {[tool.metadata.name for tool in tools]}")
     logger.debug(f"LLM type: {type(llm)}")
@@ -130,6 +131,7 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> PythonDeveloperAgent:
         system_prompt=PythonDeveloperAgent.get_system_prompt(extras or ""),
         streaming=True,
         verbose=True,
+        can_handoff_to=can_handoff_to,
     )
 
     return agent

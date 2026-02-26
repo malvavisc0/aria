@@ -21,7 +21,8 @@ end_reasoning("done", agent_id)
 | Need | Tool |
 |------|------|
 | Factual support | `web_search`, `get_file_from_url` |
-| Local files | `file_exists`, `read_file_chunk`, `read_full_file` |
+| Local files | `file_exists`, `read_file_chunk`, `read_full_file`, `write_full_file` |
+| Weather data | `get_current_weather` |
 | Numeric checks | `execute_python_code` |
 | Reasoning docs | `add_reasoning_step`, `add_reflection`, `use_scratchpad` |
 

@@ -7,13 +7,12 @@ file operations within a secure sandboxed environment.
 """
 
 import importlib
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
-from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
@@ -45,7 +44,11 @@ class MarketAnalystAgent(FunctionAgent):
         return load_agent_instructions("market_analyist", extras)
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> MarketAnalystAgent:
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> MarketAnalystAgent:
     """
     Create a market analyst agent with the given LLM.
 
@@ -110,8 +113,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> MarketAnalystAgent:
         ]
     )
 
-    tools = filter_tools_for_llamacpp(tools, agent_name="Wizard")
-
     agent = MarketAnalystAgent(
         name="Wizard",
         description=(
@@ -124,6 +125,7 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> MarketAnalystAgent:
         system_prompt=MarketAnalystAgent.get_system_prompt(extras or ""),
         streaming=True,
         verbose=True,
+        can_handoff_to=can_handoff_to,
     )
 
     return agent

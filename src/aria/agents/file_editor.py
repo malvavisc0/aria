@@ -13,13 +13,12 @@ The agent follows strict security practices including:
 """
 
 import importlib
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
-from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
 
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -45,7 +44,11 @@ class FileEditorAgent(FunctionAgent):
         return load_agent_instructions("file_editor", extras)
 
 
-def get_agent(llm: LLM, extras: Optional[str] = None) -> FileEditorAgent:
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> FileEditorAgent:
     """
     Create a file editor agent with the given LLM.
 
@@ -73,8 +76,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> FileEditorAgent:
         for name in functions.__all__
     ]
 
-    tools = filter_tools_for_llamacpp(tools, agent_name="Notepad")
-
     agent = FileEditorAgent(
         name="Notepad",
         description=(
@@ -86,6 +87,7 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> FileEditorAgent:
         system_prompt=FileEditorAgent.get_system_prompt(extras or ""),
         streaming=True,
         verbose=True,
+        can_handoff_to=can_handoff_to,
     )
 
     return agent
