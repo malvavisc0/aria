@@ -202,9 +202,7 @@ def get_default_memory(
         memory_blocks=[
             VectorMemoryBlock(
                 vector_store=ChromaVectorStore(
-                    chroma_collection=vector_db.get_or_create_collection(
-                        thread_id
-                    )
+                    chroma_collection=vector_db.get_or_create_collection(thread_id)
                 ),
                 embed_model=embed_model,
                 # Retrieve top 3 similar messages
