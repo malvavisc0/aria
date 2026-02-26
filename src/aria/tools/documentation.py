@@ -78,13 +78,14 @@ def _available_tool_names() -> list[str]:
     """Return the list of tool names exported for agents."""
 
     # Import locally to avoid circular imports during package init.
-    from aria.tools import development, files, reasoning, search
+    from aria.tools import development, files, reasoning, search, shell
 
     names: set[str] = set()
     names.update(getattr(files, "__all__", []))
     names.update(getattr(search, "__all__", []))
     names.update(getattr(development, "__all__", []))
     names.update(getattr(reasoning, "__all__", []))
+    names.update(getattr(shell, "__all__", []))
     names.add("tool_help")
     return sorted(names)
 

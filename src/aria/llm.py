@@ -12,9 +12,11 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from aria.agents import (
     get_chatter_agent,
     get_file_editor_agent,
+    get_imdb_exper_agent,
     get_market_analyst_agent,
     get_python_developer_agent,
     get_reasoning_agent,
+    get_shell_executor_agent,
     get_web_researcher_agent,
 )
 
@@ -136,8 +138,14 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
     Returns:
         A fully constructed [`AgentWorkflow`](src/aria2/utils.py:6).
     """
-    # Create specialist agents
+
+    deep_reasoning = get_reasoning_agent(
+        llm=llm, extras=get_instructions_extras(agent_name="socrates")
+    )
     file_editor = get_file_editor_agent(
+        llm=llm, extras=get_instructions_extras(agent_name="notepad")
+    )
+    imdb_expert = get_imdb_exper_agent(
         llm=llm, extras=get_instructions_extras(agent_name="notepad")
     )
     market_analyst = get_market_analyst_agent(
@@ -146,8 +154,8 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
     python_developer = get_python_developer_agent(
         llm=llm, extras=get_instructions_extras(agent_name="guido")
     )
-    deep_reasoning = get_reasoning_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="socrates")
+    shell_executor = get_shell_executor_agent(
+        llm=llm, extras=get_instructions_extras(agent_name="shell")
     )
     web_researcher = get_web_researcher_agent(
         llm=llm, extras=get_instructions_extras(agent_name="wanderer")
@@ -167,6 +175,8 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
             python_developer,
             deep_reasoning,
             web_researcher,
+            shell_executor,
+            imdb_expert,
         ],
         root_agent=chatter.name,
     )
@@ -202,7 +212,9 @@ def get_default_memory(
         memory_blocks=[
             VectorMemoryBlock(
                 vector_store=ChromaVectorStore(
-                    chroma_collection=vector_db.get_or_create_collection(thread_id)
+                    chroma_collection=vector_db.get_or_create_collection(
+                        thread_id
+                    )
                 ),
                 embed_model=embed_model,
                 # Retrieve top 3 similar messages
