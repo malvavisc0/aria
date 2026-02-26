@@ -204,6 +204,7 @@ dependencies = [
     { name = "huggingface-hub" },
     { name = "imdbinfo" },
     { name = "llama-index" },
+    { name = "llama-index-embeddings-openai-like" },
     { name = "llama-index-llms-openrouter" },
     { name = "llama-index-vector-stores-chroma" },
     { name = "loguru" },
@@ -240,6 +241,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=1.4.1" },
     { name = "imdbinfo", specifier = ">=0.7.0" },
     { name = "llama-index", specifier = ">=0.14.14" },
+    { name = "llama-index-embeddings-openai-like", specifier = ">=0.2.2" },
     { name = "llama-index-llms-openrouter", specifier = ">=0.4.4" },
     { name = "llama-index-vector-stores-chroma", specifier = ">=0.5.5" },
     { name = "loguru", specifier = ">=0.7.3" },
@@ -1920,6 +1922,18 @@ wheels = [
 ]
 
 [[package]]
+name = "llama-index-embeddings-openai-like"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "llama-index-embeddings-openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/ad/8ce9ca7711fc449b81fe90e9fdefb430ef624819c72b72df923f93ef06e9/llama_index_embeddings_openai_like-0.2.2.tar.gz", hash = "sha256:9b8b0dca94ee253fe809d0bdb878c7654e33507d3e3ca6764a2ac8f2338227ef", size = 3856, upload-time = "2025-09-08T20:17:41.981Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/bc/bcca93d4218c2d4fbb263648f95a9a9f31f9806d941b67e2650dc6f89a6f/llama_index_embeddings_openai_like-0.2.2-py3-none-any.whl", hash = "sha256:3a5eddf6de0af9565b479cb596dfa094e607d51dbc0b1aaccbc37733c2e9b736", size = 3634, upload-time = "2025-09-08T20:17:40.771Z" },
+]
+
+[[package]]
 name = "llama-index-indices-managed-llama-cloud"
 version = "0.9.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2152,7 +2166,7 @@ name = "macholib"
 version = "1.16.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "altgraph" },
+    { name = "altgraph", marker = "sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/10/2f/97589876ea967487978071c9042518d28b958d87b17dceb7cdc1d881f963/macholib-1.16.4.tar.gz", hash = "sha256:f408c93ab2e995cd2c46e34fe328b130404be143469e41bc366c807448979362", size = 59427, upload-time = "2025-11-22T08:28:38.373Z" }
 wheels = [

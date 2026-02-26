@@ -73,7 +73,7 @@ class LlamaCppServerManager:
 
     PID_FILE = DataConfig.path / "llama_servers.json"
     RUN_MODEL_SCRIPT = DataConfig.path / "bin" / "run-model"
-    EMBEDDINGS_PARALLEL = 4
+    EMBEDDINGS_PARALLEL = 1
     HEALTH_POLL_INTERVAL = 0.5
     HEALTH_TIMEOUT = 120  # seconds
 

@@ -6,6 +6,7 @@ from chromadb.api import ClientAPI as ChromaClientAPI
 from llama_index.core.agent.workflow import AgentWorkflow
 from llama_index.core.memory import InsertMethod, Memory, VectorMemoryBlock
 from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.embeddings.openai_like import OpenAILikeEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
@@ -229,5 +230,8 @@ def get_default_memory(
     return memory
 
 
-def get_embeddings_model(api_base: str) -> OpenAIEmbedding:
-    return OpenAIEmbedding(api_base=api_base, api_key="sk-dummy")
+def get_embeddings_model(api_base: str, model_name: str) -> OpenAILikeEmbedding:
+    return OpenAILikeEmbedding(
+        api_base=api_base,
+        model_name=model_name,
+    )

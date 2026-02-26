@@ -397,7 +397,10 @@ async def on_app_startup() -> None:
         # Initialize LLM and embeddings
         logger.info("Initializing LLM and embeddings clients...")
         _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
-        _state.embeddings = get_embeddings_model(api_base=EmbeddingsConfig.api_url)
+        _state.embeddings = get_embeddings_model(
+            api_base=EmbeddingsConfig.api_url,
+            model_name=EmbeddingsConfig.model,
+        )
 
         # Initialize vector database
         logger.info("Initializing vector database...")
@@ -665,6 +668,18 @@ async def on_message(message: cl.Message) -> None:
         await output.send()
 
     except Exception as e:
+        error_msg = str(e)
         logger.exception(f"Error processing message: {e}")
-        output.content = "An error occurred. Please try again."
+
+        # Check for context size exceeded error
+        if (
+            "exceed_context_size_error" in error_msg
+            or "exceeds the available context size" in error_msg
+        ):
+            output.content = (
+                "The conversation has grown too large for the embeddings model to process. "
+                "Consider starting a new chat thread to continue."
+            )
+        else:
+            output.content = "An error occurred. Please try again."
         await output.send()
