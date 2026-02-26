@@ -7,7 +7,6 @@ and people, and exploring TV series episodes.
 """
 
 import importlib
-from pathlib import Path
 from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
@@ -15,6 +14,7 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
+from aria.agents.utils import load_agent_instructions
 from aria.tools.documentation import tool_help
 
 IMDB_TOOLS = "aria.tools.imdb"
@@ -41,19 +41,7 @@ class IMDbExpertAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        instructions_dir = Path(__file__).parent / "instructions"
-        core_path = instructions_dir / "core_rules.md"
-        instructions_path = instructions_dir / "imdb_expert.md"
-
-        core = ""
-        with open(core_path, mode="r", encoding="utf-8") as file:
-            core = file.read()
-
-        instructions = ""
-        with open(instructions_path, mode="r", encoding="utf-8") as file:
-            instructions = file.read()
-
-        return f"{core}\n\n{instructions}\n\n# Additional Notes\n{extras}"
+        return load_agent_instructions("imdb_expert", extras)
 
 
 def get_agent(

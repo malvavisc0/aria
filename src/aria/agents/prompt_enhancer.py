@@ -7,11 +7,12 @@ quality of user prompts.
 """
 
 from datetime import datetime
-from pathlib import Path
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from pydantic import BaseModel, Field
+
+from aria.agents.utils import load_agent_instructions
 
 
 class PromptEnhancementResult(BaseModel):
@@ -50,15 +51,7 @@ class PromptEnhancerAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        instructions_path = (
-            Path(__file__).parent / "instructions" / "prompt_enhancer.md"
-        )
-
-        instructions = ""
-        with open(instructions_path, mode="r", encoding="utf-8") as file:
-            instructions = file.read()
-
-        return f"{instructions}\n\n## Extras\n{extras}"
+        return load_agent_instructions("prompt_enhancer", extras)
 
 
 def get_agent(

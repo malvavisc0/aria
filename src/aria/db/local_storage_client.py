@@ -97,7 +97,7 @@ class LocalStorageClient(BaseStorageClient):
         data: Union[bytes, str],
         mime: str = "application/octet-stream",
         overwrite: bool = True,
-        content_disposition: str | None = None,  # TODO: Implement for HTTP serving
+        content_disposition: str | None = None,
     ) -> Dict[str, Any]:
         """Upload a file to local storage.
 
@@ -106,7 +106,7 @@ class LocalStorageClient(BaseStorageClient):
             data: File content as bytes or string
             mime: MIME type of the file
             overwrite: Whether to overwrite existing file
-            content_disposition: Content disposition header (not used for local storage)
+            content_disposition: Ignored (for API compatibility with BaseStorageClient)
 
         Returns:
             Dict with object_key and url

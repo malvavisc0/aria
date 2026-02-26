@@ -6,7 +6,6 @@ assistant that responds to user queries without using external tools, making it
 suitable for casual conversation, support, and information sharing.
 """
 
-from pathlib import Path
 from typing import Optional
 
 from llama_index.core.agent import FunctionAgent
@@ -15,6 +14,7 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
+from aria.agents.utils import load_agent_instructions
 from aria.tools.files.functions import read_full_file
 from aria.tools.search import (
     get_current_weather,
@@ -47,19 +47,7 @@ class ChatterAgent(FunctionAgent):
         Returns:
             The combined system prompt as a string.
         """
-        instructions_dir = Path(__file__).parent / "instructions"
-        core_path = instructions_dir / "core_rules.md"
-        instructions_path = instructions_dir / "chatter.md"
-
-        core = ""
-        with open(core_path, mode="r", encoding="utf-8") as file:
-            core = file.read()
-
-        instructions = ""
-        with open(instructions_path, mode="r", encoding="utf-8") as file:
-            instructions = file.read()
-
-        return f"{core}\n\n{instructions}\n\n# Additional Notes\n{extras}"
+        return load_agent_instructions("chatter", extras)
 
 
 def get_agent(llm: LLM, extras: Optional[str] = None) -> ChatterAgent:
