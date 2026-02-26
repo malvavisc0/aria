@@ -13,7 +13,6 @@ from llama_index.core.tools import FunctionTool
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
-from aria.tools.documentation import tool_help
 from aria.tools.shell import (
     execute_command,
     execute_command_batch,
@@ -73,9 +72,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> ShellExecutorAgent:
         FunctionTool.from_defaults(fn=execute_command_safe),
         FunctionTool.from_defaults(fn=execute_command_batch),
     ]
-
-    # On-demand tool documentation.
-    tools.append(FunctionTool.from_defaults(fn=tool_help))
 
     tools = filter_tools_for_llamacpp(tools, agent_name="Shell")
 

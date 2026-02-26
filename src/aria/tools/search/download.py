@@ -82,6 +82,18 @@ def get_file_from_url(
     """
     Download URL content to disk and optionally convert it
     (markdown/text/binary).
+
+    Args:
+        intent: Why you're downloading (e.g., "Reading article")
+        url: URL to download
+        output: Format - auto/markdown/text/binary (default: auto)
+        custom_headers: Optional HTTP headers
+        max_size: Max bytes (default: 50MB)
+        download_path: Save directory (default: DOWNLOADS_DIR)
+
+    Returns:
+        JSON with file_path, content (if text), mime_type, size_bytes.
+        Supports HTML, PDF, DOCX, images, YouTube transcripts.
     """
     logger.info(
         f"get_file_from_url called with url='{url}', "

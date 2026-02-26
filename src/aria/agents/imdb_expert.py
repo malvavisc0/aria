@@ -15,7 +15,6 @@ from llama_index.core.tools import FunctionTool
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
-from aria.tools.documentation import tool_help
 
 IMDB_TOOLS = "aria.tools.imdb"
 
@@ -84,9 +83,6 @@ def get_agent(
         FunctionTool.from_defaults(fn=getattr(imdb_tools, name))
         for name in tools_selection[IMDB_TOOLS]
     ]
-
-    # On-demand tool documentation.
-    tools.append(FunctionTool.from_defaults(fn=tool_help))
 
     tools = filter_tools_for_llamacpp(tools, agent_name="IMDb Expert")
 

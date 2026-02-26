@@ -163,11 +163,11 @@ def start_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Any previous active session for this agent is automatically replaced.
 
     Args:
-        reason (str): Why you're starting this reasoning session
-        agent_id (str): Agent identifier for multi-agent isolation
+        intent: Why you're starting (e.g., "Analyzing problem X")
+        agent_id: Agent identifier for multi-agent isolation
 
     Returns:
-        str: Confirmation message
+        Dict with status, session_id, message. REQUIRED FIRST for reasoning.
     """
     # Auto-generate unique session ID
     session_id = f"{agent_id}_session_{int(time.time() * 1000)}"
@@ -227,20 +227,18 @@ def add_reasoning_step(
     Add a structured reasoning step to the active session.
 
     Args:
-        reason (str): Why you're adding this step
+        intent: Why you're adding (e.g., "Recording observation")
         content: The reasoning content or thought
         agent_id: Agent identifier for multi-agent isolation
-        cognitive_mode: Type of thinking
-            - "analysis", "synthesis", "evaluation",
-            "planning", "creative", or "reflection"
-        reasoning_type: Logic type
-            - "deductive", "inductive", "abductive",
-            "causal", "probabilistic", or "analogical"
+        cognitive_mode: analysis, synthesis, evaluation, planning,
+            creative, reflection (default: analysis)
+        reasoning_type: deductive, inductive, abductive, causal,
+            probabilistic, analogical (default: deductive)
         evidence: Optional list of evidence supporting this reasoning
-        confidence: Your confidence level (0.0 to 1.0)
+        confidence: Confidence level 0.0-1.0 (default: 0.65)
 
     Returns:
-        Formatted confirmation with step details and any detected biases
+        Dict with step details, timestamp, detected biases
     """
     session_id = _get_active_session_id_safe(agent_id)
     if session_id is None:
@@ -294,13 +292,13 @@ def add_reflection(
     Add a meta-cognitive reflection to the active session.
 
     Args:
-        reason (str): Why you're adding this reflection
+        intent: Why you're reflecting (e.g., "Checking for bias")
         reflection: Your reflection on the reasoning process
         agent_id: Agent identifier for multi-agent isolation
         on_step: Optional step number this reflection refers to
 
     Returns:
-        Confirmation message
+        Dict with reflection details, timestamp
     """
     session_id = _get_active_session_id_safe(agent_id)
     if session_id is None:
@@ -352,14 +350,14 @@ def use_scratchpad(
     Use a scratchpad for temporary working memory in the active session.
 
     Args:
-        reason (str): Why you're using the scratchpad
-        key: The key to operate on (or "all" for clear operation)
+        intent: Why you're using (e.g., "Storing hypothesis")
+        key: The key to operate on (or "all" for clear)
         agent_id: Agent identifier for multi-agent isolation
         value: Value to set (required for "set" operation)
-        operation: Operation type - "get", "set", "list", or "clear"
+        operation: get, set, list, or clear (default: get)
 
     Returns:
-        Result of the operation
+        Dict with operation result, value (for get), keys (for list)
     """
     session_id = _get_active_session_id_safe(agent_id)
     if session_id is None:
@@ -417,11 +415,11 @@ def evaluate_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Evaluate the quality of your reasoning process in the active session.
 
     Args:
-        reason (str): Why you're evaluating your reasoning
-        agent_id (str): Agent identifier for multi-agent isolation
+        intent: Why you're evaluating (e.g., "Quality check before conclusion")
+        agent_id: Agent identifier for multi-agent isolation
 
     Returns:
-        str: Formatted evaluation report with quality score and suggestions
+        Dict with quality_score, suggestions, step_count, reflection_count
     """
     session_id = _get_active_session_id_safe(agent_id)
     if session_id is None:
@@ -463,11 +461,11 @@ def get_reasoning_summary(intent: str, agent_id: str) -> Dict[str, Any]:
     Get a summary of your active reasoning session.
 
     Args:
-        reason (str): Why you're getting the summary
-        agent_id (str): Agent identifier for multi-agent isolation
+        intent: Why you're summarizing (e.g., "Reviewing progress")
+        agent_id: Agent identifier for multi-agent isolation
 
     Returns:
-        str: Brief overview of steps, reflections, and scratchpad items
+        Dict with steps, reflections, scratchpad_keys, total_steps
     """
     session_id = _get_active_session_id_safe(agent_id)
     if session_id is None:
@@ -509,11 +507,11 @@ def reset_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Reset the active reasoning session and start fresh.
 
     Args:
-        reason (str): Why you're resetting the session
-        agent_id (str): Agent identifier for multi-agent isolation
+        intent: Why you're resetting (e.g., "Starting new approach")
+        agent_id: Agent identifier for multi-agent isolation
 
     Returns:
-        str: Confirmation message
+        Dict with confirmation. Clears steps/scratchpad, keeps session.
     """
     session_id = _get_active_session_id_safe(agent_id)
     if session_id is None:
@@ -557,11 +555,11 @@ def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Cleans up the session and removes it from active sessions.
 
     Args:
-        reason (str): Why you're ending this reasoning session
-        agent_id (str): Agent identifier for multi-agent isolation
+        intent: Why you're ending (e.g., "Analysis complete")
+        agent_id: Agent identifier for multi-agent isolation
 
     Returns:
-        str: Confirmation message
+        Dict with confirmation. Call when reasoning is complete.
     """
     session_id = _active_sessions.get(agent_id)
     if session_id is None:

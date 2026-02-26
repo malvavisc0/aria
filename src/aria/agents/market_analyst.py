@@ -15,7 +15,6 @@ from llama_index.core.tools import FunctionTool
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
-from aria.tools.documentation import tool_help
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -110,9 +109,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> MarketAnalystAgent:
             for name in tools_selection[WEB_SEARCH_TOOLS]
         ]
     )
-
-    # On-demand tool documentation.
-    tools.append(FunctionTool.from_defaults(fn=tool_help))
 
     tools = filter_tools_for_llamacpp(tools, agent_name="Wizard")
 

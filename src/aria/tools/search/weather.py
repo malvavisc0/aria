@@ -85,11 +85,12 @@ def get_current_weather(intent: str, location: str) -> str:
     """Get current weather for a city/location string using Open-Meteo.
 
     Args:
-        reason: Why this tool call is needed now.
-        location: City name (e.g. "Berlin") or free-form place name.
+        intent: Why you're checking (e.g., "Planning outdoor activity")
+        location: City name (e.g., "Berlin") or free-form place name
 
     Returns:
-        JSON string with minimal current conditions.
+        JSON with temperature, wind_speed, weather_code, weather_text.
+        No API key required.
     """
 
     location_value = (location or "").strip()

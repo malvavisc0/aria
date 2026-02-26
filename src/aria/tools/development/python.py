@@ -8,10 +8,7 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 
-from aria.tools.constants import (
-    DEFAULT_TIMEOUT,
-    MAX_TIMEOUT,
-)
+from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
 from aria.tools.development._internals import (
     _build_response,
     _capture_execution_output,
@@ -20,9 +17,7 @@ from aria.tools.development._internals import (
     _read_file_safely,
     _validate_timeout,
 )
-from aria.tools.development.constants import (
-    RESTRICTED_BUILTINS,
-)
+from aria.tools.development.constants import RESTRICTED_BUILTINS
 from aria.tools.development.decorators import (
     with_input_validation,
     with_runner_error_handling,
@@ -34,6 +29,13 @@ from aria.tools.development.decorators import (
 def check_python_syntax(intent: str, code: str) -> str:
     """
     Check Python syntax of a code string.
+
+    Args:
+        intent: Why you're checking (e.g., "Validating before execution")
+        code: Python code string to validate
+
+    Returns:
+        JSON with valid (bool), error_type, message, line_number, column
     """
     frame = inspect.currentframe()
     if frame:
@@ -75,6 +77,13 @@ def check_python_syntax(intent: str, code: str) -> str:
 def check_python_file_syntax(intent: str, file_path: str) -> str:
     """
     Check Python syntax of a file.
+
+    Args:
+        intent: Why you're checking (e.g., "Validating saved file")
+        file_path: Path to Python file relative to BASE_DIR
+
+    Returns:
+        JSON with valid (bool), error_type, message, line_number, column
     """
 
     frame = inspect.currentframe()
@@ -123,6 +132,16 @@ def execute_python_code(
 ) -> str:
     """
     Execute a Python code string with optional timeout/output capture.
+
+    Args:
+        intent: Why you're executing (e.g., "Testing algorithm")
+        code: Python code to execute
+        timeout: Max seconds (default: 30, max: 300)
+        capture_output: Capture stdout/stderr (default: True)
+        argv: CLI arguments for sys.argv
+
+    Returns:
+        JSON with success, stdout, stderr, error_type, traceback
     """
     filename = "<block>"
     logger.info(f"Executing Python code from: {filename} (timeout={timeout}s)")
@@ -275,6 +294,17 @@ def execute_python_file(
 ) -> str:
     """
     Execute a Python file with optional timeout/output capture.
+
+    Args:
+        intent: Why you're executing (e.g., "Running test suite")
+        file_path: Path to Python file relative to BASE_DIR
+        timeout: Max seconds (default: 30, max: 300)
+        capture_output: Capture stdout/stderr (default: True)
+        argv: CLI arguments for sys.argv
+
+    Returns:
+        JSON with success, stdout, stderr, error_type, traceback.
+        Sets __file__ and __dir__ in execution context.
     """
     import os
 
@@ -432,6 +462,12 @@ def execute_python_file(
 def get_restricted_builtins(intent: str) -> List[str]:
     """
     Return restricted builtins (security policy).
+
+    Args:
+        intent: Why you're checking (e.g., "Understanding security limits")
+
+    Returns:
+        List of blocked builtin names (e.g., eval, exec, open)
     """
     # Log reason
     frame = inspect.currentframe()
@@ -445,6 +481,12 @@ def get_restricted_builtins(intent: str) -> List[str]:
 def get_timeout_limits(intent: str) -> Dict[str, int]:
     """
     Return timeout configuration limits.
+
+    Args:
+        intent: Why you're checking (e.g., "Planning long-running task")
+
+    Returns:
+        Dict with default (30) and maximum (300) timeout in seconds
     """
     # Log reason
     frame = inspect.currentframe()

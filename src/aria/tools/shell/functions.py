@@ -220,19 +220,15 @@ def execute_command(
     """Execute a shell command and return the result.
 
     Args:
-        intent: Purpose/reason for executing the command
+        intent: Why you're executing (e.g., "Checking git status")
         command: The shell command to execute
         timeout: Timeout in seconds (default: 30, max: 300)
         working_dir: Working directory (default: BASE_DIR)
         env: Additional environment variables
 
     Returns:
-        JSON string with:
-        - stdout: Standard output
-        - stderr: Standard error
-        - return_code: Exit code
-        - execution_time: Duration in seconds
-        - timed_out: Whether the command timed out
+        JSON with stdout, stderr, return_code, execution_time, timed_out.
+        Blocked: sudo, chmod, shutdown, rm -rf, etc.
     """
     logger.info(f"Executing shell command: {command}")
     logger.debug(f"Executing command to achieve: {intent}")
@@ -328,14 +324,16 @@ def execute_command_safe(
     runs them with ``shell=False`` to prevent shell injection attacks.
 
     Args:
-        intent: Purpose/reason for executing the command
+        intent: Why you're executing (e.g., "Listing directory")
         command_name: Name of the command from the safe list
+            (ls, cat, git, python, etc.)
         args: List of arguments for the command
         timeout: Timeout in seconds (default: 30, max: 300)
         working_dir: Working directory (default: BASE_DIR)
 
     Returns:
-        JSON string with execution results
+        JSON with stdout, stderr, return_code, execution_time.
+        Preferred over execute_command for security.
     """
     if command_name not in SAFE_COMMANDS_SET:
         raise CommandBlockedError(f"Command '{command_name}' is not in the safe list")
@@ -425,21 +423,18 @@ def execute_command_batch(
     """Execute multiple commands in sequence.
 
     Args:
-        intent: Purpose/reason for executing the commands
+        intent: Why you're batching (e.g., "Git status check")
         commands: List of command dicts, each with:
             - command: The shell command to execute
             - timeout: Optional timeout in seconds
             - working_dir: Optional working directory
-            - continue_on_error: Optional, continue if this command fails
+            - continue_on_error: Optional, continue if this fails
         stop_on_error: Stop execution if a command fails (default: True)
 
     Returns:
-        JSON string with:
-        - results: List of execution results for each command
-        - total_execution_time: Sum of all execution times
-        - success_count: Number of successful commands
-        - failure_count: Number of failed commands
-        - stopped_early: Whether execution was stopped due to error
+        JSON with results[], total_execution_time, success_count,
+        failure_count, stopped_early. Reduces token usage vs multiple
+        individual calls.
     """
     logger.info(f"Executing {len(commands)} commands in batch")
 
@@ -516,15 +511,11 @@ def get_platform_info(intent: str) -> str:
     """Get information about the current platform.
 
     Args:
-        intent: Purpose/reason for getting platform info
+        intent: Why you're checking (e.g., "Determining shell syntax")
 
     Returns:
-        JSON string with:
-        - os: Operating system (windows, linux, darwin)
-        - shell: Default shell (powershell, cmd, bash, zsh)
-        - home: User home directory
-        - path_separator: Path separator for the OS
-        - temp_dir: Temporary directory path
+        JSON with os (windows/linux/darwin), shell (bash/powershell/cmd),
+        home, path_separator, temp_dir.
     """
     logger.info("Getting platform information")
 

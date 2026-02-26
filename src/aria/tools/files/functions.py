@@ -40,6 +40,14 @@ from aria.tools.files.exceptions import FileOperationError
 def append_to_file(intent: str, file_name: str, contents: str) -> str:
     """
     Append text to an existing file.
+
+    Args:
+        intent: Why you're appending (e.g., "Adding log entry")
+        file_name: Path relative to BASE_DIR
+        contents: Text to append
+
+    Returns:
+        JSON with bytes_appended, new_total_lines, new_file_size
     """
     logger.info(f"Appending to file: {file_name}")
 
@@ -85,6 +93,15 @@ def copy_file(
 ) -> str:
     """
     Copy a file.
+
+    Args:
+        intent: Why you're copying (e.g., "Creating backup")
+        source: Source path relative to BASE_DIR
+        destination: Destination path relative to BASE_DIR
+        overwrite: If True, overwrite existing destination (default: False)
+
+    Returns:
+        JSON with source, destination, bytes_copied, success
     """
     frame = inspect.currentframe()
     if frame:
@@ -134,6 +151,13 @@ def copy_file(
 def create_directory(intent: str, dir_name: str) -> str:
     """
     Create a directory (including parents).
+
+    Args:
+        intent: Why you're creating (e.g., "Setting up project structure")
+        dir_name: Directory path relative to BASE_DIR
+
+    Returns:
+        JSON with dir_name, created, already_existed
     """
     frame = inspect.currentframe()
     if frame:
@@ -167,6 +191,13 @@ def create_directory(intent: str, dir_name: str) -> str:
 def delete_file(intent: str, file_name: str) -> str:
     """
     Delete a file (creates a backup first).
+
+    Args:
+        intent: Why you're deleting (e.g., "Removing obsolete file")
+        file_name: Path relative to BASE_DIR
+
+    Returns:
+        JSON with file_name, deleted, backup_created
     """
     frame = inspect.currentframe()
     if frame:
@@ -243,6 +274,13 @@ def delete_lines_range(intent: str, file_name: str, offset: int, length: int) ->
 def file_exists(intent: str, file_name: str) -> str:
     """
     Check whether a file/directory exists.
+
+    Args:
+        intent: Why you're checking (e.g., "Verifying config exists")
+        file_name: Path relative to BASE_DIR
+
+    Returns:
+        JSON with exists, is_file, is_directory
     """
     frame = inspect.currentframe()
     if frame:
@@ -318,6 +356,13 @@ def get_directory_tree(intent: str, path: str, max_depth: Optional[int] = 3) -> 
 def get_file_info(intent: str, file_name: str) -> str:
     """
     Return file metadata (size/lines/type).
+
+    Args:
+        intent: Why you're checking (e.g., "Determining read strategy")
+        file_name: Path relative to BASE_DIR
+
+    Returns:
+        JSON with total_lines, file_size_bytes, mime_type
     """
     frame = inspect.currentframe()
     if frame:
@@ -361,6 +406,14 @@ def get_file_info(intent: str, file_name: str) -> str:
 def get_file_permissions(intent: str, file_name: str) -> str:
     """
     Return file permissions/ownership info.
+
+    Args:
+        intent: Why you're checking (e.g., "Debugging access issue")
+        file_name: Path relative to BASE_DIR
+
+    Returns:
+        JSON with mode_octal, mode_symbolic, permissions, is_readable,
+        is_writable
     """
     frame = inspect.currentframe()
     if frame:
@@ -438,6 +491,15 @@ def insert_lines_at(
 ) -> str:
     """
     Insert lines at a given offset.
+
+    Args:
+        intent: Why you're inserting (e.g., "Adding new function")
+        file_name: Path relative to BASE_DIR
+        new_lines: List of lines to insert
+        offset: 0-indexed line number to insert at
+
+    Returns:
+        JSON with lines_inserted, offset, old_total_lines, new_total_lines
     """
     frame = inspect.currentframe()
     if frame:
@@ -479,6 +541,15 @@ def list_files(
 ) -> str:
     """
     List files matching a glob pattern.
+
+    Args:
+        intent: Why you're listing (e.g., "Finding all Python files")
+        pattern: Glob pattern (default: "**/*")
+        recursive: Search recursively (default: False)
+        max_results: Maximum results (default: 100)
+
+    Returns:
+        JSON with files, count, truncated
     """
     frame = inspect.currentframe()
     if frame:
@@ -532,6 +603,14 @@ def list_files(
 def move_file(intent: str, source: str, destination: str) -> str:
     """
     Move a file (alias for rename_file).
+
+    Args:
+        intent: Why you're moving (e.g., "Reorganizing project")
+        source: Source path relative to BASE_DIR
+        destination: Destination path relative to BASE_DIR
+
+    Returns:
+        JSON with source, destination, success
     """
     frame = inspect.currentframe()
     if frame:
@@ -551,6 +630,15 @@ def read_file_chunk(
 ) -> str:
     """
     Read a file in chunks (preferred read method).
+
+    Args:
+        intent: Why you're reading (e.g., "Inspecting config file")
+        file_name: Path relative to BASE_DIR
+        chunk_size: Lines to read (default: 100)
+        offset: 0-indexed starting line (default: 0)
+
+    Returns:
+        JSON with lines, offset, total_lines, has_more, next_offset
     """
     frame = inspect.currentframe()
     if frame:
@@ -602,6 +690,14 @@ def read_file_chunk(
 def read_full_file(intent: str, file_name: str, max_lines: Optional[int] = 500) -> str:
     """
     Read an entire small file.
+
+    Args:
+        intent: Why you're reading (e.g., "Loading config")
+        file_name: Path relative to BASE_DIR
+        max_lines: Maximum lines allowed (default: 500)
+
+    Returns:
+        JSON with content, total_lines. Use read_file_chunk for large files.
     """
     frame = inspect.currentframe()
     if frame:
@@ -650,6 +746,14 @@ def read_full_file(intent: str, file_name: str, max_lines: Optional[int] = 500) 
 def rename_file(intent: str, old_name: str, new_name: str) -> str:
     """
     Rename/move a file.
+
+    Args:
+        intent: Why you're renaming (e.g., "Fixing filename typo")
+        old_name: Current path relative to BASE_DIR
+        new_name: New path relative to BASE_DIR
+
+    Returns:
+        JSON with old_name, new_name, success
     """
     frame = inspect.currentframe()
     if frame:
@@ -692,6 +796,16 @@ def replace_lines_range(
 ) -> str:
     """
     Replace a contiguous range of lines in a file.
+
+    Args:
+        intent: Why you're replacing (e.g., "Updating function")
+        file_name: Path relative to BASE_DIR
+        new_lines: Lines to insert
+        offset: 0-indexed starting line
+        length: Number of lines to replace
+
+    Returns:
+        JSON with lines_replaced, new_lines_inserted, backup_created
     """
     frame = inspect.currentframe()
     if frame:
@@ -738,6 +852,15 @@ def search_files_by_name(
 ) -> str:
     """
     Search for files by name using a regex.
+
+    Args:
+        intent: Why you're searching (e.g., "Finding test files")
+        regex_pattern: Regex to match against filenames
+        recursive: Search recursively (default: True)
+        max_results: Maximum results (default: 500)
+
+    Returns:
+        JSON with matches, count, truncated
     """
     frame = inspect.currentframe()
     if frame:
@@ -805,6 +928,18 @@ def search_in_files(
 ) -> str:
     """
     Search file contents using a regex.
+
+    Args:
+        intent: Why you're searching (e.g., "Finding TODOs")
+        regex_pattern: Regex to match in file contents
+        file_pattern: Glob pattern for files (default: "**/*")
+        recursive: Search recursively (default: False)
+        max_files: Max files to search (default: 100)
+        max_matches: Max matches (default: 500)
+        context_lines: Context lines around match (default: 2)
+
+    Returns:
+        JSON with matches (file, line_number, line_content, context)
     """
     frame = inspect.currentframe()
     if frame:
@@ -903,6 +1038,14 @@ def search_in_files(
 def write_full_file(intent: str, file_name: str, contents: str) -> str:
     """
     Create/overwrite a file atomically.
+
+    Args:
+        intent: Why you're writing (e.g., "Creating new module")
+        file_name: Path relative to BASE_DIR
+        contents: Full file content
+
+    Returns:
+        JSON with bytes_written, lines_written, created, backup_created
     """
     frame = inspect.currentframe()
     if frame:

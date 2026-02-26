@@ -24,7 +24,6 @@ from loguru import logger
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
-from aria.tools.documentation import tool_help
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 REASONING_TOOLS = "aria.tools.reasoning"
@@ -120,9 +119,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> DeepReasoningAgent:
             for name in tools_selection[FILESYSTEM_TOOLS]
         ]
     )
-
-    # On-demand tool documentation.
-    tools.append(FunctionTool.from_defaults(fn=tool_help))
 
     tools = filter_tools_for_llamacpp(tools, agent_name="Socrates")
 

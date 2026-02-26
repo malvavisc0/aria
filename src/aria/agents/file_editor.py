@@ -21,7 +21,6 @@ from llama_index.core.tools import FunctionTool
 
 from aria.agents.tool_schema import filter_tools_for_llamacpp
 from aria.agents.utils import load_agent_instructions
-from aria.tools.documentation import tool_help
 
 FILESYSTEM_TOOLS = "aria.tools.files"
 
@@ -73,9 +72,6 @@ def get_agent(llm: LLM, extras: Optional[str] = None) -> FileEditorAgent:
         FunctionTool.from_defaults(fn=getattr(functions, name))
         for name in functions.__all__
     ]
-
-    # On-demand tool documentation.
-    tools.append(FunctionTool.from_defaults(fn=tool_help))
 
     tools = filter_tools_for_llamacpp(tools, agent_name="Notepad")
 

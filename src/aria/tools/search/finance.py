@@ -47,6 +47,14 @@ MAX_ARTICLES = 50
 def fetch_current_stock_price(intent: str, ticker: str) -> str:
     """
     Fetch current price for a ticker.
+
+    Args:
+        intent: Why you're fetching (e.g., "Checking portfolio value")
+        ticker: Stock symbol (e.g., AAPL, GOOGL, BTC-USD)
+
+    Returns:
+        JSON with current_price, currency, market_state, day_change,
+        day_change_percent, previous_close.
     """
     logger.info(f"fetch_current_stock_price called with ticker='{ticker}'")
     raw_ticker = ticker
@@ -150,6 +158,14 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
 def fetch_company_information(intent: str, ticker: str) -> str:
     """
     Fetch company fundamentals/metadata for a ticker.
+
+    Args:
+        intent: Why you're fetching (e.g., "Researching investment")
+        ticker: Stock symbol (e.g., AAPL, GOOGL)
+
+    Returns:
+        JSON with basic_info, financial_metrics, price_data,
+        financial_health, analyst_data, location.
     """
     logger.info(f"fetch_company_information called with ticker='{ticker}'")
     raw_ticker = ticker
@@ -270,6 +286,14 @@ def fetch_company_information(intent: str, ticker: str) -> str:
 def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
     """
     Fetch recent news for a ticker.
+
+    Args:
+        intent: Why you're fetching (e.g., "Checking market sentiment")
+        ticker: Stock symbol (e.g., AAPL, GOOGL)
+        max_articles: Number of articles (default: 10, max: 50)
+
+    Returns:
+        JSON with articles[{title, publisher, link, publish_time}].
     """
     logger.info(
         f"fetch_ticker_news called with ticker='{ticker}', "

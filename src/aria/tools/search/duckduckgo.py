@@ -15,6 +15,15 @@ from aria.tools.search.constants import MAX_RESULTS_LIMIT
 def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
     """
     Search the web and return a small set of {title, href} results.
+
+    Args:
+        intent: Why you're searching (e.g., "Finding documentation")
+        query: Search query string
+        max_results: Maximum results (default: 5, max: 50)
+
+    Returns:
+        JSON with results[{title, href}], error if failed.
+        Use get_file_from_url to download content for inspection.
     """
     # Validate inputs
     validation_error = _validate_inputs(query, max_results)
