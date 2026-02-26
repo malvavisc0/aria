@@ -1,14 +1,20 @@
 import platform
 import uuid
 from datetime import datetime
+from typing import Any
 
 from chromadb.api import ClientAPI as ChromaClientAPI
-from llama_index.core.agent.workflow import AgentWorkflow
+from llama_index.core.agent.workflow import (
+    AgentOutput,
+    AgentWorkflow,
+    ToolCallResult,
+)
 from llama_index.core.memory import InsertMethod, Memory, VectorMemoryBlock
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.embeddings.openai_like import OpenAILikeEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.vector_stores.chroma import ChromaVectorStore
+from typing_extensions import TypedDict
 
 from aria.agents import (
     get_chatter_agent,
@@ -20,6 +26,127 @@ from aria.agents import (
     get_shell_executor_agent,
     get_web_researcher_agent,
 )
+
+
+class ToolCallRecord(TypedDict):
+    """A single tool invocation captured in the workflow state.
+
+    Attributes:
+        agent: Name of the agent that invoked the tool.
+        tool: Name of the tool that was called.
+        args: Keyword arguments passed to the tool.
+        result: String representation of the tool's output.
+        error: Error message if the tool raised an exception, else ``None``.
+    """
+
+    agent: str
+    tool: str
+    args: dict
+    result: str
+    error: str | None
+
+
+class WorkflowState(TypedDict):
+    """Minimal shared state threaded through the multi-agent workflow.
+
+    This dict is seeded into ``ctx.store`` by :func:`get_agent_workflow` via
+    ``AgentWorkflow(initial_state=...)``.  The :func:`state_reducer` function
+    updates it after every :class:`AgentOutput` and :class:`ToolCallResult`
+    event so that the state always reflects the latest activity.
+
+    Attributes:
+        current_agent: Name of the agent that is currently active.
+        tool_calls: Append-only log of every tool invocation during the run.
+        handoffs: Ordered list of agent names visited (breadcrumb trail).
+        last_error: Most recent tool error message, or ``None`` if the last
+            tool call succeeded.
+    """
+
+    current_agent: str
+    tool_calls: list[ToolCallRecord]
+    handoffs: list[str]
+    last_error: str | None
+
+
+def initial_workflow_state(root_agent: str) -> WorkflowState:
+    """Return a fresh :class:`WorkflowState` for a new workflow run.
+
+    Args:
+        root_agent: Name of the root agent (used to seed ``current_agent``).
+
+    Returns:
+        A :class:`WorkflowState` with empty collections and no error.
+
+    Example::
+
+        state = initial_workflow_state("Aria")
+        # WorkflowState(
+        #     current_agent="Aria", tool_calls=[], handoffs=[], last_error=None
+        # )
+    """
+    return WorkflowState(
+        current_agent=root_agent,
+        tool_calls=[],
+        handoffs=[],
+        last_error=None,
+    )
+
+
+def state_reducer(state: WorkflowState, ev: Any) -> WorkflowState:
+    """Update *state* in response to a workflow event.
+
+    This function is designed to be called after every event emitted by the
+    :class:`AgentWorkflow` run loop.  It handles two event types:
+
+    * :class:`AgentOutput` — updates ``current_agent`` and appends to
+      ``handoffs`` when a ``handoff`` tool call is detected.
+    * :class:`ToolCallResult` — appends a :class:`ToolCallRecord` to
+      ``tool_calls`` and updates ``last_error``.
+
+    All other event types are ignored and the state is returned unchanged.
+
+    Args:
+        state: The current workflow state dict (mutated in-place and returned).
+        ev: Any event object emitted by the workflow.
+
+    Returns:
+        The updated :class:`WorkflowState`.
+
+    Example::
+
+        from llama_index.core.agent.workflow import AgentOutput
+
+        state = initial_workflow_state("Aria")
+        fake_output = AgentOutput(
+            response=..., current_agent_name="Socrates", tool_calls=[]
+        )
+        state = state_reducer(state, fake_output)
+        assert state["current_agent"] == "Socrates"
+    """
+    if isinstance(ev, AgentOutput):
+        state["current_agent"] = ev.current_agent_name
+        for tc in ev.tool_calls:
+            if tc.tool_name == "handoff":
+                to_agent: str = tc.tool_kwargs.get("to_agent", "")
+                if to_agent:
+                    state["handoffs"].append(to_agent)
+
+    elif isinstance(ev, ToolCallResult):
+        output = ev.tool_output
+        is_error: bool = getattr(output, "is_error", False)
+        raw_output: str = str(getattr(output, "content", output))
+
+        record = ToolCallRecord(
+            agent=state["current_agent"],
+            tool=ev.tool_name,
+            args=ev.tool_kwargs,
+            result=raw_output,
+            error=raw_output if is_error else None,
+        )
+        state["tool_calls"].append(record)
+        state["last_error"] = record["error"]
+
+    return state
 
 
 def generate_agent_id(agent_name: str) -> str:
@@ -140,31 +267,56 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
         A fully constructed [`AgentWorkflow`](src/aria2/utils.py:6).
     """
 
+    # Specialist agents
     deep_reasoning = get_reasoning_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="socrates")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="socrates"),
+        can_handoff_to=["Developer", "Wanderer", "Wizard"],
     )
     file_editor = get_file_editor_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="notepad")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="notepad"),
+        can_handoff_to=["Developer", "Shell"],
     )
     imdb_expert = get_imdb_exper_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="notepad")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="notepad"),
+        can_handoff_to=["Wanderer"],
     )
     market_analyst = get_market_analyst_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="wizard")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="wizard"),
+        can_handoff_to=["Wanderer", "Developer"],
     )
     python_developer = get_python_developer_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="guido")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="guido"),
+        can_handoff_to=["Notepad", "Shell", "Wanderer"],
     )
     shell_executor = get_shell_executor_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="shell")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="shell"),
+        can_handoff_to=["Developer", "Notepad"],
     )
     web_researcher = get_web_researcher_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="wanderer")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="wanderer"),
+        can_handoff_to=["Wizard", "Developer", "Spielberg"],
     )
 
     # Create Chatter as root agent
     chatter = get_chatter_agent(
-        llm=llm, extras=get_instructions_extras(agent_name="aria")
+        llm=llm,
+        extras=get_instructions_extras(agent_name="aria"),
+        can_handoff_to=[
+            "Developer",
+            "Notepad",
+            "Wanderer",
+            "Wizard",
+            "Socrates",
+            "Shell",
+            "Spielberg",
+        ],
     )
 
     # Initialize Workflow (Chatter is the root agent)
@@ -180,6 +332,9 @@ def get_agent_workflow(llm: OpenAI) -> AgentWorkflow:
             imdb_expert,
         ],
         root_agent=chatter.name,
+        # Cast to plain dict: AgentWorkflow expects Dict, WorkflowState is
+        # a TypedDict (structurally compatible at runtime).
+        initial_state=dict(initial_workflow_state(root_agent=chatter.name)),
     )
     return workflow
 

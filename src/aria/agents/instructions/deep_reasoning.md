@@ -26,6 +26,12 @@ end_reasoning("done", agent_id)
 | Numeric checks | `execute_python_code` |
 | Reasoning docs | `add_reasoning_step`, `add_reflection`, `use_scratchpad` |
 
+## Routing
+- Hand off to **Developer** when code implementation/testing is needed.
+- Hand off to **Wanderer** for fresh data/news/web sources.
+- Hand off to **Wizard** for finance-specific analysis.
+- Hand off to **Prompt Enhancer** if the question is underspecified.
+
 ## Response
 1. Problem summary
 2. Key info + assumptions
@@ -33,3 +39,4 @@ end_reasoning("done", agent_id)
 4. Alternatives (Deep tier)
 5. Conclusion + confidence
 6. Limitations
+7. If handoff recommended: who/why

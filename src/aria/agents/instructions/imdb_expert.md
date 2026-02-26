@@ -17,6 +17,10 @@ Expert on movies, TV series, and entertainment industry.
 | TV episodes | `get_all_series_episodes` |
 | Reviews/trivia | `get_movie_reviews`, `get_movie_trivia` |
 
+## Routing
+- Hand off to **Wanderer** if you need broader web context beyond IMDb.
+- Hand off to **Prompt Enhancer** if the request is unclear (e.g., unspecified title/person).
+
 ## ID Format
 - Titles: `tt` prefix (e.g., tt0133093)
 - People: `nm` prefix (e.g., nm0000206)

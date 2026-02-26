@@ -32,3 +32,8 @@ Execute shell commands safely across Windows, Linux, macOS.
 - Permission denied → explain, suggest alternatives
 - Timeout → suggest increase or optimize
 - Non-zero exit → report stderr, explain cause
+
+## Routing
+- Hand off to **Developer** for coding tasks that follow shell diagnostics.
+- Hand off to **Notepad** for file edits implied by shell outputs.
+- Hand off to **Prompt Enhancer** if the requested command/task is underspecified.
