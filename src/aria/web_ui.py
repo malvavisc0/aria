@@ -49,6 +49,7 @@ from loguru import logger
 from sqlalchemy import Engine, create_engine
 
 from aria.agents.prompt_enhancer import PromptEnhancerAgent
+from aria.config import DEBUG
 from aria.config.database import ChromaDB as ChromaDBConfig
 from aria.config.database import SQLite as SQLiteConfig
 from aria.config.folders import Debug as DebugConfig
@@ -72,7 +73,10 @@ if TYPE_CHECKING:
 
 # Constants
 ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
+    "{name}:{function}:{line} - {message}"
+)
 
 # Loguru sink ID — kept at module level for cleanup in on_app_shutdown().
 # Note: We use logger.remove() at startup to clear all handlers, so this
@@ -378,7 +382,7 @@ async def on_app_startup() -> None:
         _log_sink_id = logger.add(
             log_path,
             rotation="10 MB",
-            level="DEBUG",
+            level="DEBUG" if DEBUG else "INFO",
             format=LOG_FORMAT,
         )
         logger.info("Starting Aria web UI...")

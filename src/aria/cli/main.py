@@ -39,10 +39,15 @@ from aria.cli import (
     system,
     users,
 )
+from aria.config import DEBUG
 
 app = typer.Typer(
     name="aria",
-    help="Aria - AI Assistant Management CLI\n\nManage users, configuration, and system resources for the Aria AI assistant.",
+    help=(
+        "Aria - AI Assistant Management CLI\n\n"
+        "Manage users, configuration, and system resources "
+        "for the Aria AI assistant."
+    ),
     rich_markup_mode="rich",
     add_completion=False,
 )
@@ -55,6 +60,13 @@ app.add_typer(system.app, name="system")
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
+
+
+def _configure_logging():
+    # Rich handles CLI output formatting; set root level via DEBUG flag.
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
 
 def _print_banner():
@@ -70,7 +82,10 @@ def _print_banner():
     console.print()
     console.print(
         Panel(
-            f"[bold]🧠 ARIA CLI[/bold]\n[dim]AI Assistant Management • {version_text}[/dim]",
+            (
+                "[bold]🧠 ARIA CLI[/bold]\n"
+                f"[dim]AI Assistant Management • {version_text}[/dim]"
+            ),
             border_style="cyan",
             expand=False,
             padding=(0, 2),
@@ -117,6 +132,7 @@ def main(ctx: typer.Context):
 
     Display banner and help when called without a command.
     """
+    _configure_logging()
     if ctx.invoked_subcommand is None:
         _print_banner()
 
@@ -192,8 +208,12 @@ def _print_summary_panel(total_passed: int, total_failed: int, hints: list):
         content = f"[green]✅ All {total} checks passed - System ready![/green]"
         style = "green"
     else:
+        plural = "s" if total_failed > 1 else ""
         lines = [
-            f"[red]❌ {total_failed} check{'s' if total_failed > 1 else ''} failed - Fix issues before starting[/red]",
+            (
+                f"[red]❌ {total_failed} check{plural} failed - "
+                "Fix issues before starting[/red]"
+            ),
         ]
         if hints:
             lines.append("")
