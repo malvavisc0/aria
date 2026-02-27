@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainwindowgZxnCC.ui'
+## Form generated from reading UI file 'mainwindowvTJtMS.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.2
 ##
@@ -59,6 +59,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSpacerItem,
+    QSpinBox,
     QStatusBar,
     QTabWidget,
     QVBoxLayout,
@@ -801,13 +802,166 @@ class Ui_MainWindow(object):
         self.verticalLayout_logs.addLayout(self.horizontalLayout_logsToolbar)
 
         self.tabWidget.addTab(self.tab_logs, "")
+        self.tab_settings = QWidget()
+        self.tab_settings.setObjectName("tab_settings")
+        self.verticalLayout_settings = QVBoxLayout(self.tab_settings)
+        self.verticalLayout_settings.setSpacing(8)
+        self.verticalLayout_settings.setObjectName("verticalLayout_settings")
+        self.verticalLayout_settings.setContentsMargins(8, 8, 8, 8)
+        self.groupBox_SettingsAll = QGroupBox(self.tab_settings)
+        self.groupBox_SettingsAll.setObjectName("groupBox_SettingsAll")
+        self.formLayout_settingsAll = QFormLayout(self.groupBox_SettingsAll)
+        self.formLayout_settingsAll.setObjectName("formLayout_settingsAll")
+        self.formLayout_settingsAll.setHorizontalSpacing(20)
+        self.formLayout_settingsAll.setVerticalSpacing(8)
+        self.formLayout_settingsAll.setContentsMargins(8, 8, 8, 8)
+        self.checkBox_Debug = QCheckBox(self.groupBox_SettingsAll)
+        self.checkBox_Debug.setObjectName("checkBox_Debug")
+
+        self.formLayout_settingsAll.setWidget(
+            0, QFormLayout.ItemRole.SpanningRole, self.checkBox_Debug
+        )
+
+        self.label_ServerHostLbl = QLabel(self.groupBox_SettingsAll)
+        self.label_ServerHostLbl.setObjectName("label_ServerHostLbl")
+
+        self.formLayout_settingsAll.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_ServerHostLbl
+        )
+
+        self.lineEdit_ServerHost = QLineEdit(self.groupBox_SettingsAll)
+        self.lineEdit_ServerHost.setObjectName("lineEdit_ServerHost")
+
+        self.formLayout_settingsAll.setWidget(
+            1, QFormLayout.ItemRole.FieldRole, self.lineEdit_ServerHost
+        )
+
+        self.label_ServerPortLbl = QLabel(self.groupBox_SettingsAll)
+        self.label_ServerPortLbl.setObjectName("label_ServerPortLbl")
+
+        self.formLayout_settingsAll.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_ServerPortLbl
+        )
+
+        self.spinBox_ServerPort = QSpinBox(self.groupBox_SettingsAll)
+        self.spinBox_ServerPort.setObjectName("spinBox_ServerPort")
+        self.spinBox_ServerPort.setMinimum(1)
+        self.spinBox_ServerPort.setMaximum(65535)
+        self.spinBox_ServerPort.setValue(9876)
+
+        self.formLayout_settingsAll.setWidget(
+            2, QFormLayout.ItemRole.FieldRole, self.spinBox_ServerPort
+        )
+
+        self.label_ChatRepoLbl = QLabel(self.groupBox_SettingsAll)
+        self.label_ChatRepoLbl.setObjectName("label_ChatRepoLbl")
+
+        self.formLayout_settingsAll.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_ChatRepoLbl
+        )
+
+        self.lineEdit_ChatRepo = QLineEdit(self.groupBox_SettingsAll)
+        self.lineEdit_ChatRepo.setObjectName("lineEdit_ChatRepo")
+        self.lineEdit_ChatRepo.setMinimumSize(QSize(420, 0))
+
+        self.formLayout_settingsAll.setWidget(
+            3, QFormLayout.ItemRole.FieldRole, self.lineEdit_ChatRepo
+        )
+
+        self.label_ChatModelLbl = QLabel(self.groupBox_SettingsAll)
+        self.label_ChatModelLbl.setObjectName("label_ChatModelLbl")
+
+        self.formLayout_settingsAll.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_ChatModelLbl
+        )
+
+        self.lineEdit_ChatModel = QLineEdit(self.groupBox_SettingsAll)
+        self.lineEdit_ChatModel.setObjectName("lineEdit_ChatModel")
+        self.lineEdit_ChatModel.setMinimumSize(QSize(420, 0))
+
+        self.formLayout_settingsAll.setWidget(
+            4, QFormLayout.ItemRole.FieldRole, self.lineEdit_ChatModel
+        )
+
+        self.label_ChatQuantLbl = QLabel(self.groupBox_SettingsAll)
+        self.label_ChatQuantLbl.setObjectName("label_ChatQuantLbl")
+
+        self.formLayout_settingsAll.setWidget(
+            5, QFormLayout.ItemRole.LabelRole, self.label_ChatQuantLbl
+        )
+
+        self.comboBox_ChatQuantType = QComboBox(self.groupBox_SettingsAll)
+        self.comboBox_ChatQuantType.addItem("")
+        self.comboBox_ChatQuantType.addItem("")
+        self.comboBox_ChatQuantType.addItem("")
+        self.comboBox_ChatQuantType.addItem("")
+        self.comboBox_ChatQuantType.addItem("")
+        self.comboBox_ChatQuantType.setObjectName("comboBox_ChatQuantType")
+
+        self.formLayout_settingsAll.setWidget(
+            5, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatQuantType
+        )
+
+        self.label_ChatCtxLbl = QLabel(self.groupBox_SettingsAll)
+        self.label_ChatCtxLbl.setObjectName("label_ChatCtxLbl")
+
+        self.formLayout_settingsAll.setWidget(
+            6, QFormLayout.ItemRole.LabelRole, self.label_ChatCtxLbl
+        )
+
+        self.comboBox_ChatCtxSize = QComboBox(self.groupBox_SettingsAll)
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.setObjectName("comboBox_ChatCtxSize")
+
+        self.formLayout_settingsAll.setWidget(
+            6, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatCtxSize
+        )
+
+        self.pushButton_SettingsRevert = QPushButton(self.groupBox_SettingsAll)
+        self.pushButton_SettingsRevert.setObjectName("pushButton_SettingsRevert")
+
+        self.formLayout_settingsAll.setWidget(
+            7, QFormLayout.ItemRole.LabelRole, self.pushButton_SettingsRevert
+        )
+
+        self.pushButton_SettingsSave = QPushButton(self.groupBox_SettingsAll)
+        self.pushButton_SettingsSave.setObjectName("pushButton_SettingsSave")
+
+        self.formLayout_settingsAll.setWidget(
+            7, QFormLayout.ItemRole.FieldRole, self.pushButton_SettingsSave
+        )
+
+        self.verticalSpacer = QSpacerItem(
+            20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
+        )
+
+        self.formLayout_settingsAll.setItem(
+            8, QFormLayout.ItemRole.FieldRole, self.verticalSpacer
+        )
+
+        self.label_restart = QLabel(self.groupBox_SettingsAll)
+        self.label_restart.setObjectName("label_restart")
+
+        self.formLayout_settingsAll.setWidget(
+            9, QFormLayout.ItemRole.FieldRole, self.label_restart
+        )
+
+        self.verticalLayout_settings.addWidget(self.groupBox_SettingsAll)
+
+        self.tabWidget.addTab(self.tab_settings, "")
 
         self.verticalLayout_main.addWidget(self.tabWidget)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(MainWindow)
         self.menuBar.setObjectName("menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 800, 22))
+        self.menuBar.setGeometry(QRect(0, 0, 800, 30))
         self.menuApplication = QMenu(self.menuBar)
         self.menuApplication.setObjectName("menuApplication")
         self.menuHelp = QMenu(self.menuBar)
@@ -1085,6 +1239,85 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.tab_logs),
             QCoreApplication.translate("MainWindow", "Logs", None),
+        )
+        self.groupBox_SettingsAll.setTitle(
+            QCoreApplication.translate("MainWindow", "Settings", None)
+        )
+        self.checkBox_Debug.setText(
+            QCoreApplication.translate("MainWindow", "Enable debug logging", None)
+        )
+        self.label_ServerHostLbl.setText(
+            QCoreApplication.translate("MainWindow", "Server host", None)
+        )
+        self.label_ServerPortLbl.setText(
+            QCoreApplication.translate("MainWindow", "Server port", None)
+        )
+        self.label_ChatRepoLbl.setText(
+            QCoreApplication.translate("MainWindow", "HuggingFace repo", None)
+        )
+        self.label_ChatModelLbl.setText(
+            QCoreApplication.translate("MainWindow", "Model filename", None)
+        )
+        self.label_ChatQuantLbl.setText(
+            QCoreApplication.translate("MainWindow", "Quantization", None)
+        )
+        self.comboBox_ChatQuantType.setItemText(
+            0, QCoreApplication.translate("MainWindow", "Q4_0", None)
+        )
+        self.comboBox_ChatQuantType.setItemText(
+            1, QCoreApplication.translate("MainWindow", "Q4_K_M", None)
+        )
+        self.comboBox_ChatQuantType.setItemText(
+            2, QCoreApplication.translate("MainWindow", "Q5_K_M", None)
+        )
+        self.comboBox_ChatQuantType.setItemText(
+            3, QCoreApplication.translate("MainWindow", "Q6_K", None)
+        )
+        self.comboBox_ChatQuantType.setItemText(
+            4, QCoreApplication.translate("MainWindow", "Q8_0", None)
+        )
+
+        self.label_ChatCtxLbl.setText(
+            QCoreApplication.translate("MainWindow", "Context size", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            0, QCoreApplication.translate("MainWindow", "2048", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            1, QCoreApplication.translate("MainWindow", "4096", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            2, QCoreApplication.translate("MainWindow", "8192", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            3, QCoreApplication.translate("MainWindow", "16384", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            4, QCoreApplication.translate("MainWindow", "32768", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            5, QCoreApplication.translate("MainWindow", "65536", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            6, QCoreApplication.translate("MainWindow", "131072", None)
+        )
+
+        self.pushButton_SettingsRevert.setText(
+            QCoreApplication.translate("MainWindow", "Revert", None)
+        )
+        self.pushButton_SettingsSave.setText(
+            QCoreApplication.translate("MainWindow", "Save Settings", None)
+        )
+        self.label_restart.setText(
+            QCoreApplication.translate(
+                "MainWindow",
+                "Changes require a service restart to take effect.",
+                None,
+            )
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_settings),
+            QCoreApplication.translate("MainWindow", "Settings", None),
         )
         self.menuApplication.setTitle(
             QCoreApplication.translate("MainWindow", "&File", None)

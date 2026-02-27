@@ -15,6 +15,7 @@ from aria.config.models import Chat, Embeddings, Vision
 from aria.gui.dialogs import AboutDialog
 from aria.gui.ui.mainwindow import Ui_MainWindow
 from aria.gui.windows.server_handlers import ServerHandlersMixin
+from aria.gui.windows.settings_handlers import SettingsHandlersMixin
 from aria.gui.windows.setup_handlers import SetupHandlersMixin
 from aria.gui.windows.user_handlers import UserHandlersMixin
 
@@ -77,7 +78,11 @@ def friendly_permissions(path: Path) -> Dict[str, List[str]]:
 
 
 class MainWindow(
-    UserHandlersMixin, ServerHandlersMixin, SetupHandlersMixin, QMainWindow
+    UserHandlersMixin,
+    ServerHandlersMixin,
+    SetupHandlersMixin,
+    SettingsHandlersMixin,
+    QMainWindow,
 ):
     """Main application window with user management and logs."""
 
@@ -94,6 +99,7 @@ class MainWindow(
         self._connect_server_signals()
 
         self._connect_setup_signals()
+        self._connect_settings_signals()
 
         self.load_overview()
         self.load_setup()
@@ -214,6 +220,10 @@ class MainWindow(
                 self._logs_timer.start(5000)
                 self._set_auto_refresh_running(True)
                 self.statusBar().showMessage(str(Debug.logs_path))
+            case self.ui.tab_settings:
+                self._logs_timer.stop()
+                self.statusBar().clearMessage()
+                self.load_settings()
             case _:
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()

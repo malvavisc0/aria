@@ -109,8 +109,6 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
-
-      <!-- TAB 1: Overview -->
       <widget class="QWidget" name="tab_overview">
        <attribute name="title">
         <string>Overview</string>
@@ -131,8 +129,6 @@
         <property name="bottomMargin">
          <number>8</number>
         </property>
-
-        <!-- Service group: full width on top -->
         <item>
          <widget class="QGroupBox" name="groupBox_Service">
           <property name="title">
@@ -151,7 +147,6 @@
            <property name="bottomMargin">
             <number>8</number>
            </property>
-           <!-- Left: 4-row form (URL, PID, Uptime, Started) -->
            <item>
             <layout class="QFormLayout" name="formLayout_service">
              <property name="horizontalSpacing">
@@ -172,11 +167,11 @@
              </item>
              <item row="0" column="1">
               <widget class="QLabel" name="label_ServiceURL">
-               <property name="textFormat">
-                <enum>Qt::TextFormat::RichText</enum>
-               </property>
                <property name="text">
                 <string>-</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::TextFormat::RichText</enum>
                </property>
                <property name="openExternalLinks">
                 <bool>true</bool>
@@ -249,7 +244,6 @@
              </property>
             </spacer>
            </item>
-           <!-- Right: status badge + Open button -->
            <item>
             <layout class="QVBoxLayout" name="verticalLayout_serviceStatus">
              <item>
@@ -302,15 +296,11 @@
           </layout>
          </widget>
         </item>
-
-        <!-- Bottom row: Database + LLM APIs side by side -->
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_overview_bottom">
           <property name="spacing">
            <number>8</number>
           </property>
-
-          <!-- Database group -->
           <item>
            <widget class="QGroupBox" name="groupBox_Database">
             <property name="title">
@@ -406,8 +396,6 @@
             </layout>
            </widget>
           </item>
-
-          <!-- LLM Inference APIs group -->
           <item>
            <widget class="QGroupBox" name="groupBox_LLMAPIs">
             <property name="title">
@@ -520,11 +508,8 @@
             </layout>
            </widget>
           </item>
-
          </layout>
         </item>
-
-        <!-- Dummy labels to satisfy handler references (hidden) -->
         <item>
          <widget class="QLabel" name="label_DebugLogsPath">
           <property name="visible">
@@ -545,7 +530,6 @@
           </property>
          </widget>
         </item>
-
         <item>
          <spacer name="verticalSpacer_overview">
           <property name="orientation">
@@ -561,8 +545,6 @@
         </item>
        </layout>
       </widget>
-
-      <!-- TAB 2: Setup (LlamaCpp + Models) -->
       <widget class="QWidget" name="tab_setup">
        <attribute name="title">
         <string>Setup</string>
@@ -698,9 +680,6 @@
                <property name="placeholderText">
                 <string>e.g. b4500 (leave blank for latest)</string>
                </property>
-               <property name="maximumWidth">
-                <number>220</number>
-               </property>
               </widget>
              </item>
              <item>
@@ -730,20 +709,17 @@
            </item>
            <item>
             <widget class="QPlainTextEdit" name="plainTextEdit_LlamaOutput">
-             <property name="readOnly">
-              <bool>true</bool>
-             </property>
-             <property name="maximumHeight">
-              <number>120</number>
-             </property>
-             <property name="lineWrapMode">
-              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
-             </property>
              <property name="font">
               <font>
                <family>Courier New</family>
                <pointsize>9</pointsize>
               </font>
+             </property>
+             <property name="lineWrapMode">
+              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
              </property>
              <property name="placeholderText">
               <string>Download output will appear here...</string>
@@ -866,9 +842,6 @@
                <property name="placeholderText">
                 <string>HuggingFace token</string>
                </property>
-               <property name="maximumWidth">
-                <number>200</number>
-               </property>
               </widget>
              </item>
              <item>
@@ -892,20 +865,17 @@
            </item>
            <item>
             <widget class="QPlainTextEdit" name="plainTextEdit_ModelOutput">
-             <property name="readOnly">
-              <bool>true</bool>
-             </property>
-             <property name="maximumHeight">
-              <number>120</number>
-             </property>
-             <property name="lineWrapMode">
-              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
-             </property>
              <property name="font">
               <font>
                <family>Courier New</family>
                <pointsize>9</pointsize>
               </font>
+             </property>
+             <property name="lineWrapMode">
+              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
              </property>
              <property name="placeholderText">
               <string>Download output will appear here...</string>
@@ -930,8 +900,6 @@
         </item>
        </layout>
       </widget>
-
-      <!-- TAB 3: Users -->
       <widget class="QWidget" name="tab_users">
        <attribute name="title">
         <string>Users</string>
@@ -956,9 +924,6 @@
          <widget class="QGroupBox" name="groupBox_CreateUser">
           <property name="title">
            <string>Create User</string>
-          </property>
-          <property name="maximumWidth">
-           <number>280</number>
           </property>
           <layout class="QFormLayout" name="formLayout_createUser">
            <property name="horizontalSpacing">
@@ -1065,8 +1030,6 @@
         </item>
        </layout>
       </widget>
-
-      <!-- TAB 4: Logs -->
       <widget class="QWidget" name="tab_logs">
        <attribute name="title">
         <string>Logs</string>
@@ -1145,7 +1108,242 @@
         </item>
        </layout>
       </widget>
-
+      <widget class="QWidget" name="tab_settings">
+       <attribute name="title">
+        <string>Settings</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_settings">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>8</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QGroupBox" name="groupBox_SettingsAll">
+          <property name="title">
+           <string>Settings</string>
+          </property>
+          <layout class="QFormLayout" name="formLayout_settingsAll">
+           <property name="horizontalSpacing">
+            <number>20</number>
+           </property>
+           <property name="verticalSpacing">
+            <number>8</number>
+           </property>
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>8</number>
+           </property>
+           <property name="bottomMargin">
+            <number>8</number>
+           </property>
+           <item row="0" column="0" colspan="2">
+            <widget class="QCheckBox" name="checkBox_Debug">
+             <property name="text">
+              <string>Enable debug logging</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_ServerHostLbl">
+             <property name="text">
+              <string>Server host</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineEdit_ServerHost"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_ServerPortLbl">
+             <property name="text">
+              <string>Server port</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QSpinBox" name="spinBox_ServerPort">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>65535</number>
+             </property>
+             <property name="value">
+              <number>9876</number>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_ChatRepoLbl">
+             <property name="text">
+              <string>HuggingFace repo</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLineEdit" name="lineEdit_ChatRepo">
+             <property name="minimumSize">
+              <size>
+               <width>420</width>
+               <height>0</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_ChatModelLbl">
+             <property name="text">
+              <string>Model filename</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLineEdit" name="lineEdit_ChatModel">
+             <property name="minimumSize">
+              <size>
+               <width>420</width>
+               <height>0</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="label_ChatQuantLbl">
+             <property name="text">
+              <string>Quantization</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QComboBox" name="comboBox_ChatQuantType">
+             <item>
+              <property name="text">
+               <string>Q4_0</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Q4_K_M</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Q5_K_M</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Q6_K</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Q8_0</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QLabel" name="label_ChatCtxLbl">
+             <property name="text">
+              <string>Context size</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="QComboBox" name="comboBox_ChatCtxSize">
+             <item>
+              <property name="text">
+               <string>2048</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>4096</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>8192</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>16384</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>32768</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>65536</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>131072</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="7" column="0">
+            <widget class="QPushButton" name="pushButton_SettingsRevert">
+             <property name="text">
+              <string>Revert</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1">
+            <widget class="QPushButton" name="pushButton_SettingsSave">
+             <property name="text">
+              <string>Save Settings</string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="1">
+            <spacer name="verticalSpacer">
+             <property name="orientation">
+              <enum>Qt::Orientation::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="9" column="1">
+            <widget class="QLabel" name="label_restart">
+             <property name="text">
+              <string>Changes require a service restart to take effect.</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -1156,7 +1354,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>24</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuApplication">
