@@ -13,3 +13,7 @@ class Debug:
 
 class Storage:
     path = Data.path / Path(get_required_env("LOCAL_STORAGE_PATH"))
+
+
+class Uploads:
+    path = Data.path / Path("uploads/")

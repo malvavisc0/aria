@@ -49,6 +49,7 @@ from llama_index.core.memory import Memory
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from loguru import logger
+from pydantic import BaseModel
 from sqlalchemy import Engine, create_engine
 
 from aria.agents.prompt_enhancer import PromptEnhancerAgent
@@ -57,6 +58,7 @@ from aria.config.database import ChromaDB as ChromaDBConfig
 from aria.config.database import SQLite as SQLiteConfig
 from aria.config.folders import Debug as DebugConfig
 from aria.config.folders import Storage as StorageConfig
+from aria.config.folders import Uploads as UploadsConfig
 from aria.config.models import Chat as ChatConfig
 from aria.config.models import Embeddings as EmbeddingsConfig
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
@@ -70,7 +72,6 @@ from aria.llm import (
     get_embeddings_model,
 )
 from aria.server.llama import LlamaCppServerManager
-from aria.tools.constants import BASE_DIR
 
 if TYPE_CHECKING:
     from aria.agents.prompt_enhancer import PromptEnhancementResult
@@ -87,10 +88,6 @@ _MIME_TO_EXT: dict[str, str] = {
     "application/pdf": ".pdf",
 }
 
-# Subdirectory inside BASE_DIR where uploaded files are moved so that all
-# tools (vision and file-editor) can access them via a stable, safe path.
-_UPLOADS_DIR: Path = BASE_DIR / "uploads"
-_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FORMAT = (
     "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
     "{name}:{function}:{line} - {message}"
@@ -105,11 +102,13 @@ _log_sink_id: int | None = None
 class AppStateNotInitializedError(RuntimeError):
     """Raised when AppState attributes are accessed before initialization."""
 
-    def __init__(self, message: str = "AppState is not fully initialized") -> None:
+    def __init__(
+        self, message: str = "AppState is not fully initialized"
+    ) -> None:
         super().__init__(message)
 
 
-class AppState:
+class AppState(BaseModel):
     """Application state initialized at startup.
 
     This class holds all shared services and resources for the web UI.
@@ -142,15 +141,16 @@ class AppState:
         ```
     """
 
-    def __init__(self) -> None:
-        self.llm: OpenAILike | None = None
-        self.embeddings: OpenAIEmbedding | None = None
-        self.vector_db: ClientAPI | None = None
-        self.agents_workflow: AgentWorkflow | None = None
-        self.prompt_enhancer: PromptEnhancerAgent | None = None
-        self.llama_manager: LlamaCppServerManager | None = None
-        self.db_engine: Engine | None = None
-        self.startup_complete: bool = False
+    model_config = {"arbitrary_types_allowed": True}
+
+    llm: OpenAILike | None = None
+    embeddings: OpenAIEmbedding | None = None
+    vector_db: ClientAPI | None = None
+    agents_workflow: AgentWorkflow | None = None
+    prompt_enhancer: PromptEnhancerAgent | None = None
+    llama_manager: LlamaCppServerManager | None = None
+    db_engine: Engine | None = None
+    startup_complete: bool = False
 
     def is_initialized(self) -> bool:
         """Check if all required attributes are initialized.
@@ -180,7 +180,7 @@ class AppState:
             ]
         )
 
-    def validate(self) -> None:
+    def validate_initialized(self) -> None:
         """Validate that the state is fully initialized.
 
         Raises:
@@ -239,7 +239,7 @@ def _create_memory(thread_id: str) -> Memory:
         This function validates the AppState before creating memory.
         Each thread gets its own ChromaDB collection for isolation.
     """
-    _state.validate()
+    _state.validate_initialized()
 
     if not thread_id:
         raise ValueError("thread_id cannot be None or empty")
@@ -305,10 +305,10 @@ def _extract_file_paths(message: cl.Message) -> list[str]:
         else:
             dest_name = src.stem + ext
 
-        dest = _UPLOADS_DIR / dest_name
+        dest = UploadsConfig.path / dest_name
 
         try:
-            shutil.copy2(path_str, str(dest))
+            shutil.copy2(path_str, dest)
             path_str = str(dest)
             logger.debug(f"Copied uploaded file to safe path: {dest}")
         except OSError as e:
@@ -348,11 +348,15 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning("Prompt enhancer not available, returning original prompt")
+            logger.warning(
+                "Prompt enhancer not available, returning original prompt"
+            )
             return prompt
 
         try:
-            response = await _state.prompt_enhancer.run(user_msg=message.content)
+            response = await _state.prompt_enhancer.run(
+                user_msg=message.content
+            )
             results: PromptEnhancementResult = response.structured_response
             prompt = results.enhanced
             logger.debug("Prompt enhancement completed successfully")
@@ -409,7 +413,9 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
         raise ValueError("Thread dictionary must contain a valid 'id' field")
 
     thread_name = thread.get("name", "Unnamed")
-    logger.debug(f"Restoring chat history for thread {thread_id} ({thread_name})")
+    logger.debug(
+        f"Restoring chat history for thread {thread_id} ({thread_name})"
+    )
 
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
@@ -441,7 +447,9 @@ async def _restore_chat_history(thread: ThreadDict) -> Memory:
     # re-embedding here would create duplicates on every resume.
     await memory.aset(chat_history)
 
-    logger.info(f"Restored {len(chat_history)} messages for thread {thread_id}")
+    logger.info(
+        f"Restored {len(chat_history)} messages for thread {thread_id}"
+    )
     return memory
 
 
@@ -742,7 +750,7 @@ async def on_message(message: cl.Message) -> None:
 
     try:
         # Validate state before processing
-        _state.validate()
+        _state.validate_initialized()
 
         prompt = await _handle_message(message)
 
