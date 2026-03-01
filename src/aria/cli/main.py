@@ -31,9 +31,9 @@ from rich.panel import Panel
 from sqlalchemy import text
 
 from aria.cli import (
-    agentbrowser,
     config,
     get_db_session,
+    lightpanda,
     llamacpp,
     models,
     server,
@@ -54,7 +54,7 @@ app = typer.Typer(
 )
 app.add_typer(users.app, name="users")
 app.add_typer(llamacpp.app, name="llamacpp")
-app.add_typer(agentbrowser.app, name="agentbrowser")
+app.add_typer(lightpanda.app, name="lightpanda")
 app.add_typer(models.app, name="models")
 app.add_typer(config.app, name="config")
 app.add_typer(server.app, name="server")

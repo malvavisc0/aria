@@ -1,5 +1,3 @@
-import os
-import platform
 from pathlib import Path
 from typing import Optional
 
@@ -18,20 +16,19 @@ class LlamaCpp:
     embeddings_context_size = int(get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192"))
 
 
-class AgentBrowser:
-    """Configuration for agent-browser binary (optional).
+class Lightpanda:
+    """Configuration for Lightpanda browser binary (optional).
 
-    Agent-browser is a Rust CLI binary for headless browser automation
-    designed for AI agents. It provides anti-bot bypass by using an
-    actual Chromium browser via Playwright.
+    Lightpanda is a lightweight headless browser that provides CDP
+    (Chrome DevTools Protocol) for full browser automation via Playwright.
 
     Browser tools are disabled if the binary is not installed.
-    Run 'aria agentbrowser download' to install.
+    Run 'aria lightpanda download' to install.
     """
 
-    # Use get_optional_env since browser tools are optional
-    bin_dir: str = get_optional_env("AGENT_BROWSER_BIN_DIR", "bin/agentbrowser")
-    version: str = get_optional_env("AGENT_BROWSER_VERSION", "latest")
+    bin_dir: str = get_optional_env("LIGHTPANDA_BIN_DIR", "bin/lightpanda")
+    version: str = get_optional_env("LIGHTPANDA_VERSION", "nightly")
+    port: int = int(get_optional_env("LIGHTPANDA_PORT", "9222"))
 
     @classmethod
     def get_bin_path(cls) -> Path:
@@ -40,49 +37,22 @@ class AgentBrowser:
 
     @classmethod
     def get_binary_path(cls) -> Optional[Path]:
-        """Get the platform-specific binary path, or None if not installed.
+        """Get the binary path, or None if not installed.
+
+        Lightpanda uses a single binary name across platforms.
 
         Returns:
             Path to the binary if it exists, None otherwise.
         """
         bin_path = cls.get_bin_path()
-
-        # Map platform to binary name
-        system = platform.system().lower()
-        machine = platform.machine().lower()
-
-        if system == "linux":
-            arch = "arm64" if "aarch64" in machine else "x64"
-            name = f"agent-browser-linux-{arch}"
-        elif system == "darwin":
-            arch = "arm64" if "arm" in machine else "x64"
-            name = f"agent-browser-darwin-{arch}"
-        elif system == "windows":
-            name = "agent-browser-win32-x64.exe"
-        else:
-            return None
-
-        binary = bin_path / name
+        binary = bin_path / "lightpanda"
         return binary if binary.exists() else None
 
     @classmethod
     def is_available(cls) -> bool:
-        """Check if agent-browser is installed and ready.
+        """Check if Lightpanda is installed and ready.
 
         Returns:
             True if the binary exists, False otherwise.
         """
         return cls.get_binary_path() is not None
-
-    @classmethod
-    def get_env(cls) -> dict[str, str]:
-        """Return an environment dict with ``AGENT_BROWSER_HOME`` set.
-
-        The agent-browser binary requires this variable to locate its
-        daemon and Chromium installation.  The value is the resolved
-        binary directory (``get_bin_path()``).
-
-        Returns:
-            A copy of ``os.environ`` with ``AGENT_BROWSER_HOME`` added.
-        """
-        return {**os.environ, "AGENT_BROWSER_HOME": str(cls.get_bin_path())}

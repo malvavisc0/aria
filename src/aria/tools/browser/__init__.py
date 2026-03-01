@@ -1,12 +1,13 @@
-"""Browser automation tools using agent-browser CLI.
+"""Browser automation tools using Lightpanda with Playwright CDP.
 
 This module provides tools for web browsing and interaction using
-the agent-browser CLI from Vercel Labs. The browser daemon is managed
-at the application level and started during app startup.
+Lightpanda, a lightweight headless browser with CDP support.
+The browser is managed at the application level and started during
+app startup.
 
 Tools:
     browser_open: Navigate to a URL and get page content
-    browser_click: Click elements by their @ref from snapshots
+    browser_click: Click elements by CSS selector
     browser_screenshot: Take screenshots of the current page
 
 Example:
@@ -16,8 +17,8 @@ Example:
     # Open a URL
     result = browser_open("Reading docs", "https://example.com")
 
-    # Click an element (ref from snapshot)
-    result = browser_click("Accepting cookies", "@e2")
+    # Click an element by CSS selector
+    result = browser_click("Accepting cookies", "button.accept")
     ```
 """
 

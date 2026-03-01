@@ -1,7 +1,7 @@
 """Constants for browser automation tools.
 
 This module contains constants specific to browser automation using
-the agent-browser CLI. For shared constants, imports from
+Lightpanda with Playwright CDP. For shared constants, imports from
 aria.tools.constants.
 """
 
@@ -21,6 +21,9 @@ BROWSER_COMMAND_TIMEOUT = 60
 
 # Default wait strategy after navigation
 DEFAULT_WAIT_STRATEGY = "networkidle"
+
+# Default CDP port for Lightpanda serve
+LIGHTPANDA_DEFAULT_PORT = 9222
 
 # ============================================================================
 # Directory Configuration

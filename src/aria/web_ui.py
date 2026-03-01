@@ -552,28 +552,28 @@ async def on_app_startup() -> None:
         _state.agents_workflow = get_agent_workflow(llm=_state.llm)
         _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
 
-        # Start browser daemon (optional — only if agent-browser is installed)
-        from aria.config.api import AgentBrowser
+        # Start Lightpanda browser (optional — only if installed)
+        from aria.config.api import Lightpanda
 
-        if AgentBrowser.is_available():
+        if Lightpanda.is_available():
             from aria.tools.browser.manager import (
-                BrowserManager,
+                LightpandaManager,
                 set_browser_manager,
             )
 
-            binary = AgentBrowser.get_binary_path()
+            binary = Lightpanda.get_binary_path()
             if binary:
-                browser_mgr = BrowserManager(binary)
-                if browser_mgr.start():
+                browser_mgr = LightpandaManager(binary, port=Lightpanda.port)
+                if await browser_mgr.start():
                     _state.browser_manager = browser_mgr
                     set_browser_manager(browser_mgr)
-                    logger.info("Browser daemon started successfully")
+                    logger.info("Lightpanda browser started successfully")
                 else:
                     logger.warning(
-                        "Browser daemon failed to start — " "browser tools disabled"
+                        "Lightpanda browser failed to start — " "browser tools disabled"
                     )
         else:
-            logger.info("agent-browser not installed — browser tools disabled")
+            logger.info("Lightpanda not installed — browser tools disabled")
 
         # Mark startup complete
         _state.startup_complete = True
@@ -607,13 +607,13 @@ async def on_app_shutdown() -> None:
         except Exception as e:
             logger.error(f"Error stopping LlamaCpp servers: {e}")
 
-    # Stop browser daemon
+    # Stop Lightpanda browser
     if _state.browser_manager:
         try:
-            _state.browser_manager.stop()
-            logger.info("Browser daemon stopped")
+            await _state.browser_manager.stop()
+            logger.info("Lightpanda browser stopped")
         except Exception as e:
-            logger.error(f"Error stopping browser daemon: {e}")
+            logger.error(f"Error stopping Lightpanda browser: {e}")
         finally:
             from aria.tools.browser.manager import set_browser_manager
 

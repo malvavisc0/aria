@@ -182,8 +182,8 @@ class _ModelDownloadWorker(QObject):
             sys.stderr = old_stderr
 
 
-class _AgentBrowserDownloadWorker(QObject):
-    """Worker that downloads agent-browser binary in a background thread.
+class _LightpandaDownloadWorker(QObject):
+    """Worker that downloads Lightpanda binary in a background thread.
 
     Emits ``log_line`` for each line of output, ``finished`` on success,
     or ``error`` with a message string on failure.
@@ -199,15 +199,15 @@ class _AgentBrowserDownloadWorker(QObject):
         self._version = version
 
     def run(self) -> None:
-        """Download agent-browser binary (runs in a QThread)."""
-        from aria.scripts.agentbrowser import download_agent_browser
+        """Download Lightpanda binary (runs in a QThread)."""
+        from aria.scripts.lightpanda import download_lightpanda
 
         stream = _SignalStream(self.log_line.emit)
         old_stdout, old_stderr = sys.stdout, sys.stderr
         sys.stdout = stream  # type: ignore[assignment]
         sys.stderr = stream  # type: ignore[assignment]
         try:
-            download_agent_browser(bin_dir=self._bin_dir, version=self._version)
+            download_lightpanda(bin_dir=self._bin_dir, version=self._version)
             self.finished.emit()
         except Exception as exc:
             self.error.emit(str(exc))
@@ -223,18 +223,18 @@ class SetupHandlersMixin:
     This mixin expects to be combined with a QMainWindow that has a ``ui``
     attribute of type ``Ui_MainWindow``. It provides:
 
-    - Status label population for LlamaCpp binaries, GGUF models, and agent-browser
+    - Status label population for LlamaCpp binaries, GGUF models, and Lightpanda
     - Background download of llama.cpp binaries via ``_LlamaDownloadWorker``
     - Background download of GGUF models via ``_ModelDownloadWorker``
-    - Background download of agent-browser via ``_AgentBrowserDownloadWorker``
+    - Background download of Lightpanda via ``_LightpandaDownloadWorker``
 
     Attributes:
         _llama_dl_thread: QThread for the llama.cpp download worker.
         _llama_dl_worker: The active llama download worker (kept alive).
         _model_dl_thread: QThread for the model download worker.
         _model_dl_worker: The active model download worker (kept alive).
-        _agentbrowser_dl_thread: QThread for agent-browser download worker.
-        _agentbrowser_dl_worker: Active agent-browser download worker (kept alive).
+        _lightpanda_dl_thread: QThread for Lightpanda download worker.
+        _lightpanda_dl_worker: Active Lightpanda download worker (kept alive).
     """
 
     ui: Ui_MainWindow
@@ -249,15 +249,15 @@ class SetupHandlersMixin:
         """
         self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
         self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
-        self.ui.pushButton_AgentBrowserDownload.clicked.connect(
-            self.on_agentbrowser_download_clicked
+        self.ui.pushButton_LightpandaDownload.clicked.connect(
+            self.on_lightpanda_download_clicked
         )
         self._llama_dl_thread: Optional[QThread] = None
         self._llama_dl_worker: Optional[_LlamaDownloadWorker] = None
         self._model_dl_thread: Optional[QThread] = None
         self._model_dl_worker: Optional[_ModelDownloadWorker] = None
-        self._agentbrowser_dl_thread: Optional[QThread] = None
-        self._agentbrowser_dl_worker: Optional[_AgentBrowserDownloadWorker] = None
+        self._lightpanda_dl_thread: Optional[QThread] = None
+        self._lightpanda_dl_worker: Optional[_LightpandaDownloadWorker] = None
 
     def load_setup(self) -> None:
         """Populate all Setup tab status labels from current configuration."""
@@ -301,25 +301,25 @@ class SetupHandlersMixin:
             color = "green" if downloaded else "red"
             label.setText(f'<span style="color:{color}">{icon}</span> {filename}')
 
-        # Agent Browser status
-        from aria.config.api import AgentBrowser
+        # Lightpanda status
+        from aria.config.api import Lightpanda
 
-        self.ui.label_AgentBrowser_BinDir.setText(str(AgentBrowser.get_bin_path()))
-        self.ui.label_AgentBrowser_Version.setText(AgentBrowser.version)
+        self.ui.label_Lightpanda_BinDir.setText(str(Lightpanda.get_bin_path()))
+        self.ui.label_Lightpanda_Version.setText(Lightpanda.version)
 
-        binary_path = AgentBrowser.get_binary_path()
+        binary_path = Lightpanda.get_binary_path()
         if binary_path:
-            self.ui.label_AgentBrowser_BinaryPath.setText(str(binary_path))
-            self.ui.label_AgentBrowser_Status.setText(
+            self.ui.label_Lightpanda_BinaryPath.setText(str(binary_path))
+            self.ui.label_Lightpanda_Status.setText(
                 '<span style="color:green">✓ Installed</span>'
             )
-            self.ui.label_AgentBrowser_BrowserTools.setText("Available")
+            self.ui.label_Lightpanda_BrowserTools.setText("Available")
         else:
-            self.ui.label_AgentBrowser_BinaryPath.setText("—")
-            self.ui.label_AgentBrowser_Status.setText(
+            self.ui.label_Lightpanda_BinaryPath.setText("—")
+            self.ui.label_Lightpanda_Status.setText(
                 '<span style="color:red">✗ Not installed</span>'
             )
-            self.ui.label_AgentBrowser_BrowserTools.setText("Disabled")
+            self.ui.label_Lightpanda_BrowserTools.setText("Disabled")
 
     def _cleanup_thread(self, attr: str) -> None:
         """Safely stop and clean up a QThread stored as an instance attribute.
@@ -438,56 +438,54 @@ class SetupHandlersMixin:
         self.ui.plainTextEdit_ModelOutput.appendPlainText(f"ERROR: {message}")
         self.ui.pushButton_ModelDownload.setEnabled(True)
 
-    def _cleanup_agentbrowser_dl_thread(self) -> None:
-        """Safely stop and clean up the agent-browser download thread."""
-        self._cleanup_thread("_agentbrowser_dl_thread")
-        self._agentbrowser_dl_worker = None
+    def _cleanup_lightpanda_dl_thread(self) -> None:
+        """Safely stop and clean up the Lightpanda download thread."""
+        self._cleanup_thread("_lightpanda_dl_thread")
+        self._lightpanda_dl_worker = None
 
-    def on_agentbrowser_download_clicked(self) -> None:
-        """Handle Download Agent Browser button click.
+    def on_lightpanda_download_clicked(self) -> None:
+        """Handle Download Lightpanda button click.
 
-        Starts ``_AgentBrowserDownloadWorker`` in a background QThread.
+        Starts ``_LightpandaDownloadWorker`` in a background QThread.
         """
-        from aria.config.api import AgentBrowser
+        from aria.config.api import Lightpanda
 
-        self._cleanup_agentbrowser_dl_thread()
-        self.ui.pushButton_AgentBrowserDownload.setEnabled(False)
-        self.ui.plainTextEdit_AgentBrowserOutput.clear()
+        self._cleanup_lightpanda_dl_thread()
+        self.ui.pushButton_LightpandaDownload.setEnabled(False)
+        self.ui.plainTextEdit_LightpandaOutput.clear()
 
-        version_text = self.ui.lineEdit_AgentBrowserVersion.text().strip() or None
+        version_text = self.ui.lineEdit_LightpandaVersion.text().strip() or None
 
-        self._agentbrowser_dl_worker = _AgentBrowserDownloadWorker(
-            bin_dir=AgentBrowser.get_bin_path(), version=version_text
+        self._lightpanda_dl_worker = _LightpandaDownloadWorker(
+            bin_dir=Lightpanda.get_bin_path(), version=version_text
         )
-        self._agentbrowser_dl_thread = QThread()
-        self._agentbrowser_dl_worker.moveToThread(self._agentbrowser_dl_thread)
+        self._lightpanda_dl_thread = QThread()
+        self._lightpanda_dl_worker.moveToThread(self._lightpanda_dl_thread)
 
-        self._agentbrowser_dl_thread.started.connect(self._agentbrowser_dl_worker.run)
-        self._agentbrowser_dl_worker.log_line.connect(self._on_agentbrowser_log_line)
-        self._agentbrowser_dl_worker.finished.connect(self._on_agentbrowser_dl_finished)
-        self._agentbrowser_dl_worker.error.connect(self._on_agentbrowser_dl_error)
-        self._agentbrowser_dl_worker.finished.connect(self._agentbrowser_dl_thread.quit)
-        self._agentbrowser_dl_worker.error.connect(self._agentbrowser_dl_thread.quit)
-        self._agentbrowser_dl_thread.finished.connect(
-            self._agentbrowser_dl_worker.deleteLater
+        self._lightpanda_dl_thread.started.connect(self._lightpanda_dl_worker.run)
+        self._lightpanda_dl_worker.log_line.connect(self._on_lightpanda_log_line)
+        self._lightpanda_dl_worker.finished.connect(self._on_lightpanda_dl_finished)
+        self._lightpanda_dl_worker.error.connect(self._on_lightpanda_dl_error)
+        self._lightpanda_dl_worker.finished.connect(self._lightpanda_dl_thread.quit)
+        self._lightpanda_dl_worker.error.connect(self._lightpanda_dl_thread.quit)
+        self._lightpanda_dl_thread.finished.connect(
+            self._lightpanda_dl_worker.deleteLater
         )
-        self._agentbrowser_dl_thread.finished.connect(
-            self._clear_agentbrowser_dl_worker
-        )
+        self._lightpanda_dl_thread.finished.connect(self._clear_lightpanda_dl_worker)
 
-        self._agentbrowser_dl_thread.start()
+        self._lightpanda_dl_thread.start()
 
-    def _clear_agentbrowser_dl_worker(self) -> None:
-        self._agentbrowser_dl_worker = None
+    def _clear_lightpanda_dl_worker(self) -> None:
+        self._lightpanda_dl_worker = None
 
-    def _on_agentbrowser_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_AgentBrowserOutput.appendPlainText(_strip_ansi(line))
+    def _on_lightpanda_log_line(self, line: str) -> None:
+        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(_strip_ansi(line))
 
-    def _on_agentbrowser_dl_finished(self) -> None:
-        self.ui.pushButton_AgentBrowserDownload.setEnabled(True)
+    def _on_lightpanda_dl_finished(self) -> None:
+        self.ui.pushButton_LightpandaDownload.setEnabled(True)
         self.load_setup()
         self._run_preflight()
 
-    def _on_agentbrowser_dl_error(self, message: str) -> None:
-        self.ui.plainTextEdit_AgentBrowserOutput.appendPlainText(f"ERROR: {message}")
-        self.ui.pushButton_AgentBrowserDownload.setEnabled(True)
+    def _on_lightpanda_dl_error(self, message: str) -> None:
+        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(f"ERROR: {message}")
+        self.ui.pushButton_LightpandaDownload.setEnabled(True)

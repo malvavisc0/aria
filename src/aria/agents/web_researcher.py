@@ -91,22 +91,22 @@ def get_agent(
         ],
     }
 
-    # Conditionally add browser tools if agent-browser is installed
-    from aria.config.api import AgentBrowser
+    # Conditionally add browser tools if Lightpanda is installed
+    from aria.config.api import Lightpanda
 
     browser_tools_module = None
-    if AgentBrowser.is_available():
+    if Lightpanda.is_available():
         browser_tools_module = importlib.import_module(BROWSER_TOOLS)
         tools_selection[BROWSER_TOOLS] = [
             "browser_open",
             "browser_click",
             "browser_screenshot",
         ]
-        logger.info("Browser tools enabled (agent-browser available)")
+        logger.info("Browser tools enabled (Lightpanda available)")
     else:
         logger.info(
-            "agent-browser not installed — browser tools disabled. "
-            "Run 'aria agentbrowser download' to enable."
+            "Lightpanda not installed — browser tools disabled. "
+            "Run 'aria lightpanda download' to enable."
         )
 
     tools = (
@@ -124,10 +124,10 @@ def get_agent(
         ]
     )
 
-    # Add browser tools if available
+    # Add browser tools if available (async — registered via async_fn)
     if browser_tools_module:
         tools += [
-            FunctionTool.from_defaults(fn=getattr(browser_tools_module, name))
+            FunctionTool.from_defaults(async_fn=getattr(browser_tools_module, name))
             for name in tools_selection[BROWSER_TOOLS]
         ]
 

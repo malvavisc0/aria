@@ -205,15 +205,15 @@ def _check_binaries(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_agent_browser(checks: List[CheckResult]) -> None:
-    """Check if agent-browser is installed (optional)."""
-    from aria.config.api import AgentBrowser
+def _check_lightpanda(checks: List[CheckResult]) -> None:
+    """Check if Lightpanda is installed (optional)."""
+    from aria.config.api import Lightpanda
 
-    if AgentBrowser.is_available():
-        binary = AgentBrowser.get_binary_path()
+    if Lightpanda.is_available():
+        binary = Lightpanda.get_binary_path()
         checks.append(
             CheckResult(
-                name="agent-browser",
+                name="lightpanda",
                 passed=True,
                 category="binaries",
                 details=f"Found at {binary}",
@@ -222,12 +222,12 @@ def _check_agent_browser(checks: List[CheckResult]) -> None:
     else:
         checks.append(
             CheckResult(
-                name="agent-browser",
+                name="lightpanda",
                 passed=True,  # Pass because it's optional
                 category="binaries",
                 details=(
                     "Not installed (browser tools disabled). "
-                    "Run: aria agentbrowser download"
+                    "Run: aria lightpanda download"
                 ),
             )
         )
@@ -302,7 +302,7 @@ def run_preflight_checks() -> PreflightResult:
     _check_env_vars(checks)
     _check_data_folder(checks)
     _check_binaries(checks)
-    _check_agent_browser(checks)
+    _check_lightpanda(checks)
     _check_models(checks)
     _check_memory_requirements(checks)
 

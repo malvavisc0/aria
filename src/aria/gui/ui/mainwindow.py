@@ -655,162 +655,148 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_setup.addWidget(self.groupBox_Models)
 
-        self.groupBox_AgentBrowser = QGroupBox(self.tab_setup)
-        self.groupBox_AgentBrowser.setObjectName("groupBox_AgentBrowser")
-        self.verticalLayout_agentbrowser = QVBoxLayout(self.groupBox_AgentBrowser)
-        self.verticalLayout_agentbrowser.setObjectName("verticalLayout_agentbrowser")
-        self.verticalLayout_agentbrowser.setContentsMargins(8, 8, 8, 8)
-        self.formLayout_agentbrowser_status = QFormLayout()
-        self.formLayout_agentbrowser_status.setObjectName(
-            "formLayout_agentbrowser_status"
-        )
-        self.formLayout_agentbrowser_status.setHorizontalSpacing(20)
-        self.formLayout_agentbrowser_status.setVerticalSpacing(6)
-        self.label_agentbrowser_bindir_lbl = QLabel(self.groupBox_AgentBrowser)
-        self.label_agentbrowser_bindir_lbl.setObjectName(
-            "label_agentbrowser_bindir_lbl"
-        )
+        self.groupBox_Lightpanda = QGroupBox(self.tab_setup)
+        self.groupBox_Lightpanda.setObjectName("groupBox_Lightpanda")
+        self.verticalLayout_lightpanda = QVBoxLayout(self.groupBox_Lightpanda)
+        self.verticalLayout_lightpanda.setObjectName("verticalLayout_lightpanda")
+        self.verticalLayout_lightpanda.setContentsMargins(8, 8, 8, 8)
+        self.formLayout_lightpanda_status = QFormLayout()
+        self.formLayout_lightpanda_status.setObjectName("formLayout_lightpanda_status")
+        self.formLayout_lightpanda_status.setHorizontalSpacing(20)
+        self.formLayout_lightpanda_status.setVerticalSpacing(6)
+        self.label_lightpanda_bindir_lbl = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_bindir_lbl.setObjectName("label_lightpanda_bindir_lbl")
 
-        self.formLayout_agentbrowser_status.setWidget(
-            0, QFormLayout.ItemRole.LabelRole, self.label_agentbrowser_bindir_lbl
+        self.formLayout_lightpanda_status.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_bindir_lbl
         )
 
-        self.label_AgentBrowser_BinDir = QLabel(self.groupBox_AgentBrowser)
-        self.label_AgentBrowser_BinDir.setObjectName("label_AgentBrowser_BinDir")
+        self.label_Lightpanda_BinDir = QLabel(self.groupBox_Lightpanda)
+        self.label_Lightpanda_BinDir.setObjectName("label_Lightpanda_BinDir")
 
-        self.formLayout_agentbrowser_status.setWidget(
-            0, QFormLayout.ItemRole.FieldRole, self.label_AgentBrowser_BinDir
+        self.formLayout_lightpanda_status.setWidget(
+            0, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BinDir
         )
 
-        self.label_agentbrowser_version_lbl = QLabel(self.groupBox_AgentBrowser)
-        self.label_agentbrowser_version_lbl.setObjectName(
-            "label_agentbrowser_version_lbl"
+        self.label_lightpanda_version_lbl = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_version_lbl.setObjectName("label_lightpanda_version_lbl")
+
+        self.formLayout_lightpanda_status.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_version_lbl
         )
 
-        self.formLayout_agentbrowser_status.setWidget(
-            1, QFormLayout.ItemRole.LabelRole, self.label_agentbrowser_version_lbl
+        self.label_Lightpanda_Version = QLabel(self.groupBox_Lightpanda)
+        self.label_Lightpanda_Version.setObjectName("label_Lightpanda_Version")
+
+        self.formLayout_lightpanda_status.setWidget(
+            1, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Version
         )
 
-        self.label_AgentBrowser_Version = QLabel(self.groupBox_AgentBrowser)
-        self.label_AgentBrowser_Version.setObjectName("label_AgentBrowser_Version")
-
-        self.formLayout_agentbrowser_status.setWidget(
-            1, QFormLayout.ItemRole.FieldRole, self.label_AgentBrowser_Version
+        self.label_lightpanda_binarypath_lbl = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_binarypath_lbl.setObjectName(
+            "label_lightpanda_binarypath_lbl"
         )
 
-        self.label_agentbrowser_binarypath_lbl = QLabel(self.groupBox_AgentBrowser)
-        self.label_agentbrowser_binarypath_lbl.setObjectName(
-            "label_agentbrowser_binarypath_lbl"
+        self.formLayout_lightpanda_status.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_binarypath_lbl
         )
 
-        self.formLayout_agentbrowser_status.setWidget(
-            2, QFormLayout.ItemRole.LabelRole, self.label_agentbrowser_binarypath_lbl
+        self.label_Lightpanda_BinaryPath = QLabel(self.groupBox_Lightpanda)
+        self.label_Lightpanda_BinaryPath.setObjectName("label_Lightpanda_BinaryPath")
+
+        self.formLayout_lightpanda_status.setWidget(
+            2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BinaryPath
         )
 
-        self.label_AgentBrowser_BinaryPath = QLabel(self.groupBox_AgentBrowser)
-        self.label_AgentBrowser_BinaryPath.setObjectName(
-            "label_AgentBrowser_BinaryPath"
+        self.label_lightpanda_status_lbl = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_status_lbl.setObjectName("label_lightpanda_status_lbl")
+
+        self.formLayout_lightpanda_status.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl
         )
 
-        self.formLayout_agentbrowser_status.setWidget(
-            2, QFormLayout.ItemRole.FieldRole, self.label_AgentBrowser_BinaryPath
+        self.label_Lightpanda_Status = QLabel(self.groupBox_Lightpanda)
+        self.label_Lightpanda_Status.setObjectName("label_Lightpanda_Status")
+
+        self.formLayout_lightpanda_status.setWidget(
+            3, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status
         )
 
-        self.label_agentbrowser_status_lbl = QLabel(self.groupBox_AgentBrowser)
-        self.label_agentbrowser_status_lbl.setObjectName(
-            "label_agentbrowser_status_lbl"
+        self.label_lightpanda_browsertools_lbl = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_browsertools_lbl.setObjectName(
+            "label_lightpanda_browsertools_lbl"
         )
 
-        self.formLayout_agentbrowser_status.setWidget(
-            3, QFormLayout.ItemRole.LabelRole, self.label_agentbrowser_status_lbl
+        self.formLayout_lightpanda_status.setWidget(
+            4, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_browsertools_lbl
         )
 
-        self.label_AgentBrowser_Status = QLabel(self.groupBox_AgentBrowser)
-        self.label_AgentBrowser_Status.setObjectName("label_AgentBrowser_Status")
-
-        self.formLayout_agentbrowser_status.setWidget(
-            3, QFormLayout.ItemRole.FieldRole, self.label_AgentBrowser_Status
+        self.label_Lightpanda_BrowserTools = QLabel(self.groupBox_Lightpanda)
+        self.label_Lightpanda_BrowserTools.setObjectName(
+            "label_Lightpanda_BrowserTools"
         )
 
-        self.label_agentbrowser_browsertools_lbl = QLabel(self.groupBox_AgentBrowser)
-        self.label_agentbrowser_browsertools_lbl.setObjectName(
-            "label_agentbrowser_browsertools_lbl"
+        self.formLayout_lightpanda_status.setWidget(
+            4, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BrowserTools
         )
 
-        self.formLayout_agentbrowser_status.setWidget(
-            4, QFormLayout.ItemRole.LabelRole, self.label_agentbrowser_browsertools_lbl
+        self.verticalLayout_lightpanda.addLayout(self.formLayout_lightpanda_status)
+
+        self.horizontalLayout_lightpandaDownload = QHBoxLayout()
+        self.horizontalLayout_lightpandaDownload.setObjectName(
+            "horizontalLayout_lightpandaDownload"
+        )
+        self.label_lightpanda_version_lbl_2 = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_version_lbl_2.setObjectName(
+            "label_lightpanda_version_lbl_2"
         )
 
-        self.label_AgentBrowser_BrowserTools = QLabel(self.groupBox_AgentBrowser)
-        self.label_AgentBrowser_BrowserTools.setObjectName(
-            "label_AgentBrowser_BrowserTools"
+        self.horizontalLayout_lightpandaDownload.addWidget(
+            self.label_lightpanda_version_lbl_2
         )
 
-        self.formLayout_agentbrowser_status.setWidget(
-            4, QFormLayout.ItemRole.FieldRole, self.label_AgentBrowser_BrowserTools
+        self.lineEdit_LightpandaVersion = QLineEdit(self.groupBox_Lightpanda)
+        self.lineEdit_LightpandaVersion.setObjectName("lineEdit_LightpandaVersion")
+
+        self.horizontalLayout_lightpandaDownload.addWidget(
+            self.lineEdit_LightpandaVersion
         )
 
-        self.verticalLayout_agentbrowser.addLayout(self.formLayout_agentbrowser_status)
-
-        self.horizontalLayout_agentbrowserDownload = QHBoxLayout()
-        self.horizontalLayout_agentbrowserDownload.setObjectName(
-            "horizontalLayout_agentbrowserDownload"
+        self.pushButton_LightpandaDownload = QPushButton(self.groupBox_Lightpanda)
+        self.pushButton_LightpandaDownload.setObjectName(
+            "pushButton_LightpandaDownload"
         )
-        self.label_agentbrowser_version_lbl_2 = QLabel(self.groupBox_AgentBrowser)
-        self.label_agentbrowser_version_lbl_2.setObjectName(
-            "label_agentbrowser_version_lbl_2"
-        )
+        self.pushButton_LightpandaDownload.setIcon(icon6)
 
-        self.horizontalLayout_agentbrowserDownload.addWidget(
-            self.label_agentbrowser_version_lbl_2
+        self.horizontalLayout_lightpandaDownload.addWidget(
+            self.pushButton_LightpandaDownload
         )
 
-        self.lineEdit_AgentBrowserVersion = QLineEdit(self.groupBox_AgentBrowser)
-        self.lineEdit_AgentBrowserVersion.setObjectName("lineEdit_AgentBrowserVersion")
-
-        self.horizontalLayout_agentbrowserDownload.addWidget(
-            self.lineEdit_AgentBrowserVersion
-        )
-
-        self.pushButton_AgentBrowserDownload = QPushButton(self.groupBox_AgentBrowser)
-        self.pushButton_AgentBrowserDownload.setObjectName(
-            "pushButton_AgentBrowserDownload"
-        )
-        self.pushButton_AgentBrowserDownload.setIcon(icon6)
-
-        self.horizontalLayout_agentbrowserDownload.addWidget(
-            self.pushButton_AgentBrowserDownload
-        )
-
-        self.horizontalSpacer_agentbrowserDl = QSpacerItem(
+        self.horizontalSpacer_lightpandaDl = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_agentbrowserDownload.addItem(
-            self.horizontalSpacer_agentbrowserDl
+        self.horizontalLayout_lightpandaDownload.addItem(
+            self.horizontalSpacer_lightpandaDl
         )
 
-        self.verticalLayout_agentbrowser.addLayout(
-            self.horizontalLayout_agentbrowserDownload
+        self.verticalLayout_lightpanda.addLayout(
+            self.horizontalLayout_lightpandaDownload
         )
 
-        self.plainTextEdit_AgentBrowserOutput = QPlainTextEdit(
-            self.groupBox_AgentBrowser
+        self.plainTextEdit_LightpandaOutput = QPlainTextEdit(self.groupBox_Lightpanda)
+        self.plainTextEdit_LightpandaOutput.setObjectName(
+            "plainTextEdit_LightpandaOutput"
         )
-        self.plainTextEdit_AgentBrowserOutput.setObjectName(
-            "plainTextEdit_AgentBrowserOutput"
-        )
-        self.plainTextEdit_AgentBrowserOutput.setFont(font1)
-        self.plainTextEdit_AgentBrowserOutput.setLineWrapMode(
+        self.plainTextEdit_LightpandaOutput.setFont(font1)
+        self.plainTextEdit_LightpandaOutput.setLineWrapMode(
             QPlainTextEdit.LineWrapMode.NoWrap
         )
-        self.plainTextEdit_AgentBrowserOutput.setReadOnly(True)
+        self.plainTextEdit_LightpandaOutput.setReadOnly(True)
 
-        self.verticalLayout_agentbrowser.addWidget(
-            self.plainTextEdit_AgentBrowserOutput
-        )
+        self.verticalLayout_lightpanda.addWidget(self.plainTextEdit_LightpandaOutput)
 
-        self.verticalLayout_setup.addWidget(self.groupBox_AgentBrowser)
+        self.verticalLayout_setup.addWidget(self.groupBox_Lightpanda)
 
         self.verticalSpacer_setup = QSpacerItem(
             20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
@@ -1356,49 +1342,49 @@ class Ui_MainWindow(object):
                 "MainWindow", "Download output will appear here...", None
             )
         )
-        self.groupBox_AgentBrowser.setTitle(
-            QCoreApplication.translate("MainWindow", "Agent Browser", None)
+        self.groupBox_Lightpanda.setTitle(
+            QCoreApplication.translate("MainWindow", "Lightpanda Browser", None)
         )
-        self.label_agentbrowser_bindir_lbl.setText(
+        self.label_lightpanda_bindir_lbl.setText(
             QCoreApplication.translate("MainWindow", "Binary Directory", None)
         )
-        self.label_AgentBrowser_BinDir.setText(
+        self.label_Lightpanda_BinDir.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_agentbrowser_version_lbl.setText(
+        self.label_lightpanda_version_lbl.setText(
             QCoreApplication.translate("MainWindow", "Configured Version", None)
         )
-        self.label_AgentBrowser_Version.setText(
+        self.label_Lightpanda_Version.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_agentbrowser_binarypath_lbl.setText(
+        self.label_lightpanda_binarypath_lbl.setText(
             QCoreApplication.translate("MainWindow", "Binary Path", None)
         )
-        self.label_AgentBrowser_BinaryPath.setText(
+        self.label_Lightpanda_BinaryPath.setText(
             QCoreApplication.translate("MainWindow", "\u2014", None)
         )
-        self.label_agentbrowser_status_lbl.setText(
+        self.label_lightpanda_status_lbl.setText(
             QCoreApplication.translate("MainWindow", "Status", None)
         )
-        self.label_AgentBrowser_Status.setText(
+        self.label_Lightpanda_Status.setText(
             QCoreApplication.translate("MainWindow", "\u2717 Not installed", None)
         )
-        self.label_agentbrowser_browsertools_lbl.setText(
+        self.label_lightpanda_browsertools_lbl.setText(
             QCoreApplication.translate("MainWindow", "Browser Tools", None)
         )
-        self.label_AgentBrowser_BrowserTools.setText(
+        self.label_Lightpanda_BrowserTools.setText(
             QCoreApplication.translate("MainWindow", "Disabled", None)
         )
-        self.label_agentbrowser_version_lbl_2.setText(
+        self.label_lightpanda_version_lbl_2.setText(
             QCoreApplication.translate("MainWindow", "Version (optional):", None)
         )
-        self.lineEdit_AgentBrowserVersion.setPlaceholderText(
-            QCoreApplication.translate("MainWindow", "latest", None)
+        self.lineEdit_LightpandaVersion.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "nightly", None)
         )
-        self.pushButton_AgentBrowserDownload.setText(
+        self.pushButton_LightpandaDownload.setText(
             QCoreApplication.translate("MainWindow", "Download", None)
         )
-        self.plainTextEdit_AgentBrowserOutput.setPlaceholderText(
+        self.plainTextEdit_LightpandaOutput.setPlaceholderText(
             QCoreApplication.translate(
                 "MainWindow", "Download output will appear here...", None
             )

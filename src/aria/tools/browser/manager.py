@@ -1,48 +1,56 @@
-"""Browser daemon lifecycle management.
+"""Lightpanda browser lifecycle management via Playwright CDP.
 
-The BrowserManager follows the same pattern as LlamaCppServerManager:
+The LightpandaManager follows the same pattern as LlamaCppServerManager:
 - Started during on_app_startup() if the binary is available
 - Stopped during on_app_shutdown()
 - Agents use browser tools without worrying about lifecycle
 
 Example:
     ```python
-    from aria.tools.browser.manager import BrowserManager, set_browser_manager
+    from aria.tools.browser.manager import (
+        LightpandaManager,
+        set_browser_manager,
+    )
 
     # During app startup
-    manager = BrowserManager(binary_path)
-    if manager.start():
+    manager = LightpandaManager(binary_path, port=9222)
+    if await manager.start():
         set_browser_manager(manager)
 
     # During app shutdown
-    manager.stop()
+    await manager.stop()
     set_browser_manager(None)
     ```
 """
 
+import asyncio
 import json
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from loguru import logger
+from playwright.async_api import Browser, Page, Playwright, async_playwright
 
-from aria.tools.browser.constants import BROWSER_COMMAND_TIMEOUT
+from aria.tools.browser.constants import (
+    BROWSER_COMMAND_TIMEOUT,
+    LIGHTPANDA_DEFAULT_PORT,
+)
 
 # Module-level singleton — set during app startup
-_manager: Optional["BrowserManager"] = None
+_manager: Optional["LightpandaManager"] = None
 
 
-def get_browser_manager() -> Optional["BrowserManager"]:
-    """Get the global BrowserManager instance.
+def get_browser_manager() -> Optional["LightpandaManager"]:
+    """Get the global LightpandaManager instance.
 
-    Returns None if agent-browser is not installed or not started.
+    Returns None if Lightpanda is not installed or not started.
     """
     return _manager
 
 
-def set_browser_manager(manager: Optional["BrowserManager"]) -> None:
-    """Set the global BrowserManager instance.
+def set_browser_manager(manager: Optional["LightpandaManager"]) -> None:
+    """Set the global LightpandaManager instance.
 
     Called from on_app_startup() and on_app_shutdown().
     """
@@ -50,124 +58,308 @@ def set_browser_manager(manager: Optional["BrowserManager"]) -> None:
     _manager = manager
 
 
-class BrowserManager:
-    """Manages the agent-browser daemon lifecycle.
+class LightpandaManager:
+    """Manages Lightpanda browser lifecycle via CDP + Playwright.
 
     Started during on_app_startup(), stopped during on_app_shutdown().
     Agents use browser tools without worrying about lifecycle.
 
-    The browser daemon is started by opening a blank page, which
-    initializes the Chromium process. All subsequent commands
-    (open, click, etc.) operate against this running daemon.
+    The manager starts Lightpanda in serve mode, which creates a CDP
+    endpoint that Playwright connects to for browser automation.
 
     Attributes:
-        _binary: Path to the agent-browser binary.
-        _running: Whether the daemon is currently running.
+        _binary: Path to the Lightpanda binary.
+        _port: CDP port for Lightpanda serve.
+        _process: Subprocess running Lightpanda serve.
+        _playwright: Playwright instance.
+        _browser: Connected Browser instance.
+        _page: Current Page instance.
     """
 
-    def __init__(self, binary_path: Path):
-        """Initialize the browser manager.
+    def __init__(self, binary_path: Path, port: int = LIGHTPANDA_DEFAULT_PORT):
+        """Initialize the Lightpanda manager.
 
         Args:
-            binary_path: Path to the agent-browser binary.
+            binary_path: Path to the Lightpanda binary.
+            port: CDP port for Lightpanda serve (default: 9222).
         """
-        from aria.config.api import AgentBrowser
-
         self._binary = binary_path
-        self._running = False
-        self._env = AgentBrowser.get_env()
+        self._port = port
+        self._process: Optional[subprocess.Popen] = None
+        self._playwright: Optional[Playwright] = None
+        self._browser: Optional[Browser] = None
+        self._page: Optional[Page] = None
 
-    def start(self) -> bool:
-        """Start the browser daemon by opening a blank page.
+    async def start(self) -> bool:
+        """Start Lightpanda serve and connect Playwright via CDP.
 
-        This initializes the Chromium process that persists
-        for all subsequent commands.
+        This starts the Lightpanda process in serve mode, waits for
+        the CDP endpoint to be ready, then connects Playwright.
 
         Returns:
             True if started successfully, False otherwise.
         """
-        result = self.run_command("open", "about:blank")
-        if "error" not in result:
-            self._running = True
-            logger.info("Browser daemon started")
+        try:
+            # Start Lightpanda serve process
+            cmd = [
+                str(self._binary),
+                "serve",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(self._port),
+            ]
+            logger.debug(f"Starting Lightpanda: {' '.join(cmd)}")
+
+            self._process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            # Wait for CDP endpoint to be ready
+            if not await self._wait_for_cdp():
+                logger.error("Lightpanda CDP endpoint did not become ready")
+                self._cleanup_process()
+                return False
+
+            # Connect Playwright via CDP
+            self._playwright = await async_playwright().start()
+            cdp_url = f"http://127.0.0.1:{self._port}"
+            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
+
+            # Create initial page
+            self._page = await self._browser.new_page()
+
+            logger.info(f"Lightpanda browser started on port {self._port}")
             return True
-        else:
-            logger.warning(f"Failed to start browser daemon: {result}")
+
+        except Exception as e:
+            logger.error(f"Failed to start Lightpanda: {e}")
+            await self.stop()
             return False
 
-    def stop(self) -> None:
-        """Stop the browser daemon.
+    async def stop(self) -> None:
+        """Close Playwright, terminate Lightpanda process.
 
         Called from on_app_shutdown().
         """
-        if self._running:
+        # Close browser connection
+        if self._browser:
             try:
-                self.run_command("close", json_output=False)
-                logger.info("Browser daemon stopped")
+                await self._browser.close()
             except Exception as e:
-                logger.warning(f"Error stopping browser daemon: {e}")
+                logger.warning(f"Error closing browser: {e}")
             finally:
-                self._running = False
+                self._browser = None
+
+        # Stop Playwright
+        if self._playwright:
+            try:
+                await self._playwright.stop()
+            except Exception as e:
+                logger.warning(f"Error stopping Playwright: {e}")
+            finally:
+                self._playwright = None
+
+        # Terminate Lightpanda process
+        self._cleanup_process()
+
+        self._page = None
+        logger.info("Lightpanda browser stopped")
+
+    def _cleanup_process(self) -> None:
+        """Terminate the Lightpanda subprocess."""
+        if self._process:
+            try:
+                self._process.terminate()
+                self._process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+                self._process.wait()
+            except Exception as e:
+                logger.warning(f"Error terminating Lightpanda: {e}")
+            finally:
+                self._process = None
+
+    async def _wait_for_cdp(self, timeout: float = 10.0) -> bool:
+        """Wait for the CDP endpoint to be ready.
+
+        Args:
+            timeout: Maximum time to wait in seconds.
+
+        Returns:
+            True if CDP is ready, False if timeout.
+        """
+        import socket
+
+        loop = asyncio.get_event_loop()
+        start_time = loop.time()
+        while loop.time() - start_time < timeout:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                result = sock.connect_ex(("127.0.0.1", self._port))
+                sock.close()
+                if result == 0:
+                    # Port is open, give it a moment to fully initialize
+                    await asyncio.sleep(0.5)
+                    return True
+            except Exception:
+                pass
+            await asyncio.sleep(0.1)
+
+        return False
 
     @property
     def is_running(self) -> bool:
-        """Check if the browser daemon is running."""
-        return self._running
+        """Check if the browser is running."""
+        return (
+            self._process is not None
+            and self._browser is not None
+            and self._page is not None
+        )
 
-    def run_command(
-        self,
-        *args: str,
-        json_output: bool = True,
-        timeout: int = BROWSER_COMMAND_TIMEOUT,
-    ) -> dict:
-        """Run a browser command against the running daemon.
+    @property
+    def page(self) -> Page:
+        """Get the current Playwright page.
+
+        Raises:
+            RuntimeError: If browser is not running.
+        """
+        if not self.is_running:
+            raise RuntimeError("Lightpanda browser is not running")
+        return self._page  # type: ignore
+
+    async def navigate(self, url: str) -> str:
+        """Navigate to URL and return rendered content.
 
         Args:
-            *args: Command arguments, e.g. 'open', 'https://example.com'
-            json_output: Whether to request JSON output
-            timeout: Command timeout in seconds
+            url: URL to navigate to.
 
         Returns:
-            Parsed JSON response or dict with output/error keys
+            JSON string with page content and metadata.
         """
-        cmd = [str(self._binary)]
-        if json_output:
-            cmd.append("--json")
-        cmd.extend(args)
-
-        logger.debug(f"Running browser command: {' '.join(cmd)}")
+        if not self.is_running:
+            return json.dumps({"error": "Browser is not running"})
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                env=self._env,
+            # Navigate to URL
+            await self._page.goto(url, timeout=BROWSER_COMMAND_TIMEOUT * 1000)
+
+            # Wait for page to settle
+            await self._page.wait_for_load_state("networkidle", timeout=10000)
+
+            # Get page content
+            content = await self.get_page_content()
+
+            return json.dumps(
+                {
+                    "url": self._page.url,
+                    "title": await self._page.title(),
+                    "content": content,
+                },
+                indent=2,
             )
 
-            if result.returncode != 0:
-                error_msg = (
-                    result.stderr.strip()
-                    or result.stdout.strip()
-                    or f"Command failed: {' '.join(args)}"
-                )
-                logger.debug(
-                    f"Browser command failed (rc={result.returncode}): "
-                    f"{' '.join(cmd)}"
-                )
-                logger.debug(f"  stdout: {result.stdout.strip()}")
-                logger.debug(f"  stderr: {result.stderr.strip()}")
-                return {"error": error_msg}
-
-            if json_output and result.stdout.strip():
-                try:
-                    return json.loads(result.stdout)
-                except json.JSONDecodeError:
-                    return {"output": result.stdout}
-            return {"output": result.stdout}
-
-        except subprocess.TimeoutExpired:
-            return {"error": f"Browser command timed out after {timeout}s"}
         except Exception as e:
-            return {"error": str(e)}
+            logger.error(f"Navigation error: {e}")
+            return json.dumps({"error": str(e)})
+
+    async def click(self, selector: str) -> str:
+        """Click element by CSS selector and return updated content.
+
+        Args:
+            selector: CSS selector for element to click.
+
+        Returns:
+            JSON string with updated page content.
+        """
+        if not self.is_running:
+            return json.dumps({"error": "Browser is not running"})
+
+        try:
+            # Click the element
+            await self._page.click(selector, timeout=10000)
+
+            # Wait for any navigation/updates
+            await self._page.wait_for_load_state("networkidle", timeout=10000)
+
+            # Get updated content
+            content = await self.get_page_content()
+
+            return json.dumps(
+                {
+                    "url": self._page.url,
+                    "title": await self._page.title(),
+                    "content": content,
+                },
+                indent=2,
+            )
+
+        except Exception as e:
+            logger.error(f"Click error: {e}")
+            return json.dumps({"error": str(e)})
+
+    async def screenshot(self, path: str) -> str:
+        """Take a screenshot of the current page.
+
+        Args:
+            path: File path to save screenshot.
+
+        Returns:
+            JSON string with file path.
+        """
+        if not self.is_running:
+            return json.dumps({"error": "Browser is not running"})
+
+        try:
+            await self._page.screenshot(path=path)
+            return json.dumps(
+                {
+                    "success": True,
+                    "file_path": path,
+                    "note": "Use vision tools to analyze the screenshot.",
+                },
+                indent=2,
+            )
+
+        except Exception as e:
+            logger.error(f"Screenshot error: {e}")
+            return json.dumps({"error": str(e)})
+
+    async def get_page_content(self) -> str:
+        """Get current page content as clean text.
+
+        Returns:
+            Page content as text, with scripts and styles removed.
+        """
+        if not self.is_running:
+            return ""
+
+        try:
+            # Get text content from body, excluding scripts and styles
+            content = await self._page.evaluate("""
+                () => {
+                    // Clone the document to avoid modifying the original
+                    const clone = document.body.cloneNode(true);
+
+                    // Remove script and style elements
+                    const remove = ['script', 'style', 'noscript'];
+                    remove.forEach(tag => {
+                        clone.querySelectorAll(tag).forEach(el => el.remove());
+                    });
+
+                    // Get text content
+                    return clone.innerText || clone.textContent || '';
+                }
+            """)
+
+            # Clean up whitespace
+            lines = (line.strip() for line in content.splitlines())
+            return "\n".join(line for line in lines if line)
+
+        except Exception as e:
+            logger.warning(f"Error getting page content: {e}")
+            return await self._page.content()

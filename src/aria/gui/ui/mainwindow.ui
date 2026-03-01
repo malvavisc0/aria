@@ -886,11 +886,11 @@
          </widget>
         </item>
         <item>
-         <widget class="QGroupBox" name="groupBox_AgentBrowser">
+         <widget class="QGroupBox" name="groupBox_Lightpanda">
           <property name="title">
-           <string>Agent Browser</string>
+           <string>Lightpanda Browser</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_agentbrowser">
+          <layout class="QVBoxLayout" name="verticalLayout_lightpanda">
            <property name="leftMargin">
             <number>8</number>
            </property>
@@ -904,7 +904,7 @@
             <number>8</number>
            </property>
            <item>
-            <layout class="QFormLayout" name="formLayout_agentbrowser_status">
+            <layout class="QFormLayout" name="formLayout_lightpanda_status">
              <property name="horizontalSpacing">
               <number>20</number>
              </property>
@@ -912,70 +912,70 @@
               <number>6</number>
              </property>
              <item row="0" column="0">
-              <widget class="QLabel" name="label_agentbrowser_bindir_lbl">
+              <widget class="QLabel" name="label_lightpanda_bindir_lbl">
                <property name="text">
                 <string>Binary Directory</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QLabel" name="label_AgentBrowser_BinDir">
+              <widget class="QLabel" name="label_Lightpanda_BinDir">
                <property name="text">
                 <string>-</string>
                </property>
               </widget>
              </item>
              <item row="1" column="0">
-              <widget class="QLabel" name="label_agentbrowser_version_lbl">
+              <widget class="QLabel" name="label_lightpanda_version_lbl">
                <property name="text">
                 <string>Configured Version</string>
                </property>
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QLabel" name="label_AgentBrowser_Version">
+              <widget class="QLabel" name="label_Lightpanda_Version">
                <property name="text">
                 <string>-</string>
                </property>
               </widget>
              </item>
              <item row="2" column="0">
-              <widget class="QLabel" name="label_agentbrowser_binarypath_lbl">
+              <widget class="QLabel" name="label_lightpanda_binarypath_lbl">
                <property name="text">
                 <string>Binary Path</string>
                </property>
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QLabel" name="label_AgentBrowser_BinaryPath">
+              <widget class="QLabel" name="label_Lightpanda_BinaryPath">
                <property name="text">
                 <string>—</string>
                </property>
               </widget>
              </item>
              <item row="3" column="0">
-              <widget class="QLabel" name="label_agentbrowser_status_lbl">
+              <widget class="QLabel" name="label_lightpanda_status_lbl">
                <property name="text">
                 <string>Status</string>
                </property>
               </widget>
              </item>
              <item row="3" column="1">
-              <widget class="QLabel" name="label_AgentBrowser_Status">
+              <widget class="QLabel" name="label_Lightpanda_Status">
                <property name="text">
                 <string>✗ Not installed</string>
                </property>
               </widget>
              </item>
              <item row="4" column="0">
-              <widget class="QLabel" name="label_agentbrowser_browsertools_lbl">
+              <widget class="QLabel" name="label_lightpanda_browsertools_lbl">
                <property name="text">
                 <string>Browser Tools</string>
                </property>
               </widget>
              </item>
              <item row="4" column="1">
-              <widget class="QLabel" name="label_AgentBrowser_BrowserTools">
+              <widget class="QLabel" name="label_Lightpanda_BrowserTools">
                <property name="text">
                 <string>Disabled</string>
                </property>
@@ -984,23 +984,23 @@
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_agentbrowserDownload">
+            <layout class="QHBoxLayout" name="horizontalLayout_lightpandaDownload">
              <item>
-              <widget class="QLabel" name="label_agentbrowser_version_lbl_2">
+              <widget class="QLabel" name="label_lightpanda_version_lbl_2">
                <property name="text">
                 <string>Version (optional):</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="lineEdit_AgentBrowserVersion">
+              <widget class="QLineEdit" name="lineEdit_LightpandaVersion">
                <property name="placeholderText">
-                <string>latest</string>
+                <string>nightly</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="pushButton_AgentBrowserDownload">
+              <widget class="QPushButton" name="pushButton_LightpandaDownload">
                <property name="text">
                 <string>Download</string>
                </property>
@@ -1010,7 +1010,7 @@
               </widget>
              </item>
              <item>
-              <spacer name="horizontalSpacer_agentbrowserDl">
+              <spacer name="horizontalSpacer_lightpandaDl">
                <property name="orientation">
                 <enum>Qt::Orientation::Horizontal</enum>
                </property>
@@ -1025,7 +1025,7 @@
             </layout>
            </item>
            <item>
-            <widget class="QPlainTextEdit" name="plainTextEdit_AgentBrowserOutput">
+            <widget class="QPlainTextEdit" name="plainTextEdit_LightpandaOutput">
              <property name="font">
               <font>
                <family>Courier New</family>

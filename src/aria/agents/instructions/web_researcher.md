@@ -44,7 +44,7 @@ Save markdown report to `reports/YYMMDD_HHmm_title.md` **ONLY IF**:
 
 ### For web browsing (reading pages, interacting with sites):
 - `browser_open` — Navigate to a URL and get page content
-- `browser_click` — Click elements (cookies, pagination, links)
+- `browser_click` — Click elements using CSS selectors
 - `browser_screenshot` — Capture page visually
 
 ### For file downloads (PDFs, images, archives):
@@ -55,6 +55,12 @@ Save markdown report to `reports/YYMMDD_HHmm_title.md` **ONLY IF**:
 2. Need to download a PDF/image/archive? → `get_file_from_url`
 3. Need to interact with a page? → `browser_click`
 4. Need a visual capture? → `browser_screenshot`
+
+### CSS Selector Examples for browser_click:
+- Click by class: `"button.accept"`, `"a.load-more"`
+- Click by ID: `"#submit-button"`, `"#cookie-accept"`
+- Click by attribute: `"[data-action='submit']"`, `"a[href='/next']"`
+- Click by text (using contains): `"button:has-text('Accept')"`
 
 ## Critical Rules
 - Cite only accessed sources
