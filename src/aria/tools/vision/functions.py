@@ -11,6 +11,10 @@ No LlamaIndex LLM wrapper is involved — the HTTP call is made directly.
 PDF rendering uses ``pypdfium2`` (pure-Python, no system dependencies).
 Each page is rendered at 150 DPI and sent to the VL model individually;
 results are concatenated into a single markdown document.
+
+If the VL model fails (e.g., due to multimodal input not being supported),
+the tool falls back to text-based extraction using pypdfium2's text extraction
+capabilities.
 """
 
 import base64
@@ -20,6 +24,13 @@ from typing import Callable
 
 import httpx
 from loguru import logger
+
+# HTTP exceptions to catch for fallback
+_HTTP_EXCEPTIONS = (
+    httpx.HTTPStatusError,
+    httpx.TimeoutException,
+    httpx.ConnectError,
+)
 
 # DPI used when rendering PDF pages to PNG.
 _PDF_RENDER_DPI = 150
@@ -102,6 +113,10 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         it to the VL server at api_base using the OpenAI multimodal chat
         format.
 
+        If the VL model fails (e.g., due to multimodal input not being
+        supported), falls back to text-based extraction using pypdfium2's
+        text extraction capabilities.
+
         Args:
             file_path: Absolute path to the PDF file.
             prompt: Optional extraction instruction. Defaults to full
@@ -113,7 +128,8 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
 
         Raises:
             ValueError: If the file does not exist or is not a PDF.
-            httpx.HTTPStatusError: If the VL server returns an error response.
+            httpx.HTTPStatusError: If the VL server returns an error response
+                and fallback also fails.
         """
         path = Path(file_path)
         if not path.exists():
@@ -133,48 +149,97 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         endpoint = api_base.rstrip("/") + "/chat/completions"
         parts: list[str] = []
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            for i, png_bytes in enumerate(pages, start=1):
-                logger.info(f"Analysing PDF page {i}/{len(pages)}: {path.name}")
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                for i, png_bytes in enumerate(pages, start=1):
+                    logger.info(f"Analysing PDF page {i}/{len(pages)}: {path.name}")
 
-                b64 = base64.b64encode(png_bytes).decode("ascii")
-                payload = {
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/png;base64,{b64}"
+                    b64 = base64.b64encode(png_bytes).decode("ascii")
+                    payload = {
+                        "model": model,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/png;base64,{b64}",
+                                        },
                                     },
-                                },
-                                {
-                                    "type": "text",
-                                    "text": user_prompt,
-                                },
-                            ],
-                        }
-                    ],
-                }
+                                    {
+                                        "type": "text",
+                                        "text": user_prompt,
+                                    },
+                                ],
+                            }
+                        ],
+                    }
 
-                response = await client.post(
-                    endpoint,
-                    json=payload,
-                    headers={"Authorization": "Bearer sk-dummy"},
-                )
-                response.raise_for_status()
+                    response = await client.post(
+                        endpoint,
+                        json=payload,
+                        headers={"Authorization": "Bearer sk-dummy"},
+                    )
+                    response.raise_for_status()
 
-                data = response.json()
-                text: str = (
-                    data.get("choices", [{}])[0]
-                    .get("message", {})
-                    .get("content", "")
-                    .strip()
-                )
-                parts.append(f"--- Page {i} ---\n\n{text}")
+                    data = response.json()
+                    text: str = (
+                        data.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                        .strip()
+                    )
+                    parts.append(f"--- Page {i} ---\n\n{text}")
+
+        except _HTTP_EXCEPTIONS as e:
+            logger.warning(
+                f"VL model failed to parse PDF: {e}. "
+                "Falling back to text-based extraction"
+            )
+            # Fall back to text-based extraction
+            return _extract_text_from_pdf(path)
 
         return "\n\n".join(parts)
 
     return parse_pdf
+
+
+def _extract_text_from_pdf(pdf_path: Path) -> str:
+    """Extract text from a PDF using pypdfium2's text extraction capabilities.
+
+    This is a fallback method when the VL model fails to process multimodal input.
+
+    Args:
+        pdf_path: Absolute path to the PDF file.
+
+    Returns:
+        Extracted text content with page separators.
+
+    Raises:
+        ImportError: If pypdfium2 is not installed.
+    """
+    try:
+        import pypdfium2 as pdfium  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise ImportError(
+            "pypdfium2 is required for PDF text extraction fallback. "
+            "Install it with: uv add pypdfium2"
+        ) from exc
+
+    pages_text: list[str] = []
+    doc = pdfium.PdfDocument(str(pdf_path))
+    try:
+        for page_index in range(len(doc)):
+            page = doc[page_index]
+            # Get text from the page
+            text = page.get_textpage().get_text_range()
+            pages_text.append(f"--- Page {page_index + 1} ---\n\n{text}")
+            logger.debug(
+                f"Extracted text from PDF page {page_index + 1}/{len(doc)} "
+                f"({len(text)} chars)"
+            )
+    finally:
+        doc.close()
+
+    return "\n\n".join(pages_text)
