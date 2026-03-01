@@ -28,6 +28,7 @@ Attributes:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import shutil
 from pathlib import Path
@@ -252,6 +253,31 @@ def _create_memory(thread_id: str) -> Memory:
         embed_model=_state.embeddings,
         token_limit=EmbeddingsConfig.token_limit,
     )
+
+
+async def _wait_for_initialization(
+    timeout: float = 30.0, poll_interval: float = 0.1
+) -> bool:
+    """Wait for AppState to be fully initialized.
+
+    Polls _state.is_initialized() at regular intervals until the state
+    is ready or the timeout expires. This handles the race condition
+    where on_chat_resume fires before on_app_startup completes.
+
+    Args:
+        timeout: Maximum time to wait in seconds (default: 30s).
+        poll_interval: Time between checks in seconds (default: 0.1s).
+
+    Returns:
+        True if initialized within timeout, False if timed out.
+    """
+    start_time = asyncio.get_event_loop().time()
+    while not _state.is_initialized():
+        elapsed = asyncio.get_event_loop().time() - start_time
+        if elapsed >= timeout:
+            return False
+        await asyncio.sleep(poll_interval)
+    return True
 
 
 def _extract_file_paths(message: cl.Message) -> list[str]:
@@ -696,18 +722,34 @@ async def on_chat_start() -> None:
 async def on_chat_resume(thread: ThreadDict) -> None:
     """Restore previous chat session from thread data.
 
-    Reconstructs the conversation memory from the thread's history
-    and stores it in the user session for continued conversation.
+    Waits for AppState initialization if needed (handles the race
+    condition where this fires before on_app_startup completes),
+    then reconstructs conversation memory from the thread history.
 
     Args:
         thread: Chainlit thread dictionary containing the conversation
             history and metadata.
 
     Note:
-        If restoration fails, an error message is shown to the user
-        and the exception is logged. The chat will start fresh.
+        If initialization times out or restoration fails, the chat
+        continues with empty memory — the user can still send new
+        messages but won't have prior context in the agent's memory.
     """
     try:
+        # Gate: wait for on_app_startup() to finish if it hasn't yet.
+        # This handles the race where Chainlit fires on_chat_resume
+        # before on_app_startup completes.
+        if not _state.is_initialized():
+            logger.info(
+                "AppState not yet initialized, waiting for startup to complete..."
+            )
+            if not await _wait_for_initialization():
+                logger.warning(
+                    "AppState initialization timed out after 30s. "
+                    "Continuing with empty memory."
+                )
+                return
+
         memory = await _restore_chat_history(thread)
         cl.user_session.set("memory", memory)
     except Exception as e:
