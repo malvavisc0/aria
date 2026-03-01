@@ -205,6 +205,34 @@ def _check_binaries(checks: List[CheckResult]) -> None:
         )
 
 
+def _check_agent_browser(checks: List[CheckResult]) -> None:
+    """Check if agent-browser is installed (optional)."""
+    from aria.config.api import AgentBrowser
+
+    if AgentBrowser.is_available():
+        binary = AgentBrowser.get_binary_path()
+        checks.append(
+            CheckResult(
+                name="agent-browser",
+                passed=True,
+                category="binaries",
+                details=f"Found at {binary}",
+            )
+        )
+    else:
+        checks.append(
+            CheckResult(
+                name="agent-browser",
+                passed=True,  # Pass because it's optional
+                category="binaries",
+                details=(
+                    "Not installed (browser tools disabled). "
+                    "Run: aria agentbrowser download"
+                ),
+            )
+        )
+
+
 def _check_models(checks: List[CheckResult]) -> None:
     """Check that all required GGUF models are downloaded."""
     from aria.config.api import LlamaCpp as LlamaCppConfig
@@ -274,6 +302,7 @@ def run_preflight_checks() -> PreflightResult:
     _check_env_vars(checks)
     _check_data_folder(checks)
     _check_binaries(checks)
+    _check_agent_browser(checks)
     _check_models(checks)
     _check_memory_requirements(checks)
 

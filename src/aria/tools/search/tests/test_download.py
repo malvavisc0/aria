@@ -21,10 +21,8 @@ from aria.tools.search.download import (
     _clean_text,
     _create_error_response,
     _create_response,
-    _detect_antibot_response,
     _extract_filename_from_response,
     _fetch_file,
-    _get_antibot_headers,
     _get_default_headers,
     _get_file_extension,
     _is_binary_content,
@@ -269,35 +267,6 @@ class TestHeaderGeneration:
         assert "Accept-Language" in headers
         assert "DNT" in headers
 
-    def test_get_antibot_headers(self):
-        """Test anti-bot headers generation."""
-        headers = _get_antibot_headers()
-        assert "User-Agent" in headers
-        assert "Referer" in headers
-        assert "Accept" in headers
-
-
-class TestAntiBotDetection:
-    """Test anti-bot detection functionality."""
-
-    def test_detect_antibot_response_positive(self):
-        """Test detection of anti-bot indicators."""
-        mock_response = Mock()
-        mock_response.text = "Cloudflare security check in progress"
-        assert _detect_antibot_response(mock_response) is True
-
-        mock_response.text = "Please complete the CAPTCHA"
-        assert _detect_antibot_response(mock_response) is True
-
-        mock_response.text = "Access denied - bot detection"
-        assert _detect_antibot_response(mock_response) is True
-
-    def test_detect_antibot_response_negative(self):
-        """Test normal content doesn't trigger anti-bot detection."""
-        mock_response = Mock()
-        mock_response.text = "Normal website content"
-        assert _detect_antibot_response(mock_response) is False
-
 
 class TestFilenameExtraction:
     """Test filename extraction from responses."""
@@ -396,21 +365,6 @@ class TestFetchFile:
 
         # Should have retried
         assert mock_client.get.call_count > 1
-
-    @patch("aria.tools.search.download.httpx.Client")
-    def test_fetch_file_antibot_detected(self, mock_client_class):
-        """Test handling of anti-bot detection."""
-        mock_response = Mock()
-        mock_response.text = "Cloudflare security check"
-        mock_response.headers = {"content-type": "text/html"}
-        mock_response.raise_for_status = Mock()
-
-        mock_client = Mock()
-        mock_client.get.return_value = mock_response
-        mock_client_class.return_value = mock_client
-
-        with pytest.raises(URLDownloadError, match="Failed to fetch"):
-            _fetch_file("https://example.com")
 
     @patch("aria.tools.search.download.httpx.Client")
     def test_fetch_file_html_size_check(self, mock_client_class):

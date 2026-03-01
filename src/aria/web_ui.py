@@ -32,7 +32,7 @@ import asyncio
 import json
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import chainlit as cl
 from chainlit.types import ThreadDict
@@ -148,6 +148,7 @@ class AppState(BaseModel):
     agents_workflow: AgentWorkflow | None = None
     prompt_enhancer: PromptEnhancerAgent | None = None
     llama_manager: LlamaCppServerManager | None = None
+    browser_manager: Any = None  # BrowserManager instance
     db_engine: Engine | None = None
     startup_complete: bool = False
 
@@ -551,6 +552,29 @@ async def on_app_startup() -> None:
         _state.agents_workflow = get_agent_workflow(llm=_state.llm)
         _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
 
+        # Start browser daemon (optional — only if agent-browser is installed)
+        from aria.config.api import AgentBrowser
+
+        if AgentBrowser.is_available():
+            from aria.tools.browser.manager import (
+                BrowserManager,
+                set_browser_manager,
+            )
+
+            binary = AgentBrowser.get_binary_path()
+            if binary:
+                browser_mgr = BrowserManager(binary)
+                if browser_mgr.start():
+                    _state.browser_manager = browser_mgr
+                    set_browser_manager(browser_mgr)
+                    logger.info("Browser daemon started successfully")
+                else:
+                    logger.warning(
+                        "Browser daemon failed to start — " "browser tools disabled"
+                    )
+        else:
+            logger.info("agent-browser not installed — browser tools disabled")
+
         # Mark startup complete
         _state.startup_complete = True
         logger.info("Aria web UI startup complete")
@@ -582,6 +606,19 @@ async def on_app_shutdown() -> None:
             logger.info("All LlamaCpp servers stopped")
         except Exception as e:
             logger.error(f"Error stopping LlamaCpp servers: {e}")
+
+    # Stop browser daemon
+    if _state.browser_manager:
+        try:
+            _state.browser_manager.stop()
+            logger.info("Browser daemon stopped")
+        except Exception as e:
+            logger.error(f"Error stopping browser daemon: {e}")
+        finally:
+            from aria.tools.browser.manager import set_browser_manager
+
+            set_browser_manager(None)
+            _state.browser_manager = None
 
     # Reset state
     _state.llama_manager = None

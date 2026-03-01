@@ -44,15 +44,6 @@ class URLDownloadError(Exception):
     """
 
 
-class AntiBotDetectedError(Exception):
-    """
-    Custom exception for anti-bot detection.
-
-    Raised when the target server detects automated access and blocks the
-    request.
-    """
-
-
 class UnknownOutputError(Exception):
     """
     Custom exception when the output is not supported.
@@ -80,20 +71,29 @@ def get_file_from_url(
     download_path: Optional[str] = str(DOWNLOADS_DIR),
 ) -> str:
     """
-    Download URL content to disk and optionally convert it
-    (markdown/text/binary).
+    Download a file from a URL (PDFs, images, archives, etc.).
+
+    NOTE: For web browsing and page interaction, use browser tools instead:
+    - browser_open() — Navigate to URLs and get page content
+    - browser_click() — Interact with page elements
+
+    This function is for downloading files only:
+    - PDFs, DOCX, XLSX
+    - Images, videos, audio
+    - ZIP, TAR, archives
+    - Raw data files (JSON, CSV, XML)
+    - Static HTML pages (when explicitly needed)
 
     Args:
-        intent: Why you're downloading (e.g., "Reading article")
-        url: URL to download
+        intent: Why you're downloading (e.g., "Downloading PDF report")
+        url: Direct URL to the file
         output: Format - auto/markdown/text/binary (default: auto)
         custom_headers: Optional HTTP headers
-        max_size: Max bytes (default: 50MB)
+        max_size: Max bytes (default: 5MB)
         download_path: Save directory (default: DOWNLOADS_DIR)
 
     Returns:
-        JSON with file_path, content (if text), mime_type, size_bytes.
-        Supports HTML, PDF, DOCX, images, YouTube transcripts.
+        JSON with file_path, mime_type, size_bytes.
     """
     logger.info(
         f"get_file_from_url called with url='{url}', "
@@ -324,52 +324,6 @@ def _get_default_headers() -> Dict[str, str]:
     }
 
 
-def _get_antibot_headers() -> Dict[str, str]:
-    """
-    Generate HTTP headers designed to avoid anti-bot detection.
-
-    Returns:
-        Dict[str, str]: A dictionary of anti-bot evasion headers
-    """
-    headers = _get_default_headers()
-
-    # Add random referer
-    referers = [
-        "https://www.google.com/",
-        "https://www.bing.com/",
-        "https://duckduckgo.com/",
-        "https://www.reddit.com/",
-        "https://news.ycombinator.com/",
-    ]
-    headers["Referer"] = random.choice(referers)
-
-    return headers
-
-
-def _detect_antibot_response(response: httpx.Response) -> bool:
-    """
-    Detect if a server response indicates anti-bot protection.
-
-    Args:
-        response (httpx.Response): The HTTP response to check
-
-    Returns:
-        bool: True if anti-bot indicators are detected, False otherwise
-    """
-    content = response.text.lower()
-    antibot_indicators = [
-        "cloudflare",
-        "captcha",
-        "bot detection",
-        "access denied",
-        "blocked",
-        "security check",
-        "ddos protection",
-    ]
-
-    return any(indicator in content for indicator in antibot_indicators)
-
-
 def _extract_filename_from_response(
     response: httpx.Response, url: str
 ) -> Optional[str]:
@@ -410,7 +364,7 @@ def _fetch_file(
     max_size: int = MAX_FILE_SIZE,
 ) -> tuple[Union[str, bytes], str, Optional[str]]:
     """
-    Download a file from a URL with retry logic and anti-bot evasion.
+    Download a file from a URL with simple retry logic.
 
     Args:
         url (str): The URL to fetch
@@ -429,8 +383,8 @@ def _fetch_file(
     """
     last_error = ""
 
-    # Merge custom headers with default anti-bot headers
-    headers = _get_antibot_headers()
+    # Use simple default headers for file downloads
+    headers = _get_default_headers()
     if custom_headers:
         headers.update(custom_headers)
 
@@ -438,7 +392,7 @@ def _fetch_file(
         timeout=httpx.Timeout(TIMEOUT),
         follow_redirects=True,
         headers=headers,
-        verify=False,
+        verify=False,  # Disable SSL verification to handle certificate issues
     )
 
     for attempt in range(MAX_RETRIES):
@@ -469,11 +423,8 @@ def _fetch_file(
             # Extract filename from response
             filename = _extract_filename_from_response(response, url)
 
-            # Check for anti-bot indicators only for HTML content
+            # For HTML content, check actual text size
             if _is_html_content(content_type):
-                if _detect_antibot_response(response):
-                    raise AntiBotDetectedError("Anti-bot system detected")
-                # Check actual text size
                 text_content = response.text
                 if len(text_content.encode("utf-8")) > max_size:
                     raise URLDownloadError(
@@ -499,13 +450,11 @@ def _fetch_file(
             last_error = f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
         except httpx.HTTPStatusError as exc:
             last_error = f"HTTP error {exc.response.status_code}"
-            if exc.response.status_code in [403, 429]:  # Likely anti-bot
+            # Retry on rate limiting
+            if exc.response.status_code in [429, 503]:
+                time.sleep(2**attempt)
                 continue
             break  # Don't retry other HTTP errors
-        except AntiBotDetectedError:
-            last_error = f"Anti-bot detected (attempt {attempt + 1}/{MAX_RETRIES})"
-            # If anti-bot is detected, don't continue retrying
-            break
         except URLDownloadError:
             # Re-raise size limit errors
             raise

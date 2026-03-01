@@ -23,7 +23,8 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
 
     Returns:
         JSON with results[{title, href}], error if failed.
-        Use get_file_from_url to download content for inspection.
+        Use browser_open to read web pages from the results.
+        Use get_file_from_url to download files (PDFs, images, etc.).
     """
     # Validate inputs
     validation_error = _validate_inputs(query, max_results)

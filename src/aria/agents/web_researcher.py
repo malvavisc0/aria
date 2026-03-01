@@ -19,6 +19,7 @@ from aria.agents.utils import load_agent_instructions
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
 WEB_SEARCH_TOOLS = "aria.tools.search"
+BROWSER_TOOLS = "aria.tools.browser"
 
 
 class WebResearcherAgent(FunctionAgent):
@@ -89,6 +90,25 @@ def get_agent(
             "get_current_weather",
         ],
     }
+
+    # Conditionally add browser tools if agent-browser is installed
+    from aria.config.api import AgentBrowser
+
+    browser_tools_module = None
+    if AgentBrowser.is_available():
+        browser_tools_module = importlib.import_module(BROWSER_TOOLS)
+        tools_selection[BROWSER_TOOLS] = [
+            "browser_open",
+            "browser_click",
+            "browser_screenshot",
+        ]
+        logger.info("Browser tools enabled (agent-browser available)")
+    else:
+        logger.info(
+            "agent-browser not installed — browser tools disabled. "
+            "Run 'aria agentbrowser download' to enable."
+        )
+
     tools = (
         [
             FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
@@ -103,6 +123,13 @@ def get_agent(
             for name in tools_selection[WEB_SEARCH_TOOLS]
         ]
     )
+
+    # Add browser tools if available
+    if browser_tools_module:
+        tools += [
+            FunctionTool.from_defaults(fn=getattr(browser_tools_module, name))
+            for name in tools_selection[BROWSER_TOOLS]
+        ]
 
     logger.info(f"Creating WebResearcherAgent with {len(tools)} tools")
     logger.info(f"Tool names: {[tool.metadata.name for tool in tools]}")

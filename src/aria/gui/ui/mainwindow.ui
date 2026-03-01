@@ -886,6 +886,167 @@
          </widget>
         </item>
         <item>
+         <widget class="QGroupBox" name="groupBox_AgentBrowser">
+          <property name="title">
+           <string>Agent Browser</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_agentbrowser">
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>8</number>
+           </property>
+           <property name="bottomMargin">
+            <number>8</number>
+           </property>
+           <item>
+            <layout class="QFormLayout" name="formLayout_agentbrowser_status">
+             <property name="horizontalSpacing">
+              <number>20</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>6</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_agentbrowser_bindir_lbl">
+               <property name="text">
+                <string>Binary Directory</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_AgentBrowser_BinDir">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_agentbrowser_version_lbl">
+               <property name="text">
+                <string>Configured Version</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_AgentBrowser_Version">
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_agentbrowser_binarypath_lbl">
+               <property name="text">
+                <string>Binary Path</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_AgentBrowser_BinaryPath">
+               <property name="text">
+                <string>—</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_agentbrowser_status_lbl">
+               <property name="text">
+                <string>Status</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLabel" name="label_AgentBrowser_Status">
+               <property name="text">
+                <string>✗ Not installed</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_agentbrowser_browsertools_lbl">
+               <property name="text">
+                <string>Browser Tools</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLabel" name="label_AgentBrowser_BrowserTools">
+               <property name="text">
+                <string>Disabled</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_agentbrowserDownload">
+             <item>
+              <widget class="QLabel" name="label_agentbrowser_version_lbl_2">
+               <property name="text">
+                <string>Version (optional):</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit_AgentBrowserVersion">
+               <property name="placeholderText">
+                <string>latest</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_AgentBrowserDownload">
+               <property name="text">
+                <string>Download</string>
+               </property>
+               <property name="icon">
+                <iconset theme="QIcon::ThemeIcon::GoDown"/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_agentbrowserDl">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QPlainTextEdit" name="plainTextEdit_AgentBrowserOutput">
+             <property name="font">
+              <font>
+               <family>Courier New</family>
+               <pointsize>9</pointsize>
+              </font>
+             </property>
+             <property name="lineWrapMode">
+              <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="placeholderText">
+              <string>Download output will appear here...</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
          <spacer name="verticalSpacer_setup">
           <property name="orientation">
            <enum>Qt::Orientation::Vertical</enum>

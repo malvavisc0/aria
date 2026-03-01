@@ -254,5 +254,7 @@ class MainWindow(
             self._cleanup_llama_dl_thread()
         if hasattr(self, "_model_dl_thread"):
             self._cleanup_model_dl_thread()
+        if hasattr(self, "_agentbrowser_dl_thread"):
+            self._cleanup_agentbrowser_dl_thread()
 
         super().closeEvent(event)

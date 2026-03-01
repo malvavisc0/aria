@@ -20,6 +20,7 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.5.5",
     "loguru>=0.7.3",
     "markitdown>=0.1.4",
+    "playwright>=1.58.0",
     "pydantic>=2.12.5",
     "pypdfium2>=4.30.0",
     "python-dotenv>=1.2.1",
