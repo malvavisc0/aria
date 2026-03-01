@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QComboBox, QMainWindow
 
 from aria.gui.ui.mainwindow import Ui_MainWindow
 from aria.helpers.dotenv import parse_dotenv, write_dotenv
+from aria.helpers.network import get_network_ip
 
 _ENV_PATH = Path(".env")
 
@@ -60,7 +61,13 @@ class SettingsHandlersMixin:
         self.ui.checkBox_Debug.setChecked(
             values.get("DEBUG", "false").strip().lower() == "true"
         )
-        self.ui.lineEdit_ServerHost.setText(values.get("SERVER_HOST", "0.0.0.0"))
+        # Use detected IP as default if not set or is 0.0.0.0
+        current_host = values.get("SERVER_HOST", "0.0.0.0")
+        if current_host == "0.0.0.0":
+            detected_ip = get_network_ip()
+            self.ui.lineEdit_ServerHost.setText(detected_ip)
+        else:
+            self.ui.lineEdit_ServerHost.setText(current_host)
 
         port = _safe_int(values.get("SERVER_PORT", "9876"), 9876)
         port = min(max(port, 1), 65535)

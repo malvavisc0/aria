@@ -14,6 +14,8 @@ from shutil import copyfile
 
 from rich.console import Console
 
+from aria.helpers.network import get_network_ip
+
 console = Console()
 
 
@@ -31,7 +33,10 @@ def is_initialized() -> bool:
         if line.startswith("CHAINLIT_AUTH_SECRET"):
             if "=" in line:
                 value = line.split("=", 1)[1].strip()
-                return bool(value) and value not in ("your-secret-here", "changeme")
+                return bool(value) and value not in (
+                    "your-secret-here",
+                    "changeme",
+                )
     return False
 
 
@@ -41,7 +46,7 @@ def generate_secret() -> str:
 
 
 def setup_env_file() -> bool:
-    """Create .env from .env.example with generated secret."""
+    """Create .env from .env.example with generated secret and network IP."""
     env_file = Path.cwd() / ".env"
     if env_file.exists():
         return False
@@ -55,10 +60,16 @@ def setup_env_file() -> bool:
     content = content.replace(
         "CHAINLIT_AUTH_SECRET =", f"CHAINLIT_AUTH_SECRET = {secret}"
     )
+
+    # Detect and set network IP for SERVER_HOST
+    network_ip = get_network_ip()
+    content = content.replace("SERVER_HOST = 0.0.0.0", f"SERVER_HOST = {network_ip}")
+
     env_file.write_text(content)
 
     console.print("   [green]✓[/green] Created .env configuration")
     console.print("   [green]✓[/green] Generated CHAINLIT_AUTH_SECRET")
+    console.print(f"   [green]✓[/green] Detected network IP: {network_ip}")
     return True
 
 
