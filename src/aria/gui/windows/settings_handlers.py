@@ -61,13 +61,19 @@ class SettingsHandlersMixin:
         self.ui.checkBox_Debug.setChecked(
             values.get("DEBUG", "false").strip().lower() == "true"
         )
-        # Use detected IP as default if not set or is 0.0.0.0
+        # Always detect and show current network IP
         current_host = values.get("SERVER_HOST", "0.0.0.0")
         if current_host == "0.0.0.0":
             detected_ip = get_network_ip()
             self.ui.lineEdit_ServerHost.setText(detected_ip)
         else:
-            self.ui.lineEdit_ServerHost.setText(current_host)
+            # Check if current IP is still valid (may have changed on network change)
+            detected_ip = get_network_ip()
+            if detected_ip != current_host:
+                # Network IP changed, update display but don't auto-save
+                self.ui.lineEdit_ServerHost.setText(detected_ip)
+            else:
+                self.ui.lineEdit_ServerHost.setText(current_host)
 
         port = _safe_int(values.get("SERVER_PORT", "9876"), 9876)
         port = min(max(port, 1), 65535)
@@ -84,12 +90,37 @@ class SettingsHandlersMixin:
             values.get("CHAT_CONTEXT_SIZE", "32768"),
         )
 
+        # Run preflight checks to verify configuration is valid
+        from aria.preflight import run_preflight_checks
+
+        preflight_result = run_preflight_checks()
+
+        if preflight_result.passed:
+            self._status_bar().showMessage(
+                "Settings loaded — all checks passed. Server can be started.",
+                5000,
+            )
+        else:
+            failure_count = len(preflight_result.failures)
+            self._status_bar().showMessage(
+                f"Settings loaded — {failure_count} preflight check(s) failed. "
+                "Fix issues before starting the server.",
+                10000,
+            )
+            # Show tooltip with failure details
+            failures = "\n".join(
+                f"  • {c.name}: {c.error}" for c in preflight_result.failures
+            )
+            self.ui.pushButton_SettingsSave.setToolTip(
+                f"Preflight checks failed:\n{failures}"
+            )
         self._status_bar().showMessage("Settings loaded.", 3000)
 
     def save_settings(self) -> None:
+        # Always detect and save current network IP
         values = {
             "DEBUG": "true" if self.ui.checkBox_Debug.isChecked() else "false",
-            "SERVER_HOST": self.ui.lineEdit_ServerHost.text().strip(),
+            "SERVER_HOST": get_network_ip(),
             "SERVER_PORT": str(self.ui.spinBox_ServerPort.value()),
             "CHAT_MODEL_REPO": self.ui.lineEdit_ChatRepo.text().strip(),
             "CHAT_MODEL": self.ui.lineEdit_ChatModel.text().strip(),
@@ -99,7 +130,28 @@ class SettingsHandlersMixin:
 
         _, raw_lines = parse_dotenv(_ENV_PATH)
         write_dotenv(_ENV_PATH, values, raw_lines)
-        self._status_bar().showMessage(
-            "Settings saved — restart the service to apply.",
-            5000,
-        )
+
+        # Run preflight checks to verify configuration is valid
+        from aria.preflight import run_preflight_checks
+
+        preflight_result = run_preflight_checks()
+
+        if preflight_result.passed:
+            self._status_bar().showMessage(
+                "Settings saved — all checks passed. Restart the service to apply.",
+                5000,
+            )
+        else:
+            failure_count = len(preflight_result.failures)
+            self._status_bar().showMessage(
+                f"Settings saved — {failure_count} preflight check(s) failed. "
+                "Restart the service to apply.",
+                10000,
+            )
+            # Show tooltip with failure details
+            failures = "\n".join(
+                f"  • {c.name}: {c.error}" for c in preflight_result.failures
+            )
+            self.ui.pushButton_SettingsSave.setToolTip(
+                f"Preflight checks failed:\n{failures}"
+            )
