@@ -335,7 +335,7 @@ class LightpandaManager:
         Returns:
             Page content as text, with scripts and styles removed.
         """
-        if not self.is_running:
+        if not self.is_running or not self._page:
             return ""
 
         try:
