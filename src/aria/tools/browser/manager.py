@@ -244,6 +244,9 @@ class LightpandaManager:
         if not self.is_running:
             return json.dumps({"error": "Browser is not running"})
 
+        if not self._page:
+            return json.dumps({"error": "Page is not open"})
+
         try:
             # Navigate to URL
             await self._page.goto(url, timeout=BROWSER_COMMAND_TIMEOUT * 1000)
@@ -279,6 +282,9 @@ class LightpandaManager:
         if not self.is_running:
             return json.dumps({"error": "Browser is not running"})
 
+        if not self._page:
+            return json.dumps({"error": "Page is not open"})
+
         try:
             # Click the element
             await self._page.click(selector, timeout=10000)
@@ -313,6 +319,8 @@ class LightpandaManager:
         """
         if not self.is_running:
             return json.dumps({"error": "Browser is not running"})
+        if not self._page:
+            return json.dumps({"error": "Page is not open"})
 
         try:
             await self._page.screenshot(path=path)
@@ -335,8 +343,10 @@ class LightpandaManager:
         Returns:
             Page content as text, with scripts and styles removed.
         """
-        if not self.is_running or not self._page:
-            return ""
+        if not self.is_running:
+            return json.dumps({"error": "Browser is not running"})
+        if not self._page:
+            return json.dumps({"error": "Page is not open"})
 
         try:
             # Get text content from body, excluding scripts and styles
