@@ -268,6 +268,7 @@ class TestGetMovieDetails:
         mock_movie.countries = ["United States", "Australia"]
         mock_movie.directors = []
         mock_movie.stars = []
+        mock_movie.categories = {}
         mock_movie.release_date = "1999-03-31"
         mock_movie.cover_url = "https://example.com/cover.jpg"
         mock_movie.worldwide_gross = "463517383 USD"
@@ -283,6 +284,107 @@ class TestGetMovieDetails:
         assert result["title"] == "The Matrix"
         assert result["year"] == 1999
         assert result["awards"]["wins"] == 42
+        assert result["writers"] == []
+        assert result["producers"] == []
+        assert result["cast"] == []
+
+    @patch("aria.tools.imdb.functions.get_movie")
+    def test_get_details_with_writers_and_cast(self, mock_get_movie):
+        """Test movie details with writers, producers, and cast from categories."""
+        mock_movie = MagicMock()
+        mock_movie.imdbId = "tt0133093"
+        mock_movie.title = "The Matrix"
+        mock_movie.year = 1999
+        mock_movie.kind = "movie"
+        mock_movie.duration = 136.0
+        mock_movie.rating = 8.7
+        mock_movie.votes = 2230088
+        mock_movie.metacritic_rating = 73
+        mock_movie.mpaa = "R"
+        mock_movie.plot = "A computer hacker learns about the Matrix"
+        mock_movie.genres = ["Action", "Sci-Fi"]
+        mock_movie.languages_text = ["English"]
+        mock_movie.countries = ["United States", "Australia"]
+        mock_movie.directors = []
+        mock_movie.stars = []
+        mock_movie.release_date = "1999-03-31"
+        mock_movie.cover_url = "https://example.com/cover.jpg"
+        mock_movie.worldwide_gross = "463517383 USD"
+        mock_movie.production_budget = "63000000 USD"
+        mock_movie.awards = None
+
+        # Set up categories with writers, producers, and cast
+        mock_writer = MagicMock()
+        mock_writer.imdbId = "nm0905152"
+        mock_writer.name = "Lilly Wachowski"
+
+        mock_producer = MagicMock()
+        mock_producer.imdbId = "nm0905154"
+        mock_producer.name = "Joel Silver"
+
+        mock_cast_member = MagicMock()
+        mock_cast_member.imdbId = "nm0000206"
+        mock_cast_member.name = "Keanu Reeves"
+        mock_cast_member.characters = ["Neo"]
+
+        mock_movie.categories = {
+            "writer": [mock_writer],
+            "producer": [mock_producer],
+            "cast": [mock_cast_member],
+        }
+        mock_get_movie.return_value = mock_movie
+
+        result = json.loads(get_movie_details("Get details", "tt0133093"))
+        assert len(result["writers"]) == 1
+        assert result["writers"][0]["name"] == "Lilly Wachowski"
+        assert result["writers"][0]["imdbId"] == "nm0905152"
+        assert len(result["producers"]) == 1
+        assert result["producers"][0]["name"] == "Joel Silver"
+        assert len(result["cast"]) == 1
+        assert result["cast"][0]["name"] == "Keanu Reeves"
+        assert result["cast"][0]["characters"] == ["Neo"]
+
+    @patch("aria.tools.imdb.functions.get_movie")
+    def test_get_details_director_fallback_from_categories(self, mock_get_movie):
+        """Test that directors fall back to categories when movie.directors is empty."""
+        mock_movie = MagicMock()
+        mock_movie.imdbId = "tt0133093"
+        mock_movie.title = "The Matrix"
+        mock_movie.year = 1999
+        mock_movie.kind = "movie"
+        mock_movie.duration = 136.0
+        mock_movie.rating = 8.7
+        mock_movie.votes = 2230088
+        mock_movie.metacritic_rating = 73
+        mock_movie.mpaa = "R"
+        mock_movie.plot = "A computer hacker learns about the Matrix"
+        mock_movie.genres = ["Action", "Sci-Fi"]
+        mock_movie.languages_text = ["English"]
+        mock_movie.countries = ["United States", "Australia"]
+        mock_movie.directors = []  # Empty directors
+        mock_movie.stars = []
+        mock_movie.release_date = "1999-03-31"
+        mock_movie.cover_url = None
+        mock_movie.worldwide_gross = None
+        mock_movie.production_budget = None
+        mock_movie.awards = None
+
+        # Director available in categories as fallback
+        mock_cat_director = MagicMock()
+        mock_cat_director.imdbId = "nm0905152"
+        mock_cat_director.name = "Lana Wachowski"
+
+        mock_movie.categories = {
+            "director": [mock_cat_director],
+            "writer": [],
+            "producer": [],
+            "cast": [],
+        }
+        mock_get_movie.return_value = mock_movie
+
+        result = json.loads(get_movie_details("Get details", "tt0133093"))
+        assert len(result["directors"]) == 1
+        assert result["directors"][0]["name"] == "Lana Wachowski"
 
     def test_get_details_empty_id(self):
         """Test get details with empty ID returns error."""
@@ -530,6 +632,7 @@ class TestIntentParameter:
         mock_movie.countries = []
         mock_movie.directors = []
         mock_movie.stars = []
+        mock_movie.categories = {}
         mock_movie.release_date = "2000-01-01"
         mock_movie.cover_url = None
         mock_movie.worldwide_gross = None

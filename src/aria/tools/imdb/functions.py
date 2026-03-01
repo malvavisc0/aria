@@ -186,7 +186,8 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
 
     Returns:
         JSON with imdbId, title, year, kind, duration, rating, votes,
-        plot, genres, directors, stars, release_date, awards, etc.
+        plot, genres, directors, writers, producers, cast, stars,
+        release_date, awards, worldwide_gross, production_budget, etc.
     """
     logger.info(f"get_movie_details called with imdb_id='{imdb_id}'")
 
@@ -199,8 +200,31 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
         if movie is None:
             return json.dumps({"error": ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id)})
 
+        # Directors: prefer movie.directors, fall back to categories
         directors = [
             {"imdbId": d.imdbId, "name": d.name} for d in (movie.directors or [])
+        ]
+        if not directors:
+            cat_directors = (movie.categories or {}).get("director", [])
+            directors = [{"imdbId": d.imdbId, "name": d.name} for d in cat_directors]
+
+        # Writers: extracted from categories
+        cat_writers = (movie.categories or {}).get("writer", [])
+        writers = [{"imdbId": w.imdbId, "name": w.name} for w in cat_writers]
+
+        # Producers: extracted from categories
+        cat_producers = (movie.categories or {}).get("producer", [])
+        producers = [{"imdbId": p.imdbId, "name": p.name} for p in cat_producers]
+
+        # Cast with characters: extracted from categories
+        cat_cast = (movie.categories or {}).get("cast", [])
+        cast = [
+            {
+                "imdbId": c.imdbId,
+                "name": c.name,
+                "characters": getattr(c, "characters", []),
+            }
+            for c in cat_cast
         ]
 
         stars = [{"imdbId": s.imdbId, "name": s.name} for s in (movie.stars or [])]
@@ -228,6 +252,9 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
             "languages_text": movie.languages_text or [],
             "countries": movie.countries or [],
             "directors": directors,
+            "writers": writers,
+            "producers": producers,
+            "cast": cast,
             "stars": stars,
             "release_date": movie.release_date,
             "cover_url": movie.cover_url,
