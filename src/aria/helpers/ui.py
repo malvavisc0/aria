@@ -124,29 +124,35 @@ def _step_label_from_tool_call(event: ToolCall) -> str:
 def _make_tool_step(label: str, tool_name: str = "tool") -> cl.Step:
     """Create a tool Step with the current UI preferences.
 
-    Uses a sanitized tool name for the step name to ensure compatibility
-    with Chainlit's avatar system (which requires alphanumeric names).
-    The full label with emoji is set as the step's output for display.
+    Uses a sanitized name for the step to ensure compatibility with
+    Chainlit's avatar system (which requires names matching the pattern
+    ^[a-zA-Z0-9_ .-]+$ - emojis are not allowed).
+
+    The step name is used for both display and avatar lookup. We strip
+    emojis from the label to make it avatar-compatible while preserving
+    the descriptive intent text.
 
     Args:
         label: The display label with emoji (e.g., "📰 Reading file...")
-        tool_name: The tool name for avatar lookup (e.g., "read_file")
+        tool_name: The tool name for fallback (e.g., "read_file")
 
     Returns:
         A configured cl.Step instance
     """
+    import re
 
-    # Sanitize tool_name for avatar compatibility
+    # Strip emojis and other non-ASCII characters for avatar compatibility
     # Chainlit's avatar endpoint requires: ^[a-zA-Z0-9_ .-]+$
-    # Use tool_name as-is since it's already alphanumeric (e.g., "read_file")
-    safe_name = tool_name.replace("-", "_")
+    # Keep ASCII letters, numbers, spaces, underscores, dots, and hyphens
+    safe_label = re.sub(r"[^\x00-\x7F]+", "", label).strip()
 
-    step = cl.Step(
-        name=safe_name,
+    # If stripping leaves nothing, fall back to tool name
+    if not safe_label:
+        safe_label = tool_name.replace("-", "_")
+
+    return cl.Step(
+        name=safe_label,
         type="tool",
         show_input=False,
         default_open=False,
     )
-    # Set the display label as output so it's visible in the UI
-    step.output = label
-    return step
