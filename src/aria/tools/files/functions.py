@@ -43,7 +43,7 @@ def append_to_file(intent: str, file_name: str, contents: str) -> str:
 
     Args:
         intent: Why you're appending (e.g., "Adding log entry")
-        file_name: Path relative to BASE_DIR
+        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
         contents: Text to append
 
     Returns:
@@ -96,8 +96,8 @@ def copy_file(
 
     Args:
         intent: Why you're copying (e.g., "Creating backup")
-        source: Source path relative to BASE_DIR
-        destination: Destination path relative to BASE_DIR
+        source: Absolute path (e.g., /home/user/data/downloads/file.txt)
+        destination: Absolute path (e.g., /home/user/data/downloads/file.txt)
         overwrite: If True, overwrite existing destination (default: False)
 
     Returns:
@@ -643,7 +643,7 @@ def read_file_chunk(
 
     Args:
         intent: Why you're reading (e.g., "Inspecting config file")
-        file_name: Path relative to BASE_DIR
+        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
         chunk_size: Lines to read (default: 100)
         offset: 0-indexed starting line (default: 0)
 
@@ -705,7 +705,7 @@ def read_full_file(
 
     Args:
         intent: Why you're reading (e.g., "Loading config")
-        file_name: Path relative to BASE_DIR
+        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
         max_lines: Maximum lines allowed (default: 500)
 
     Returns:

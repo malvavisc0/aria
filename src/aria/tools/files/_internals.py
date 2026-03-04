@@ -142,7 +142,16 @@ def _count_lines_efficiently(file_path: Path) -> int:
 
     Returns:
         int: Number of lines in the file
+
+    Raises:
+        FileOperationError: If path is a directory or file cannot be read
     """
+    # Check if path is a directory
+    if file_path.is_dir():
+        raise FileOperationError(
+            f"Path is a directory, not a file: {file_path}"
+        )
+
     count = 0
     try:
         with open(file_path, "rb") as f:
@@ -175,10 +184,10 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
     """Secure path resolution with comprehensive validation.
 
     Resolves file path while preventing path traversal attacks and validating
-    file type restrictions.
+    file type restrictions. Only accepts absolute paths.
 
     Args:
-        file_name: Name of the file to resolve path for
+        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
         check_exists: Whether to check if file exists (default: True)
 
     Returns:
@@ -186,21 +195,33 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
 
     Raises:
         FileSecurityError: If path resolution fails due to security violations
+        FileOperationError: If path is a directory or not absolute
     """
     try:
         # Resolve BASE_DIR to handle symlinks (e.g., /var -> /private/var on macOS)
         base_dir_resolved = BASE_DIR.resolve()
 
-        # Resolve the path securely
-        file_path = (BASE_DIR / file_name).resolve()
+        # Only accept absolute paths
+        file_path = Path(file_name)
+        if not file_path.is_absolute():
+            raise FileOperationError(f"Path must be absolute: {file_name}")
 
-        # Check for path traversal attacks
+        # Check for symlinks BEFORE resolving (to detect symlinked files)
+        if file_path.is_symlink():
+            raise FileSecurityError("Symlinks not allowed")
+
+        # Resolve the absolute path
+        file_path = file_path.resolve()
+
+        # Check for path traversal attacks - path must be within BASE_DIR
         if not str(file_path).startswith(str(base_dir_resolved)):
             raise FileSecurityError("Path traversal attempt detected")
 
-        # Check for symlinks
-        if file_path.is_symlink():
-            raise FileSecurityError("Symlinks not allowed")
+        # Check if path is a directory
+        if file_path.is_dir():
+            raise FileOperationError(
+                f"Path is a directory, not a file: {file_name}"
+            )
 
         # Check file extension (only if it has an extension)
         if (

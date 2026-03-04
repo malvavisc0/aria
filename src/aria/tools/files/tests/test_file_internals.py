@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+from aria.tools.constants import BASE_DIR
 from aria.tools.files._internals import (
     _atomic_write,
     _build_directory_tree,
@@ -196,70 +197,69 @@ class TestSecureResolvePath:
 
     def test_resolve_existing_file(self):
         """Test resolving path to existing file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
-            f.write("test")
-            temp_name = Path(f.name).name
+        # Create file within BASE_DIR
+        temp_path = BASE_DIR / f"test_resolve_{id(self)}.txt"
+        temp_path.write_text("test")
 
         try:
-            # This will fail because it's not in BASE_DIR, but tests the logic
-            with pytest.raises((FileSecurityError, FileOperationError)):
-                _secure_resolve_path(temp_name)
+            # Test with absolute path
+            result = _secure_resolve_path(str(temp_path), check_exists=False)
+            assert result.exists()
         finally:
-            Path(f.name).unlink()
+            temp_path.unlink()
 
     def test_resolve_path_traversal(self):
         """Test that path traversal is blocked."""
-        with pytest.raises(FileSecurityError, match="Path traversal"):
-            _secure_resolve_path("../etc/passwd")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            # Create a file outside tmpdir that we try to access
+            outside_file = tmpdir_path / "outside.txt"
+            outside_file.write_text("content")
+
+            # Path traversal attempt - should be blocked
+            with pytest.raises(FileSecurityError, match="Path traversal"):
+                _secure_resolve_path(str(outside_file))
 
     def test_resolve_symlink(self):
         """Test that symlinks are detected (resolve follows them)."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            target = tmpdir_path / "target.txt"
-            target.write_text("content")
-            link = tmpdir_path / "link.txt"
-            link.symlink_to(target)
+        target = BASE_DIR / f"test_target_{id(self)}.txt"
+        target.write_text("content")
+        link = BASE_DIR / f"test_link_{id(self)}.txt"
+        link.symlink_to(target)
 
-            # Mock BASE_DIR to be tmpdir
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                # Symlink check happens after resolve, so it checks if
-                # the resolved path is a symlink
-                result = _secure_resolve_path("link.txt")
-                # Should succeed since resolve() follows symlinks
-                assert result.exists()
+        try:
+            # Test with absolute path - symlink should be blocked
+            with pytest.raises(FileSecurityError, match="Symlinks"):
+                _secure_resolve_path(str(link))
+        finally:
+            link.unlink()
+            target.unlink()
 
     def test_resolve_disallowed_extension(self):
         """Test that disallowed file extensions are blocked."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            file_path = tmpdir_path / "test.exe"
-            file_path.write_text("content")
+        file_path = BASE_DIR / f"test_{id(self)}.exe"
+        file_path.write_text("content")
 
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                with pytest.raises(FileSecurityError, match="File type not"):
-                    _secure_resolve_path("test.exe")
+        try:
+            # Test with absolute path - extension should be blocked
+            with pytest.raises(FileSecurityError, match="File type not"):
+                _secure_resolve_path(str(file_path))
+        finally:
+            file_path.unlink()
 
     def test_resolve_nonexistent_file_check_exists_true(self):
         """Test error when file doesn't exist and check_exists=True."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                with pytest.raises(FileOperationError, match="File not found"):
-                    _secure_resolve_path("nonexistent.txt", check_exists=True)
+        file_path = BASE_DIR / f"nonexistent_{id(self)}.txt"
+        # Test with absolute path
+        with pytest.raises(FileOperationError, match="File not found"):
+            _secure_resolve_path(str(file_path), check_exists=True)
 
     def test_resolve_nonexistent_file_check_exists_false(self):
         """Test resolving nonexistent file with check_exists=False."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                # Should not raise
-                result = _secure_resolve_path(
-                    "nonexistent.txt", check_exists=False
-                )
-                assert isinstance(result, Path)
+        file_path = BASE_DIR / f"nonexistent_{id(self)}.txt"
+        # Should not raise with check_exists=False
+        result = _secure_resolve_path(str(file_path), check_exists=False)
+        assert isinstance(result, Path)
 
 
 class TestSecureResolveDir:
@@ -607,19 +607,26 @@ class TestValidateAndResolveFile:
 
     def test_validate_and_resolve_success(self):
         """Test successful validation and resolution."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            file_path = tmpdir_path / "test.txt"
-            file_path.write_text("content")
+        file_path = BASE_DIR / f"test_validate_{id(self)}.txt"
+        file_path.write_text("content")
 
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                result = validate_and_resolve_file("test.txt")
-                assert result.exists()
+        try:
+            result = validate_and_resolve_file(str(file_path))
+            assert result.exists()
+        finally:
+            file_path.unlink()
 
     def test_validate_and_resolve_invalid_input(self):
         """Test validation with invalid input."""
-        with pytest.raises(FileSecurityError):
-            validate_and_resolve_file("../etc/passwd")
+        # Test with a path outside of BASE_DIR (path traversal attempt)
+        outside_file = Path("/tmp/outside_test.txt")
+        outside_file.write_text("content")
+        try:
+            # Path traversal attempt - should be blocked
+            with pytest.raises(FileSecurityError, match="Path traversal"):
+                validate_and_resolve_file(str(outside_file))
+        finally:
+            outside_file.unlink()
 
 
 class TestValidateAndResolveTwoFiles:
@@ -627,31 +634,31 @@ class TestValidateAndResolveTwoFiles:
 
     def test_validate_two_files_success(self):
         """Test successful validation of two files."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            source = tmpdir_path / "source.txt"
-            source.write_text("content")
+        source = BASE_DIR / f"test_source_{id(self)}.txt"
+        source.write_text("content")
+        dest = BASE_DIR / f"test_dest_{id(self)}.txt"
 
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                src_path, dest_path = validate_and_resolve_two_files(
-                    "source.txt", "dest.txt", dest_must_exist=False
-                )
-                assert src_path.exists()
+        try:
+            src_path, dest_path = validate_and_resolve_two_files(
+                str(source), str(dest), dest_must_exist=False
+            )
+            assert src_path.exists()
+        finally:
+            source.unlink(missing_ok=True)
+            dest.unlink(missing_ok=True)
 
     def test_validate_two_files_invalid_source(self):
         """Test validation with invalid source."""
-        with pytest.raises(FileSecurityError):
-            validate_and_resolve_two_files("../etc/passwd", "dest.txt")
+        dest = BASE_DIR / f"test_dest_{id(self)}.txt"
+        # Path traversal attempt - should be blocked
+        with pytest.raises(FileSecurityError, match="Path traversal"):
+            validate_and_resolve_two_files("../etc/passwd", str(dest))
 
     def test_validate_two_files_invalid_dest(self):
         """Test validation with invalid destination."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            source = tmpdir_path / "source.txt"
-            source.write_text("content")
-
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                with pytest.raises(FileSecurityError):
-                    validate_and_resolve_two_files(
-                        "source.txt", "../etc/passwd"
-                    )
+        source = BASE_DIR / f"test_source_{id(self)}.txt"
+        source.write_text("content")
+        # Path traversal attempt - should be blocked
+        with pytest.raises(FileSecurityError, match="Path traversal"):
+            validate_and_resolve_two_files(str(source), "../etc/passwd")
+        source.unlink()

@@ -85,7 +85,8 @@ async def send_tool_step(event: ToolCall) -> cl.Step:
     """Create + send a tool Step for a ToolCall event."""
 
     label = _step_label_from_tool_call(event)
-    step = _make_tool_step(label)
+    tool_name = (event.tool_name or "").strip() or "tool"
+    step = _make_tool_step(label, tool_name)
     await step.send()
     return step
 
@@ -120,12 +121,32 @@ def _step_label_from_tool_call(event: ToolCall) -> str:
     return f"{prefix}{label}"
 
 
-def _make_tool_step(label: str) -> cl.Step:
+def _make_tool_step(label: str, tool_name: str = "tool") -> cl.Step:
     """Create a tool Step with the current UI preferences.
 
-    Keeps current behavior: `show_input=False`, `default_open=False`.
+    Uses a sanitized tool name for the step name to ensure compatibility
+    with Chainlit's avatar system (which requires alphanumeric names).
+    The full label with emoji is set as the step's output for display.
+
+    Args:
+        label: The display label with emoji (e.g., "📰 Reading file...")
+        tool_name: The tool name for avatar lookup (e.g., "read_file")
+
+    Returns:
+        A configured cl.Step instance
     """
 
-    return cl.Step(
-        name=label, type="tool", show_input=False, default_open=False
+    # Sanitize tool_name for avatar compatibility
+    # Chainlit's avatar endpoint requires: ^[a-zA-Z0-9_ .-]+$
+    # Use tool_name as-is since it's already alphanumeric (e.g., "read_file")
+    safe_name = tool_name.replace("-", "_")
+
+    step = cl.Step(
+        name=safe_name,
+        type="tool",
+        show_input=False,
+        default_open=False,
     )
+    # Set the display label as output so it's visible in the UI
+    step.output = label
+    return step

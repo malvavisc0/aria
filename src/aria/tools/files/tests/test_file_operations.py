@@ -61,22 +61,30 @@ class TestFileOperations:
 
     def test_append_to_file(self):
         """Test appending to file"""
-        result = append_to_file("Testing append", "test.txt", "New line\n")
+        result = append_to_file(
+            "Testing append", str(self.base_dir / "test.txt"), "New line\n"
+        )
         data = json.loads(result)
 
         assert data["operation"] == "append_to_file"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["bytes_appended"] == 9  # "New line\n"
         assert data["result"]["new_total_lines"] == 6
 
     def test_copy_file(self):
         """Test copying file"""
-        result = copy_file("Testing copy", "test.txt", "copied.txt")
+        result = copy_file(
+            "Testing copy",
+            str(self.base_dir / "test.txt"),
+            str(self.base_dir / "copied.txt"),
+        )
         data = json.loads(result)
 
         assert data["operation"] == "copy_file"
-        assert data["result"]["source"] == "test.txt"
-        assert data["result"]["destination"] == "copied.txt"
+        assert data["result"]["source"] == str(self.base_dir / "test.txt")
+        assert data["result"]["destination"] == str(
+            self.base_dir / "copied.txt"
+        )
         assert (
             data["result"]["bytes_copied"] == 35
         )  # "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n"
@@ -93,12 +101,15 @@ class TestFileOperations:
     def test_create_directory(self):
         """Test creating directory"""
         result = create_directory(
-            "Testing directory creation", "new_dir/subdir"
+            "Testing directory creation",
+            str(self.base_dir / "new_dir" / "subdir"),
         )
         data = json.loads(result)
 
         assert data["operation"] == "create_directory"
-        assert data["result"]["dir_name"] == "new_dir/subdir"
+        assert data["result"]["dir_name"] == str(
+            self.base_dir / "new_dir" / "subdir"
+        )
         assert data["result"]["created"] is True
 
         # Verify directory was created
@@ -108,11 +119,13 @@ class TestFileOperations:
 
     def test_delete_file(self):
         """Test deleting file"""
-        result = delete_file("Testing file deletion", "test.txt")
+        result = delete_file(
+            "Testing file deletion", str(self.base_dir / "test.txt")
+        )
         data = json.loads(result)
 
         assert data["operation"] == "delete_file"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["deleted"] is True
         assert data["result"]["backup_created"] is True
 
@@ -122,11 +135,13 @@ class TestFileOperations:
 
     def test_delete_lines_range(self):
         """Test deleting lines range"""
-        result = delete_lines_range("Testing line deletion", "test.txt", 1, 2)
+        result = delete_lines_range(
+            "Testing line deletion", str(self.base_dir / "test.txt"), 1, 2
+        )
         data = json.loads(result)
 
         assert data["operation"] == "delete_lines_range"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["lines_deleted"] == 2
         assert data["result"]["old_total_lines"] == 5
         assert data["result"]["new_total_lines"] == 3
@@ -134,49 +149,59 @@ class TestFileOperations:
 
     def test_file_exists(self):
         """Test checking file existence"""
-        result = file_exists("Testing file existence check", "test.txt")
+        result = file_exists(
+            "Testing file existence check", str(self.base_dir / "test.txt")
+        )
         data = json.loads(result)
 
         assert data["operation"] == "file_exists"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["exists"] is True
         assert data["result"]["is_file"] is True
         assert data["result"]["is_directory"] is False
 
         # Test non-existent file
-        result = file_exists("Testing non-existent file", "nonexistent.txt")
+        result = file_exists(
+            "Testing non-existent file", str(self.base_dir / "nonexistent.txt")
+        )
         data = json.loads(result)
         assert data["result"]["exists"] is False
 
     def test_get_directory_tree(self):
         """Test getting directory tree"""
-        result = get_directory_tree("Testing directory tree", ".")
+        result = get_directory_tree(
+            "Testing directory tree", str(self.base_dir)
+        )
         data = json.loads(result)
 
         assert data["operation"] == "get_directory_tree"
-        assert data["result"]["path"] == "."
+        assert data["result"]["path"] == str(self.base_dir)
         assert "tree" in data["result"]
         assert "total_files" in data["result"]
         assert "total_directories" in data["result"]
 
     def test_get_file_info(self):
         """Test getting file info"""
-        result = get_file_info("Testing file info", "test.txt")
+        result = get_file_info(
+            "Testing file info", str(self.base_dir / "test.txt")
+        )
         data = json.loads(result)
 
         assert data["operation"] == "get_file_info"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["total_lines"] == 5
         assert data["result"]["file_size_bytes"] == 35
         assert data["result"]["mime_type"] is not None
 
     def test_get_file_permissions(self):
         """Test getting file permissions"""
-        result = get_file_permissions("Testing file permissions", "test.txt")
+        result = get_file_permissions(
+            "Testing file permissions", str(self.base_dir / "test.txt")
+        )
         data = json.loads(result)
 
         assert data["operation"] == "get_file_permissions"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert "mode_octal" in data["result"]
         assert "mode_symbolic" in data["result"]
         assert "permissions" in data["result"]
@@ -188,12 +213,15 @@ class TestFileOperations:
     def test_insert_lines_at(self):
         """Test inserting lines at position"""
         result = insert_lines_at(
-            "Testing line insertion", "test.txt", ["Inserted line"], 1
+            "Testing line insertion",
+            str(self.base_dir / "test.txt"),
+            ["Inserted line"],
+            1,
         )
         data = json.loads(result)
 
         assert data["operation"] == "insert_lines_at"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["lines_inserted"] == 1
         assert data["result"]["offset"] == 1
         assert data["result"]["new_total_lines"] == 6
@@ -210,12 +238,16 @@ class TestFileOperations:
 
     def test_move_file(self):
         """Test moving file (alias for rename_file)"""
-        result = move_file("Testing file move", "test.txt", "moved.txt")
+        result = move_file(
+            "Testing file move",
+            str(self.base_dir / "test.txt"),
+            str(self.base_dir / "moved.txt"),
+        )
         data = json.loads(result)
 
         assert data["operation"] == "rename_file"
-        assert data["result"]["old_name"] == "test.txt"
-        assert data["result"]["new_name"] == "moved.txt"
+        assert data["result"]["old_name"] == str(self.base_dir / "test.txt")
+        assert data["result"]["new_name"] == str(self.base_dir / "moved.txt")
         assert data["result"]["success"] is True
 
         # Verify file was moved
@@ -225,12 +257,15 @@ class TestFileOperations:
     def test_read_file_chunk(self):
         """Test reading file chunk"""
         result = read_file_chunk(
-            "Testing chunk read", "test.txt", chunk_size=2, offset=0
+            "Testing chunk read",
+            str(self.base_dir / "test.txt"),
+            chunk_size=2,
+            offset=0,
         )
         data = json.loads(result)
 
         assert data["operation"] == "read_file_chunk"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert len(data["result"]["lines"]) == 2
         assert data["result"]["offset"] == 0
         assert data["result"]["chunk_size"] == 2
@@ -240,22 +275,28 @@ class TestFileOperations:
 
     def test_read_full_file(self):
         """Test reading full file"""
-        result = read_full_file("Testing full file read", "test.txt")
+        result = read_full_file(
+            "Testing full file read", str(self.base_dir / "test.txt")
+        )
         data = json.loads(result)
 
         assert data["operation"] == "read_full_file"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert "content" in data["result"]
         assert data["result"]["total_lines"] == 5
 
     def test_rename_file(self):
         """Test renaming file"""
-        result = rename_file("Testing file rename", "test.txt", "renamed.txt")
+        result = rename_file(
+            "Testing file rename",
+            str(self.base_dir / "test.txt"),
+            str(self.base_dir / "renamed.txt"),
+        )
         data = json.loads(result)
 
         assert data["operation"] == "rename_file"
-        assert data["result"]["old_name"] == "test.txt"
-        assert data["result"]["new_name"] == "renamed.txt"
+        assert data["result"]["old_name"] == str(self.base_dir / "test.txt")
+        assert data["result"]["new_name"] == str(self.base_dir / "renamed.txt")
         assert data["result"]["success"] is True
 
         # Verify file was renamed
@@ -266,7 +307,7 @@ class TestFileOperations:
         """Test replacing lines range"""
         result = replace_lines_range(
             "Testing line replacement",
-            "test.txt",
+            str(self.base_dir / "test.txt"),
             ["New line 1", "New line 2"],
             1,
             2,
@@ -274,7 +315,7 @@ class TestFileOperations:
         data = json.loads(result)
 
         assert data["operation"] == "replace_lines_range"
-        assert data["result"]["file_name"] == "test.txt"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["lines_replaced"] == 2
         assert data["result"]["new_lines_inserted"] == 2
         assert data["result"]["old_total_lines"] == 5
@@ -305,12 +346,16 @@ class TestFileOperations:
     def test_write_full_file(self):
         """Test writing full file"""
         result = write_full_file(
-            "Testing file write", "new_file.txt", "New content\nSecond line\n"
+            "Testing file write",
+            str(self.base_dir / "new_file.txt"),
+            "New content\nSecond line\n",
         )
         data = json.loads(result)
 
         assert data["operation"] == "write_full_file"
-        assert data["result"]["file_name"] == "new_file.txt"
+        assert data["result"]["file_name"] == str(
+            self.base_dir / "new_file.txt"
+        )
         assert (
             data["result"]["bytes_written"] == 24
         )  # "New content\nSecond line\n"
@@ -329,7 +374,9 @@ class TestFileOperations:
         (self.base_dir / "existing.txt").write_text("Original content\n")
 
         result = write_full_file(
-            "Testing file overwrite", "existing.txt", "New content\n"
+            "Testing file overwrite",
+            str(self.base_dir / "existing.txt"),
+            "New content\n",
         )
         data = json.loads(result)
 
@@ -344,7 +391,9 @@ class TestFileOperations:
         large_content = "A" * (100 * 1024 * 1024 + 1)  # Just over 100MB
 
         result = write_full_file(
-            "Testing size limit", "large.txt", large_content
+            "Testing size limit",
+            str(self.base_dir / "large.txt"),
+            large_content,
         )
         data = json.loads(result)
 
@@ -355,7 +404,9 @@ class TestFileOperations:
     def test_read_file_chunk_exceeds_chunk_size(self):
         """Test read_file_chunk with invalid chunk size"""
         result = read_file_chunk(
-            "Testing chunk size limit", "test.txt", chunk_size=10001
+            "Testing chunk size limit",
+            str(self.base_dir / "test.txt"),
+            chunk_size=10001,
         )
         data = json.loads(result)
 

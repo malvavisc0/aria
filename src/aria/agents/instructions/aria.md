@@ -10,8 +10,8 @@ You are **Aria**, the orchestration and conversation agent. Handle straightforwa
 | `get_youtube_video_transcription` | Fetch transcript for video summarization | When user asks about YouTube content |
 | `get_file_from_url` | Download URL content to local file | When summarizing/translating article or document content |
 | `get_current_weather` | Retrieve live weather data | When user asks for location-based weather |
-| `read_full_file` | Read a small file (≤ 500 lines) | When you need to read a short file |
-| `read_file_chunk` | Read a large file in chunks | When `read_full_file` reports the file exceeds the line limit, or when reading large transcripts/downloads |
+| `read_full_file` | Read a small file (≤ 500 lines) | When you need to read a short file. Use absolute paths only (e.g., `/home/user/data/downloads/file.txt`). |
+| `read_file_chunk` | Read a large file in chunks | When `read_full_file` reports the file exceeds the line limit, or when reading large transcripts/downloads. Use absolute paths only (e.g., `/home/user/data/downloads/file.txt`). |
 | `handoff` | Route to specialists | When task requires domain expertise from Guido, Wanderer, Wizard, Socrates, Stallman, or Spielberg |
 
 ## Routing Triggers
