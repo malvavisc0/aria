@@ -259,12 +259,16 @@ def download_command(
                     f"[green]✓[/green] MMPROJ ready at: [dim]{mmproj_dest}[/dim]"
                 )
             except FileNotFoundError as e:
-                error_console.print(f"[yellow]⚠[/yellow] MMPROJ file not found: {e}")
+                error_console.print(
+                    f"[yellow]⚠[/yellow] MMPROJ file not found: {e}"
+                )
                 console.print(
                     "[dim]VL model may not have vision capabilities without mmproj.[/dim]"
                 )
             except Exception as e:
-                error_console.print(f"[yellow]⚠[/yellow] MMPROJ download failed: {e}")
+                error_console.print(
+                    f"[yellow]⚠[/yellow] MMPROJ download failed: {e}"
+                )
                 console.print(
                     "[dim]VL model may not have vision capabilities without mmproj.[/dim]"
                 )
@@ -339,11 +343,15 @@ def list_command(
             mmproj_file = Vision.mmproj_filename
             if mmproj_file:
                 mmproj_ok = is_model_downloaded(mmproj_file, target_dir)
-                mmproj_status = "[green]✓[/green]" if mmproj_ok else "[red]✗[/red]"
+                mmproj_status = (
+                    "[green]✓[/green]" if mmproj_ok else "[red]✗[/red]"
+                )
 
         table.add_row(alias, repo_id_val, filename_val, status, mmproj_status)
 
-    console.print(f"[bold]Configured GGUF Models[/bold] — [dim]{target_dir}[/dim]\n")
+    console.print(
+        f"[bold]Configured GGUF Models[/bold] — [dim]{target_dir}[/dim]\n"
+    )
     console.print(table)
 
 
@@ -514,7 +522,11 @@ def memory_command():
         for i, gpu in enumerate(gpus):
             free_mb = free_vram[i] if i < len(free_vram) else 0
             fits = total_model_size <= free_mb
-            status = "[green]✓ Fits[/green]" if fits else "[red]✗ Insufficient[/red]"
+            status = (
+                "[green]✓ Fits[/green]"
+                if fits
+                else "[red]✗ Insufficient[/red]"
+            )
             hw_table.add_row(
                 f"GPU {i}: {gpu.name}",
                 f"{gpu.total_memory} MB",
@@ -534,7 +546,9 @@ def memory_command():
     # RAM info
     if total_ram_mb > 0:
         fits = total_kv_cache <= avail_ram_mb * 0.5
-        status = "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
+        status = (
+            "[green]✓ Fits[/green]" if fits else "[yellow]⚠ Tight[/yellow]"
+        )
         hw_table.add_row(
             "System RAM",
             f"{total_ram_mb} MB",

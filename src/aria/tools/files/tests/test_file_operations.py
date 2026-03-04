@@ -46,7 +46,9 @@ class TestFileOperations:
         test_file.write_text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
 
         test_py_file = self.base_dir / "test.py"
-        test_py_file.write_text("def hello():\n    print('Hello')\n    return True\n")
+        test_py_file.write_text(
+            "def hello():\n    print('Hello')\n    return True\n"
+        )
 
         test_dir = self.base_dir / "subdir"
         test_dir.mkdir()
@@ -83,11 +85,16 @@ class TestFileOperations:
         # Verify file was copied
         copied_file = self.base_dir / "copied.txt"
         assert copied_file.exists()
-        assert copied_file.read_text() == "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n"
+        assert (
+            copied_file.read_text()
+            == "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n"
+        )
 
     def test_create_directory(self):
         """Test creating directory"""
-        result = create_directory("Testing directory creation", "new_dir/subdir")
+        result = create_directory(
+            "Testing directory creation", "new_dir/subdir"
+        )
         data = json.loads(result)
 
         assert data["operation"] == "create_directory"
@@ -304,7 +311,9 @@ class TestFileOperations:
 
         assert data["operation"] == "write_full_file"
         assert data["result"]["file_name"] == "new_file.txt"
-        assert data["result"]["bytes_written"] == 24  # "New content\nSecond line\n"
+        assert (
+            data["result"]["bytes_written"] == 24
+        )  # "New content\nSecond line\n"
         assert data["result"]["lines_written"] == 2
         assert data["result"]["created"] is True
         assert data["result"]["backup_created"] is False  # No existing file
@@ -325,14 +334,18 @@ class TestFileOperations:
         data = json.loads(result)
 
         assert data["operation"] == "write_full_file"
-        assert data["result"]["backup_created"] is True  # Backup should be created
+        assert (
+            data["result"]["backup_created"] is True
+        )  # Backup should be created
 
     def test_write_full_file_exceeds_size_limit(self):
         """Test write_full_file with content exceeding size limit"""
         # Create a large string that exceeds the limit (100MB is the limit)
         large_content = "A" * (100 * 1024 * 1024 + 1)  # Just over 100MB
 
-        result = write_full_file("Testing size limit", "large.txt", large_content)
+        result = write_full_file(
+            "Testing size limit", "large.txt", large_content
+        )
         data = json.loads(result)
 
         assert data["result"] is None
@@ -373,18 +386,26 @@ class TestFileOperations:
         ]
 
         for path in invalid_paths:
-            append_result = append_to_file("Testing invalid path", path, "test")
+            append_result = append_to_file(
+                "Testing invalid path", path, "test"
+            )
             assert json.loads(append_result)["metadata"]["error"] is not None
 
-            read_result = read_file_chunk("Testing invalid path", path, chunk_size=10)
+            read_result = read_file_chunk(
+                "Testing invalid path", path, chunk_size=10
+            )
             assert json.loads(read_result)["metadata"]["error"] is not None
 
-            write_result = write_full_file("Testing invalid path", path, "test")
+            write_result = write_full_file(
+                "Testing invalid path", path, "test"
+            )
             assert json.loads(write_result)["metadata"]["error"] is not None
 
     def test_append_to_file_with_invalid_path(self):
         """Test append_to_file with invalid path"""
-        result = append_to_file("Testing invalid path", "../outside.txt", "test")
+        result = append_to_file(
+            "Testing invalid path", "../outside.txt", "test"
+        )
         assert json.loads(result)["metadata"]["error"] is not None
 
     def test_read_file_chunk_with_invalid_path(self):
@@ -396,7 +417,9 @@ class TestFileOperations:
 
     def test_write_full_file_with_invalid_path(self):
         """Test write_full_file with invalid path"""
-        result = write_full_file("Testing invalid path", "../outside.txt", "test")
+        result = write_full_file(
+            "Testing invalid path", "../outside.txt", "test"
+        )
         assert json.loads(result)["metadata"]["error"] is not None
 
     def test_directory_operations_with_invalid_paths(self):

@@ -144,7 +144,9 @@ class ServerManager:
             "pid": self.pid,
             "host": self._host,
             "port": self._port,
-            "started_at": (self._started_at.isoformat() if self._started_at else None),
+            "started_at": (
+                self._started_at.isoformat() if self._started_at else None
+            ),
         }
         save_state(self.PID_FILE, data)
 
@@ -253,7 +255,9 @@ class ServerManager:
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = self._build_command()
-        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess
+        log_file = open(
+            log_path, "a"
+        )  # noqa: WPS515 — kept open for subprocess
         self._process = subprocess.Popen(
             cmd,
             stdout=log_file,
@@ -378,7 +382,9 @@ class ServerManager:
             ServerStatus dataclass with current server information.
         """
         running = self.is_running()
-        if not running and (self._process is not None or self._started_at is not None):
+        if not running and (
+            self._process is not None or self._started_at is not None
+        ):
             # Process died on its own — clear stale state so labels reset
             self._clear_state()
         return ServerStatus(

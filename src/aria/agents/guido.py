@@ -13,7 +13,7 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -41,7 +41,7 @@ class PythonDeveloperAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("python_developer", extras)
+        return load_agent_instructions("guido", extras)
 
 
 def get_agent(
@@ -79,6 +79,7 @@ def get_agent(
             "create_directory",
             "get_directory_tree",
             "move_file",
+            "rename_file",
             "read_file_chunk",
             "read_full_file",
             "insert_lines_at",
@@ -89,6 +90,7 @@ def get_agent(
             "search_in_files",
             "list_files",
             "delete_lines_range",
+            "delete_file",
             "file_exists",
             "copy_file",
             "get_file_permissions",
@@ -97,7 +99,6 @@ def get_agent(
         WEB_SEARCH_TOOLS: [
             "web_search",
             "get_file_from_url",
-            "get_youtube_video_transcription",
         ],
     }
 
@@ -121,7 +122,7 @@ def get_agent(
     logger.debug(f"LLM type: {type(llm)}")
 
     agent = PythonDeveloperAgent(
-        name="Developer",
+        name="Guido",
         description=(
             "Specialized in Python development with sandboxed code execution, "
             "syntax validation, file operations, and web search capabilities."

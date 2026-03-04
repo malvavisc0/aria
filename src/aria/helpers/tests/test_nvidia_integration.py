@@ -236,7 +236,9 @@ class TestNvidiaIntegration:
 
         for gpu in gpus:
             if gpu.total_memory > 0:
-                expected_util = round((gpu.used_memory / gpu.total_memory * 100), 2)
+                expected_util = round(
+                    (gpu.used_memory / gpu.total_memory * 100), 2
+                )
                 # Allow small variance due to rounding
                 assert abs(gpu.memory_utilization - expected_util) <= 0.1
 

@@ -131,7 +131,9 @@ def test_web_search_query_with_leading_trailing_whitespace():
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
 
-        result = web_search("Testing web search", "  test query  ", max_results=1)
+        result = web_search(
+            "Testing web search", "  test query  ", max_results=1
+        )
         result_dict = json.loads(result)
 
         # Verify the query was stripped before being passed to DDGS
@@ -169,7 +171,9 @@ def test_web_search_empty_results():
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = []
 
-        result = web_search("Testing web search", "very obscure query", max_results=5)
+        result = web_search(
+            "Testing web search", "very obscure query", max_results=5
+        )
         result_dict = json.loads(result)
 
         assert result_dict["operation"] == "web_search"
@@ -207,7 +211,9 @@ def test_web_search_result_structure():
 
 def test_web_search_json_format():
     """Test that the response is valid JSON with correct structure"""
-    mock_results = [{"title": "Test", "href": "https://example.com", "body": "Body"}]
+    mock_results = [
+        {"title": "Test", "href": "https://example.com", "body": "Body"}
+    ]
 
     with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()

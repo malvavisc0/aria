@@ -74,7 +74,9 @@ def download_command(
     """
     try:
         download_llama_cpp(bin_dir=Path(bin_dir), version=version)
-        console.print(f"[green]✓[/green] Llama.cpp binaries downloaded to {bin_dir}")
+        console.print(
+            f"[green]✓[/green] Llama.cpp binaries downloaded to {bin_dir}"
+        )
     except Exception as e:
         error_console.print(f"[red]✗[/red] Installation failed: {e}")
         raise typer.Exit(1)

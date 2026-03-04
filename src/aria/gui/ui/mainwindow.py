@@ -217,7 +217,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_service.addItem(self.horizontalSpacer_service)
 
         self.verticalLayout_serviceStatus = QVBoxLayout()
-        self.verticalLayout_serviceStatus.setObjectName("verticalLayout_serviceStatus")
+        self.verticalLayout_serviceStatus.setObjectName(
+            "verticalLayout_serviceStatus"
+        )
         self.label_ServiceStatus = QLabel(self.groupBox_Service)
         self.label_ServiceStatus.setObjectName("label_ServiceStatus")
         self.label_ServiceStatus.setStyleSheet(
@@ -239,15 +241,21 @@ class Ui_MainWindow(object):
         icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.UserAvailable))
         self.pushButton_ServiceOpen.setIcon(icon5)
 
-        self.verticalLayout_serviceStatus.addWidget(self.pushButton_ServiceOpen)
+        self.verticalLayout_serviceStatus.addWidget(
+            self.pushButton_ServiceOpen
+        )
 
         self.verticalSpacer_serviceStatus = QSpacerItem(
             20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
         )
 
-        self.verticalLayout_serviceStatus.addItem(self.verticalSpacer_serviceStatus)
+        self.verticalLayout_serviceStatus.addItem(
+            self.verticalSpacer_serviceStatus
+        )
 
-        self.horizontalLayout_service.addLayout(self.verticalLayout_serviceStatus)
+        self.horizontalLayout_service.addLayout(
+            self.verticalLayout_serviceStatus
+        )
 
         self.verticalLayout_overview.addWidget(self.groupBox_Service)
 
@@ -386,7 +394,9 @@ class Ui_MainWindow(object):
         )
 
         self.label_LLMEmbeddingsAPIURL = QLabel(self.groupBox_LLMAPIs)
-        self.label_LLMEmbeddingsAPIURL.setObjectName("label_LLMEmbeddingsAPIURL")
+        self.label_LLMEmbeddingsAPIURL.setObjectName(
+            "label_LLMEmbeddingsAPIURL"
+        )
 
         self.formLayout_llmapis.setWidget(
             3, QFormLayout.ItemRole.FieldRole, self.label_LLMEmbeddingsAPIURL
@@ -409,7 +419,9 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_overview_bottom.addWidget(self.groupBox_LLMAPIs)
 
-        self.verticalLayout_overview.addLayout(self.horizontalLayout_overview_bottom)
+        self.verticalLayout_overview.addLayout(
+            self.horizontalLayout_overview_bottom
+        )
 
         self.label_DebugLogsPath = QLabel(self.tab_overview)
         self.label_DebugLogsPath.setObjectName("label_DebugLogsPath")
@@ -418,7 +430,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_overview.addWidget(self.label_DebugLogsPath)
 
         self.label_DatabasePermissions = QLabel(self.tab_overview)
-        self.label_DatabasePermissions.setObjectName("label_DatabasePermissions")
+        self.label_DatabasePermissions.setObjectName(
+            "label_DatabasePermissions"
+        )
         self.label_DatabasePermissions.setVisible(False)
 
         self.verticalLayout_overview.addWidget(self.label_DatabasePermissions)
@@ -476,7 +490,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_llamacpp.addLayout(self.formLayout_llamacpp_info)
 
         self.horizontalLayout_llamabins = QHBoxLayout()
-        self.horizontalLayout_llamabins.setObjectName("horizontalLayout_llamabins")
+        self.horizontalLayout_llamabins.setObjectName(
+            "horizontalLayout_llamabins"
+        )
         self.label_LlamaBin_cli = QLabel(self.groupBox_LlamaCpp)
         self.label_LlamaBin_cli.setObjectName("label_LlamaBin_cli")
 
@@ -501,7 +517,9 @@ class Ui_MainWindow(object):
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_llamabins.addItem(self.horizontalSpacer_llamabins)
+        self.horizontalLayout_llamabins.addItem(
+            self.horizontalSpacer_llamabins
+        )
 
         self.verticalLayout_llamacpp.addLayout(self.horizontalLayout_llamabins)
 
@@ -510,32 +528,46 @@ class Ui_MainWindow(object):
             "horizontalLayout_llamaDownload"
         )
         self.label_llama_dl_version_lbl = QLabel(self.groupBox_LlamaCpp)
-        self.label_llama_dl_version_lbl.setObjectName("label_llama_dl_version_lbl")
+        self.label_llama_dl_version_lbl.setObjectName(
+            "label_llama_dl_version_lbl"
+        )
 
-        self.horizontalLayout_llamaDownload.addWidget(self.label_llama_dl_version_lbl)
+        self.horizontalLayout_llamaDownload.addWidget(
+            self.label_llama_dl_version_lbl
+        )
 
         self.lineEdit_LlamaVersion = QLineEdit(self.groupBox_LlamaCpp)
         self.lineEdit_LlamaVersion.setObjectName("lineEdit_LlamaVersion")
 
-        self.horizontalLayout_llamaDownload.addWidget(self.lineEdit_LlamaVersion)
+        self.horizontalLayout_llamaDownload.addWidget(
+            self.lineEdit_LlamaVersion
+        )
 
         self.pushButton_LlamaDownload = QPushButton(self.groupBox_LlamaCpp)
         self.pushButton_LlamaDownload.setObjectName("pushButton_LlamaDownload")
         icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
         self.pushButton_LlamaDownload.setIcon(icon6)
 
-        self.horizontalLayout_llamaDownload.addWidget(self.pushButton_LlamaDownload)
+        self.horizontalLayout_llamaDownload.addWidget(
+            self.pushButton_LlamaDownload
+        )
 
         self.horizontalSpacer_llamaDl = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_llamaDownload.addItem(self.horizontalSpacer_llamaDl)
+        self.horizontalLayout_llamaDownload.addItem(
+            self.horizontalSpacer_llamaDl
+        )
 
-        self.verticalLayout_llamacpp.addLayout(self.horizontalLayout_llamaDownload)
+        self.verticalLayout_llamacpp.addLayout(
+            self.horizontalLayout_llamaDownload
+        )
 
         self.plainTextEdit_LlamaOutput = QPlainTextEdit(self.groupBox_LlamaCpp)
-        self.plainTextEdit_LlamaOutput.setObjectName("plainTextEdit_LlamaOutput")
+        self.plainTextEdit_LlamaOutput.setObjectName(
+            "plainTextEdit_LlamaOutput"
+        )
         font1 = QFont()
         font1.setFamilies(["Courier New"])
         font1.setPointSize(9)
@@ -594,10 +626,14 @@ class Ui_MainWindow(object):
         )
 
         self.label_ModelEmbeddings_Status = QLabel(self.groupBox_Models)
-        self.label_ModelEmbeddings_Status.setObjectName("label_ModelEmbeddings_Status")
+        self.label_ModelEmbeddings_Status.setObjectName(
+            "label_ModelEmbeddings_Status"
+        )
 
         self.formLayout_models_status.setWidget(
-            2, QFormLayout.ItemRole.FieldRole, self.label_ModelEmbeddings_Status
+            2,
+            QFormLayout.ItemRole.FieldRole,
+            self.label_ModelEmbeddings_Status,
         )
 
         self.verticalLayout_models.addLayout(self.formLayout_models_status)
@@ -609,7 +645,9 @@ class Ui_MainWindow(object):
         self.label_model_select_lbl = QLabel(self.groupBox_Models)
         self.label_model_select_lbl.setObjectName("label_model_select_lbl")
 
-        self.horizontalLayout_modelDownload.addWidget(self.label_model_select_lbl)
+        self.horizontalLayout_modelDownload.addWidget(
+            self.label_model_select_lbl
+        )
 
         self.comboBox_ModelSelect = QComboBox(self.groupBox_Models)
         self.comboBox_ModelSelect.addItem("")
@@ -617,7 +655,9 @@ class Ui_MainWindow(object):
         self.comboBox_ModelSelect.addItem("")
         self.comboBox_ModelSelect.setObjectName("comboBox_ModelSelect")
 
-        self.horizontalLayout_modelDownload.addWidget(self.comboBox_ModelSelect)
+        self.horizontalLayout_modelDownload.addWidget(
+            self.comboBox_ModelSelect
+        )
 
         self.label_hf_token_lbl = QLabel(self.groupBox_Models)
         self.label_hf_token_lbl.setObjectName("label_hf_token_lbl")
@@ -626,7 +666,9 @@ class Ui_MainWindow(object):
 
         self.lineEdit_HFToken = QLineEdit(self.groupBox_Models)
         self.lineEdit_HFToken.setObjectName("lineEdit_HFToken")
-        self.lineEdit_HFToken.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        self.lineEdit_HFToken.setEchoMode(
+            QLineEdit.EchoMode.PasswordEchoOnEdit
+        )
 
         self.horizontalLayout_modelDownload.addWidget(self.lineEdit_HFToken)
 
@@ -639,12 +681,18 @@ class Ui_MainWindow(object):
         self.pushButton_ModelDownload.setObjectName("pushButton_ModelDownload")
         self.pushButton_ModelDownload.setIcon(icon6)
 
-        self.horizontalLayout_modelDownload.addWidget(self.pushButton_ModelDownload)
+        self.horizontalLayout_modelDownload.addWidget(
+            self.pushButton_ModelDownload
+        )
 
-        self.verticalLayout_models.addLayout(self.horizontalLayout_modelDownload)
+        self.verticalLayout_models.addLayout(
+            self.horizontalLayout_modelDownload
+        )
 
         self.plainTextEdit_ModelOutput = QPlainTextEdit(self.groupBox_Models)
-        self.plainTextEdit_ModelOutput.setObjectName("plainTextEdit_ModelOutput")
+        self.plainTextEdit_ModelOutput.setObjectName(
+            "plainTextEdit_ModelOutput"
+        )
         self.plainTextEdit_ModelOutput.setFont(font1)
         self.plainTextEdit_ModelOutput.setLineWrapMode(
             QPlainTextEdit.LineWrapMode.NoWrap
@@ -658,14 +706,20 @@ class Ui_MainWindow(object):
         self.groupBox_Lightpanda = QGroupBox(self.tab_setup)
         self.groupBox_Lightpanda.setObjectName("groupBox_Lightpanda")
         self.verticalLayout_lightpanda = QVBoxLayout(self.groupBox_Lightpanda)
-        self.verticalLayout_lightpanda.setObjectName("verticalLayout_lightpanda")
+        self.verticalLayout_lightpanda.setObjectName(
+            "verticalLayout_lightpanda"
+        )
         self.verticalLayout_lightpanda.setContentsMargins(8, 8, 8, 8)
         self.formLayout_lightpanda_status = QFormLayout()
-        self.formLayout_lightpanda_status.setObjectName("formLayout_lightpanda_status")
+        self.formLayout_lightpanda_status.setObjectName(
+            "formLayout_lightpanda_status"
+        )
         self.formLayout_lightpanda_status.setHorizontalSpacing(20)
         self.formLayout_lightpanda_status.setVerticalSpacing(6)
         self.label_lightpanda_bindir_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_bindir_lbl.setObjectName("label_lightpanda_bindir_lbl")
+        self.label_lightpanda_bindir_lbl.setObjectName(
+            "label_lightpanda_bindir_lbl"
+        )
 
         self.formLayout_lightpanda_status.setWidget(
             0, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_bindir_lbl
@@ -679,10 +733,14 @@ class Ui_MainWindow(object):
         )
 
         self.label_lightpanda_version_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_version_lbl.setObjectName("label_lightpanda_version_lbl")
+        self.label_lightpanda_version_lbl.setObjectName(
+            "label_lightpanda_version_lbl"
+        )
 
         self.formLayout_lightpanda_status.setWidget(
-            1, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_version_lbl
+            1,
+            QFormLayout.ItemRole.LabelRole,
+            self.label_lightpanda_version_lbl,
         )
 
         self.label_Lightpanda_Version = QLabel(self.groupBox_Lightpanda)
@@ -698,18 +756,24 @@ class Ui_MainWindow(object):
         )
 
         self.formLayout_lightpanda_status.setWidget(
-            2, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_binarypath_lbl
+            2,
+            QFormLayout.ItemRole.LabelRole,
+            self.label_lightpanda_binarypath_lbl,
         )
 
         self.label_Lightpanda_BinaryPath = QLabel(self.groupBox_Lightpanda)
-        self.label_Lightpanda_BinaryPath.setObjectName("label_Lightpanda_BinaryPath")
+        self.label_Lightpanda_BinaryPath.setObjectName(
+            "label_Lightpanda_BinaryPath"
+        )
 
         self.formLayout_lightpanda_status.setWidget(
             2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BinaryPath
         )
 
         self.label_lightpanda_status_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_status_lbl.setObjectName("label_lightpanda_status_lbl")
+        self.label_lightpanda_status_lbl.setObjectName(
+            "label_lightpanda_status_lbl"
+        )
 
         self.formLayout_lightpanda_status.setWidget(
             3, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl
@@ -722,13 +786,17 @@ class Ui_MainWindow(object):
             3, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status
         )
 
-        self.label_lightpanda_browsertools_lbl = QLabel(self.groupBox_Lightpanda)
+        self.label_lightpanda_browsertools_lbl = QLabel(
+            self.groupBox_Lightpanda
+        )
         self.label_lightpanda_browsertools_lbl.setObjectName(
             "label_lightpanda_browsertools_lbl"
         )
 
         self.formLayout_lightpanda_status.setWidget(
-            4, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_browsertools_lbl
+            4,
+            QFormLayout.ItemRole.LabelRole,
+            self.label_lightpanda_browsertools_lbl,
         )
 
         self.label_Lightpanda_BrowserTools = QLabel(self.groupBox_Lightpanda)
@@ -737,10 +805,14 @@ class Ui_MainWindow(object):
         )
 
         self.formLayout_lightpanda_status.setWidget(
-            4, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BrowserTools
+            4,
+            QFormLayout.ItemRole.FieldRole,
+            self.label_Lightpanda_BrowserTools,
         )
 
-        self.verticalLayout_lightpanda.addLayout(self.formLayout_lightpanda_status)
+        self.verticalLayout_lightpanda.addLayout(
+            self.formLayout_lightpanda_status
+        )
 
         self.horizontalLayout_lightpandaDownload = QHBoxLayout()
         self.horizontalLayout_lightpandaDownload.setObjectName(
@@ -756,13 +828,17 @@ class Ui_MainWindow(object):
         )
 
         self.lineEdit_LightpandaVersion = QLineEdit(self.groupBox_Lightpanda)
-        self.lineEdit_LightpandaVersion.setObjectName("lineEdit_LightpandaVersion")
+        self.lineEdit_LightpandaVersion.setObjectName(
+            "lineEdit_LightpandaVersion"
+        )
 
         self.horizontalLayout_lightpandaDownload.addWidget(
             self.lineEdit_LightpandaVersion
         )
 
-        self.pushButton_LightpandaDownload = QPushButton(self.groupBox_Lightpanda)
+        self.pushButton_LightpandaDownload = QPushButton(
+            self.groupBox_Lightpanda
+        )
         self.pushButton_LightpandaDownload.setObjectName(
             "pushButton_LightpandaDownload"
         )
@@ -784,7 +860,9 @@ class Ui_MainWindow(object):
             self.horizontalLayout_lightpandaDownload
         )
 
-        self.plainTextEdit_LightpandaOutput = QPlainTextEdit(self.groupBox_Lightpanda)
+        self.plainTextEdit_LightpandaOutput = QPlainTextEdit(
+            self.groupBox_Lightpanda
+        )
         self.plainTextEdit_LightpandaOutput.setObjectName(
             "plainTextEdit_LightpandaOutput"
         )
@@ -794,7 +872,9 @@ class Ui_MainWindow(object):
         )
         self.plainTextEdit_LightpandaOutput.setReadOnly(True)
 
-        self.verticalLayout_lightpanda.addWidget(self.plainTextEdit_LightpandaOutput)
+        self.verticalLayout_lightpanda.addWidget(
+            self.plainTextEdit_LightpandaOutput
+        )
 
         self.verticalLayout_setup.addWidget(self.groupBox_Lightpanda)
 
@@ -856,7 +936,9 @@ class Ui_MainWindow(object):
         self.lineEdit_UserPassword = QLineEdit(self.groupBox_CreateUser)
         self.lineEdit_UserPassword.setObjectName("lineEdit_UserPassword")
         self.lineEdit_UserPassword.setMaxLength(48)
-        self.lineEdit_UserPassword.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        self.lineEdit_UserPassword.setEchoMode(
+            QLineEdit.EchoMode.PasswordEchoOnEdit
+        )
 
         self.formLayout_createUser.setWidget(
             2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword
@@ -880,7 +962,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_userList.addWidget(self.listWidget_CurrentUsers)
 
         self.horizontalLayout_userButtons = QHBoxLayout()
-        self.horizontalLayout_userButtons.setObjectName("horizontalLayout_userButtons")
+        self.horizontalLayout_userButtons.setObjectName(
+            "horizontalLayout_userButtons"
+        )
         self.pushButton_EditUser = QPushButton(self.tab_users)
         self.pushButton_EditUser.setObjectName("pushButton_EditUser")
         self.pushButton_EditUser.setEnabled(False)
@@ -895,7 +979,9 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_userButtons.addWidget(self.pushButton_DeleteUser)
 
-        self.verticalLayout_userList.addLayout(self.horizontalLayout_userButtons)
+        self.verticalLayout_userList.addLayout(
+            self.horizontalLayout_userButtons
+        )
 
         self.horizontalLayout_users.addLayout(self.verticalLayout_userList)
 
@@ -912,33 +998,43 @@ class Ui_MainWindow(object):
         font2.setFamilies(["Courier New"])
         font2.setPointSize(10)
         self.plainTextEdit_Logs.setFont(font2)
-        self.plainTextEdit_Logs.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.plainTextEdit_Logs.setLineWrapMode(
+            QPlainTextEdit.LineWrapMode.NoWrap
+        )
         self.plainTextEdit_Logs.setReadOnly(True)
         self.plainTextEdit_Logs.setMaximumBlockCount(1000)
 
         self.verticalLayout_logs.addWidget(self.plainTextEdit_Logs)
 
         self.horizontalLayout_logsToolbar = QHBoxLayout()
-        self.horizontalLayout_logsToolbar.setObjectName("horizontalLayout_logsToolbar")
+        self.horizontalLayout_logsToolbar.setObjectName(
+            "horizontalLayout_logsToolbar"
+        )
         self.pushButton_AutoRefresh = QPushButton(self.tab_logs)
         self.pushButton_AutoRefresh.setObjectName("pushButton_AutoRefresh")
         icon8 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackPause))
         self.pushButton_AutoRefresh.setIcon(icon8)
 
-        self.horizontalLayout_logsToolbar.addWidget(self.pushButton_AutoRefresh)
+        self.horizontalLayout_logsToolbar.addWidget(
+            self.pushButton_AutoRefresh
+        )
 
         self.horizontalSpacer_logsToolbar = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_logsToolbar.addItem(self.horizontalSpacer_logsToolbar)
+        self.horizontalLayout_logsToolbar.addItem(
+            self.horizontalSpacer_logsToolbar
+        )
 
         self.pushButton_RefreshLogs = QPushButton(self.tab_logs)
         self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
         icon9 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
         self.pushButton_RefreshLogs.setIcon(icon9)
 
-        self.horizontalLayout_logsToolbar.addWidget(self.pushButton_RefreshLogs)
+        self.horizontalLayout_logsToolbar.addWidget(
+            self.pushButton_RefreshLogs
+        )
 
         self.verticalLayout_logs.addLayout(self.horizontalLayout_logsToolbar)
 
@@ -1065,7 +1161,9 @@ class Ui_MainWindow(object):
         )
 
         self.pushButton_SettingsRevert = QPushButton(self.groupBox_SettingsAll)
-        self.pushButton_SettingsRevert.setObjectName("pushButton_SettingsRevert")
+        self.pushButton_SettingsRevert.setObjectName(
+            "pushButton_SettingsRevert"
+        )
 
         self.formLayout_settingsAll.setWidget(
             7, QFormLayout.ItemRole.LabelRole, self.pushButton_SettingsRevert
@@ -1132,14 +1230,18 @@ class Ui_MainWindow(object):
         self.actionAbout.setText(
             QCoreApplication.translate("MainWindow", "&About", None)
         )
-        self.actionQuit.setText(QCoreApplication.translate("MainWindow", "&Quit", None))
+        self.actionQuit.setText(
+            QCoreApplication.translate("MainWindow", "&Quit", None)
+        )
         # if QT_CONFIG(shortcut)
         self.actionQuit.setShortcut(
             QCoreApplication.translate("MainWindow", "Ctrl+Q", None)
         )
         # endif // QT_CONFIG(shortcut)
         self.label_title.setText(
-            QCoreApplication.translate("MainWindow", "Aria Service Manager", None)
+            QCoreApplication.translate(
+                "MainWindow", "Aria Service Manager", None
+            )
         )
         self.pushButton_ServiceStop.setText(
             QCoreApplication.translate("MainWindow", "Stop", None)
@@ -1208,7 +1310,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "-", None)
         )
         self.groupBox_LLMAPIs.setTitle(
-            QCoreApplication.translate("MainWindow", "LLM Inference APIs", None)
+            QCoreApplication.translate(
+                "MainWindow", "LLM Inference APIs", None
+            )
         )
         self.label_llm_type_lbl.setText(
             QCoreApplication.translate("MainWindow", "Type", None)
@@ -1237,7 +1341,9 @@ class Ui_MainWindow(object):
         self.label_llm_vectordb_lbl.setText(
             QCoreApplication.translate("MainWindow", "VectorDB", None)
         )
-        self.label_VectorDB.setText(QCoreApplication.translate("MainWindow", "-", None))
+        self.label_VectorDB.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
         self.label_DebugLogsPath.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
@@ -1276,7 +1382,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "llama-quantize: -", None)
         )
         self.label_llama_dl_version_lbl.setText(
-            QCoreApplication.translate("MainWindow", "Version (optional):", None)
+            QCoreApplication.translate(
+                "MainWindow", "Version (optional):", None
+            )
         )
         self.lineEdit_LlamaVersion.setPlaceholderText(
             QCoreApplication.translate(
@@ -1326,7 +1434,9 @@ class Ui_MainWindow(object):
         )
 
         self.label_hf_token_lbl.setText(
-            QCoreApplication.translate("MainWindow", "HF Token (optional):", None)
+            QCoreApplication.translate(
+                "MainWindow", "HF Token (optional):", None
+            )
         )
         self.lineEdit_HFToken.setPlaceholderText(
             QCoreApplication.translate("MainWindow", "HuggingFace token", None)
@@ -1343,7 +1453,9 @@ class Ui_MainWindow(object):
             )
         )
         self.groupBox_Lightpanda.setTitle(
-            QCoreApplication.translate("MainWindow", "Lightpanda Browser", None)
+            QCoreApplication.translate(
+                "MainWindow", "Lightpanda Browser", None
+            )
         )
         self.label_lightpanda_bindir_lbl.setText(
             QCoreApplication.translate("MainWindow", "Binary Directory", None)
@@ -1352,7 +1464,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_lightpanda_version_lbl.setText(
-            QCoreApplication.translate("MainWindow", "Configured Version", None)
+            QCoreApplication.translate(
+                "MainWindow", "Configured Version", None
+            )
         )
         self.label_Lightpanda_Version.setText(
             QCoreApplication.translate("MainWindow", "-", None)
@@ -1367,7 +1481,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Status", None)
         )
         self.label_Lightpanda_Status.setText(
-            QCoreApplication.translate("MainWindow", "\u2717 Not installed", None)
+            QCoreApplication.translate(
+                "MainWindow", "\u2717 Not installed", None
+            )
         )
         self.label_lightpanda_browsertools_lbl.setText(
             QCoreApplication.translate("MainWindow", "Browser Tools", None)
@@ -1376,7 +1492,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Disabled", None)
         )
         self.label_lightpanda_version_lbl_2.setText(
-            QCoreApplication.translate("MainWindow", "Version (optional):", None)
+            QCoreApplication.translate(
+                "MainWindow", "Version (optional):", None
+            )
         )
         self.lineEdit_LightpandaVersion.setPlaceholderText(
             QCoreApplication.translate("MainWindow", "nightly", None)
@@ -1419,7 +1537,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Users", None),
         )
         self.pushButton_AutoRefresh.setText(
-            QCoreApplication.translate("MainWindow", "Pause Auto-Refresh", None)
+            QCoreApplication.translate(
+                "MainWindow", "Pause Auto-Refresh", None
+            )
         )
         self.pushButton_RefreshLogs.setText(
             QCoreApplication.translate("MainWindow", "Refresh", None)
@@ -1432,7 +1552,9 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Settings", None)
         )
         self.checkBox_Debug.setText(
-            QCoreApplication.translate("MainWindow", "Enable debug logging", None)
+            QCoreApplication.translate(
+                "MainWindow", "Enable debug logging", None
+            )
         )
         self.label_ServerHostLbl.setText(
             QCoreApplication.translate("MainWindow", "Server host", None)
@@ -1498,7 +1620,9 @@ class Ui_MainWindow(object):
         )
         self.label_restart.setText(
             QCoreApplication.translate(
-                "MainWindow", "Changes require a service restart to take effect.", None
+                "MainWindow",
+                "Changes require a service restart to take effect.",
+                None,
             )
         )
         self.tabWidget.setTabText(
@@ -1508,6 +1632,8 @@ class Ui_MainWindow(object):
         self.menuApplication.setTitle(
             QCoreApplication.translate("MainWindow", "&File", None)
         )
-        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", "&Help", None))
+        self.menuHelp.setTitle(
+            QCoreApplication.translate("MainWindow", "&Help", None)
+        )
 
     # retranslateUi

@@ -143,7 +143,9 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
             steps: List of step dictionaries to process
         """
         for step in steps:
-            if step.get("type") == ASSISTANT_MESSAGE_TYPE and step.get("parentId"):
+            if step.get("type") == ASSISTANT_MESSAGE_TYPE and step.get(
+                "parentId"
+            ):
                 logger.debug(
                     f"Promoting assistant message {step.get('id')} to root level "
                     f"(was child of {step.get('parentId')})"
@@ -281,7 +283,9 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                 # This works when called from within a Chainlit session (e.g., websocket)
                 from chainlit.context import context
 
-                if hasattr(context, "session") and hasattr(context.session, "user"):
+                if hasattr(context, "session") and hasattr(
+                    context.session, "user"
+                ):
                     current_user = context.session.user
                     if current_user and hasattr(current_user, "identifier"):
                         # Look up the user_id from the database using the identifier
@@ -310,11 +314,15 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         if threads is None:
             return None
 
-        logger.debug(f"get_all_user_threads returning {len(threads)} thread(s)")
+        logger.debug(
+            f"get_all_user_threads returning {len(threads)} thread(s)"
+        )
 
         # Deserialize JSON-string columns into the shapes Chainlit's types expect.
         for t in threads:
-            logger.debug(f"Thread {t.get('id')}: {len(t.get('steps', []))} steps")
+            logger.debug(
+                f"Thread {t.get('id')}: {len(t.get('steps', []))} steps"
+            )
             self._deserialize_thread(cast(Dict[str, Any], t))
 
             # Promote assistant messages to root level for thread display

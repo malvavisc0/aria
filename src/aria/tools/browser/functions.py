@@ -12,11 +12,11 @@ Lightpanda must be installed first:
 Example:
     ```python
     from aria.tools.browser import (
-        browser_open, browser_click, browser_screenshot
+        open_url, browser_click, browser_screenshot
     )
 
     # Open a URL and get page content
-    result = browser_open("Reading documentation", "https://example.com")
+    result = open_url("Reading documentation", "https://example.com")
 
     # Click an element by CSS selector
     result = browser_click("Accepting cookies", "button.accept")
@@ -47,7 +47,7 @@ def _get_manager():
     return manager
 
 
-async def browser_open(intent: str, url: str) -> str:
+async def open_url(intent: str, url: str) -> str:
     """Open a URL in the headless browser and get page content.
 
     This bypasses anti-bot protection by using a real browser via
@@ -61,12 +61,12 @@ async def browser_open(intent: str, url: str) -> str:
         url: The URL to navigate to
 
     Returns:
-        JSON with page content, title, and URL.
+        JSON with URL/title and persisted content metadata.
 
     Example:
         ```python
-        result = await browser_open("Reading article", "https://example.com")
-        # Returns JSON with page content
+        result = await open_url("Reading article", "https://example.com")
+        # Returns JSON with content_file/content_preview/content_size
         ```
     """
     manager = _get_manager()
@@ -82,7 +82,7 @@ async def browser_click(intent: str, selector: str) -> str:
     - Navigating pagination
     - Following links
 
-    After clicking, returns updated page content.
+    After clicking, returns metadata and persisted updated page content.
 
     Args:
         intent: Why you are clicking this element (e.g., "Accepting cookies")
@@ -90,7 +90,7 @@ async def browser_click(intent: str, selector: str) -> str:
             'a[href="/next"]', '#submit-button'
 
     Returns:
-        JSON with updated page content after the click.
+        JSON with updated page content metadata after the click.
 
     Example:
         ```python
@@ -111,7 +111,7 @@ async def browser_click(intent: str, selector: str) -> str:
 async def browser_screenshot(intent: str, filename: str) -> str:
     """Take a screenshot of the current browser page.
 
-    The browser must have navigated to a page first with browser_open.
+    The browser must have navigated to a page first with open_url.
 
     Args:
         intent: Why you are taking the screenshot
@@ -123,7 +123,7 @@ async def browser_screenshot(intent: str, filename: str) -> str:
 
     Example:
         ```python
-        # After browser_open
+        # After open_url
         result = await browser_screenshot("Capturing page state", "page.png")
         # Returns {"success": true, "file_path": "/path/to/downloads/page.png"}
         ```

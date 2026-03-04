@@ -126,4 +126,6 @@ def _make_tool_step(label: str) -> cl.Step:
     Keeps current behavior: `show_input=False`, `default_open=False`.
     """
 
-    return cl.Step(name=label, type="tool", show_input=False, default_open=False)
+    return cl.Step(
+        name=label, type="tool", show_input=False, default_open=False
+    )

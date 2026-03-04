@@ -143,7 +143,9 @@ class TestStateReducerAgentOutput:
         )
         state_reducer(
             state,
-            _make_agent_output("Socrates", [_make_handoff_selection("Wanderer")]),
+            _make_agent_output(
+                "Socrates", [_make_handoff_selection("Wanderer")]
+            ),
         )
         assert state["handoffs"] == ["Socrates", "Wanderer"]
 
@@ -257,7 +259,9 @@ class TestStateReducerToolCallResult:
         state = initial_workflow_state("Aria")
         # Simulate a handoff to Socrates before the tool call
         state_reducer(state, _make_agent_output("Socrates"))
-        state_reducer(state, _make_tool_call_result("reason", {}, "deep thought"))
+        state_reducer(
+            state, _make_tool_call_result("reason", {}, "deep thought")
+        )
         assert state["tool_calls"][0]["agent"] == "Socrates"
 
     def test_returns_same_state_object(self):

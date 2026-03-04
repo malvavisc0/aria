@@ -12,7 +12,7 @@ from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from pydantic import BaseModel, Field
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 
 
 class PromptEnhancementResult(BaseModel):

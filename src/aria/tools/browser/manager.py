@@ -24,8 +24,10 @@ Example:
 """
 
 import asyncio
+import hashlib
 import json
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -34,11 +36,20 @@ from playwright.async_api import Browser, Page, Playwright, async_playwright
 
 from aria.tools.browser.constants import (
     BROWSER_COMMAND_TIMEOUT,
+    BROWSER_CONTENT_DIR,
     LIGHTPANDA_DEFAULT_PORT,
 )
 
 # Module-level singleton — set during app startup
 _manager: Optional["LightpandaManager"] = None
+
+
+def _build_content_filepath(url: str, action: str) -> Path:
+    """Build a stable, timestamped path for persisted page content."""
+    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:12]
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{action}_{digest}.txt"
+    return BROWSER_CONTENT_DIR / filename
 
 
 def get_browser_manager() -> Optional["LightpandaManager"]:
@@ -127,7 +138,9 @@ class LightpandaManager:
             # Connect Playwright via CDP
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
-            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
+            self._browser = await self._playwright.chromium.connect_over_cdp(
+                cdp_url
+            )
 
             # Create initial page
             self._page = await self._browser.new_page()
@@ -254,14 +267,22 @@ class LightpandaManager:
             # Wait for page to settle
             await self._page.wait_for_load_state("networkidle", timeout=10000)
 
-            # Get page content
+            # Get and persist page content
             content = await self.get_page_content()
+            content_path = _build_content_filepath(self._page.url, "open")
+            content_path.write_text(content, encoding="utf-8")
 
             return json.dumps(
                 {
                     "url": self._page.url,
                     "title": await self._page.title(),
-                    "content": content,
+                    "content_file": str(content_path),
+                    "content_preview": (
+                        content[:500] + "..."
+                        if len(content) > 500
+                        else content
+                    ),
+                    "content_size": len(content),
                 },
                 indent=2,
             )
@@ -292,14 +313,22 @@ class LightpandaManager:
             # Wait for any navigation/updates
             await self._page.wait_for_load_state("networkidle", timeout=10000)
 
-            # Get updated content
+            # Get and persist updated content
             content = await self.get_page_content()
+            content_path = _build_content_filepath(self._page.url, "click")
+            content_path.write_text(content, encoding="utf-8")
 
             return json.dumps(
                 {
                     "url": self._page.url,
                     "title": await self._page.title(),
-                    "content": content,
+                    "content_file": str(content_path),
+                    "content_preview": (
+                        content[:500] + "..."
+                        if len(content) > 500
+                        else content
+                    ),
+                    "content_size": len(content),
                 },
                 indent=2,
             )

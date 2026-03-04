@@ -204,12 +204,16 @@ def _get_release_by_tag(tag: str) -> dict:
     Returns:
         dict: Release information including assets.
     """
-    api_url = f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
+    api_url = (
+        f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}"
+    )
     with urllib.request.urlopen(api_url, timeout=30) as response:
         return __import__("json").loads(response.read())
 
 
-def _find_linux_binary_asset(assets: list, prefer_cuda: bool = False) -> Optional[dict]:
+def _find_linux_binary_asset(
+    assets: list, prefer_cuda: bool = False
+) -> Optional[dict]:
     """Find the appropriate Linux binary asset from the release assets.
 
     Searches for pre-built Linux binary archives in priority order.
@@ -264,7 +268,9 @@ def _find_linux_binary_asset(assets: list, prefer_cuda: bool = False) -> Optiona
     return None
 
 
-def _find_macos_binary_asset(assets: list, arch: str = "arm64") -> Optional[dict]:
+def _find_macos_binary_asset(
+    assets: list, arch: str = "arm64"
+) -> Optional[dict]:
     """Find the appropriate macOS binary asset from the release assets.
 
     Searches for pre-built macOS binary archives in priority order.
@@ -410,7 +416,9 @@ def _download_with_progress(
     ) as progress:
         task = progress.add_task(description, total=None)
 
-        def _reporthook(block_num: int, block_size: int, total_size: int) -> None:
+        def _reporthook(
+            block_num: int, block_size: int, total_size: int
+        ) -> None:
             if total_size > 0 and progress.tasks[task].total is None:
                 progress.update(task, total=total_size)
             progress.update(task, completed=block_num * block_size)
@@ -442,7 +450,9 @@ def _download_and_extract(
         console.print("[cyan]  Extracting archive...[/cyan]")
         with tarfile.open(archive_path, "r:gz") as tar:
             tar.extractall(dest_dir)
-            extracted_files = [str(Path(dest_dir) / m.name) for m in tar.getmembers()]
+            extracted_files = [
+                str(Path(dest_dir) / m.name) for m in tar.getmembers()
+            ]
 
     return extracted_files
 
@@ -590,9 +600,13 @@ def _test_binary(bin_dir: Path) -> None:
                     f"  [yellow]Warning: Version check failed: {result.stderr}[/yellow]"
                 )
         except subprocess.TimeoutExpired:
-            console.print("  [yellow]Warning: Version check timed out[/yellow]")
+            console.print(
+                "  [yellow]Warning: Version check timed out[/yellow]"
+            )
         except Exception as e:
-            console.print(f"  [yellow]Warning: Could not test binary: {e}[/yellow]")
+            console.print(
+                f"  [yellow]Warning: Could not test binary: {e}[/yellow]"
+            )
 
 
 def _install_from_archive(
@@ -622,7 +636,9 @@ def _install_from_archive(
             extract_dir.mkdir(parents=True, exist_ok=True)
 
             # Choose extractor based on file extension
-            is_tar = asset_name.endswith(".tar.gz") or asset_name.endswith(".gz")
+            is_tar = asset_name.endswith(".tar.gz") or asset_name.endswith(
+                ".gz"
+            )
             if is_tar:
                 _download_and_extract(
                     download_url,
@@ -655,7 +671,9 @@ def _install_from_archive(
                         if lib_file.is_file():
                             dst_lib = bin_dir / lib_file.name
                             shutil.copy2(lib_file, dst_lib)
-                            logger.info(f"Installed {lib_file.name} to {bin_dir}")
+                            logger.info(
+                                f"Installed {lib_file.name} to {bin_dir}"
+                            )
 
     except urllib.error.URLError as e:
         raise RuntimeError(f"Failed to download binary: {e}") from e
@@ -702,13 +720,19 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     # Fetch release information (needed for all paths)
     try:
         if version and version.lower() != "latest":
-            console.print(f"[cyan]  Fetching release info for tag: {version}[/cyan]")
+            console.print(
+                f"[cyan]  Fetching release info for tag: {version}[/cyan]"
+            )
             release = _get_release_by_tag(version)
         else:
-            console.print("[cyan]  Fetching latest release info from GitHub...[/cyan]")
+            console.print(
+                "[cyan]  Fetching latest release info from GitHub...[/cyan]"
+            )
             release = _get_latest_release_info()
     except urllib.error.URLError as e:
-        raise RuntimeError(f"Failed to fetch release info from GitHub: {e}") from e
+        raise RuntimeError(
+            f"Failed to fetch release info from GitHub: {e}"
+        ) from e
 
     tag = release.get("tag_name", "unknown")
     console.print(f"[green]  Found release: {tag}[/green]")
@@ -764,7 +788,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     # Path 2: macOS → download pre-built binary
     # -----------------------------------------------------------------------
     if _is_macos():
-        arch = platform.machine()  # "arm64" on Apple Silicon, "x86_64" on Intel
+        arch = (
+            platform.machine()
+        )  # "arm64" on Apple Silicon, "x86_64" on Intel
         console.print(
             f"[cyan]  macOS detected (arch: {arch}) — downloading pre-built binary[/cyan]"
         )
@@ -799,7 +825,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+                console.print(
+                    f"  - [green]{binary_name}[/green]: {binary_path}"
+                )
 
         return bin_dir
 
@@ -808,9 +836,13 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     # -----------------------------------------------------------------------
     if _is_windows():
         cuda_available = _is_cuda_available()
-        console.print("[cyan]  Windows detected — downloading pre-built binary[/cyan]")
+        console.print(
+            "[cyan]  Windows detected — downloading pre-built binary[/cyan]"
+        )
 
-        binary_asset = _find_windows_binary_asset(assets, prefer_cuda=cuda_available)
+        binary_asset = _find_windows_binary_asset(
+            assets, prefer_cuda=cuda_available
+        )
 
         if not binary_asset:
             error_console.print(
@@ -840,7 +872,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+                console.print(
+                    f"  - [green]{binary_name}[/green]: {binary_path}"
+                )
 
         return bin_dir
 
@@ -848,11 +882,15 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
     # Path 4: Ubuntu without nvcc → download pre-built binary
     # -----------------------------------------------------------------------
     if _is_ubuntu():
-        console.print("[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]")
+        console.print(
+            "[cyan]  Ubuntu detected — downloading pre-built binary[/cyan]"
+        )
 
         # Check if CUDA is available for binary selection preference
         cuda_available = _is_cuda_available()
-        binary_asset = _find_linux_binary_asset(assets, prefer_cuda=cuda_available)
+        binary_asset = _find_linux_binary_asset(
+            assets, prefer_cuda=cuda_available
+        )
 
         if not binary_asset:
             error_console.print(
@@ -886,7 +924,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
                 # (the tar.gz contains a top-level dir like llama-b8089/)
                 console.print("[cyan]  Installing binaries...[/cyan]")
                 for binary_name in BINARY_NAMES:
-                    binary_path = get_llama_cpp_binary(binary_name, extract_tmp_path)
+                    binary_path = get_llama_cpp_binary(
+                        binary_name, extract_tmp_path
+                    )
                     if binary_path:
                         dst = bin_dir / binary_name
                         shutil.copy2(binary_path, dst)
@@ -895,7 +935,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
 
                 # Copy shared libraries
                 for lib_pattern in SHARED_LIB_PATTERNS:
-                    for lib_file in extract_tmp_path.rglob(f"{lib_pattern}*.so*"):
+                    for lib_file in extract_tmp_path.rglob(
+                        f"{lib_pattern}*.so*"
+                    ):
                         dst_lib = bin_dir / lib_file.name
                         shutil.copy2(lib_file, dst_lib)
                         logger.info(f"Installed {lib_file.name} to {bin_dir}")
@@ -913,7 +955,9 @@ def download_llama_cpp(bin_dir: Path, version: Optional[str] = None) -> Path:
         for binary_name in BINARY_NAMES:
             binary_path = get_llama_cpp_binary(binary_name, bin_dir)
             if binary_path:
-                console.print(f"  - [green]{binary_name}[/green]: {binary_path}")
+                console.print(
+                    f"  - [green]{binary_name}[/green]: {binary_path}"
+                )
 
         return bin_dir
 
@@ -1039,7 +1083,9 @@ def install_llama_cpp_from_source(
                 ]
             )
 
-        console.print(f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]")
+        console.print(
+            f"[cyan]  cmake configure: {' '.join(cmake_args)}[/cyan]"
+        )
 
         if verbose:
             subprocess.run(cmake_args, cwd=str(repo_dir), check=True)
@@ -1064,7 +1110,9 @@ def install_llama_cpp_from_source(
             str(threads),
         ]
 
-        console.print(f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]")
+        console.print(
+            f"[cyan]  cmake build ({threads} parallel jobs)...[/cyan]"
+        )
 
         if verbose:
             subprocess.run(build_args, cwd=str(repo_dir), check=True)

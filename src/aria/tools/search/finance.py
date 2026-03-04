@@ -144,7 +144,9 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
     except Exception as exc:  # pylint: disable=broad-exception-caught
         # Important: tools should never raise here; an exception can crash the
         # agent.
-        logger.exception(f"Unexpected error fetching price for {raw_ticker}: {exc}")
+        logger.exception(
+            f"Unexpected error fetching price for {raw_ticker}: {exc}"
+        )
         return _format_json_response(
             {
                 "ticker": raw_ticker,
@@ -224,7 +226,9 @@ def fetch_company_information(intent: str, ticker: str) -> str:
             "analyst_data": {
                 "recommendation_key": info.get("recommendationKey"),
                 "recommendation_mean": info.get("recommendationMean"),
-                "number_of_analyst_opinions": info.get("numberOfAnalystOpinions"),
+                "number_of_analyst_opinions": info.get(
+                    "numberOfAnalystOpinions"
+                ),
                 "target_high_price": info.get("targetHighPrice"),
                 "target_low_price": info.get("targetLowPrice"),
                 "target_mean_price": info.get("targetMeanPrice"),
@@ -320,7 +324,9 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         try:
             news_data = ticker_obj.news
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            raise YFinanceDataError(f"Failed to fetch news data: {exc}") from exc
+            raise YFinanceDataError(
+                f"Failed to fetch news data: {exc}"
+            ) from exc
 
         if not news_data:
             return _format_json_response(
@@ -346,7 +352,9 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        logger.info(f"Successfully fetched {len(articles)} news articles for {ticker}")
+        logger.info(
+            f"Successfully fetched {len(articles)} news articles for {ticker}"
+        )
         return _format_json_response(result)
 
     except YFinanceValidationError as exc:
@@ -374,7 +382,9 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
             }
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Unexpected error fetching news for {raw_ticker}: {exc}")
+        logger.exception(
+            f"Unexpected error fetching news for {raw_ticker}: {exc}"
+        )
         return _format_json_response(
             {
                 "ticker": raw_ticker,
@@ -410,7 +420,9 @@ def _validate_ticker(ticker: Any) -> str:
         )
 
     if not TICKER_PATTERN.match(ticker):
-        raise YFinanceValidationError(f"Invalid ticker symbol format: {ticker}")
+        raise YFinanceValidationError(
+            f"Invalid ticker symbol format: {ticker}"
+        )
 
     return ticker
 
@@ -504,7 +516,9 @@ def _process_news_article(article: Any) -> Optional[Dict[str, Any]]:
             content = article["content"]
             canonical_url = content.get("canonicalUrl", {})
             url = (
-                canonical_url.get("url", "") if isinstance(canonical_url, dict) else ""
+                canonical_url.get("url", "")
+                if isinstance(canonical_url, dict)
+                else ""
             )
             return {
                 "title": content.get("title", "No title"),

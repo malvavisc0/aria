@@ -81,11 +81,15 @@ def detect_gpus_with_details(log_errors: bool = False) -> List[GPUMetadata]:
 
             # Calculate memory utilization percentage (rounded to 2 decimals)
             memory_util = (
-                round((used_mem / total_mem * 100), 2) if total_mem > 0 else 0.0
+                round((used_mem / total_mem * 100), 2)
+                if total_mem > 0
+                else 0.0
             )
 
             # Helper function to safely parse numeric values with unit suffixes
-            def parse_numeric(value: str, suffixes: Optional[List[str]] = None) -> int:
+            def parse_numeric(
+                value: str, suffixes: Optional[List[str]] = None
+            ) -> int:
                 """Parse numeric value, optionally removing unit suffixes."""
                 if not value:
                     return 0
@@ -169,7 +173,9 @@ def detect_gpu_count() -> int:
         )
         # Filter empty lines to get accurate count
         lines = [
-            line.strip() for line in result.stdout.strip().split("\n") if line.strip()
+            line.strip()
+            for line in result.stdout.strip().split("\n")
+            if line.strip()
         ]
         return len(lines)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -203,7 +209,9 @@ def get_total_vram_mb() -> int:
         )
         # Filter empty lines before processing
         vram_values = [
-            vram.strip() for vram in result.stdout.strip().split("\n") if vram.strip()
+            vram.strip()
+            for vram in result.stdout.strip().split("\n")
+            if vram.strip()
         ]
         total_vram = sum(int(vram) for vram in vram_values)
         return total_vram

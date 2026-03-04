@@ -28,13 +28,17 @@ class TestUserModel:
         await db_session.commit()
 
         # Verify user exists
-        result = await db_session.execute(select(User).where(User.id == user.id))
+        result = await db_session.execute(
+            select(User).where(User.id == user.id)
+        )
         retrieved_user = result.scalar_one()
         assert retrieved_user is not None
         assert retrieved_user.identifier == "test@example.com"
 
     @pytest.mark.asyncio
-    async def test_user_metadata_column_mapping(self, db_session: AsyncSession):
+    async def test_user_metadata_column_mapping(
+        self, db_session: AsyncSession
+    ):
         """Test metadata_ attribute maps to metadata column."""
         user = User(
             id=str(uuid.uuid4()),
@@ -101,7 +105,9 @@ class TestUserModel:
         await db_session.commit()
 
         # Verify user exists with password
-        result = await db_session.execute(select(User).where(User.id == user.id))
+        result = await db_session.execute(
+            select(User).where(User.id == user.id)
+        )
         retrieved_user = result.scalar_one()
         assert retrieved_user.password == password_hash
 
@@ -120,7 +126,9 @@ class TestUserModel:
         db_session.add(user)
         await db_session.commit()
 
-        result = await db_session.execute(select(User).where(User.id == user.id))
+        result = await db_session.execute(
+            select(User).where(User.id == user.id)
+        )
         retrieved_user = result.scalar_one()
         assert retrieved_user.password is None
 
@@ -142,7 +150,9 @@ class TestThreadModel:
         db_session.add(thread)
         await db_session.commit()
 
-        result = await db_session.execute(select(Thread).where(Thread.id == thread.id))
+        result = await db_session.execute(
+            select(Thread).where(Thread.id == thread.id)
+        )
         retrieved_thread = result.scalar_one()
         assert retrieved_thread.name == "Test Thread"
 
@@ -169,7 +179,9 @@ class TestThreadModel:
         await db_session.commit()
 
         # Test relationship from thread to user
-        result = await db_session.execute(select(Thread).where(Thread.id == thread.id))
+        result = await db_session.execute(
+            select(Thread).where(Thread.id == thread.id)
+        )
         retrieved_thread = result.scalar_one()
         # Note: Relationship loading may require explicit loading in async context
         assert retrieved_thread.userId == user.id
@@ -179,7 +191,9 @@ class TestCascadeDeletes:
     """Test suite for cascade delete behavior."""
 
     @pytest.mark.asyncio
-    async def test_delete_user_cascades_to_threads(self, db_session: AsyncSession):
+    async def test_delete_user_cascades_to_threads(
+        self, db_session: AsyncSession
+    ):
         """Test deleting user cascades to threads."""
         user = User(
             id=str(uuid.uuid4()),
@@ -207,11 +221,15 @@ class TestCascadeDeletes:
         await db_session.commit()
 
         # Verify thread is also deleted
-        result = await db_session.execute(select(Thread).where(Thread.id == thread_id))
+        result = await db_session.execute(
+            select(Thread).where(Thread.id == thread_id)
+        )
         assert result.scalar_one_or_none() is None
 
     @pytest.mark.asyncio
-    async def test_delete_thread_cascades_to_steps(self, db_session: AsyncSession):
+    async def test_delete_thread_cascades_to_steps(
+        self, db_session: AsyncSession
+    ):
         """Test deleting thread cascades to steps."""
         thread = Thread(
             id=str(uuid.uuid4()),
@@ -238,11 +256,15 @@ class TestCascadeDeletes:
         await db_session.commit()
 
         # Verify step is also deleted
-        result = await db_session.execute(select(Step).where(Step.id == step_id))
+        result = await db_session.execute(
+            select(Step).where(Step.id == step_id)
+        )
         assert result.scalar_one_or_none() is None
 
     @pytest.mark.asyncio
-    async def test_delete_thread_cascades_to_elements(self, db_session: AsyncSession):
+    async def test_delete_thread_cascades_to_elements(
+        self, db_session: AsyncSession
+    ):
         """Test deleting thread cascades to elements."""
         thread = Thread(
             id=str(uuid.uuid4()),
@@ -273,7 +295,9 @@ class TestCascadeDeletes:
         assert result.scalar_one_or_none() is None
 
     @pytest.mark.asyncio
-    async def test_delete_thread_cascades_to_feedbacks(self, db_session: AsyncSession):
+    async def test_delete_thread_cascades_to_feedbacks(
+        self, db_session: AsyncSession
+    ):
         """Test deleting thread cascades to feedbacks."""
         thread = Thread(
             id=str(uuid.uuid4()),
@@ -333,7 +357,9 @@ class TestCascadeDeletes:
             type="tool",
             streaming=False,
         )
-        element = Element(id=str(uuid.uuid4()), threadId=thread.id, name="Test Element")
+        element = Element(
+            id=str(uuid.uuid4()), threadId=thread.id, name="Test Element"
+        )
         feedback = Feedback(
             id=str(uuid.uuid4()),
             threadId=thread.id,
@@ -355,10 +381,14 @@ class TestCascadeDeletes:
             await db_session.execute(select(Step).where(Step.id == step_id))
         ).scalar_one_or_none() is None
         assert (
-            await db_session.execute(select(Element).where(Element.id == element_id))
+            await db_session.execute(
+                select(Element).where(Element.id == element_id)
+            )
         ).scalar_one_or_none() is None
         assert (
-            await db_session.execute(select(Feedback).where(Feedback.id == feedback_id))
+            await db_session.execute(
+                select(Feedback).where(Feedback.id == feedback_id)
+            )
         ).scalar_one_or_none() is None
 
 

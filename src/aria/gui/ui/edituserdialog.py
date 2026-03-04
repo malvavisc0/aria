@@ -70,17 +70,23 @@ class Ui_EditUserDialog(object):
         self.label_Name = QLabel(self.formLayoutWidget)
         self.label_Name.setObjectName("label_Name")
 
-        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_Name)
+        self.formLayout.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_Name
+        )
 
         self.lineEdit_Name = QLineEdit(self.formLayoutWidget)
         self.lineEdit_Name.setObjectName("lineEdit_Name")
 
-        self.formLayout.setWidget(0, QFormLayout.ItemRole.FieldRole, self.lineEdit_Name)
+        self.formLayout.setWidget(
+            0, QFormLayout.ItemRole.FieldRole, self.lineEdit_Name
+        )
 
         self.label_Email = QLabel(self.formLayoutWidget)
         self.label_Email.setObjectName("label_Email")
 
-        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_Email)
+        self.formLayout.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_Email
+        )
 
         self.lineEdit_Email = QLineEdit(self.formLayoutWidget)
         self.lineEdit_Email.setObjectName("lineEdit_Email")

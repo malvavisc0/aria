@@ -132,7 +132,8 @@ class _ModelDownloadWorker(QObject):
         if self._alias == "chat":
             if not Chat.repo_id or not Chat.filename:
                 self.error.emit(
-                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured "
+                    "(CHAT_MODEL_REPO / CHAT_MODEL)."
                 )
                 return
             downloads.append((Chat.repo_id, Chat.filename))
@@ -140,7 +141,8 @@ class _ModelDownloadWorker(QObject):
         elif self._alias == "vl":
             if not Vision.repo_id or not Vision.filename:
                 self.error.emit(
-                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured "
+                    "(VL_MODEL_REPO / VL_MODEL)."
                 )
                 return
             downloads.append((Vision.repo_id, Vision.filename))
@@ -247,8 +249,12 @@ class SetupHandlersMixin:
 
         Call this from ``MainWindow.__init__()`` after ``setupUi()``.
         """
-        self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
-        self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
+        self.ui.pushButton_LlamaDownload.clicked.connect(
+            self.on_llama_download_clicked
+        )
+        self.ui.pushButton_ModelDownload.clicked.connect(
+            self.on_model_download_clicked
+        )
         self.ui.pushButton_LightpandaDownload.clicked.connect(
             self.on_lightpanda_download_clicked
         )
@@ -279,7 +285,9 @@ class SetupHandlersMixin:
             icon = "✓" if exists else "✗"
             color = "green" if exists else "red"
             label = getattr(self.ui, label_name)
-            label.setText(f'<span style="color:{color}">{icon}</span> {binary}')
+            label.setText(
+                f'<span style="color:{color}">{icon}</span> {binary}'
+            )
 
         models_dir = LlamaCpp.models_path
         model_configs = [
@@ -299,7 +307,9 @@ class SetupHandlersMixin:
             downloaded = is_model_downloaded(filename, models_dir)
             icon = "✓" if downloaded else "✗"
             color = "green" if downloaded else "red"
-            label.setText(f'<span style="color:{color}">{icon}</span> {filename}')
+            label.setText(
+                f'<span style="color:{color}">{icon}</span> {filename}'
+            )
 
         # Lightpanda status
         from aria.config.api import Lightpanda
@@ -366,7 +376,9 @@ class SetupHandlersMixin:
         self._llama_dl_worker.error.connect(self._on_llama_dl_error)
         self._llama_dl_worker.finished.connect(self._llama_dl_thread.quit)
         self._llama_dl_worker.error.connect(self._llama_dl_thread.quit)
-        self._llama_dl_thread.finished.connect(self._llama_dl_worker.deleteLater)
+        self._llama_dl_thread.finished.connect(
+            self._llama_dl_worker.deleteLater
+        )
         self._llama_dl_thread.finished.connect(self._clear_llama_dl_worker)
 
         self._llama_dl_thread.start()
@@ -403,7 +415,9 @@ class SetupHandlersMixin:
         self.ui.plainTextEdit_ModelOutput.clear()
 
         alias = self.ui.comboBox_ModelSelect.currentText()
-        token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        token_text = (
+            self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        )
         force = self.ui.checkBox_ModelForce.isChecked()
 
         self._model_dl_worker = _ModelDownloadWorker(
@@ -418,7 +432,9 @@ class SetupHandlersMixin:
         self._model_dl_worker.error.connect(self._on_model_dl_error)
         self._model_dl_worker.finished.connect(self._model_dl_thread.quit)
         self._model_dl_worker.error.connect(self._model_dl_thread.quit)
-        self._model_dl_thread.finished.connect(self._model_dl_worker.deleteLater)
+        self._model_dl_thread.finished.connect(
+            self._model_dl_worker.deleteLater
+        )
         self._model_dl_thread.finished.connect(self._clear_model_dl_worker)
 
         self._model_dl_thread.start()
@@ -454,7 +470,9 @@ class SetupHandlersMixin:
         self.ui.pushButton_LightpandaDownload.setEnabled(False)
         self.ui.plainTextEdit_LightpandaOutput.clear()
 
-        version_text = self.ui.lineEdit_LightpandaVersion.text().strip() or None
+        version_text = (
+            self.ui.lineEdit_LightpandaVersion.text().strip() or None
+        )
 
         self._lightpanda_dl_worker = _LightpandaDownloadWorker(
             bin_dir=Lightpanda.get_bin_path(), version=version_text
@@ -462,16 +480,28 @@ class SetupHandlersMixin:
         self._lightpanda_dl_thread = QThread()
         self._lightpanda_dl_worker.moveToThread(self._lightpanda_dl_thread)
 
-        self._lightpanda_dl_thread.started.connect(self._lightpanda_dl_worker.run)
-        self._lightpanda_dl_worker.log_line.connect(self._on_lightpanda_log_line)
-        self._lightpanda_dl_worker.finished.connect(self._on_lightpanda_dl_finished)
+        self._lightpanda_dl_thread.started.connect(
+            self._lightpanda_dl_worker.run
+        )
+        self._lightpanda_dl_worker.log_line.connect(
+            self._on_lightpanda_log_line
+        )
+        self._lightpanda_dl_worker.finished.connect(
+            self._on_lightpanda_dl_finished
+        )
         self._lightpanda_dl_worker.error.connect(self._on_lightpanda_dl_error)
-        self._lightpanda_dl_worker.finished.connect(self._lightpanda_dl_thread.quit)
-        self._lightpanda_dl_worker.error.connect(self._lightpanda_dl_thread.quit)
+        self._lightpanda_dl_worker.finished.connect(
+            self._lightpanda_dl_thread.quit
+        )
+        self._lightpanda_dl_worker.error.connect(
+            self._lightpanda_dl_thread.quit
+        )
         self._lightpanda_dl_thread.finished.connect(
             self._lightpanda_dl_worker.deleteLater
         )
-        self._lightpanda_dl_thread.finished.connect(self._clear_lightpanda_dl_worker)
+        self._lightpanda_dl_thread.finished.connect(
+            self._clear_lightpanda_dl_worker
+        )
 
         self._lightpanda_dl_thread.start()
 
@@ -479,7 +509,9 @@ class SetupHandlersMixin:
         self._lightpanda_dl_worker = None
 
     def _on_lightpanda_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(_strip_ansi(line))
+        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(
+            _strip_ansi(line)
+        )
 
     def _on_lightpanda_dl_finished(self) -> None:
         self.ui.pushButton_LightpandaDownload.setEnabled(True)
@@ -487,5 +519,7 @@ class SetupHandlersMixin:
         self._run_preflight()
 
     def _on_lightpanda_dl_error(self, message: str) -> None:
-        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(f"ERROR: {message}")
+        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(
+            f"ERROR: {message}"
+        )
         self.ui.pushButton_LightpandaDownload.setEnabled(True)

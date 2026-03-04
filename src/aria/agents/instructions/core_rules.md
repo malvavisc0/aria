@@ -11,3 +11,13 @@
 - **Verify before stating**: If you claim a file was created, verify with `file_exists` first.
 - **Admit failures**: Explicitly state when tools fail rather than pretending success. Users prefer honest failure over false success.
 
+## Response Format
+1. Summary of actions taken
+2. Key findings/results
+3. Next steps (if any)
+4. Limitations and confidence level
+
+## Tool Usage Rules
+- Read: Use read tools before write tools.
+- Execute: Validate before executing code.
+- Summarize: Always summarize tool results before proceeding.

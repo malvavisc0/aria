@@ -26,9 +26,11 @@ class TestDownloadAndExtractZip:
 
             # Mock urlretrieve to return our zip file
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(zip_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        zip_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "extracted"
                 result = _download_and_extract_zip(
@@ -46,12 +48,16 @@ class TestDownloadAndExtractZip:
             zip_path = Path(tmpdir) / "test.zip"
             with zipfile.ZipFile(zip_path, "w") as zf:
                 zf.writestr("llama.cpp-v1.2.3/README.md", "test content")
-                zf.writestr("llama.cpp-v1.2.3/build/README.md", "build content")
+                zf.writestr(
+                    "llama.cpp-v1.2.3/build/README.md", "build content"
+                )
 
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(zip_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        zip_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "extracted"
                 result = _download_and_extract_zip(
@@ -68,9 +74,11 @@ class TestDownloadAndExtractZip:
                 zf.writestr("llama.cpp-v1.2.3/README.md", "test content")
 
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(zip_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        zip_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "new" / "directory"
                 result = _download_and_extract_zip(
@@ -88,9 +96,11 @@ class TestDownloadAndExtractZip:
                 pass  # Empty zip
 
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(zip_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        zip_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "extracted"
                 result = _download_and_extract_zip(
@@ -127,9 +137,11 @@ class TestDownloadAndExtract:
 
             # Mock urlretrieve to return our tar.gz file
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(tar_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        tar_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "extracted"
                 result = _download_and_extract(
@@ -153,9 +165,11 @@ class TestDownloadAndExtract:
                 tf.add(test_file2, arcname="llama.cpp-v1.2.3/CMakeLists.txt")
 
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(tar_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        tar_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "extracted"
                 result = _download_and_extract(
@@ -175,9 +189,11 @@ class TestDownloadAndExtract:
                 tf.add(test_file, arcname="llama.cpp-v1.2.3/README.md")
 
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(tar_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        tar_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "new" / "directory"
                 result = _download_and_extract(
@@ -194,9 +210,11 @@ class TestDownloadAndExtract:
                 pass  # Empty tar.gz
 
             with patch("urllib.request.urlretrieve") as mock_retrieve:
-                mock_retrieve.side_effect = lambda url, path, reporthook=None: Path(
-                    path
-                ).write_bytes(tar_path.read_bytes())
+                mock_retrieve.side_effect = (
+                    lambda url, path, reporthook=None: Path(path).write_bytes(
+                        tar_path.read_bytes()
+                    )
+                )
 
                 dest_dir = tmp_path / "extracted"
                 result = _download_and_extract(

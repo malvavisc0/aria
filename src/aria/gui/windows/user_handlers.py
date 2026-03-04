@@ -73,7 +73,9 @@ class UserHandlersMixin:
                         id=str(uuid.uuid4()),
                         display_name=name,
                         identifier=identifier,
-                        metadata_=json.dumps({"role": role, "created_by": "cli"}),
+                        metadata_=json.dumps(
+                            {"role": role, "created_by": "cli"}
+                        ),
                         password=hash_password(password),
                         createdAt=datetime.now().isoformat() + "Z",
                     )
@@ -83,7 +85,9 @@ class UserHandlersMixin:
             self.ui.lineEdit_UserName.clear()
             self.ui.lineEdit_UserEmail.clear()
             self.ui.lineEdit_UserPassword.clear()
-            self.ui.statusBar.showMessage(f"User '{identifier}' created.", 3000)
+            self.ui.statusBar.showMessage(
+                f"User '{identifier}' created.", 3000
+            )
         except Exception as e:
             self.ui.statusBar.showMessage(f"Error creating user: {e}")
 
@@ -125,7 +129,9 @@ class UserHandlersMixin:
         msg_box = QMessageBox(parent_widget)
         msg_box.setIcon(QMessageBox.Icon.Warning)
         msg_box.setWindowTitle("Confirm Delete")
-        msg_box.setText(f"Are you sure you want to delete user '{identifier}'?")
+        msg_box.setText(
+            f"Are you sure you want to delete user '{identifier}'?"
+        )
         msg_box.setInformativeText("This action cannot be undone.")
         msg_box.setStandardButtons(
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -145,7 +151,9 @@ class UserHandlersMixin:
                 # Session committed — now refresh UI
                 if deleted:
                     self.load_users()
-                    self.ui.statusBar.showMessage(f"User '{identifier}' deleted.", 3000)
+                    self.ui.statusBar.showMessage(
+                        f"User '{identifier}' deleted.", 3000
+                    )
             except Exception as e:
                 self.ui.statusBar.showMessage(f"Error deleting user: {e}")
 

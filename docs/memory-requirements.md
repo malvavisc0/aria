@@ -2,12 +2,12 @@
 
 ## Overview
 
-When running LLM inference with llama.cpp, memory is divided into two distinct pools:
+When running LLM inference with llama.cpp, memory is primarily consumed by two components:
 
-1. **GPU VRAM** - Stores the model weights for fast inference
-2. **System RAM** - Stores the KV cache for context
+1. **Model weights** - Loaded into GPU VRAM for fast matrix operations
+2. **KV cache** - Stored in GPU VRAM by default (can be moved to system RAM for low-VRAM GPUs)
 
-Understanding this separation is crucial for configuring context sizes appropriately.
+Understanding these requirements is crucial for configuring context sizes appropriately.
 
 ## Minimum Requirements
 
@@ -31,9 +31,9 @@ The model weights are loaded into GPU VRAM when using `--n-gpu-layers 999`. The 
 | 13B Q8_0   | ~14 GB       | 14 GB         |
 | 70B Q8_0   | ~70 GB       | 70 GB         |
 
-### System RAM (KV Cache)
+### GPU VRAM (KV Cache)
 
-The KV cache stores the key-value pairs for all tokens in the context window. This is stored in **system RAM**, not GPU VRAM, when using the default `--no-kv-offload` setting in the run-model script.
+The KV cache stores the key-value pairs for all tokens in the context window. By default, this is stored in **GPU VRAM** alongside the model weights for maximum inference speed. If VRAM is limited, you can move it to system RAM with `NO_KV_OFFLOAD="--no-kv-offload"` (see [KV Cache Placement](#kv-cache-placement) below).
 
 **KV cache formula:**
 ```
@@ -61,25 +61,35 @@ Aria uses per-model context sizes configured via environment variables:
 
 **Chat model (65536 tokens):**
 - Large context enables long conversations and document analysis
-- 64K context with a 4B model uses ~1.4 GB RAM
-- This is ~2% of a 64 GB system, very reasonable
+- 64K context with a 4B model uses ~1.4 GB VRAM for KV cache
+- Combined with model weights (~4.4 GB), total VRAM ≈ 5.8 GB — fits comfortably on 8+ GB GPUs
 
 **VL model (8192 tokens):**
 - Vision models typically process single images
 - 8K context is sufficient for image + conversation
-- Minimal RAM impact (~6 MB)
+- Minimal VRAM impact (~6 MB)
 
 **Embeddings model (8192 tokens):**
 - 8K context allows embedding longer documents
-- Still minimal RAM impact (~24 MB)
+- Minimal VRAM impact (~24 MB)
 
-## Why RAM for KV Cache?
+## KV Cache Placement
 
-The run-model script uses `--no-kv-offload` by default, which keeps the KV cache in system RAM rather than VRAM. This is intentional:
+By default, the KV cache is stored in **GPU VRAM** alongside the model weights. This maximizes inference speed by avoiding CPU↔GPU data transfers during attention computation.
 
-1. **VRAM is precious** - Model weights need it for fast inference
-2. **RAM is abundant** - Most systems have 32-128 GB RAM vs 8-24 GB VRAM
-3. **KV cache access is less frequent** - Only needed during generation, not matrix operations
+If your GPU has limited VRAM (e.g., 8 GB), you can force the KV cache to system RAM by setting:
+
+```bash
+NO_KV_OFFLOAD="--no-kv-offload"
+```
+
+**Trade-offs of `--no-kv-offload` (KV cache on CPU):**
+
+1. **Frees VRAM** - Useful when model weights barely fit in VRAM
+2. **Slower inference** - Every attention step requires CPU↔GPU transfers, causing high CPU usage and many graph splits
+3. **CPU-bound** - The CPU will run at 100% managing data transfers instead of the GPU doing all the work
+
+For most setups with 12+ GB VRAM, keeping the KV cache on GPU (the default) is strongly recommended.
 
 ## Checking Memory Requirements
 

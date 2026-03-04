@@ -144,7 +144,9 @@ class TestExecuteCommand:
         """Test command execution with custom environment variables."""
         result = execute_command(
             intent="Test env variable",
-            command=("echo $TEST_VAR" if not IS_WINDOWS else "echo %TEST_VAR%"),
+            command=(
+                "echo $TEST_VAR" if not IS_WINDOWS else "echo %TEST_VAR%"
+            ),
             timeout=5,
             env={"TEST_VAR": "test_value"},
         )

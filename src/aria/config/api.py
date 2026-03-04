@@ -13,7 +13,9 @@ class LlamaCpp:
     # Context sizes for each model type
     chat_context_size = int(get_optional_env("CHAT_CONTEXT_SIZE", "65536"))
     vl_context_size = int(get_optional_env("VL_CONTEXT_SIZE", "8192"))
-    embeddings_context_size = int(get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192"))
+    embeddings_context_size = int(
+        get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192")
+    )
 
 
 class Lightpanda:

@@ -14,7 +14,9 @@ class TestPasswordAuthentication:
     """Test suite for password authentication flow."""
 
     @pytest.mark.asyncio
-    async def test_password_authentication_flow(self, db_session: AsyncSession):
+    async def test_password_authentication_flow(
+        self, db_session: AsyncSession
+    ):
         """Test complete password authentication flow."""
         # Create user with password
         password = "secure_password_123"
@@ -79,7 +81,9 @@ class TestPasswordAuthentication:
         assert verify_password(password, user2.password)
 
     @pytest.mark.asyncio
-    async def test_user_without_password_authentication(self, db_session: AsyncSession):
+    async def test_user_without_password_authentication(
+        self, db_session: AsyncSession
+    ):
         """Test that users without passwords cannot authenticate."""
         user = User(
             id=str(uuid.uuid4()),

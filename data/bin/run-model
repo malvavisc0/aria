@@ -34,7 +34,7 @@ set -eo pipefail
 #   NO_MMAP                 Disable memory mapping (default: --no-mmap)
 #   MLOCK                   Enable memory locking (default: --mlock)
 #   CONT_BATCHING           Enable continuous batching (default: --cont-batching)
-#   NO_KV_OFFLOAD           Disable KV offloading (default: --no-kv-offload)
+#   NO_KV_OFFLOAD           Disable KV offloading (default: empty, KV cache on GPU)
 #   LLAMA_SERVER_PATH       Path to llama-server binary (default: llama-server)
 #
 # Examples:
@@ -76,7 +76,7 @@ DEFAULT_EMBEDDING_PARALLEL=4
 : "${NO_MMAP:="--no-mmap"}"
 : "${MLOCK:="--mlock"}"
 : "${CONT_BATCHING:="--cont-batching"}"
-: "${NO_KV_OFFLOAD:="--no-kv-offload"}"
+: "${NO_KV_OFFLOAD:=""}"
 : "${LLAMA_SERVER_PATH:="llama-server"}" # Default added
 : "${MMPROJ_PATH:=""}"
 : "${EMBEDDING_MODE:=0}"

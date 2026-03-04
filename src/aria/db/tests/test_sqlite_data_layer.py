@@ -138,7 +138,9 @@ class TestThreadOperations:
 class TestStepOperations:
     """Test suite for step operations."""
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_create_step_with_tags(
         self, data_layer: SQLiteSQLAlchemyDataLayer, raw_db_query: Callable
@@ -169,7 +171,9 @@ class TestStepOperations:
         assert len(result) == 1
         assert result[0]["tags"] == '["api-call", "external"]'
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_create_step_with_metadata(
         self, data_layer: SQLiteSQLAlchemyDataLayer
@@ -196,7 +200,9 @@ class TestStepOperations:
         assert step is not None
         assert step["metadata"] == {"duration": 1.5, "retries": 2}
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_create_step_with_generation(
         self, data_layer: SQLiteSQLAlchemyDataLayer
@@ -223,7 +229,9 @@ class TestStepOperations:
         assert step is not None
         assert step["generation"] == generation
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_create_step_with_all_json_fields(
         self, data_layer: SQLiteSQLAlchemyDataLayer
@@ -253,7 +261,9 @@ class TestStepOperations:
         assert step["metadata"] == {"key": "value"}
         assert step["generation"] == {"model": "gpt-4"}
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_update_step_preserves_json_fields(
         self, data_layer: SQLiteSQLAlchemyDataLayer
@@ -321,7 +331,9 @@ class TestThreadRetrieval:
         assert isinstance(thread["metadata"], dict)
         assert thread["metadata"] == {"key": "value"}
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_get_all_user_threads_with_steps(
         self, data_layer: SQLiteSQLAlchemyDataLayer, create_user: Callable
@@ -419,7 +431,9 @@ class TestRoundTrip:
     """Test suite for round-trip data integrity."""
 
     @pytest.mark.asyncio
-    async def test_tags_round_trip_basic(self, data_layer: SQLiteSQLAlchemyDataLayer):
+    async def test_tags_round_trip_basic(
+        self, data_layer: SQLiteSQLAlchemyDataLayer
+    ):
         """Test basic tags round-trip."""
         thread_id = str(uuid.uuid4())
         original_tags = ["tag1", "tag2", "tag3"]
@@ -431,7 +445,9 @@ class TestRoundTrip:
         assert thread["tags"] == original_tags
 
     @pytest.mark.asyncio
-    async def test_tags_round_trip_unicode(self, data_layer: SQLiteSQLAlchemyDataLayer):
+    async def test_tags_round_trip_unicode(
+        self, data_layer: SQLiteSQLAlchemyDataLayer
+    ):
         """Test tags with unicode characters round-trip."""
         thread_id = str(uuid.uuid4())
         original_tags = ["日本語", "Ελληνικά", "Русский", "🚀🎉"]
@@ -454,7 +470,9 @@ class TestRoundTrip:
             "number": 42.5,
         }
 
-        await data_layer.update_thread(thread_id=thread_id, metadata=original_metadata)
+        await data_layer.update_thread(
+            thread_id=thread_id, metadata=original_metadata
+        )
 
         thread = await data_layer.get_thread(thread_id)
         assert thread is not None
@@ -463,7 +481,9 @@ class TestRoundTrip:
         assert thread["metadata"]["boolean"] == original_metadata["boolean"]
         assert thread["metadata"]["number"] == original_metadata["number"]
 
-    @pytest.mark.skip(reason="Requires Chainlit context - use direct SQL instead")
+    @pytest.mark.skip(
+        reason="Requires Chainlit context - use direct SQL instead"
+    )
     @pytest.mark.asyncio
     async def test_step_all_fields_round_trip(
         self, data_layer: SQLiteSQLAlchemyDataLayer
@@ -500,7 +520,9 @@ class TestRoundTrip:
         """Test empty collections round-trip correctly."""
         thread_id = str(uuid.uuid4())
 
-        await data_layer.update_thread(thread_id=thread_id, tags=[], metadata={})
+        await data_layer.update_thread(
+            thread_id=thread_id, tags=[], metadata={}
+        )
 
         thread = await data_layer.get_thread(thread_id)
         assert thread is not None

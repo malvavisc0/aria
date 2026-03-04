@@ -13,7 +13,7 @@ from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 
 IMDB_TOOLS = "aria.tools.imdb"
 
@@ -39,7 +39,7 @@ class IMDbExpertAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("imdb_expert", extras)
+        return load_agent_instructions("spielberg", extras)
 
 
 def get_agent(

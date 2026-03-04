@@ -65,7 +65,9 @@ def _get_title_type(title_type: Optional[str]) -> Optional[ImdbTitleType]:
     if title_type_lower not in VALID_TITLE_TYPES:
         valid_types = ", ".join(sorted(VALID_TITLE_TYPES.keys()))
         raise ValueError(
-            ERROR_INVALID_TITLE_TYPE.format(value=title_type, valid_types=valid_types)
+            ERROR_INVALID_TITLE_TYPE.format(
+                value=title_type, valid_types=valid_types
+            )
         )
 
     # Get the imdbinfo TitleType enum value
@@ -198,15 +200,20 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
         movie = get_movie(imdb_id.strip())
 
         if movie is None:
-            return json.dumps({"error": ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id)})
+            return json.dumps(
+                {"error": ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id)}
+            )
 
         # Directors: prefer movie.directors, fall back to categories
         directors = [
-            {"imdbId": d.imdbId, "name": d.name} for d in (movie.directors or [])
+            {"imdbId": d.imdbId, "name": d.name}
+            for d in (movie.directors or [])
         ]
         if not directors:
             cat_directors = (movie.categories or {}).get("director", [])
-            directors = [{"imdbId": d.imdbId, "name": d.name} for d in cat_directors]
+            directors = [
+                {"imdbId": d.imdbId, "name": d.name} for d in cat_directors
+            ]
 
         # Writers: extracted from categories
         cat_writers = (movie.categories or {}).get("writer", [])
@@ -214,7 +221,9 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
 
         # Producers: extracted from categories
         cat_producers = (movie.categories or {}).get("producer", [])
-        producers = [{"imdbId": p.imdbId, "name": p.name} for p in cat_producers]
+        producers = [
+            {"imdbId": p.imdbId, "name": p.name} for p in cat_producers
+        ]
 
         # Cast with characters: extracted from categories
         cat_cast = (movie.categories or {}).get("cast", [])
@@ -227,7 +236,9 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
             for c in cat_cast
         ]
 
-        stars = [{"imdbId": s.imdbId, "name": s.name} for s in (movie.stars or [])]
+        stars = [
+            {"imdbId": s.imdbId, "name": s.name} for s in (movie.stars or [])
+        ]
 
         awards = None
         if movie.awards:
@@ -341,7 +352,9 @@ def get_person_filmography(intent: str, person_id: str) -> str:
         if not filmography:
             return json.dumps(
                 {
-                    "error": ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id=person_id),
+                    "error": ERROR_FILMOGRAPHY_NOT_FOUND.format(
+                        person_id=person_id
+                    ),
                     "filmography": {},
                 }
             )
@@ -423,7 +436,9 @@ def get_all_series_episodes(intent: str, imdb_id: str) -> str:
             "episodes": serialized_episodes,
         }
 
-        logger.info(f"Retrieved {len(episodes)} episodes for series '{imdb_id}'")
+        logger.info(
+            f"Retrieved {len(episodes)} episodes for series '{imdb_id}'"
+        )
         return json.dumps(result, default=str)
 
     except Exception as e:

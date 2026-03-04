@@ -19,11 +19,14 @@ capabilities.
 
 import base64
 import io
+import json
 from pathlib import Path
 from typing import Callable
 
 import httpx
 from loguru import logger
+
+from aria.tools.vision.constants import VISION_OUTPUT_DIR
 
 # HTTP exceptions to catch for fallback
 _HTTP_EXCEPTIONS = (
@@ -123,8 +126,8 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
                 extraction of text, tables, and structured content.
 
         Returns:
-            Extracted content as markdown. Each page is separated by
-            a ``--- Page N ---`` heading.
+            JSON with source_file, output_file, content_preview, total_chars,
+            and pages_processed. Full extracted content is persisted to file.
 
         Raises:
             ValueError: If the file does not exist or is not a PDF.
@@ -138,7 +141,8 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         suffix = path.suffix.lower()
         if suffix != ".pdf":
             raise ValueError(
-                f"Unsupported file format '{suffix}'. " "Only PDF files are supported."
+                f"Unsupported file format '{suffix}'. "
+                "Only PDF files are supported."
             )
 
         user_prompt = prompt or _DEFAULT_PROMPT
@@ -152,7 +156,9 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 for i, png_bytes in enumerate(pages, start=1):
-                    logger.info(f"Analysing PDF page {i}/{len(pages)}: {path.name}")
+                    logger.info(
+                        f"Analysing PDF page {i}/{len(pages)}: {path.name}"
+                    )
 
                     b64 = base64.b64encode(png_bytes).decode("ascii")
                     payload = {
@@ -164,7 +170,9 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
                                     {
                                         "type": "image_url",
                                         "image_url": {
-                                            "url": f"data:image/png;base64,{b64}",
+                                            "url": (
+                                                f"data:image/png;base64,{b64}"
+                                            ),
                                         },
                                     },
                                     {
@@ -198,17 +206,53 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
                 "Falling back to text-based extraction"
             )
             # Fall back to text-based extraction
-            return _extract_text_from_pdf(path)
+            extracted_text = _extract_text_from_pdf(path)
+            return _persist_pdf_extraction_result(
+                source_path=path,
+                extracted_text=extracted_text,
+                pages_processed=len(pages),
+            )
 
-        return "\n\n".join(parts)
+        extracted_text = "\n\n".join(parts)
+        return _persist_pdf_extraction_result(
+            source_path=path,
+            extracted_text=extracted_text,
+            pages_processed=len(pages),
+        )
 
     return parse_pdf
+
+
+def _persist_pdf_extraction_result(
+    source_path: Path, extracted_text: str, pages_processed: int
+) -> str:
+    """Persist extracted PDF markdown and return compact JSON metadata."""
+    output_filename = f"{source_path.stem}_extracted.md"
+    output_path = VISION_OUTPUT_DIR / output_filename
+    output_path.write_text(extracted_text, encoding="utf-8")
+
+    preview = extracted_text[:500]
+    if len(extracted_text) > 500:
+        preview += "..."
+
+    return json.dumps(
+        {
+            "source_file": str(source_path),
+            "output_file": str(output_path),
+            "content_preview": preview,
+            "total_chars": len(extracted_text),
+            "pages_processed": pages_processed,
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 def _extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF using pypdfium2's text extraction capabilities.
 
-    This is a fallback method when the VL model fails to process multimodal input.
+    This is a fallback method when the VL model fails to process
+    multimodal input.
 
     Args:
         pdf_path: Absolute path to the PDF file.

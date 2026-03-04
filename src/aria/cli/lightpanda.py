@@ -44,7 +44,9 @@ def download_command(
     ] = Lightpanda.get_bin_path(),
     version: Annotated[
         Optional[str],
-        typer.Option(help="Specific version tag to install (default: nightly)"),
+        typer.Option(
+            help="Specific version tag to install (default: nightly)"
+        ),
     ] = None,
 ):
     """Download Lightpanda binary from GitHub releases.
@@ -67,8 +69,12 @@ def download_command(
         ```
     """
     try:
-        binary_path = download_lightpanda(bin_dir=Path(bin_dir), version=version)
-        console.print(f"[green]✓[/green] Lightpanda binary installed at {binary_path}")
+        binary_path = download_lightpanda(
+            bin_dir=Path(bin_dir), version=version
+        )
+        console.print(
+            f"[green]✓[/green] Lightpanda binary installed at {binary_path}"
+        )
     except Exception as e:
         error_console.print(f"[red]✗[/red] Installation failed: {e}")
         raise typer.Exit(1)

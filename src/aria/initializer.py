@@ -63,7 +63,9 @@ def setup_env_file() -> bool:
 
     # Detect and set network IP for SERVER_HOST
     network_ip = get_network_ip()
-    content = content.replace("SERVER_HOST = 0.0.0.0", f"SERVER_HOST = {network_ip}")
+    content = content.replace(
+        "SERVER_HOST = 0.0.0.0", f"SERVER_HOST = {network_ip}"
+    )
 
     env_file.write_text(content)
 

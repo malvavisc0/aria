@@ -78,7 +78,9 @@ def _print_preflight_result(result) -> bool:
 
         for check in checks:
             if check.passed:
-                details = f" [dim]({check.details})[/dim]" if check.details else ""
+                details = (
+                    f" [dim]({check.details})[/dim]" if check.details else ""
+                )
                 console.print(f"   [green]✓[/green] {check.name}{details}")
             else:
                 console.print(
@@ -228,7 +230,9 @@ def server_status():
 
     # Start time
     if status.started_at:
-        table.add_row("Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S"))
+        table.add_row(
+            "Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S")
+        )
     else:
         table.add_row("Started", "N/A")
 
@@ -262,6 +266,8 @@ def server_status():
         except (URLError, OSError):
             is_running = False
 
-        llama_table.add_row(role, str(port), "● Running" if is_running else "○ Stopped")
+        llama_table.add_row(
+            role, str(port), "● Running" if is_running else "○ Stopped"
+        )
 
     console.print(llama_table)

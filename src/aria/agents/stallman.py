@@ -11,7 +11,7 @@ from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 from aria.tools.shell import (
     execute_command,
     execute_command_batch,
@@ -45,7 +45,7 @@ class ShellExecutorAgent(FunctionAgent):
         Returns:
             The complete system prompt with guidelines and best practices.
         """
-        return load_agent_instructions("shell_executor", extras)
+        return load_agent_instructions("stallman", extras)
 
 
 def get_agent(
@@ -77,7 +77,7 @@ def get_agent(
     ]
 
     agent = ShellExecutorAgent(
-        name="Shell",
+        name="Stallman",
         description=(
             "Specialized in safe shell command execution across "
             "Windows, Linux, and macOS platforms with proper security "

@@ -13,7 +13,7 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 from aria.tools.files.functions import read_full_file
 from aria.tools.search import (
     get_current_weather,
@@ -48,7 +48,7 @@ class ChatterAgent(FunctionAgent):
         Returns:
             The combined system prompt as a string.
         """
-        return load_agent_instructions("chatter", extras)
+        return load_agent_instructions("aria", extras)
 
 
 def get_agent(

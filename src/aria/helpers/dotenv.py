@@ -31,7 +31,9 @@ def parse_dotenv(path: Path) -> tuple[dict[str, str], list[str]]:
     return values, raw_lines
 
 
-def write_dotenv(path: Path, values: dict[str, str], raw_lines: list[str]) -> None:
+def write_dotenv(
+    path: Path, values: dict[str, str], raw_lines: list[str]
+) -> None:
     """Write updated values into a .env while preserving structure.
 
     Existing key lines are updated in-place (comments stay), unknown lines are

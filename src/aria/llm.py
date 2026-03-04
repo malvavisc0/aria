@@ -18,7 +18,6 @@ from typing_extensions import TypedDict
 
 from aria.agents import (
     get_chatter_agent,
-    get_file_editor_agent,
     get_imdb_exper_agent,
     get_market_analyst_agent,
     get_python_developer_agent,
@@ -278,38 +277,33 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     # Specialist agents
     deep_reasoning = get_reasoning_agent(
         llm=llm,
-        extras=get_instructions_extras(agent_name="socrates"),
-        can_handoff_to=["Developer", "Wanderer", "Wizard"],
-    )
-    file_editor = get_file_editor_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="notepad"),
-        can_handoff_to=["Developer", "Shell"],
+        extras=get_instructions_extras(agent_name="Socrates"),
+        can_handoff_to=["Guido", "Wanderer", "Wizard"],
     )
     imdb_expert = get_imdb_exper_agent(
         llm=llm,
-        extras=get_instructions_extras(agent_name="notepad"),
+        extras=get_instructions_extras(agent_name="Spielberg"),
         can_handoff_to=["Wanderer"],
     )
     market_analyst = get_market_analyst_agent(
         llm=llm,
-        extras=get_instructions_extras(agent_name="wizard"),
-        can_handoff_to=["Wanderer", "Developer"],
+        extras=get_instructions_extras(agent_name="Wizard"),
+        can_handoff_to=["Wanderer", "Guido"],
     )
     python_developer = get_python_developer_agent(
         llm=llm,
-        extras=get_instructions_extras(agent_name="guido"),
-        can_handoff_to=["Notepad", "Shell", "Wanderer"],
+        extras=get_instructions_extras(agent_name="Guido"),
+        can_handoff_to=["Stallman", "Wanderer"],
     )
     shell_executor = get_shell_executor_agent(
         llm=llm,
-        extras=get_instructions_extras(agent_name="shell"),
-        can_handoff_to=["Developer", "Notepad"],
+        extras=get_instructions_extras(agent_name="Stallman"),
+        can_handoff_to=["Guido"],
     )
     web_researcher = get_web_researcher_agent(
         llm=llm,
-        extras=get_instructions_extras(agent_name="wanderer"),
-        can_handoff_to=["Wizard", "Developer", "Spielberg"],
+        extras=get_instructions_extras(agent_name="Wanderer"),
+        can_handoff_to=["Wizard", "Guido", "Spielberg", "Socrates"],
     )
     # Create Chatter as root agent
     chatter = get_chatter_agent(
@@ -318,12 +312,11 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
         vl_model=VisionConfig.model,
         extras=get_instructions_extras(agent_name="aria"),
         can_handoff_to=[
-            "Developer",
-            "Notepad",
+            "Guido",
             "Wanderer",
             "Wizard",
             "Socrates",
-            "Shell",
+            "Stallman",
             "Spielberg",
         ],
     )
@@ -332,7 +325,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     workflow = AgentWorkflow(
         agents=[
             chatter,
-            file_editor,
             market_analyst,
             python_developer,
             deep_reasoning,
@@ -394,7 +386,9 @@ def get_default_memory(
     return memory
 
 
-def get_embeddings_model(api_base: str, model_name: str) -> OpenAILikeEmbedding:
+def get_embeddings_model(
+    api_base: str, model_name: str
+) -> OpenAILikeEmbedding:
     return OpenAILikeEmbedding(
         api_base=api_base,
         model_name=model_name,

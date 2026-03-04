@@ -1,4 +1,4 @@
-"""Utility functions for agents.
+"""Utility functions for agents instructions.
 
 This module provides shared utility functions used across multiple agents
 to reduce code duplication and ensure consistent behavior.
@@ -8,7 +8,10 @@ from pathlib import Path
 
 
 def load_agent_instructions(
-    agent_name: str, extras: str = "", include_core: bool = True
+    agent_name: str,
+    extras: str = "",
+    include_core: bool = True,
+    variables: dict[str, str] | None = None,
 ) -> str:
     """Load agent instructions from markdown files.
 
@@ -22,6 +25,9 @@ def load_agent_instructions(
             Defaults to empty string.
         include_core: Whether to include the core_rules.md file.
             Defaults to True.
+        variables: Optional mapping used for ``{{KEY}}`` template
+            substitution in loaded instruction content.
+            Defaults to None.
 
     Returns:
         The combined system prompt as a string.
@@ -49,4 +55,10 @@ def load_agent_instructions(
     if extras:
         parts.append(f"# Additional Notes\n{extras}")
 
-    return "\n\n".join(parts)
+    content = "\n\n".join(parts)
+
+    if variables:
+        for key, value in variables.items():
+            content = content.replace(f"{{{{{key}}}}}", value)
+
+    return content

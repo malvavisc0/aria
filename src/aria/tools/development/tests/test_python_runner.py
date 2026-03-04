@@ -64,7 +64,9 @@ class TestPythonRunner:
 
     def test_check_file_syntax_valid(self):
         """Test file syntax validation with valid file"""
-        result = check_python_file_syntax("Testing file syntax", str(self.test_file))
+        result = check_python_file_syntax(
+            "Testing file syntax", str(self.test_file)
+        )
         data = json.loads(result)
 
         assert data["operation"] == "check_python_file_syntax"
@@ -77,7 +79,9 @@ class TestPythonRunner:
         invalid_file = self.base_dir / "invalid.py"
         invalid_file.write_text("def foo()\n    return True\n")
 
-        result = check_python_file_syntax("Testing invalid file", str(invalid_file))
+        result = check_python_file_syntax(
+            "Testing invalid file", str(invalid_file)
+        )
         data = json.loads(result)
 
         assert data["operation"] == "check_python_file_syntax"
@@ -89,7 +93,9 @@ class TestPythonRunner:
     def test_execute_python_code_success(self):
         """Test successful code execution"""
         code = "print('Hello World')\nresult = 42\n"
-        result = execute_python_code("Testing code execution", code, timeout=10)
+        result = execute_python_code(
+            "Testing code execution", code, timeout=10
+        )
         data = json.loads(result)
 
         assert data["operation"] == "execute_python_code"
@@ -102,7 +108,9 @@ class TestPythonRunner:
     def test_execute_python_code_error(self):
         """Test code execution with error"""
         code = "print(undefined_variable)\n"  # Undefined variable
-        result = execute_python_code("Testing error handling", code, timeout=10)
+        result = execute_python_code(
+            "Testing error handling", code, timeout=10
+        )
         data = json.loads(result)
 
         assert data["operation"] == "execute_python_code"
@@ -144,7 +152,9 @@ class TestPythonRunner:
         """Test execution with restricted builtins"""
         # Try to use exec which should be blocked
         code = "exec('print(\"test\")')\n"
-        result = execute_python_code("Testing restricted builtins", code, timeout=10)
+        result = execute_python_code(
+            "Testing restricted builtins", code, timeout=10
+        )
         data = json.loads(result)
 
         assert data["operation"] == "execute_python_code"
@@ -235,7 +245,9 @@ print(f'Fibonacci(5) = {result}')
         assert data["result"]["valid"] is True
 
         # Code with comments only
-        result = check_python_syntax("Testing comments", "# This is a comment\n")
+        result = check_python_syntax(
+            "Testing comments", "# This is a comment\n"
+        )
         data = json.loads(result)
         assert data["result"]["valid"] is True
 
@@ -352,7 +364,9 @@ print(f'Created list with {len(large_list)} items')
     def test_check_file_syntax_nonexistent(self):
         """Test syntax checking of non-existent file"""
         # The decorator catches the exception and returns error response
-        result = check_python_file_syntax("Testing nonexistent", "nonexistent.py")
+        result = check_python_file_syntax(
+            "Testing nonexistent", "nonexistent.py"
+        )
         data = json.loads(result)
         assert data["result"] is None
         assert "error" in data["metadata"]

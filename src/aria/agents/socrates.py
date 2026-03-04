@@ -22,9 +22,8 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 
-PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 REASONING_TOOLS = "aria.tools.reasoning"
 WEB_SEARCH_TOOLS = "aria.tools.search"
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -53,7 +52,7 @@ class DeepReasoningAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("deep_reasoning", extras)
+        return load_agent_instructions("socrates", extras)
 
 
 def get_agent(
@@ -82,34 +81,24 @@ def get_agent(
         - Follows established logging and debugging conventions
         - Uses standard agent configuration patterns
     """
-    development_tools = importlib.import_module(PYTHON_DEVELOPMENT_TOOLS)
     reasoning_tools = importlib.import_module(REASONING_TOOLS)
     filesystem_tools = importlib.import_module(FILESYSTEM_TOOLS)
     web_search_tools = importlib.import_module(WEB_SEARCH_TOOLS)
 
     tools_selection = {
-        PYTHON_DEVELOPMENT_TOOLS: [
-            "execute_python_code",
-        ],
         WEB_SEARCH_TOOLS: [
             "web_search",
             "get_file_from_url",
-            "get_current_weather",
         ],
         FILESYSTEM_TOOLS: [
             "read_full_file",
             "read_file_chunk",
-            "write_full_file",
             "file_exists",
         ],
     }
 
     tools = (
         [
-            FunctionTool.from_defaults(fn=getattr(development_tools, name))
-            for name in tools_selection[PYTHON_DEVELOPMENT_TOOLS]
-        ]
-        + [
             FunctionTool.from_defaults(fn=getattr(reasoning_tools, name))
             for name in reasoning_tools.__all__
         ]

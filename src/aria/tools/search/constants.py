@@ -43,7 +43,10 @@ BINARY_CONTENT_TYPES = [
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-powerpoint",
-    ("application/vnd.openxmlformats-officedocument" ".presentationml.presentation"),
+    (
+        "application/vnd.openxmlformats-officedocument"
+        ".presentationml.presentation"
+    ),
     "image/",
     "video/",
     "audio/",

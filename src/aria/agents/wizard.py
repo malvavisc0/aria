@@ -13,9 +13,8 @@ from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 
-PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
 WEB_SEARCH_TOOLS = "aria.tools.search"
 
@@ -41,7 +40,7 @@ class MarketAnalystAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("market_analyist", extras)
+        return load_agent_instructions("wizard", extras)
 
 
 def get_agent(
@@ -65,14 +64,10 @@ def get_agent(
     execution timeouts, and isolated namespaces to prevent malicious code
     execution.
     """
-    development_tools = importlib.import_module(PYTHON_DEVELOPMENT_TOOLS)
     filesystem_tools = importlib.import_module(FILESYSTEM_TOOLS)
     web_search_tools = importlib.import_module(WEB_SEARCH_TOOLS)
 
     tools_selection = {
-        PYTHON_DEVELOPMENT_TOOLS: [
-            "execute_python_code",
-        ],
         WEB_SEARCH_TOOLS: [
             "fetch_current_stock_price",
             "fetch_company_information",
@@ -81,37 +76,19 @@ def get_agent(
             "get_file_from_url",
         ],
         FILESYSTEM_TOOLS: [
-            "create_directory",
-            "get_directory_tree",
-            "move_file",
-            "read_file_chunk",
             "read_full_file",
-            "insert_lines_at",
-            "get_file_info",
             "write_full_file",
-            "replace_lines_range",
-            "search_files_by_name",
-            "search_in_files",
-            "list_files",
-            "delete_lines_range",
             "file_exists",
         ],
     }
 
-    tools = (
-        [
-            FunctionTool.from_defaults(fn=getattr(development_tools, name))
-            for name in tools_selection[PYTHON_DEVELOPMENT_TOOLS]
-        ]
-        + [
-            FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
-            for name in tools_selection[FILESYSTEM_TOOLS]
-        ]
-        + [
-            FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
-            for name in tools_selection[WEB_SEARCH_TOOLS]
-        ]
-    )
+    tools = [
+        FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
+        for name in tools_selection[FILESYSTEM_TOOLS]
+    ] + [
+        FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
+        for name in tools_selection[WEB_SEARCH_TOOLS]
+    ]
 
     agent = MarketAnalystAgent(
         name="Wizard",

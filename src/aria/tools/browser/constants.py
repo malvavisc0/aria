@@ -5,19 +5,11 @@ Lightpanda with Playwright CDP. For shared constants, imports from
 aria.tools.constants.
 """
 
-from aria.tools.constants import DOWNLOADS_DIR
-
-# ============================================================================
-# Timeout Configuration
-# ============================================================================
+from aria.tools.constants import BASE_DIR
 
 # Timeout for individual browser commands (seconds)
 # Longer than network timeout since page loads can be slow
 BROWSER_COMMAND_TIMEOUT = 60
-
-# ============================================================================
-# Default Settings
-# ============================================================================
 
 # Default wait strategy after navigation
 DEFAULT_WAIT_STRATEGY = "networkidle"
@@ -25,9 +17,10 @@ DEFAULT_WAIT_STRATEGY = "networkidle"
 # Default CDP port for Lightpanda serve
 LIGHTPANDA_DEFAULT_PORT = 9222
 
-# ============================================================================
-# Directory Configuration
-# ============================================================================
+# Screenshots directory
+SCREENSHOTS_DIR = BASE_DIR / "screenshots"
+SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Screenshots directory (reuse downloads)
-SCREENSHOTS_DIR = DOWNLOADS_DIR
+# Persisted browser page-content captures
+BROWSER_CONTENT_DIR = BASE_DIR / "browser"
+BROWSER_CONTENT_DIR.mkdir(parents=True, exist_ok=True)

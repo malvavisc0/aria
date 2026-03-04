@@ -14,7 +14,7 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 from loguru import logger
 
-from aria.agents.utils import load_agent_instructions
+from aria.agents.instructions import load_agent_instructions
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -43,7 +43,7 @@ class WebResearcherAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("web_researcher", extras)
+        return load_agent_instructions("wanderer", extras)
 
 
 def get_agent(
@@ -73,14 +73,8 @@ def get_agent(
             "execute_python_code",
         ],
         FILESYSTEM_TOOLS: [
-            "create_directory",
-            "read_file_chunk",
             "read_full_file",
-            "insert_lines_at",
-            "get_file_info",
             "write_full_file",
-            "replace_lines_range",
-            "search_in_files",
             "file_exists",
         ],
         WEB_SEARCH_TOOLS: [
@@ -98,7 +92,7 @@ def get_agent(
     if Lightpanda.is_available():
         browser_tools_module = importlib.import_module(BROWSER_TOOLS)
         tools_selection[BROWSER_TOOLS] = [
-            "browser_open",
+            "open_url",
             "browser_click",
             "browser_screenshot",
         ]
@@ -127,7 +121,9 @@ def get_agent(
     # Add browser tools if available (async — registered via async_fn)
     if browser_tools_module:
         tools += [
-            FunctionTool.from_defaults(async_fn=getattr(browser_tools_module, name))
+            FunctionTool.from_defaults(
+                async_fn=getattr(browser_tools_module, name)
+            )
             for name in tools_selection[BROWSER_TOOLS]
         ]
 

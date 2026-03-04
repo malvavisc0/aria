@@ -20,7 +20,9 @@ class TestGetLatestReleaseInfo:
     def test_returns_valid_release_info(self):
         """Test that _get_latest_release_info returns valid release info."""
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{"tag_name": "v1.2.3", "assets": []}'
+        mock_response.read.return_value = (
+            b'{"tag_name": "v1.2.3", "assets": []}'
+        )
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.return_value.__enter__.return_value = mock_response
@@ -84,7 +86,9 @@ class TestGetReleaseByTag:
     def test_returns_release_info_for_valid_tag(self):
         """Test that _get_release_by_tag returns release info for valid tag."""
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{"tag_name": "v1.2.3", "assets": []}'
+        mock_response.read.return_value = (
+            b'{"tag_name": "v1.2.3", "assets": []}'
+        )
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.return_value.__enter__.return_value = mock_response

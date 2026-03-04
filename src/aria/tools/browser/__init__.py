@@ -6,16 +6,16 @@ The browser is managed at the application level and started during
 app startup.
 
 Tools:
-    browser_open: Navigate to a URL and get page content
+    open_url: Navigate to a URL and persist page content
     browser_click: Click elements by CSS selector
     browser_screenshot: Take screenshots of the current page
 
 Example:
     ```python
-    from aria.tools.browser import browser_open, browser_click
+    from aria.tools.browser import open_url, browser_click
 
     # Open a URL
-    result = browser_open("Reading docs", "https://example.com")
+    result = open_url("Reading docs", "https://example.com")
 
     # Click an element by CSS selector
     result = browser_click("Accepting cookies", "button.accept")
@@ -24,12 +24,12 @@ Example:
 
 from aria.tools.browser.functions import (
     browser_click,
-    browser_open,
     browser_screenshot,
+    open_url,
 )
 
 __all__ = [
-    "browser_open",
+    "open_url",
     "browser_click",
     "browser_screenshot",
 ]

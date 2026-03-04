@@ -157,9 +157,7 @@ class ServerHandlersMixin:
         """
         status = self._server_manager.get_status()
 
-        _BADGE_BASE = (
-            "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
-        )
+        _BADGE_BASE = "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
         if status.healthy:
             self.ui.label_ServiceStatus.setText("Running")
             self.ui.label_ServiceStatus.setStyleSheet(
@@ -188,7 +186,10 @@ class ServerHandlersMixin:
                 f"QLabel {{ background-color: #c62828; {_BADGE_BASE} }}"
             )
             # Show preflight failures in status bar when server is stopped
-            if self._preflight_result is not None and not self._preflight_result.passed:
+            if (
+                self._preflight_result is not None
+                and not self._preflight_result.passed
+            ):
                 failure_count = len(self._preflight_result.failures)
                 self.statusBar().showMessage(
                     f"Cannot start: {failure_count} preflight check(s) failed. "
@@ -197,7 +198,9 @@ class ServerHandlersMixin:
             else:
                 self.statusBar().clearMessage()
 
-        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
+        self.ui.label_ServicePID.setText(
+            str(status.pid) if status.pid else "-"
+        )
 
         url = f"http://{status.host}:{status.port}"
         self.ui.label_ServiceURL.setText(f'<a href="{url}">{url}</a>')
@@ -213,12 +216,15 @@ class ServerHandlersMixin:
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            self.ui.label_ServiceUptime.setText(f"{hours}h {minutes}m {seconds}s")
+            self.ui.label_ServiceUptime.setText(
+                f"{hours}h {minutes}m {seconds}s"
+            )
         else:
             self.ui.label_ServiceUptime.setText("-")
 
         preflight_ok = (
-            self._preflight_result is not None and self._preflight_result.passed
+            self._preflight_result is not None
+            and self._preflight_result.passed
         )
         can_start = not status.running and preflight_ok
         self.ui.pushButton_ServiceStart.setEnabled(can_start)

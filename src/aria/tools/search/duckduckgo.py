@@ -23,7 +23,7 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
 
     Returns:
         JSON with results[{title, href}], error if failed.
-        Use browser_open to read web pages from the results.
+        Use open_url to read web pages from the results.
         Use get_file_from_url to download files (PDFs, images, etc.).
     """
     # Validate inputs
@@ -59,7 +59,9 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
                 if processed_result["title"] and processed_result["href"]:
                     results.append(processed_result)
                 else:
-                    logger.warning(f"Skipping result with missing fields: {result}")
+                    logger.warning(
+                        f"Skipping result with missing fields: {result}"
+                    )
             except (KeyError, TypeError) as field_error:
                 logger.warning(f"Skipping malformed result: {field_error}")
                 continue

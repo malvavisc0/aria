@@ -114,21 +114,33 @@ class MainWindow(
         """Connect tab-related signals."""
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
         self.ui.pushButton_RefreshLogs.clicked.connect(self.load_logs)
-        self.ui.pushButton_AutoRefresh.clicked.connect(self.toggle_auto_refresh)
+        self.ui.pushButton_AutoRefresh.clicked.connect(
+            self.toggle_auto_refresh
+        )
 
         self._logs_timer = QTimer()
         self._logs_timer.timeout.connect(self.load_logs)
 
     def _connect_user_management_signals(self):
         """Connect user management button signals."""
-        self.ui.pushButton_CreateUser.clicked.connect(self.on_create_user_clicked)
+        self.ui.pushButton_CreateUser.clicked.connect(
+            self.on_create_user_clicked
+        )
         self.ui.pushButton_EditUser.clicked.connect(self.on_edit_user_clicked)
-        self.ui.pushButton_DeleteUser.clicked.connect(self.on_delete_user_clicked)
+        self.ui.pushButton_DeleteUser.clicked.connect(
+            self.on_delete_user_clicked
+        )
 
         self.ui.pushButton_CreateUser.setEnabled(False)
-        self.ui.lineEdit_UserName.textChanged.connect(self.validate_create_fields)
-        self.ui.lineEdit_UserEmail.textChanged.connect(self.validate_create_fields)
-        self.ui.lineEdit_UserPassword.textChanged.connect(self.validate_create_fields)
+        self.ui.lineEdit_UserName.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserEmail.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserPassword.textChanged.connect(
+            self.validate_create_fields
+        )
 
         self.ui.pushButton_EditUser.setEnabled(False)
         self.ui.pushButton_DeleteUser.setEnabled(False)
@@ -181,12 +193,16 @@ class MainWindow(
     def load_overview(self):
         self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
 
-        self.ui.label_DatabaseLocation.setText(str(SQLite.file_path.absolute()))
+        self.ui.label_DatabaseLocation.setText(
+            str(SQLite.file_path.absolute())
+        )
         db_exists = SQLite.file_path.exists()
         if db_exists:
             self.ui.label_DatabaseFileExists.setText("Yes")
             self.ui.label_DatabaseSize.setText(human_size(SQLite.file_path))
-            permissions = "+".join(friendly_permissions(SQLite.file_path)["Owner"])
+            permissions = "+".join(
+                friendly_permissions(SQLite.file_path)["Owner"]
+            )
             self.ui.label_DatabasePermissions.setText(permissions)
         else:
             self.ui.label_DatabaseFileExists.setText("No")

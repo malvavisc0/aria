@@ -89,7 +89,9 @@ ID=fedora
     def test_handles_missing_os_release(self, mock_platform_linux):
         """Test that _is_ubuntu handles missing /etc/os-release gracefully."""
         with patch("builtins.open") as mock_open:
-            mock_open.side_effect = FileNotFoundError("/etc/os-release not found")
+            mock_open.side_effect = FileNotFoundError(
+                "/etc/os-release not found"
+            )
             assert _is_ubuntu() is False
 
     def test_handles_io_error(self, mock_platform_linux):
@@ -145,7 +147,9 @@ class TestVerifyBinary:
 
         assert _verify_binary(dir_path) is False
 
-    def test_returns_true_for_directory_with_execute_permission(self, tmp_path: Path):
+    def test_returns_true_for_directory_with_execute_permission(
+        self, tmp_path: Path
+    ):
         """Returns True for a directory with execute permission."""
         dir_path = tmp_path / "test_dir"
         dir_path.mkdir()
@@ -275,7 +279,8 @@ class TestIsOpenblasAvailable:
         mock_ldconfig = Mock()
         mock_ldconfig.returncode = 0
         mock_ldconfig.stdout = (
-            "\tlibopenblas.so.0 (libc6,x86-64)" " => /usr/lib/libopenblas.so.0\n"
+            "\tlibopenblas.so.0 (libc6,x86-64)"
+            " => /usr/lib/libopenblas.so.0\n"
         )
 
         def fake_exists(self):

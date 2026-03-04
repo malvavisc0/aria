@@ -103,10 +103,14 @@ def list_users():
 def add_user(
     identifier: Annotated[
         str,
-        typer.Option(prompt="User identifier (email)", help="User email address"),
+        typer.Option(
+            prompt="User identifier (email)", help="User email address"
+        ),
     ],
     name: Annotated[str, typer.Option(help="User name)")],
-    role: Annotated[str, typer.Option(help="User role (user, admin, etc.)")] = "user",
+    role: Annotated[
+        str, typer.Option(help="User role (user, admin, etc.)")
+    ] = "user",
 ):
     """Create a new user account.
 
@@ -133,7 +137,9 @@ def add_user(
         ).scalar_one_or_none()
 
         if existing:
-            error_console.print(f"[red]✗[/red] User '{identifier}' already exists")
+            error_console.print(
+                f"[red]✗[/red] User '{identifier}' already exists"
+            )
             raise typer.Exit(1)
 
         password = typer.prompt(
@@ -168,7 +174,9 @@ def add_user(
 def reset_password(
     identifier: Annotated[
         str,
-        typer.Option(prompt="User identifier (email)", help="User email address"),
+        typer.Option(
+            prompt="User identifier (email)", help="User email address"
+        ),
     ],
 ):
     """Reset a user's password.
@@ -215,9 +223,13 @@ def reset_password(
 def update_user(
     identifier: Annotated[
         str,
-        typer.Option(prompt="User identifier (email)", help="User email address"),
+        typer.Option(
+            prompt="User identifier (email)", help="User email address"
+        ),
     ],
-    role: Annotated[Optional[str], typer.Option(help="New role for the user")] = None,
+    role: Annotated[
+        Optional[str], typer.Option(help="New role for the user")
+    ] = None,
     metadata_json: Annotated[
         Optional[str], typer.Option(help="JSON string of metadata to merge")
     ] = None,
@@ -275,13 +287,17 @@ def update_user(
         metadata["updated_at"] = datetime.now().isoformat()
         user.metadata_ = json.dumps(metadata)
 
-        console.print(f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated")
+        console.print(
+            f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated"
+        )
 
 
 @app.command("delete")
 def delete_user(
     identifier: Annotated[str, typer.Option(help="User identifier (email)")],
-    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip confirmation prompt"
+    ),
 ):
     """Delete a user and all associated data.
 
