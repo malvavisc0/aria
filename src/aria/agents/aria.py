@@ -14,7 +14,7 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.files.functions import read_full_file
+from aria.tools.files.functions import read_file_chunk, read_full_file
 from aria.tools.search import (
     get_current_weather,
     get_file_from_url,
@@ -87,6 +87,7 @@ def get_agent(
         FunctionTool.from_defaults(fn=get_current_weather),
         FunctionTool.from_defaults(fn=get_file_from_url),
         FunctionTool.from_defaults(fn=read_full_file),
+        FunctionTool.from_defaults(fn=read_file_chunk),
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",

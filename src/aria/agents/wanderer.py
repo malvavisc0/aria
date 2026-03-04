@@ -74,6 +74,7 @@ def get_agent(
         ],
         FILESYSTEM_TOOLS: [
             "read_full_file",
+            "read_file_chunk",
             "write_full_file",
             "file_exists",
         ],
