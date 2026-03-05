@@ -76,17 +76,28 @@ def _build_response(
     return _safe_json(response)
 
 
-def _error_response(operation: str, identifier: str, exc: Exception) -> str:
+def _error_response(
+    operation: str,
+    identifier: str,
+    exc: Exception,
+    intent: str = "",
+) -> str:
     """Generate error response for Python runner operations.
 
     Args:
         operation: The operation that failed
         identifier: Code snippet or filename involved in the operation
         exc: The exception that occurred
+        intent: The agent's stated intent for calling this tool
 
     Returns:
         str: JSON formatted error response string
     """
+    # Extract error metadata from exception
+    error_code = getattr(exc, "code", type(exc).__name__.upper())
+    recoverable = getattr(exc, "recoverable", False)
+    how_to_fix = getattr(exc, "how_to_fix", None)
+
     if isinstance(exc, PythonSecurityError):
         error_msg = f"Security violation: {str(exc)}"
         error_type = "PythonSecurityError"
@@ -115,15 +126,23 @@ def _error_response(operation: str, identifier: str, exc: Exception) -> str:
         error_msg = f"Unexpected error: {str(exc)}"
         error_type = type(exc).__name__
 
+    # Build error block with standard fields
+    error_block = {
+        "code": error_code,
+        "message": error_msg,
+        "type": error_type,
+        "recoverable": recoverable,
+    }
+    if how_to_fix:
+        error_block["how_to_fix"] = how_to_fix
+
     response = {
-        "operation": operation,
-        "result": None,
-        "metadata": {
-            "identifier": identifier,
-            "error": error_msg,
-            "error_type": error_type,
-            "timestamp": _timestamp(),
-        },
+        "status": "error",
+        "tool": operation,
+        "intent": intent,
+        "timestamp": _timestamp(),
+        "error": error_block,
+        "context": {"identifier": identifier},
     }
     return _safe_json(response)
 

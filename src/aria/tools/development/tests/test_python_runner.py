@@ -344,7 +344,7 @@ print(f'Created list with {len(large_list)} items')
         code = "print('test')\n"
         # Test with timeout that's too high (should be caught by validation)
         try:
-            result = execute_python_code(
+            execute_python_code(
                 "Testing invalid timeout", code, timeout=301
             )  # Exceeds MAX_TIMEOUT
             # If it doesn't raise an exception, we still check the behavior
@@ -358,8 +358,9 @@ print(f'Created list with {len(large_list)} items')
             "Testing nonexistent", "nonexistent.py", timeout=10
         )
         data = json.loads(result)
-        assert data["result"] is None
-        assert "error" in data["metadata"]
+        assert data["status"] == "error"
+        assert "error" in data
+        assert "not found" in data["error"]["message"].lower()
 
     def test_check_file_syntax_nonexistent(self):
         """Test syntax checking of non-existent file"""
@@ -368,5 +369,7 @@ print(f'Created list with {len(large_list)} items')
             "Testing nonexistent", "nonexistent.py"
         )
         data = json.loads(result)
-        assert data["result"] is None
-        assert "error" in data["metadata"]
+        assert data["status"] == "error"
+        assert "error" in data
+        assert "context" in data
+        assert "identifier" in data["context"]

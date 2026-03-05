@@ -45,8 +45,5 @@ MAX_TIMEOUT = 300
 # Network Configuration
 # ============================================================================
 
-# Maximum retry attempts for network operations
-MAX_RETRIES = 3
-
 # Network request timeout (seconds)
 NETWORK_TIMEOUT = 10

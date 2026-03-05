@@ -119,84 +119,96 @@ class TestErrorResponse:
     def test_error_response_security_error(self):
         """Test error response for PythonSecurityError"""
         exc = PythonSecurityError("Security violation detected")
-        result = _error_response("test_op", "test_code", exc)
+        result = _error_response("test_op", "test_code", exc, "testing intent")
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "PythonSecurityError"
-        assert "Security violation" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "PythonSecurityError"
+        assert "Security violation" in parsed["error"]["message"]
+        assert parsed["error"]["recoverable"] is False
+        assert "how_to_fix" in parsed["error"]
 
     def test_error_response_syntax_error(self):
         """Test error response for PythonSyntaxValidationError"""
         exc = PythonSyntaxValidationError("Invalid syntax")
-        result = _error_response("test_op", "test_code", exc)
+        result = _error_response("test_op", "test_code", exc, "testing intent")
         parsed = json.loads(result)
-        error_type = parsed["metadata"]["error_type"]
+        assert parsed["status"] == "error"
+        error_type = parsed["error"]["type"]
         assert error_type == "PythonSyntaxValidationError"
-        assert "Syntax validation failed" in parsed["metadata"]["error"]
+        assert "Syntax validation failed" in parsed["error"]["message"]
+        assert parsed["error"]["recoverable"] is True
 
     def test_error_response_timeout_error(self):
         """Test error response for PythonExecutionTimeoutError"""
         exc = PythonExecutionTimeoutError("Execution timed out")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        error_type = parsed["metadata"]["error_type"]
-        assert error_type == "PythonExecutionTimeoutError"
-        assert "Execution timeout" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "PythonExecutionTimeoutError"
+        assert "Execution timeout" in parsed["error"]["message"]
 
     def test_error_response_execution_error(self):
         """Test error response for PythonExecutionError"""
         exc = PythonExecutionError("Execution failed")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "PythonExecutionError"
-        assert "Execution failed" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "PythonExecutionError"
+        assert "Execution failed" in parsed["error"]["message"]
 
     def test_error_response_runner_error(self):
         """Test error response for PythonRunnerError"""
         exc = PythonRunnerError("Runner error")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "PythonRunnerError"
-        assert "Runner error" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "PythonRunnerError"
+        assert "Runner error" in parsed["error"]["message"]
 
     def test_error_response_file_not_found(self):
         """Test error response for FileNotFoundError"""
         exc = FileNotFoundError("File not found")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "FileNotFoundError"
-        assert "File not found or access denied" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "FileNotFoundError"
+        assert "File not found or access denied" in parsed["error"]["message"]
 
     def test_error_response_permission_error(self):
         """Test error response for PermissionError"""
         exc = PermissionError("Permission denied")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "PermissionError"
-        assert "File not found or access denied" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "PermissionError"
+        assert "File not found or access denied" in parsed["error"]["message"]
 
     def test_error_response_os_error(self):
         """Test error response for OSError"""
         exc = OSError("OS error occurred")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "OSError"
-        assert "OS error" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "OSError"
+        assert "OS error" in parsed["error"]["message"]
 
     def test_error_response_value_error(self):
         """Test error response for ValueError"""
         exc = ValueError("Invalid value")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "ValueError"
-        assert "Invalid value" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "ValueError"
+        assert "Invalid value" in parsed["error"]["message"]
 
     def test_error_response_unexpected_error(self):
         """Test error response for unexpected exception"""
         exc = RuntimeError("Unexpected error")
         result = _error_response("test_op", "test_code", exc)
         parsed = json.loads(result)
-        assert parsed["metadata"]["error_type"] == "RuntimeError"
-        assert "Unexpected error" in parsed["metadata"]["error"]
+        assert parsed["status"] == "error"
+        assert parsed["error"]["type"] == "RuntimeError"
+        assert "Unexpected error" in parsed["error"]["message"]
 
 
 class TestValidateInputs:

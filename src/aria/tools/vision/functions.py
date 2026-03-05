@@ -26,7 +26,12 @@ from typing import Callable
 import httpx
 from loguru import logger
 
+from aria.tools.errors import tool_error_response
 from aria.tools.vision.constants import VISION_OUTPUT_DIR
+from aria.tools.vision.exceptions import (
+    UnsupportedFormatError,
+    VisionFileNotFoundError,
+)
 
 # HTTP exceptions to catch for fallback
 _HTTP_EXCEPTIONS = (
@@ -109,7 +114,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         :class:`~llama_index.core.tools.FunctionTool`.
     """
 
-    async def parse_pdf(file_path: str, prompt: str = "") -> str:
+    async def parse_pdf(intent: str, file_path: str, prompt: str = "") -> str:
         """Extract text and tables from a PDF using the vision-language model.
 
         Renders each page to PNG via pypdfium2, base64-encodes it, and sends
@@ -121,6 +126,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         text extraction capabilities.
 
         Args:
+            intent: Why you're extracting (e.g., "Analyzing document content")
             file_path: Absolute path to the PDF file.
             prompt: Optional extraction instruction. Defaults to full
                 extraction of text, tables, and structured content.
@@ -136,13 +142,21 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         """
         path = Path(file_path)
         if not path.exists():
-            raise ValueError(f"File not found: {file_path}")
+            return tool_error_response(
+                "parse_pdf",
+                intent,
+                VisionFileNotFoundError(f"File not found: {file_path}"),
+            )
 
         suffix = path.suffix.lower()
         if suffix != ".pdf":
-            raise ValueError(
-                f"Unsupported file format '{suffix}'. "
-                "Only PDF files are supported."
+            return tool_error_response(
+                "parse_pdf",
+                intent,
+                UnsupportedFormatError(
+                    f"Unsupported file format '{suffix}'. "
+                    "Only PDF files are supported."
+                ),
             )
 
         user_prompt = prompt or _DEFAULT_PROMPT

@@ -33,6 +33,7 @@ def with_file_operation_error_handling(operation_name: str) -> Callable:
         def wrapper(*args, **kwargs):
             # First arg is `intent`. Try to extract a human-friendly identifier
             # for error reporting (file_name, dir_name, source, etc.).
+            intent = args[0] if args else ""
             file_identifier = "unknown"
             if len(args) > 1 and isinstance(args[1], str):
                 file_identifier = args[1]
@@ -56,18 +57,26 @@ def with_file_operation_error_handling(operation_name: str) -> Callable:
                 logger.warning(
                     f"Security validation failed for {file_identifier}: {exc}"
                 )
-                return _error_response(operation_name, file_identifier, exc)
+                return _error_response(
+                    operation_name, file_identifier, exc, intent
+                )
             except FileOperationError as exc:
                 logger.error(
                     f"File operation failed for {file_identifier}: {exc}"
                 )
-                return _error_response(operation_name, file_identifier, exc)
+                return _error_response(
+                    operation_name, file_identifier, exc, intent
+                )
             except OSError as exc:
                 logger.error(f"OS error for {file_identifier}: {exc}")
-                return _error_response(operation_name, file_identifier, exc)
+                return _error_response(
+                    operation_name, file_identifier, exc, intent
+                )
             except Exception as exc:
                 logger.exception(f"Unexpected error for {file_identifier}")
-                return _error_response(operation_name, file_identifier, exc)
+                return _error_response(
+                    operation_name, file_identifier, exc, intent
+                )
 
         return wrapper
 

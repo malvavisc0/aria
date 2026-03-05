@@ -5,12 +5,9 @@ This module contains constants specific to URL downloading and content
 processing. For shared constants, imports from aria.tools.constants.
 """
 
-from aria.tools.constants import (
-    DOWNLOADS_DIR,
-    MAX_FILE_SIZE,
-    MAX_RETRIES,
-)
+from aria.tools.constants import DOWNLOADS_DIR, MAX_FILE_SIZE
 from aria.tools.constants import NETWORK_TIMEOUT as TIMEOUT
+from aria.tools.retry import DEFAULT_MAX_RETRIES as MAX_RETRIES
 
 # Re-export for backward compatibility
 __all__ = [

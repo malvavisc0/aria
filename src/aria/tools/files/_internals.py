@@ -33,17 +33,28 @@ def _timestamp() -> str:
     return datetime.now().isoformat()
 
 
-def _error_response(operation: str, file_name: str, exc: Exception) -> str:
+def _error_response(
+    operation: str,
+    file_name: str,
+    exc: Exception,
+    intent: str = "",
+) -> str:
     """Generate secure error response without information disclosure.
 
     Args:
         operation: The operation that failed
         file_name: The file name involved in the operation
         exc: The exception that occurred
+        intent: The agent's stated intent for calling this tool
 
     Returns:
         str: JSON formatted error response
     """
+    # Extract error metadata from exception
+    error_code = getattr(exc, "code", type(exc).__name__.upper())
+    recoverable = getattr(exc, "recoverable", False)
+    how_to_fix = getattr(exc, "how_to_fix", None)
+
     if isinstance(exc, FileSecurityError):
         error_msg = f"Security validation failed: {str(exc)}"
         logger.warning(f"Security validation failed for {file_name}: {exc}")
@@ -57,15 +68,24 @@ def _error_response(operation: str, file_name: str, exc: Exception) -> str:
         error_msg = f"Unexpected error: {str(exc)}"
         logger.error(f"Unexpected error for {file_name}: {exc}")
 
+    # Build error block with standard fields
+    error_block = {
+        "code": error_code,
+        "message": error_msg,
+        "type": type(exc).__name__,
+        "recoverable": recoverable,
+    }
+    if how_to_fix:
+        error_block["how_to_fix"] = how_to_fix
+
     return _safe_json(
         {
-            "operation": operation,
-            "result": None,
-            "metadata": {
-                "file_name": file_name,
-                "error": error_msg,
-                "timestamp": _timestamp(),
-            },
+            "status": "error",
+            "tool": operation,
+            "intent": intent,
+            "timestamp": _timestamp(),
+            "error": error_block,
+            "context": {"file_name": file_name},
         }
     )
 

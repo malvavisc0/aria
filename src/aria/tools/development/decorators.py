@@ -11,10 +11,7 @@ from typing import Callable
 
 from loguru import logger
 
-from aria.tools.development._internals import (
-    _error_response,
-    _validate_inputs,
-)
+from aria.tools.development._internals import _error_response, _validate_inputs
 from aria.tools.development.exceptions import (
     PythonExecutionError,
     PythonExecutionTimeoutError,
@@ -40,8 +37,13 @@ def with_runner_error_handling(operation_name: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> str:
-            # Get identifier (code snippet or filename)
-            identifier = args[0] if args else "unknown"
+            # Get intent from first argument (if available)
+            intent = ""
+            if args:
+                intent = args[0] if isinstance(args[0], str) else ""
+
+            # Get identifier (code snippet or filename) - usually second arg
+            identifier = args[1] if len(args) > 1 else "unknown"
             if isinstance(identifier, str) and len(identifier) > 50:
                 identifier = identifier[:47] + "..."
 
@@ -51,27 +53,27 @@ def with_runner_error_handling(operation_name: str) -> Callable:
                 logger.warning(
                     f"Security violation in {operation_name}: {exc}"
                 )
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
             except PythonSyntaxValidationError as exc:
                 logger.warning(
                     f"Syntax validation failed in {operation_name}: {exc}"
                 )
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
             except PythonExecutionTimeoutError as exc:
                 logger.warning(f"Execution timeout in {operation_name}: {exc}")
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
             except PythonExecutionError as exc:
                 logger.error(f"Execution error in {operation_name}: {exc}")
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
             except PythonRunnerError as exc:
                 logger.error(f"Runner error in {operation_name}: {exc}")
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
             except (FileNotFoundError, PermissionError, OSError) as exc:
                 logger.error(f"File access error in {operation_name}: {exc}")
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
             except Exception as exc:
                 logger.exception(f"Unexpected error in {operation_name}")
-                return _error_response(operation_name, identifier, exc)
+                return _error_response(operation_name, identifier, exc, intent)
 
         return wrapper
 

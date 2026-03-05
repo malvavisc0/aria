@@ -96,9 +96,10 @@ def _err(
     code: str,
     message: str,
     how_to_fix: Optional[str] = None,
+    recoverable: bool = False,
     timestamp: Optional[str] = None,
 ) -> Dict[str, Any]:
-    err = {"code": code, "message": message}
+    err = {"code": code, "message": message, "recoverable": recoverable}
     if how_to_fix:
         err["how_to_fix"] = how_to_fix
     return {
@@ -251,6 +252,7 @@ def add_reasoning_step(
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
             how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            recoverable=True,
         )
 
     try:

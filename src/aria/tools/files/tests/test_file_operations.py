@@ -397,9 +397,9 @@ class TestFileOperations:
         )
         data = json.loads(result)
 
-        assert data["result"] is None
-        assert data["metadata"]["error"] is not None
-        assert "exceed" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert data["error"] is not None
+        assert "exceed" in data["error"]["message"].lower()
 
     def test_read_file_chunk_exceeds_chunk_size(self):
         """Test read_file_chunk with invalid chunk size"""
@@ -410,21 +410,23 @@ class TestFileOperations:
         )
         data = json.loads(result)
 
-        assert data["result"] is None
-        assert data["metadata"]["error"] is not None
-        assert "chunk_size" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert data["error"] is not None
+        assert "chunk_size" in data["error"]["message"].lower()
 
     def test_search_in_files_invalid_regex(self):
         """Test search_in_files with invalid regex pattern"""
         result = search_in_files("Testing invalid regex", "[")
         data = json.loads(result)
-        assert data["metadata"]["error"] is not None
+        assert data["status"] == "error"
+        assert data["error"] is not None
 
     def test_search_files_by_name_invalid_regex(self):
         """Test search_files_by_name with invalid regex pattern"""
         result = search_files_by_name("Testing invalid regex", "[")
         data = json.loads(result)
-        assert data["metadata"]["error"] is not None
+        assert data["status"] == "error"
+        assert data["error"] is not None
 
     def test_file_operations_with_invalid_paths(self):
         """Test file operations with invalid paths"""
@@ -440,43 +442,51 @@ class TestFileOperations:
             append_result = append_to_file(
                 "Testing invalid path", path, "test"
             )
-            assert json.loads(append_result)["metadata"]["error"] is not None
+            assert json.loads(append_result)["status"] == "error"
+            assert json.loads(append_result)["error"] is not None
 
             read_result = read_file_chunk(
                 "Testing invalid path", path, chunk_size=10
             )
-            assert json.loads(read_result)["metadata"]["error"] is not None
+            assert json.loads(read_result)["status"] == "error"
+            assert json.loads(read_result)["error"] is not None
 
             write_result = write_full_file(
                 "Testing invalid path", path, "test"
             )
-            assert json.loads(write_result)["metadata"]["error"] is not None
+            assert json.loads(write_result)["status"] == "error"
+            assert json.loads(write_result)["error"] is not None
 
     def test_append_to_file_with_invalid_path(self):
         """Test append_to_file with invalid path"""
         result = append_to_file(
             "Testing invalid path", "../outside.txt", "test"
         )
-        assert json.loads(result)["metadata"]["error"] is not None
+        assert json.loads(result)["status"] == "error"
+        assert json.loads(result)["error"] is not None
 
     def test_read_file_chunk_with_invalid_path(self):
         """Test read_file_chunk with invalid path"""
         result = read_file_chunk(
             "Testing invalid path", "../outside.txt", chunk_size=10
         )
-        assert json.loads(result)["metadata"]["error"] is not None
+        assert json.loads(result)["status"] == "error"
+        assert json.loads(result)["error"] is not None
 
     def test_write_full_file_with_invalid_path(self):
         """Test write_full_file with invalid path"""
         result = write_full_file(
             "Testing invalid path", "../outside.txt", "test"
         )
-        assert json.loads(result)["metadata"]["error"] is not None
+        assert json.loads(result)["status"] == "error"
+        assert json.loads(result)["error"] is not None
 
     def test_directory_operations_with_invalid_paths(self):
         """Test directory operations with invalid paths"""
         result = create_directory("Testing invalid path", "../outside")
-        assert json.loads(result)["metadata"]["error"] is not None
+        assert json.loads(result)["status"] == "error"
+        assert json.loads(result)["error"] is not None
 
         result = get_directory_tree("Testing invalid path", "../outside")
-        assert json.loads(result)["metadata"]["error"] is not None
+        assert json.loads(result)["status"] == "error"
+        assert json.loads(result)["error"] is not None

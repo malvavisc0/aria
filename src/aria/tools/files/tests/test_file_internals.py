@@ -52,37 +52,41 @@ class TestErrorResponse:
         exc = FileSecurityError("Path traversal detected")
         result = _error_response("read", "test.txt", exc)
         data = json.loads(result)
-        assert data["operation"] == "read"
-        assert data["result"] is None
-        assert "security" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert data["tool"] == "read"
+        assert "security" in data["error"]["message"].lower()
 
     def test_file_operation_error_response(self):
         """Test error response for FileOperationError."""
         exc = FileOperationError("File not found")
         result = _error_response("write", "test.txt", exc)
         data = json.loads(result)
-        assert "operation failed" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert "operation failed" in data["error"]["message"].lower()
 
     def test_os_error_response(self):
         """Test error response for OSError."""
         exc = OSError("Disk full")
         result = _error_response("write", "test.txt", exc)
         data = json.loads(result)
-        assert "access denied" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert "access denied" in data["error"]["message"].lower()
 
     def test_permission_error_response(self):
         """Test error response for PermissionError."""
         exc = PermissionError("Access denied")
         result = _error_response("read", "test.txt", exc)
         data = json.loads(result)
-        assert "access denied" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert "access denied" in data["error"]["message"].lower()
 
     def test_unexpected_error_response(self):
         """Test error response for unexpected exceptions."""
         exc = ValueError("Unexpected error")
         result = _error_response("read", "test.txt", exc)
         data = json.loads(result)
-        assert "unexpected" in data["metadata"]["error"].lower()
+        assert data["status"] == "error"
+        assert "unexpected" in data["error"]["message"].lower()
 
 
 class TestValidateInputs:
