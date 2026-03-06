@@ -157,7 +157,7 @@ def download_gguf_model(
         raise FileNotFoundError(
             f"File '{filename}' not found in repository '{repo_id}'."
         )
-    except RepositoryNotFoundError as e:
+    except RepositoryNotFoundError:
         logger.error(
             f"Repository '{repo_id}' not found. "
             "Check the repo ID and ensure HUGGINGFACE_TOKEN is set for private repos."

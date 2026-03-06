@@ -1,13 +1,12 @@
 """DuckDuckGo-backed web search tool."""
 
 import inspect
-import json
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from ddgs import DDGS
 from loguru import logger
 
+from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import DEFAULT_TIMEOUT
 from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
@@ -37,7 +36,7 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
         logger.debug(f"Calling {func_name} to achieve: {intent}")
 
     # Prepare response structure
-    timestamp = datetime.now().isoformat()
+    timestamp = utc_timestamp()
     metadata: Dict[str, Any] = {"timestamp": timestamp, "error": None}
     results: List[Dict[str, str]] = []
 
@@ -79,7 +78,7 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
         "result": results,
         "metadata": metadata,
     }
-    return json.dumps(response, ensure_ascii=False, indent=2)
+    return safe_json(response)
 
 
 def _validate_inputs(query: str, max_results: Optional[int]) -> Optional[str]:
@@ -183,8 +182,8 @@ def _create_error_response(error_message: str) -> str:
         "operation": "web_search",
         "result": [],
         "metadata": {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
             "error": error_message,
         },
     }
-    return json.dumps(response, ensure_ascii=False, indent=2)
+    return safe_json(response)

@@ -81,8 +81,10 @@ class TestSafeJson:
         result = _safe_json(data)
         assert isinstance(result, str)
         parsed = json.loads(result)
-        assert "error" in parsed
-        assert parsed["error"] == "Serialization failed"
+        # safe_json uses a default handler that converts non-serializable
+        # objects to strings rather than raising an error
+        assert "obj" in parsed
+        assert "NonSerializable" in parsed["obj"]
 
 
 class TestBuildResponse:
@@ -135,7 +137,8 @@ class TestErrorResponse:
         assert parsed["status"] == "error"
         error_type = parsed["error"]["type"]
         assert error_type == "PythonSyntaxValidationError"
-        assert "Syntax validation failed" in parsed["error"]["message"]
+        # The message now contains the original exception message
+        assert "Invalid syntax" in parsed["error"]["message"]
         assert parsed["error"]["recoverable"] is True
 
     def test_error_response_timeout_error(self):
@@ -145,7 +148,8 @@ class TestErrorResponse:
         parsed = json.loads(result)
         assert parsed["status"] == "error"
         assert parsed["error"]["type"] == "PythonExecutionTimeoutError"
-        assert "Execution timeout" in parsed["error"]["message"]
+        # The message now contains the original exception message
+        assert "Execution timed out" in parsed["error"]["message"]
 
     def test_error_response_execution_error(self):
         """Test error response for PythonExecutionError"""
@@ -172,7 +176,8 @@ class TestErrorResponse:
         parsed = json.loads(result)
         assert parsed["status"] == "error"
         assert parsed["error"]["type"] == "FileNotFoundError"
-        assert "File not found or access denied" in parsed["error"]["message"]
+        # The message now contains the original exception message
+        assert "File not found" in parsed["error"]["message"]
 
     def test_error_response_permission_error(self):
         """Test error response for PermissionError"""
@@ -181,7 +186,8 @@ class TestErrorResponse:
         parsed = json.loads(result)
         assert parsed["status"] == "error"
         assert parsed["error"]["type"] == "PermissionError"
-        assert "File not found or access denied" in parsed["error"]["message"]
+        # The message now contains the original exception message
+        assert "Permission denied" in parsed["error"]["message"]
 
     def test_error_response_os_error(self):
         """Test error response for OSError"""

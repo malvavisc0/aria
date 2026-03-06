@@ -24,7 +24,7 @@ from aria.tools.development.decorators import (
 )
 
 
-@with_input_validation(code=True, filename=True)
+@with_input_validation(code=True)
 @with_runner_error_handling("check_python_syntax")
 def check_python_syntax(intent: str, code: str) -> str:
     """

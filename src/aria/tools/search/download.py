@@ -8,7 +8,6 @@ import random
 import re
 import tempfile
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Union
 from urllib.parse import urlparse
@@ -23,6 +22,7 @@ from youtube_transcript_api import (
 )
 from youtube_transcript_api.formatters import TextFormatter
 
+from aria.tools import utc_timestamp
 from aria.tools.search.constants import (
     BINARY_CONTENT_TYPES,
     DOWNLOADS_DIR,
@@ -748,7 +748,7 @@ def _save_content_to_file(
                 "parsed_file_path": str(parsed_file_path),
                 "parsed_file_size": parsed_file_size,
                 "original_filename": original_filename,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": utc_timestamp(),
             }
             return str(original_file_path), metadata
         except Exception as e:
@@ -763,7 +763,7 @@ def _save_content_to_file(
                 "parsed": False,
                 "parse_error": str(e),
                 "original_filename": original_filename,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": utc_timestamp(),
             }
             return str(original_file_path), metadata
 
@@ -788,7 +788,7 @@ def _save_content_to_file(
             "format": "binary",
             "parsed": False,
             "original_filename": original_filename,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
         }
         return str(file_path), metadata
 
@@ -828,7 +828,7 @@ def _save_content_to_file(
                     "parsed_file_path": str(markdown_file_path),
                     "parsed_file_size": markdown_file_size,
                     "original_filename": original_filename,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": utc_timestamp(),
                 }
                 return str(html_file_path), metadata
 
@@ -845,7 +845,7 @@ def _save_content_to_file(
                     "parsed": False,
                     "parse_error": str(e),
                     "original_filename": original_filename,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": utc_timestamp(),
                 }
                 return str(html_file_path), metadata
 
@@ -882,7 +882,7 @@ def _save_content_to_file(
             "format": format_type,
             "parsed": False,
             "original_filename": original_filename,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
         }
         return str(file_path), metadata
 
@@ -904,6 +904,6 @@ def _save_content_to_file(
             "format": "binary",
             "parsed": False,
             "original_filename": original_filename,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
         }
         return str(file_path), metadata

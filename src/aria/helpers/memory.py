@@ -154,8 +154,6 @@ def get_total_model_size_mb() -> int:
         Total size of chat, vl, and embeddings models in MB.
         Returns 0 if no models are downloaded.
     """
-    import os
-
     from aria.config.api import LlamaCpp as LlamaCppConfig
     from aria.config.models import Chat, Embeddings, Vision
     from aria.scripts.gguf import get_model_path

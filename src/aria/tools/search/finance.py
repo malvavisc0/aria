@@ -3,11 +3,12 @@
 import inspect
 import json
 import re
-from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import yfinance
 from loguru import logger
+
+from aria.tools import utc_timestamp
 
 
 class YFinanceError(Exception):
@@ -91,7 +92,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
             "current_price": round(float(current_price), 2),
             "currency": currency,
             "market_state": market_state,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": utc_timestamp(),
             "previous_close": info.get("previousClose"),
             "day_change": None,
             "day_change_percent": None,
@@ -122,23 +123,17 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
                 "ticker": raw_ticker,
                 "error": str(exc),
                 "error_type": "validation_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker}: {exc}")
-        hint = None
-        if raw_ticker and isinstance(raw_ticker, str):
-            normalized = _normalize_ticker(raw_ticker)
-            if normalized != raw_ticker.strip().upper():
-                hint = f"Try ticker '{normalized}'"
         return _format_json_response(
             {
                 "ticker": raw_ticker,
                 "error": str(exc),
                 "error_type": "data_error",
-                "hint": hint,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -152,7 +147,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
                 "ticker": raw_ticker,
                 "error": f"Failed to get current price: {exc}",
                 "error_type": "unexpected_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
 
@@ -242,7 +237,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
             },
             "metadata": {
                 "ticker": ticker,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
                 "data_source": "Yahoo Finance",
             },
         }
@@ -260,7 +255,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
                 "ticker": raw_ticker,
                 "error": str(exc),
                 "error_type": "validation_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
     except YFinanceDataError as exc:
@@ -270,7 +265,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
                 "ticker": raw_ticker,
                 "error": str(exc),
                 "error_type": "data_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -282,7 +277,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
                 "ticker": raw_ticker,
                 "error": f"Failed to get company information: {exc}",
                 "error_type": "unexpected_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
 
@@ -335,7 +330,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
                     "articles": [],
                     "count": 0,
                     "message": "No news articles found",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": utc_timestamp(),
                 }
             )
 
@@ -349,7 +344,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
             "ticker": ticker,
             "articles": articles,
             "count": len(articles),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": utc_timestamp(),
         }
 
         logger.info(
@@ -366,7 +361,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
                 "count": 0,
                 "error": str(exc),
                 "error_type": "validation_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
     except YFinanceDataError as exc:
@@ -378,7 +373,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
                 "count": 0,
                 "error": str(exc),
                 "error_type": "data_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -392,7 +387,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
                 "count": 0,
                 "error": f"Failed to get news: {exc}",
                 "error_type": "unexpected_error",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": utc_timestamp(),
             }
         )
 

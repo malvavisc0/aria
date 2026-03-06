@@ -28,10 +28,8 @@ Example:
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
 from rich.table import Table
 
-from aria.config.api import LlamaCpp
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Data, Debug, Storage
 from aria.config.models import Chat, Embeddings

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 import time
 from functools import wraps
 from typing import Callable, Tuple, Type
@@ -35,7 +36,9 @@ def with_retry(
                 except retryable_exceptions as e:
                     last_exception = e
                     if attempt < max_retries - 1:
-                        wait_time = backoff_factor**attempt
+                        wait_time = backoff_factor**attempt + random.uniform(
+                            0, 0.5
+                        )
                         logger.warning(
                             f"{func.__name__} attempt {attempt + 1}/{max_retries} "
                             f"failed: {e}. Retrying in {wait_time:.1f}s..."
@@ -56,7 +59,9 @@ def with_retry(
                 except retryable_exceptions as e:
                     last_exception = e
                     if attempt < max_retries - 1:
-                        wait_time = backoff_factor**attempt
+                        wait_time = backoff_factor**attempt + random.uniform(
+                            0, 0.5
+                        )
                         logger.warning(
                             f"{func.__name__} attempt {attempt + 1}/{max_retries} "
                             f"failed: {e}. Retrying in {wait_time:.1f}s..."

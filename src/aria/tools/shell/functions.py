@@ -11,12 +11,12 @@ import shutil
 import subprocess
 import tempfile
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from aria.tools import safe_json, utc_timestamp
 from aria.tools.shell.constants import (
     BASE_DIR,
     BLOCKED_COMMANDS,
@@ -161,16 +161,8 @@ def _validate_working_dir(working_dir: Optional[str]) -> Path:
     return path
 
 
-def _safe_json(data: Dict[str, Any]) -> str:
-    """Convert a dictionary to a JSON string.
-
-    Args:
-        data: The dictionary to convert.
-
-    Returns:
-        JSON string representation of the data.
-    """
-    return json.dumps(data, indent=2, default=str)
+# Re-export shared utilities for backward compatibility
+_safe_json = safe_json
 
 
 def _build_response(
@@ -212,7 +204,7 @@ def _build_response(
             "working_dir": working_dir,
         },
         "metadata": {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
         },
     }
 
@@ -313,6 +305,18 @@ def execute_command(
                 command,
                 working_dir_str,
                 stderr="Permission denied",
+                return_code=1,
+            )
+        )
+
+    except Exception as exc:
+        logger.error(f"Unexpected error executing command: {exc}")
+        return _safe_json(
+            _build_response(
+                "execute_command",
+                command,
+                working_dir_str,
+                stderr=str(exc),
                 return_code=1,
             )
         )
@@ -425,6 +429,18 @@ def execute_command_safe(
             )
         )
 
+    except Exception as exc:
+        logger.error(f"Unexpected error executing safe command: {exc}")
+        return _safe_json(
+            _build_response(
+                "execute_command",
+                display_command,
+                working_dir_str,
+                stderr=str(exc),
+                return_code=1,
+            )
+        )
+
 
 def execute_command_batch(
     intent: str,
@@ -505,7 +521,7 @@ def execute_command_batch(
             "stopped_early": stopped_early,
         },
         "metadata": {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
             "total_commands": len(commands),
         },
     }
@@ -540,7 +556,7 @@ def get_platform_info(intent: str) -> str:
             "temp_dir": tempfile.gettempdir(),
         },
         "metadata": {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_timestamp(),
         },
     }
 

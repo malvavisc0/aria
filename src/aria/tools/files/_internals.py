@@ -5,15 +5,14 @@ This module contains private helper functions used by the main file operations
 module. These functions should not be imported directly by external modules.
 """
 
-import json
 import shutil
 import stat
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from aria.tools import safe_json, tool_error_response, utc_timestamp
 from aria.tools.constants import BASE_DIR, MAX_FILE_SIZE
 from aria.tools.files.constants import (
     ALLOWED_EXTENSIONS,
@@ -23,14 +22,9 @@ from aria.tools.files.constants import (
 )
 from aria.tools.files.exceptions import FileOperationError, FileSecurityError
 
-
-def _timestamp() -> str:
-    """Generate ISO timestamp.
-
-    Returns:
-        str: ISO formatted timestamp string
-    """
-    return datetime.now().isoformat()
+# Re-export shared utilities for backward compatibility
+_timestamp = utc_timestamp
+_safe_json = safe_json
 
 
 def _error_response(
@@ -182,22 +176,6 @@ def _count_lines_efficiently(file_path: Path) -> int:
         raise FileOperationError(
             f"Failed to read file for line counting: {exc}"
         ) from exc
-
-
-def _safe_json(data: Dict[str, Any]) -> str:
-    """Safe JSON serialization with error handling.
-
-    Args:
-        data: Dictionary to serialize to JSON
-
-    Returns:
-        str: JSON string or error message if serialization fails
-    """
-    try:
-        return json.dumps(data, ensure_ascii=False, indent=2)
-    except (TypeError, ValueError) as exc:
-        logger.error(f"JSON serialization failed: {exc}")
-        return json.dumps({"error": "Serialization failed"})
 
 
 def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:

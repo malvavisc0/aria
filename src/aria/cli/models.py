@@ -39,7 +39,6 @@ from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
 from rich.table import Table
 
 from aria.config.api import LlamaCpp as LlamaCppConfig
@@ -207,7 +206,7 @@ def download_command(
     # Resolve token
     resolved_token = token or HuggingFace.token
 
-    console.print(f"[bold]GGUF Model Download[/bold]")
+    console.print("[bold]GGUF Model Download[/bold]")
     console.print(f"  Repo: {resolved_repo_id}")
     console.print(f"  Filename: {resolved_filename}")
     console.print(f"  Destination: {target_dir}")
@@ -218,7 +217,7 @@ def download_command(
     )
     console.print(f"  Token: {token_status}")
     if force:
-        console.print(f"  [yellow]Force: yes[/yellow]")
+        console.print("  [yellow]Force: yes[/yellow]")
     console.print()
 
     try:
@@ -241,7 +240,7 @@ def download_command(
     if model == "vl":
         mmproj_filename = Vision.mmproj_filename
         if mmproj_filename:
-            console.print(f"[bold]MMPROJ Download (Vision Projector)[/bold]")
+            console.print("[bold]MMPROJ Download (Vision Projector)[/bold]")
             console.print(f"  Repo: {resolved_repo_id}")
             console.print(f"  Filename: {mmproj_filename}")
             console.print(f"  Destination: {target_dir}")

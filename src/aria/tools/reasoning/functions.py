@@ -10,10 +10,11 @@ parameters, solving the memory management problem inherent in LLM agents.
 """
 
 import time
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+
+from aria.tools import utc_timestamp
 
 from .database import get_database
 from .session import ReasoningSession
@@ -64,7 +65,7 @@ def _get_active_session_id_safe(agent_id: str) -> Optional[str]:
 
 
 def _timestamp() -> str:
-    return datetime.now().isoformat()
+    return utc_timestamp()
 
 
 def _ok(

@@ -196,7 +196,7 @@ class TestDownloadAndExtract:
                 )
 
                 dest_dir = tmp_path / "new" / "directory"
-                result = _download_and_extract(
+                _download_and_extract(
                     "https://example.com/test.tar.gz", dest_dir
                 )
 

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import inspect
-import json
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 import httpx
 from loguru import logger
 
+from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import NETWORK_TIMEOUT
 
 # https://open-meteo.com/en/docs
@@ -45,33 +44,29 @@ _WEATHER_CODE_TEXT: dict[int, str] = {
 }
 
 
-def _now() -> str:
-    return datetime.now().isoformat()
+# Re-export shared utilities for backward compatibility
+_now = utc_timestamp
 
 
 def _ok(*, result: Dict[str, Any]) -> str:
-    return json.dumps(
+    return safe_json(
         {
             "success": True,
             "result": result,
             "error": None,
-            "timestamp": _now(),
+            "timestamp": utc_timestamp(),
         },
-        ensure_ascii=False,
-        indent=2,
     )
 
 
 def _err(message: str) -> str:
-    return json.dumps(
+    return safe_json(
         {
             "success": False,
             "result": None,
             "error": message,
-            "timestamp": _now(),
+            "timestamp": utc_timestamp(),
         },
-        ensure_ascii=False,
-        indent=2,
     )
 
 

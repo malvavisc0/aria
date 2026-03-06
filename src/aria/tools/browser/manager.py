@@ -207,7 +207,7 @@ class LightpandaManager:
         """
         import socket
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         start_time = loop.time()
         while loop.time() - start_time < timeout:
             try:

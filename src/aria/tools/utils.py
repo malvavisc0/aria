@@ -1,0 +1,201 @@
+"""Shared utility functions for all tool modules.
+
+This module provides common utilities that are used across multiple tool
+subpackages to ensure consistency in timestamp handling, JSON serialization,
+and response formatting.
+"""
+
+import json
+import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+
+def utc_timestamp() -> str:
+    """Generate a UTC ISO timestamp string.
+
+    Returns:
+        str: ISO 8601 formatted timestamp in UTC timezone.
+    """
+    return datetime.now(timezone.utc).isoformat()
+
+
+def safe_json(
+    data: Dict[str, Any],
+    *,
+    default: Any = None,
+    indent: Optional[int] = 2,
+    ensure_ascii: bool = False,
+) -> str:
+    """Safe JSON serialization with error handling.
+
+    Args:
+        data: Dictionary to serialize to JSON.
+        default: Default handler for objects that can't be serialized.
+                 If None, uses str() as fallback for unknown types.
+        indent: JSON indentation level. None for compact output.
+        ensure_ascii: Whether to escape non-ASCII characters.
+
+    Returns:
+        str: JSON string or error message if serialization fails.
+    """
+    if default is None:
+        default = _default_json_handler
+
+    try:
+        return json.dumps(
+            data,
+            default=default,
+            indent=indent,
+            ensure_ascii=ensure_ascii,
+        )
+    except (TypeError, ValueError) as exc:
+        logger.error(f"JSON serialization failed: {exc}")
+        return json.dumps(
+            {"error": "Serialization failed", "details": str(exc)}
+        )
+
+
+def _default_json_handler(obj: Any) -> str:
+    """Default handler for JSON serialization of non-serializable objects.
+
+    Args:
+        obj: Object that couldn't be serialized by default JSON encoder.
+
+    Returns:
+        str: String representation of the object.
+    """
+    return str(obj)
+
+
+def tool_success_response(
+    tool: str,
+    intent: str,
+    data: Dict[str, Any],
+    **context: Any,
+) -> str:
+    """Generate a standardized JSON success response.
+
+    Args:
+        tool: Name of the tool that generated the response.
+        intent: The agent's stated intent for calling this tool.
+        data: The response data payload.
+        **context: Additional tool-specific context fields.
+
+    Returns:
+        JSON string with standardized success format.
+    """
+    # Handle missing/empty intent with fallback
+    if not intent or not intent.strip():
+        intent = f"unspecified_{tool}_operation"
+        logger.warning(
+            f"Missing intent for tool '{tool}', using fallback: {intent}"
+        )
+
+    response: Dict[str, Any] = {
+        "status": "success",
+        "tool": tool,
+        "intent": intent,
+        "timestamp": utc_timestamp(),
+        "data": data,
+    }
+    if context:
+        response["context"] = context
+
+    return safe_json(response)
+
+
+def tool_error_response(
+    tool: str,
+    intent: str,
+    exc: Exception,
+    **context: Any,
+) -> str:
+    """Generate a standardized JSON error response from an exception.
+
+    Args:
+        tool: Name of the tool that generated the error.
+        intent: The agent's stated intent for calling this tool.
+        exc: The exception that occurred.
+        **context: Additional tool-specific context fields.
+
+    Returns:
+        JSON string with standardized error format.
+    """
+    # Handle missing/empty intent with fallback
+    if not intent or not intent.strip():
+        intent = f"unspecified_{tool}_operation"
+        logger.warning(
+            f"Missing intent for tool '{tool}', using fallback: {intent}"
+        )
+
+    error_code = getattr(exc, "code", type(exc).__name__.upper())
+    recoverable = getattr(exc, "recoverable", False)
+    how_to_fix = getattr(exc, "how_to_fix", None)
+
+    error_block: Dict[str, Any] = {
+        "code": error_code,
+        "message": str(exc),
+        "type": type(exc).__name__,
+        "recoverable": recoverable,
+    }
+    if how_to_fix:
+        error_block["how_to_fix"] = how_to_fix
+
+    response: Dict[str, Any] = {
+        "status": "error",
+        "tool": tool,
+        "intent": intent,
+        "timestamp": utc_timestamp(),
+        "error": error_block,
+    }
+    if context:
+        response["context"] = context
+
+    # Structured error logging for observability
+    logger.error(
+        "Tool error occurred",
+        extra={
+            "tool": tool,
+            "intent": intent,
+            "error_code": error_code,
+            "recoverable": recoverable,
+            "error_type": type(exc).__name__,
+        },
+        exc_info=True,
+    )
+
+    return safe_json(response)
+
+
+def tool_response(
+    tool: str,
+    intent: str,
+    data: Optional[Dict[str, Any]] = None,
+    exc: Optional[Exception] = None,
+    **context: Any,
+) -> str:
+    """Convenience wrapper for generating tool responses.
+
+    Automatically chooses between success and error response based on
+    whether an exception is provided.
+
+    Args:
+        tool: Name of the tool that generated the response.
+        intent: The agent's stated intent for calling this tool.
+        data: The response data payload (for success responses).
+        exc: The exception that occurred (for error responses).
+        **context: Additional tool-specific context fields.
+
+    Returns:
+        JSON string with standardized format.
+    """
+    if exc is not None:
+        return tool_error_response(tool, intent, exc, **context)
+
+    if data is None:
+        data = {}
+
+    return tool_success_response(tool, intent, data, **context)

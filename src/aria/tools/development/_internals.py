@@ -6,48 +6,20 @@ module. These functions should not be imported directly by external modules.
 """
 
 import io
-import json
 import signal
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from loguru import logger
 
+from aria.tools import safe_json, tool_error_response, utc_timestamp
 from aria.tools.constants import MAX_TIMEOUT
 from aria.tools.development.constants import RESTRICTED_BUILTINS
-from aria.tools.development.exceptions import (
-    PythonExecutionError,
-    PythonExecutionTimeoutError,
-    PythonRunnerError,
-    PythonSecurityError,
-    PythonSyntaxValidationError,
-)
+from aria.tools.development.exceptions import PythonSecurityError
 
-
-def _timestamp() -> str:
-    """Generate ISO timestamp.
-
-    Returns:
-        str: ISO formatted timestamp string
-    """
-    return datetime.now().isoformat()
-
-
-def _safe_json(data: Dict[str, Any]) -> str:
-    """Safe JSON serialization with error handling.
-
-    Args:
-        data: Dictionary to serialize to JSON
-
-    Returns:
-        str: JSON string or error message if serialization fails
-    """
-    try:
-        return json.dumps(data, ensure_ascii=False, indent=2)
-    except (TypeError, ValueError) as exc:
-        logger.error(f"JSON serialization failed: {exc}")
-        return json.dumps({"error": "Serialization failed"})
+# Re-export shared utilities for backward compatibility
+_timestamp = utc_timestamp
+_safe_json = safe_json
 
 
 def _build_response(
@@ -67,13 +39,13 @@ def _build_response(
     Returns:
         str: JSON formatted response string
     """
-    metadata = {"timestamp": _timestamp()}
+    metadata = {"timestamp": utc_timestamp()}
     if error:
         metadata["error"] = error
     metadata.update(metadata_fields)
 
     response = {"operation": operation, "result": result, "metadata": metadata}
-    return _safe_json(response)
+    return safe_json(response)
 
 
 def _error_response(
@@ -93,58 +65,12 @@ def _error_response(
     Returns:
         str: JSON formatted error response string
     """
-    # Extract error metadata from exception
-    error_code = getattr(exc, "code", type(exc).__name__.upper())
-    recoverable = getattr(exc, "recoverable", False)
-    how_to_fix = getattr(exc, "how_to_fix", None)
-
-    if isinstance(exc, PythonSecurityError):
-        error_msg = f"Security violation: {str(exc)}"
-        error_type = "PythonSecurityError"
-    elif isinstance(exc, PythonSyntaxValidationError):
-        error_msg = f"Syntax validation failed: {str(exc)}"
-        error_type = "PythonSyntaxValidationError"
-    elif isinstance(exc, PythonExecutionTimeoutError):
-        error_msg = f"Execution timeout: {str(exc)}"
-        error_type = "PythonExecutionTimeoutError"
-    elif isinstance(exc, PythonExecutionError):
-        error_msg = f"Execution failed: {str(exc)}"
-        error_type = "PythonExecutionError"
-    elif isinstance(exc, PythonRunnerError):
-        error_msg = f"Runner error: {str(exc)}"
-        error_type = "PythonRunnerError"
-    elif isinstance(exc, (FileNotFoundError, PermissionError)):
-        error_msg = "File not found or access denied"
-        error_type = type(exc).__name__
-    elif isinstance(exc, OSError):
-        error_msg = f"OS error: {str(exc)}"
-        error_type = "OSError"
-    elif isinstance(exc, ValueError):
-        error_msg = f"Invalid value: {str(exc)}"
-        error_type = "ValueError"
-    else:
-        error_msg = f"Unexpected error: {str(exc)}"
-        error_type = type(exc).__name__
-
-    # Build error block with standard fields
-    error_block = {
-        "code": error_code,
-        "message": error_msg,
-        "type": error_type,
-        "recoverable": recoverable,
-    }
-    if how_to_fix:
-        error_block["how_to_fix"] = how_to_fix
-
-    response = {
-        "status": "error",
-        "tool": operation,
-        "intent": intent,
-        "timestamp": _timestamp(),
-        "error": error_block,
-        "context": {"identifier": identifier},
-    }
-    return _safe_json(response)
+    return tool_error_response(
+        tool=operation,
+        intent=intent,
+        exc=exc,
+        identifier=identifier,
+    )
 
 
 def _validate_inputs(

@@ -192,8 +192,10 @@ class TestSafeJson:
         data = {"obj": NonSerializable()}
         result = _safe_json(data)
         parsed = json.loads(result)
-        assert "error" in parsed
-        assert "Serialization failed" in parsed["error"]
+        # safe_json uses a default handler that converts non-serializable
+        # objects to strings rather than raising an error
+        assert "obj" in parsed
+        assert "NonSerializable" in parsed["obj"]
 
 
 class TestSecureResolvePath:
