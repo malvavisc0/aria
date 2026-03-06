@@ -86,7 +86,7 @@ class TestInitialWorkflowState:
         assert state["last_error"] is None
 
     def test_different_root_agents(self):
-        for name in ["Aria", "Socrates", "Wanderer"]:
+        for name in ["Aria", "Wanderer", "Wizard"]:
             state = initial_workflow_state(name)
             assert state["current_agent"] == name
 
@@ -116,9 +116,9 @@ class TestStateReducerAgentOutput:
 
     def test_updates_current_agent(self):
         state = initial_workflow_state("Aria")
-        ev = _make_agent_output("Socrates")
+        ev = _make_agent_output("Wanderer")
         result = state_reducer(state, ev)
-        assert result["current_agent"] == "Socrates"
+        assert result["current_agent"] == "Wanderer"
 
     def test_no_handoff_tool_call_leaves_handoffs_empty(self):
         state = initial_workflow_state("Aria")
@@ -130,24 +130,22 @@ class TestStateReducerAgentOutput:
         state = initial_workflow_state("Aria")
         ev = _make_agent_output(
             "Aria",
-            tool_calls=[_make_handoff_selection("Socrates")],
+            tool_calls=[_make_handoff_selection("Wanderer")],
         )
         state_reducer(state, ev)
-        assert state["handoffs"] == ["Socrates"]
+        assert state["handoffs"] == ["Wanderer"]
 
     def test_multiple_handoffs_accumulate(self):
         state = initial_workflow_state("Aria")
         state_reducer(
             state,
-            _make_agent_output("Aria", [_make_handoff_selection("Socrates")]),
+            _make_agent_output("Aria", [_make_handoff_selection("Wanderer")]),
         )
         state_reducer(
             state,
-            _make_agent_output(
-                "Socrates", [_make_handoff_selection("Wanderer")]
-            ),
+            _make_agent_output("Wanderer", [_make_handoff_selection("Guido")]),
         )
-        assert state["handoffs"] == ["Socrates", "Wanderer"]
+        assert state["handoffs"] == ["Wanderer", "Guido"]
 
     def test_handoff_with_empty_to_agent_is_ignored(self):
         """A handoff tool call with empty ``to_agent`` must not be recorded."""
@@ -186,7 +184,7 @@ class TestStateReducerAgentOutput:
 
     def test_returns_same_state_object(self):
         state = initial_workflow_state("Aria")
-        ev = _make_agent_output("Socrates")
+        ev = _make_agent_output("Wanderer")
         result = state_reducer(state, ev)
         assert result is state
 
@@ -257,12 +255,12 @@ class TestStateReducerToolCallResult:
     def test_agent_name_in_record_reflects_current_agent(self):
         """Record ``agent`` field must use the agent active at call time."""
         state = initial_workflow_state("Aria")
-        # Simulate a handoff to Socrates before the tool call
-        state_reducer(state, _make_agent_output("Socrates"))
+        # Simulate a handoff to Wanderer before the tool call
+        state_reducer(state, _make_agent_output("Wanderer"))
         state_reducer(
             state, _make_tool_call_result("reason", {}, "deep thought")
         )
-        assert state["tool_calls"][0]["agent"] == "Socrates"
+        assert state["tool_calls"][0]["agent"] == "Wanderer"
 
     def test_returns_same_state_object(self):
         state = initial_workflow_state("Aria")

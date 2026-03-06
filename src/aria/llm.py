@@ -21,7 +21,6 @@ from aria.agents import (
     get_imdb_exper_agent,
     get_market_analyst_agent,
     get_python_developer_agent,
-    get_reasoning_agent,
     get_shell_executor_agent,
     get_web_researcher_agent,
 )
@@ -118,10 +117,10 @@ def state_reducer(state: WorkflowState, ev: Any) -> WorkflowState:
 
         state = initial_workflow_state("Aria")
         fake_output = AgentOutput(
-            response=..., current_agent_name="Socrates", tool_calls=[]
+            response=..., current_agent_name="Wanderer", tool_calls=[]
         )
         state = state_reducer(state, fake_output)
-        assert state["current_agent"] == "Socrates"
+        assert state["current_agent"] == "Wanderer"
     """
     if isinstance(ev, AgentOutput):
         state["current_agent"] = ev.current_agent_name
@@ -275,11 +274,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     """
 
     # Specialist agents
-    deep_reasoning = get_reasoning_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="Socrates"),
-        can_handoff_to=["Guido", "Wanderer", "Wizard"],
-    )
     imdb_expert = get_imdb_exper_agent(
         llm=llm,
         extras=get_instructions_extras(agent_name="Spielberg"),
@@ -303,7 +297,7 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     web_researcher = get_web_researcher_agent(
         llm=llm,
         extras=get_instructions_extras(agent_name="Wanderer"),
-        can_handoff_to=["Wizard", "Guido", "Spielberg", "Socrates"],
+        can_handoff_to=["Wizard", "Guido", "Spielberg"],
     )
     # Create Chatter as root agent
     chatter = get_chatter_agent(
@@ -315,7 +309,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
             "Guido",
             "Wanderer",
             "Wizard",
-            "Socrates",
             "Stallman",
             "Spielberg",
         ],
@@ -327,7 +320,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
             chatter,
             market_analyst,
             python_developer,
-            deep_reasoning,
             web_researcher,
             shell_executor,
             imdb_expert,

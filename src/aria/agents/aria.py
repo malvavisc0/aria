@@ -15,11 +15,27 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.files.functions import read_file_chunk, read_full_file
+from aria.tools.files.functions import (
+    file_exists,
+    read_file_chunk,
+    read_full_file,
+)
+from aria.tools.reasoning import (
+    add_reasoning_step,
+    add_reflection,
+    end_reasoning,
+    evaluate_reasoning,
+    get_reasoning_summary,
+    list_reasoning_sessions,
+    reset_reasoning,
+    start_reasoning,
+    use_scratchpad,
+)
 from aria.tools.search import (
     get_current_weather,
     get_file_from_url,
     get_youtube_video_transcription,
+    web_search,
 )
 from aria.tools.vision.functions import make_parse_pdf
 
@@ -95,11 +111,14 @@ def get_agent(
     parse_pdf_fn = make_parse_pdf(api_base=vl_api_base, model=vl_model)
 
     tools = [
+        # Original tools
         FunctionTool.from_defaults(fn=get_youtube_video_transcription),
         FunctionTool.from_defaults(fn=get_current_weather),
         FunctionTool.from_defaults(fn=get_file_from_url),
         FunctionTool.from_defaults(fn=read_full_file),
         FunctionTool.from_defaults(fn=read_file_chunk),
+        FunctionTool.from_defaults(fn=file_exists),
+        FunctionTool.from_defaults(fn=web_search),
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",
@@ -112,6 +131,16 @@ def get_agent(
                 "--- Page N --- separators."
             ),
         ),
+        # Reasoning tools
+        FunctionTool.from_defaults(fn=start_reasoning),
+        FunctionTool.from_defaults(fn=end_reasoning),
+        FunctionTool.from_defaults(fn=add_reasoning_step),
+        FunctionTool.from_defaults(fn=add_reflection),
+        FunctionTool.from_defaults(fn=evaluate_reasoning),
+        FunctionTool.from_defaults(fn=get_reasoning_summary),
+        FunctionTool.from_defaults(fn=use_scratchpad),
+        FunctionTool.from_defaults(fn=reset_reasoning),
+        FunctionTool.from_defaults(fn=list_reasoning_sessions),
     ]
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
@@ -119,8 +148,10 @@ def get_agent(
 
     agent = ChatterAgent(
         name="Aria",
-        description="A friendly conversational AI assistant for natural "
-        "dialogue and general knowledge questions",
+        description=(
+            "A friendly conversational AI assistant for natural dialogue, "
+            "general knowledge, and complex reasoning with structured analysis"
+        ),
         tools=tools,
         llm=llm,
         system_prompt=ChatterAgent.get_system_prompt(full_extras),
