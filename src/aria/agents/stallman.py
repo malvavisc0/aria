@@ -5,6 +5,7 @@ safely across Windows, Linux, and macOS platforms with proper security
 constraints, timeout handling, and output capture.
 """
 
+import platform
 from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
@@ -69,6 +70,21 @@ def get_agent(
         - Timeout limits for long-running commands
         - Output size limits to prevent token overflow
     """
+    shell_hint = (
+        "PowerShell/cmd"
+        if platform.system() == "Windows"
+        else "/bin/bash (likely)"
+    )
+    platform_context = (
+        f"- **Current platform**: "
+        f"{platform.system()} {platform.release()}\n"
+        f"- **Architecture**: {platform.machine()}\n"
+        f"- **Shell**: {shell_hint}"
+    )
+    full_extras = (
+        f"{platform_context}\n{extras}" if extras else platform_context
+    )
+
     tools = [
         FunctionTool.from_defaults(fn=get_platform_info),
         FunctionTool.from_defaults(fn=execute_command),
@@ -85,7 +101,7 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=ShellExecutorAgent.get_system_prompt(extras or ""),
+        system_prompt=ShellExecutorAgent.get_system_prompt(full_extras),
         streaming=True,
         verbose=True,
         can_handoff_to=can_handoff_to,

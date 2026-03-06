@@ -6,6 +6,7 @@ assistant that responds to user queries, making it suitable for casual
 conversation, support, and information sharing.
 """
 
+from datetime import datetime
 from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
@@ -80,6 +81,17 @@ def get_agent(
     Returns:
         A configured ChatterAgent instance ready for conversation.
     """
+    timestamp = datetime.now()
+    time_context = (
+        f"- **Current date**: "
+        f"{timestamp.strftime('%B %d, %Y')}\n"
+        f"- **Current time**: "
+        f"{timestamp.strftime('%H:%M')}\n"
+        f"- **Timezone**: "
+        f"{timestamp.astimezone().tzinfo}"
+    )
+    full_extras = f"{time_context}\n{extras}" if extras else time_context
+
     parse_pdf_fn = make_parse_pdf(api_base=vl_api_base, model=vl_model)
 
     tools = [
@@ -111,7 +123,7 @@ def get_agent(
         "dialogue and general knowledge questions",
         tools=tools,
         llm=llm,
-        system_prompt=ChatterAgent.get_system_prompt(extras or ""),
+        system_prompt=ChatterAgent.get_system_prompt(full_extras),
         streaming=True,
         verbose=True,
         can_handoff_to=can_handoff_to,

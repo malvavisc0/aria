@@ -1,0 +1,211 @@
+"""Message processing pipeline for the Aria web UI.
+
+This module handles incoming user messages and orchestrates the agent workflow:
+- Prompt enhancement (optional)
+- File path extraction from uploaded files
+- Memory management per thread
+- Agent workflow execution with streaming responses
+- Error handling and user feedback
+
+The main entry point is `on_message_handler` which is called by Chainlit
+whenever a user sends a message.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import chainlit as cl
+from llama_index.core.agent.workflow import AgentOutput, AgentStream, ToolCall
+from llama_index.core.memory import Memory
+from loguru import logger
+
+from aria.agents.prompt_enhancer import PromptEnhancementResult
+from aria.config.models import Chat as ChatConfig
+from aria.helpers.ui import maybe_remove_step, send_tool_step
+from aria.web.session import create_memory, extract_file_paths
+from aria.web.state import AppStateNotInitializedError, _state
+
+
+def _extract_text_from_blocks(blocks: Any) -> str:
+    """Extract text content from message blocks."""
+    if not blocks:
+        return ""
+    parts = []
+    for block in blocks:
+        value = getattr(block, "text", None) or getattr(block, "content", None)
+        if value and isinstance(value, str):
+            parts.append(value.strip())
+    return "\n".join(parts)
+
+
+def _extract_response_text(response: Any) -> str:
+    """Extract text content from an agent response object."""
+    if response is None:
+        return ""
+    content = getattr(response, "content", None)
+    if isinstance(content, str) and content.strip():
+        return content.strip()
+    blocks = getattr(response, "blocks", None)
+    return _extract_text_from_blocks(blocks)
+
+
+async def _handle_message(message: cl.Message) -> str:
+    """Process and enhance a user message before agent execution.
+
+    Handles prompt enhancement if requested via command, and extracts
+    file paths from uploaded files to include in the prompt.
+
+    Args:
+        message: The incoming Chainlit message from the user.
+
+    Returns:
+        str: Processed prompt ready for agent execution.
+    """
+    prompt = message.content
+
+    if message.command == "Enhance":
+        if not _state.prompt_enhancer:
+            logger.warning(
+                "Prompt enhancer not available, returning original prompt"
+            )
+            return prompt
+        try:
+            response = await _state.prompt_enhancer.run(
+                user_msg=message.content
+            )
+            results: PromptEnhancementResult = response.structured_response
+            prompt = results.enhanced
+            logger.debug("Prompt enhancement completed successfully")
+        except Exception as e:
+            logger.error(f"Prompt enhancement failed: {e}")
+
+    file_paths = extract_file_paths(message)
+    if file_paths:
+        paths_block = "\n".join(f"- {p}" for p in file_paths)
+        prompt = f"{prompt}\n\n[Uploaded files]:\n{paths_block}"
+        logger.debug(f"Appended {len(file_paths)} file path(s) to prompt")
+
+    return prompt
+
+
+async def on_message_handler(message: cl.Message) -> None:
+    """Handle incoming user messages and execute the agent workflow.
+
+    This is the main entry point for processing user messages. It:
+    1. Validates app state is initialized
+    2. Processes the message (enhancement, file extraction)
+    3. Gets or creates memory for the thread
+    4. Runs the agent workflow with streaming response
+    5. Handles errors and sends appropriate feedback to user
+
+    Args:
+        message: The incoming Chainlit message from the user.
+    """
+    output = cl.Message(content="")
+
+    try:
+        _state.validate_initialized()
+        prompt = await _handle_message(message)
+
+        memory: Memory | None = cl.user_session.get("memory")
+        if memory is None:
+            memory = create_memory(message.thread_id)
+            cl.user_session.set("memory", memory)
+            logger.debug(f"Created new Memory for thread {message.thread_id}")
+
+        assert _state.agents_workflow is not None
+        handler = _state.agents_workflow.run(
+            user_msg=prompt,
+            memory=memory,
+            max_iterations=ChatConfig.max_iteration,
+        )
+
+        current_step: cl.Step | None = None
+        last_agent_output: AgentOutput | None = None
+        stream_buffer: list[str] = []
+        emitted_output = False
+
+        async for event in handler.stream_events():
+            if isinstance(event, ToolCall):
+                await maybe_remove_step(current_step)
+                current_step = await send_tool_step(event)
+            elif isinstance(event, AgentStream):
+                await maybe_remove_step(current_step)
+                current_step = None
+                delta = event.delta or ""
+                if delta:
+                    stream_buffer.append(delta)
+            elif isinstance(event, AgentOutput):
+                last_agent_output = event
+                if not event.tool_calls:
+                    await maybe_remove_step(current_step)
+                    current_step = None
+                    content = "".join(
+                        stream_buffer
+                    ).strip() or _extract_response_text(event.response)
+                    if content:
+                        await output.stream_token(content)
+                        emitted_output = True
+                stream_buffer.clear()
+
+        handler_result = await handler
+
+        if not emitted_output:
+            await maybe_remove_step(current_step)
+            current_step = None
+            result_response = getattr(handler_result, "response", None)
+            content = "".join(stream_buffer).strip() or _extract_response_text(
+                result_response
+            )
+            if last_agent_output is not None and last_agent_output.tool_calls:
+                content = ""
+            if content:
+                await output.stream_token(content)
+                emitted_output = True
+
+        if not emitted_output:
+            agent_name = (
+                last_agent_output.current_agent_name
+                if last_agent_output is not None
+                else "unknown"
+            )
+            tool_call_count = (
+                len(last_agent_output.tool_calls)
+                if last_agent_output is not None
+                and last_agent_output.tool_calls
+                else 0
+            )
+            logger.warning(
+                "No assistant output emitted for message "
+                f"(agent={agent_name}, tool_calls={tool_call_count})."
+            )
+            output.content = (
+                "I couldn't produce a visible response for that request. "
+                "Please try again."
+            )
+
+        await output.send()
+
+    except AppStateNotInitializedError as e:
+        logger.error(f"App state not initialized: {e}")
+        output.content = (
+            "The application is not fully initialized. "
+            "Please wait a moment and try again."
+        )
+        await output.send()
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.exception(f"Error processing message: {e}")
+        if (
+            "exceed_context_size_error" in error_msg
+            or "exceeds the available context size" in error_msg
+        ):
+            output.content = (
+                "The conversation has grown too large for the embeddings model"
+                " to process. Consider starting a new chat thread to continue."
+            )
+        else:
+            output.content = "An error occurred. Please try again."
+        await output.send()

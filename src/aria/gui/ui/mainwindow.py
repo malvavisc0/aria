@@ -1154,6 +1154,7 @@ class Ui_MainWindow(object):
         self.comboBox_ChatCtxSize.addItem("")
         self.comboBox_ChatCtxSize.addItem("")
         self.comboBox_ChatCtxSize.addItem("")
+        self.comboBox_ChatCtxSize.addItem("")
         self.comboBox_ChatCtxSize.setObjectName("comboBox_ChatCtxSize")
 
         self.formLayout_settingsAll.setWidget(
@@ -1610,6 +1611,9 @@ class Ui_MainWindow(object):
         )
         self.comboBox_ChatCtxSize.setItemText(
             6, QCoreApplication.translate("MainWindow", "131072", None)
+        )
+        self.comboBox_ChatCtxSize.setItemText(
+            7, QCoreApplication.translate("MainWindow", "262144", None)
         )
 
         self.pushButton_SettingsRevert.setText(

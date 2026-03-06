@@ -38,7 +38,7 @@ def load_agent_instructions(
         ...     "prompt_enhancer", include_core=False
         ... )
     """
-    instructions_dir = Path(__file__).parent / "instructions"
+    instructions_dir = Path(__file__).parent
     parts = []
 
     if include_core:

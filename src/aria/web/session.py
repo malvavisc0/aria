@@ -1,0 +1,166 @@
+"""Session management for the Aria web UI.
+
+This module provides functions for:
+- Creating and managing conversation memory per thread
+- Waiting for application initialization
+- Extracting file paths from uploaded files
+- Restoring chat history when resuming a session
+
+These utilities support the Chainlit chat interface by managing
+persistent conversation state across messages and sessions.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import shutil
+from pathlib import Path
+
+import chainlit as cl
+from chainlit.types import ThreadDict
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.memory import Memory
+from loguru import logger
+
+from aria.config.folders import Uploads as UploadsConfig
+from aria.config.models import Embeddings as EmbeddingsConfig
+from aria.llm import get_default_memory
+from aria.web.state import ROOT_MESSAGE_TYPES, _state
+
+
+def create_memory(thread_id: str) -> Memory:
+    """Create a new conversation memory instance for a thread.
+
+    Initializes memory with vector database and embeddings model
+    for storing conversation history.
+
+    Args:
+        thread_id: Unique identifier for the conversation thread.
+
+    Returns:
+        Memory: Configured memory instance for the thread.
+
+    Raises:
+        ValueError: If thread_id is None or empty.
+        AppStateNotInitializedError: If app state is not initialized.
+    """
+    _state.validate_initialized()
+
+    if not thread_id:
+        raise ValueError("thread_id cannot be None or empty")
+
+    assert _state.vector_db is not None
+    assert _state.embeddings is not None
+
+    return get_default_memory(
+        vector_db=_state.vector_db,
+        thread_id=thread_id,
+        embed_model=_state.embeddings,
+        token_limit=EmbeddingsConfig.token_limit,
+    )
+
+
+async def wait_for_initialization(
+    timeout: float = 30.0, poll_interval: float = 0.1
+) -> bool:
+    """Wait for the application state to be fully initialized.
+
+    Polls the application state at regular intervals until initialization
+    completes or the timeout is reached.
+
+    Args:
+        timeout: Maximum time to wait in seconds (default: 30.0).
+        poll_interval: Time between checks in seconds (default: 0.1).
+
+    Returns:
+        bool: True if initialization completed, False if timeout reached.
+    """
+    start_time = asyncio.get_event_loop().time()
+    while not _state.is_initialized():
+        elapsed = asyncio.get_event_loop().time() - start_time
+        if elapsed >= timeout:
+            return False
+        await asyncio.sleep(poll_interval)
+    return True
+
+
+def extract_file_paths(message: cl.Message) -> list[str]:
+    """Extract file paths from uploaded file elements in a message."""
+    if not message.elements:
+        return []
+
+    paths = []
+    for element in message.elements:
+        path = getattr(element, "path", None)
+        if not path:
+            continue
+
+        path_str = str(path)
+        src = Path(path_str)
+        name = getattr(element, "name", None)
+        dest_name = name or src.name
+        dest = UploadsConfig.path / dest_name
+
+        try:
+            shutil.copy2(path_str, dest)
+            path_str = str(dest)
+        except OSError:
+            pass
+
+        paths.append(path_str)
+    return paths
+
+
+async def restore_chat_history(thread: ThreadDict) -> Memory:
+    """Restore conversation history from a thread dictionary.
+
+    Creates memory for the thread and populates it with messages
+    from the thread's history.
+
+    Args:
+        thread: Thread dictionary containing conversation steps.
+
+    Returns:
+        Memory: Memory instance populated with conversation history.
+
+    Raises:
+        ValueError: If thread does not contain a valid 'id' field.
+    """
+    thread_id = thread.get("id")
+    if not thread_id:
+        raise ValueError("Thread dictionary must contain a valid 'id' field")
+
+    thread_name = thread.get("name", "Unnamed")
+    logger.debug(
+        f"Restoring chat history for thread {thread_id} ({thread_name})"
+    )
+
+    chat_steps = thread.get("steps", [])
+    logger.debug(f"Thread contains {len(chat_steps)} total steps")
+
+    root_messages = [m for m in chat_steps if m.get("parentId") is None]
+    logger.debug(f"Found {len(root_messages)} root-level messages")
+
+    memory = create_memory(thread_id)
+
+    chat_history: list[ChatMessage] = []
+    for message_step in root_messages:
+        content = message_step.get("output", "")
+        message_type = message_step.get("type")
+
+        if not content or message_type not in ROOT_MESSAGE_TYPES:
+            continue
+
+        role = (
+            MessageRole.USER
+            if message_type == "user_message"
+            else MessageRole.ASSISTANT
+        )
+        chat_history.append(ChatMessage(role=role, content=content))
+
+    await memory.aset(chat_history)
+
+    logger.info(
+        f"Restored {len(chat_history)} messages for thread {thread_id}"
+    )
+    return memory

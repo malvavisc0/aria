@@ -1464,6 +1464,11 @@
                <string>131072</string>
               </property>
              </item>
+             <item>
+              <property name="text">
+               <string>262144</string>
+              </property>
+             </item>
             </widget>
            </item>
            <item row="7" column="0">

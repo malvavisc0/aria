@@ -32,18 +32,28 @@ class WebResearcherAgent(FunctionAgent):
     """
 
     @staticmethod
-    def get_system_prompt(extras: str = "") -> str:
+    def get_system_prompt(
+        extras: str = "",
+        variables: dict[str, str] | None = None,
+    ) -> str:
         """
         Return the system prompt for the Web Researcher Agent.
 
         Args:
-            extras (str): Additional instructions to append to the system
+            extras: Additional instructions to append to the system
                 prompt. Defaults to empty string.
+            variables: Optional template variables for
+                ``{{KEY}}`` substitution.
 
         Returns:
-            str: The complete system prompt with guidelines and best practices
+            The complete system prompt with guidelines and
+            best practices.
         """
-        return load_agent_instructions("wanderer", extras)
+        return load_agent_instructions(
+            "wanderer",
+            extras,
+            variables=variables,
+        )
 
 
 def get_agent(
@@ -90,7 +100,8 @@ def get_agent(
     from aria.config.api import Lightpanda
 
     browser_tools_module = None
-    if Lightpanda.is_available():
+    browser_available = Lightpanda.is_available()
+    if browser_available:
         browser_tools_module = importlib.import_module(BROWSER_TOOLS)
         tools_selection[BROWSER_TOOLS] = [
             "open_url",
@@ -103,6 +114,15 @@ def get_agent(
             "Lightpanda not installed — browser tools disabled. "
             "Run 'aria lightpanda download' to enable."
         )
+
+    browser_note = (
+        "These tools are available and ready to use."
+        if browser_available
+        else "These tools are NOT available in this session "
+        "(Lightpanda not installed). Use web_search and "
+        "get_file_from_url instead."
+    )
+    template_vars = {"BROWSER_TOOLS_NOTE": browser_note}
 
     tools = (
         [
@@ -142,7 +162,10 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=WebResearcherAgent.get_system_prompt(extras or ""),
+        system_prompt=WebResearcherAgent.get_system_prompt(
+            extras or "",
+            variables=template_vars,
+        ),
         verbose=True,
         streaming=True,
         can_handoff_to=can_handoff_to,

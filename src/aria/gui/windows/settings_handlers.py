@@ -13,7 +13,7 @@ from aria.helpers.network import get_network_ip
 
 _ENV_PATH = Path(".env")
 
-CONTEXT_SIZES = [str(2**n) for n in range(11, 18)]
+CONTEXT_SIZES = [str(2**n) for n in range(11, 19)]
 QUANT_TYPES = ["Q4_0", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0"]
 
 
