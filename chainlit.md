@@ -1,22 +1,78 @@
-# Welcome to Chainlit! 🚀🤖
+# 🧠 Welcome to Aria
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+**Your Local AI Assistant with Multi-Agent Intelligence**
 
-## Useful Links 🔗
-
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
-
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
-
-## Welcome screen
-
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+Aria is a powerful AI assistant that runs entirely on your machine. It features a team of specialized agents that collaborate to help you with coding, research, system tasks, and more.
 
 ---
 
-## UI theme customization
+## 🤖 Meet the Agents
 
-- Theme tokens (light/dark HSL variables): [`public/theme.json`](public/theme.json:1)
-- Additional UI styling (scrollbars + subtle grid/radial background): [`public/custom.css`](public/custom.css:1)
-- Chainlit wiring for the CSS: [`.chainlit/config.toml`](.chainlit/config.toml:122) via `custom_css = "/public/custom.css"`
+| Agent | Specialty |
+|:------|:----------|
+| 🎯 **Aria** | Your main assistant — handles conversations, routes tasks, and orchestrates other agents |
+| 🐍 **Guido** | Python development — code execution, debugging, and file operations |
+| 💻 **Stallman** | Shell commands — safe execution of system commands and diagnostics |
+| 🌐 **Wanderer** | Web research — search the web, download content, extract data |
+| 📊 **Wizard** | Market analysis — stock prices, financial data, and market insights |
+| 🎬 **Spielberg** | Entertainment — IMDb searches, movie/TV info, cast details |
+
+---
+
+## ✨ What Can You Do?
+
+### 💬 Have a Conversation
+Just start typing! Aria will respond naturally and help with general questions.
+
+### 🐍 Write & Run Code
+```
+Write a Python script to analyze this CSV file
+Debug this function for me
+Create a web scraper for that website
+```
+
+### 💻 Execute Shell Commands
+```
+What's my system info?
+List all Python processes
+Check disk usage
+```
+
+### 🌐 Research the Web
+```
+What's the latest news about AI?
+Search for documentation on FastAPI
+Get the weather forecast for Berlin
+```
+
+### 📊 Get Financial Data
+```
+What's Apple's stock price?
+Show me Tesla's market cap
+Compare AMD and NVIDIA stock performance
+```
+
+### 🎬 Find Entertainment
+```
+Find movies starring Leonardo DiCaprio
+What's the rating of The Matrix?
+Show me the cast of Breaking Bad
+```
+
+---
+
+## 🔒 Privacy First
+
+All processing happens locally on your machine. Your conversations, files, and data never leave your computer.
+
+---
+
+## 📚 Learn More
+
+- **Documentation:** Check the [`docs/`](docs/) folder for detailed guides
+- **GitHub:** [https://github.com/malvavisc0/aria](https://github.com/malvavisc0/aria)
+- **Issues:** Report bugs or request features on [GitHub Issues](https://github.com/malvavisc0/aria/issues)
+
+---
+
+*Ready to get started? Just type your question or request below! 👇*
