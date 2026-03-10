@@ -14,6 +14,10 @@
 
 </div>
 
+<div align="center">
+<img src="screenshot.png" alt="Aria Screenshot" width="80%">
+</div>
+
 ---
 
 ## ✨ Features
