@@ -1,0 +1,54 @@
+"""Chainlit web UI entrypoint.
+
+This module intentionally remains thin: it registers Chainlit decorators and
+forwards all logic to focused modules under ``aria.web``.
+"""
+
+from __future__ import annotations
+
+import chainlit as cl
+from chainlit.types import ThreadDict
+
+from aria.web.hooks import (
+    auth_callback_handler,
+    get_data_layer_handler,
+    on_chat_resume_handler,
+    on_chat_start_handler,
+)
+from aria.web.lifecycle import on_app_shutdown_handler, on_app_startup_handler
+from aria.web.message_pipeline import on_message_handler
+
+
+@cl.on_app_startup
+async def on_app_startup() -> None:
+    await on_app_startup_handler()
+
+
+@cl.on_app_shutdown
+async def on_app_shutdown() -> None:
+    await on_app_shutdown_handler()
+
+
+@cl.data_layer
+def get_data_layer():
+    return get_data_layer_handler()
+
+
+@cl.password_auth_callback
+async def auth_callback(username: str, password: str) -> cl.User | None:
+    return await auth_callback_handler(username, password)
+
+
+@cl.on_chat_start
+async def on_chat_start() -> None:
+    await on_chat_start_handler()
+
+
+@cl.on_chat_resume
+async def on_chat_resume(thread: ThreadDict) -> None:
+    await on_chat_resume_handler(thread)
+
+
+@cl.on_message
+async def on_message(message: cl.Message) -> None:
+    await on_message_handler(message)

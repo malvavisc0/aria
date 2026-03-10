@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+/*
+  Chainlit UI: Dark-mode scrollbar styling
+
+  Goals:
+  - Fix “white track” scrollbars in dark mode.
+  - Subtle look: dark track + medium-gray thumb; brighter on hover.
+  - Cross-browser: Firefox (scrollbar-color/width) + Chromium/WebKit (::webkit-scrollbar).
+
+  Notes:
+  - Chainlit’s dark-mode attribute/class can vary by version.
+    We target multiple common selectors to be robust.
+*/
+
+:root {
+  /* Tunables */
+  --aria-scrollbar-track: rgba(255, 255, 255, 0.08);
+  --aria-scrollbar-thumb: rgba(255, 255, 255, 0.28);
+  --aria-scrollbar-thumb-hover: rgba(255, 255, 255, 0.42);
+  --aria-scrollbar-thumb-active: rgba(255, 255, 255, 0.5);
+
+  /* Light theme tuning */
+  --aria-scrollbar-track-light: rgba(0, 0, 0, 0.06);
+  --aria-scrollbar-thumb-light: rgba(0, 0, 0, 0.28);
+  --aria-scrollbar-thumb-light-hover: rgba(0, 0, 0, 0.42);
+  --aria-scrollbar-thumb-light-active: rgba(0, 0, 0, 0.5);
+
+  /* Background pattern knobs */
+  --aria-grid-size: 48px;
+}
+
+/* ----------------------------- */
+/* App background (both themes)  */
+/* ----------------------------- */
+
+/* Ensure the page background is visible behind the app root. */
+html,
+body {
+  min-height: 100%;
+}
+
+/* Chainlit container(s) – keep backgrounds transparent so the pattern shows through. */
+#root,
+#__next,
+.cl-root,
+.cl-app {
+  background: transparent;
+}
+
+/* Light theme background: warm off-white + very subtle grid + soft radial fade. */
+html.light body,
+html[data-theme="light"] body,
+:root[data-theme="light"] body,
+body[data-theme="light"] {
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(900px circle at 15% 0%,
+      hsl(var(--primary) / 0.04),
+      transparent 60%),
+    radial-gradient(900px circle at 85% 10%,
+      hsl(var(--primary) / 0.02),
+      transparent 60%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.008) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.008) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    var(--aria-grid-size) var(--aria-grid-size),
+    var(--aria-grid-size) var(--aria-grid-size);
+  background-attachment: fixed;
+}
+
+/* Dark theme background: bluish charcoal + very subtle grid + soft radial fade. */
+html.dark body,
+html[data-theme="dark"] body,
+:root[data-theme="dark"] body,
+body[data-theme="dark"] {
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(1100px circle at 20% -10%,
+      hsl(var(--primary) / 0.10),
+      transparent 60%),
+    radial-gradient(1100px circle at 85% 15%,
+      hsl(var(--primary) / 0.05),
+      transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    var(--aria-grid-size) var(--aria-grid-size),
+    var(--aria-grid-size) var(--aria-grid-size);
+  background-attachment: fixed;
+}
+
+/*
+  Dark-mode scoping.
+  - `html.dark` is common in Tailwind-based apps.
+  - `data-theme="dark"` is common in theme toggles.
+  - `prefers-color-scheme: dark` is a safe fallback when the app follows OS theme.
+*/
+
+html.dark,
+html[data-theme="dark"],
+:root[data-theme="dark"],
+body[data-theme="dark"] {
+  /* Hint UA form controls + native scrollbars to render dark by default */
+  color-scheme: dark;
+}
+
+/*
+  Explicit light theme: avoid ever forcing dark UA scrollbars when OS is dark.
+  This wins over the `prefers-color-scheme: dark` fallback below.
+*/
+html.light,
+html[data-theme="light"],
+:root[data-theme="light"],
+body[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light):not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+/* ----------------------------- */
+/* Light theme scrollbar styling */
+/* ----------------------------- */
+
+/* Firefox */
+html.light *,
+html[data-theme="light"] *,
+:root[data-theme="light"] *,
+body[data-theme="light"] * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--aria-scrollbar-thumb-light) var(--aria-scrollbar-track-light);
+}
+
+html.light *:hover,
+html[data-theme="light"] *:hover,
+:root[data-theme="light"] *:hover,
+body[data-theme="light"] *:hover {
+  scrollbar-color: var(--aria-scrollbar-thumb-light-hover) var(--aria-scrollbar-track-light);
+}
+
+/* Chromium / WebKit */
+html.light *::-webkit-scrollbar,
+html[data-theme="light"] *::-webkit-scrollbar,
+:root[data-theme="light"] *::-webkit-scrollbar,
+body[data-theme="light"] *::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html.light *::-webkit-scrollbar-track,
+html[data-theme="light"] *::-webkit-scrollbar-track,
+:root[data-theme="light"] *::-webkit-scrollbar-track,
+body[data-theme="light"] *::-webkit-scrollbar-track {
+  background: var(--aria-scrollbar-track-light);
+}
+
+html.light *::-webkit-scrollbar-thumb,
+html[data-theme="light"] *::-webkit-scrollbar-thumb,
+:root[data-theme="light"] *::-webkit-scrollbar-thumb,
+body[data-theme="light"] *::-webkit-scrollbar-thumb {
+  background-color: var(--aria-scrollbar-thumb-light);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+html.light *::-webkit-scrollbar-thumb:hover,
+html[data-theme="light"] *::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] *::-webkit-scrollbar-thumb:hover,
+body[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background-color: var(--aria-scrollbar-thumb-light-hover);
+}
+
+html.light *::-webkit-scrollbar-thumb:active,
+html[data-theme="light"] *::-webkit-scrollbar-thumb:active,
+:root[data-theme="light"] *::-webkit-scrollbar-thumb:active,
+body[data-theme="light"] *::-webkit-scrollbar-thumb:active {
+  background-color: var(--aria-scrollbar-thumb-light-active);
+}
+
+html.light *::-webkit-scrollbar-corner,
+html[data-theme="light"] *::-webkit-scrollbar-corner,
+:root[data-theme="light"] *::-webkit-scrollbar-corner,
+body[data-theme="light"] *::-webkit-scrollbar-corner {
+  background: var(--aria-scrollbar-track-light);
+}
+
+/* Firefox */
+html.dark *,
+html[data-theme="dark"] *,
+:root[data-theme="dark"] *,
+body[data-theme="dark"] * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--aria-scrollbar-thumb) var(--aria-scrollbar-track);
+}
+
+html.dark *:hover,
+html[data-theme="dark"] *:hover,
+:root[data-theme="dark"] *:hover,
+body[data-theme="dark"] *:hover {
+  scrollbar-color: var(--aria-scrollbar-thumb-hover) var(--aria-scrollbar-track);
+}
+
+/* Chromium / WebKit */
+html.dark *::-webkit-scrollbar,
+html[data-theme="dark"] *::-webkit-scrollbar,
+:root[data-theme="dark"] *::-webkit-scrollbar,
+body[data-theme="dark"] *::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html.dark *::-webkit-scrollbar-track,
+html[data-theme="dark"] *::-webkit-scrollbar-track,
+:root[data-theme="dark"] *::-webkit-scrollbar-track,
+body[data-theme="dark"] *::-webkit-scrollbar-track {
+  background: var(--aria-scrollbar-track);
+}
+
+/* Light theme enhancements for pleasant UI */
+html.light .cl-message,
+html[data-theme="light"] .cl-message,
+:root[data-theme="light"] .cl-message,
+body[data-theme="light"] .cl-message {
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.08);
+  border-radius: 1.25rem;
+}
+
+html.light .cl-input,
+html[data-theme="light"] .cl-input,
+:root[data-theme="light"] .cl-input,
+body[data-theme="light"] .cl-input,
+html.light .cl-input input,
+html[data-theme="light"] .cl-input input,
+:root[data-theme="light"] .cl-input input,
+body[data-theme="light"] .cl-input input {
+  --ring: hsl(var(--primary) / 0.3);
+}
+
+/* Quick Win 1: Sidebar glassmorphism */
+.cl-sidebar {
+  backdrop-filter: blur(16px);
+  background: hsl(var(--sidebar-background) / 0.92);
+  border-right: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Quick Win 2: Rounded steps & typing */
+.cl-step,
+.cl-typing {
+  border-radius: 0.75rem !important;
+  margin: 0.5rem 0;
+}
+
+/* Quick Win 3: Avatar polish */
+.cl-message-avatar {
+  border-radius: 50% !important;
+  border: 3px solid hsl(var(--border));
+  width: 3.5rem !important;
+  height: 3.5rem !important;
+  object-fit: cover;
+}
+
+html.dark *::-webkit-scrollbar-thumb,
+html[data-theme="dark"] *::-webkit-scrollbar-thumb,
+:root[data-theme="dark"] *::-webkit-scrollbar-thumb,
+body[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background-color: var(--aria-scrollbar-thumb);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  /* creates padding so the thumb looks slimmer */
+  background-clip: padding-box;
+}
+
+html.dark *::-webkit-scrollbar-thumb:hover,
+html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover,
+:root[data-theme="dark"] *::-webkit-scrollbar-thumb:hover,
+body[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+  background-color: var(--aria-scrollbar-thumb-hover);
+}
+
+html.dark *::-webkit-scrollbar-thumb:active,
+html[data-theme="dark"] *::-webkit-scrollbar-thumb:active,
+:root[data-theme="dark"] *::-webkit-scrollbar-thumb:active,
+body[data-theme="dark"] *::-webkit-scrollbar-thumb:active {
+  background-color: var(--aria-scrollbar-thumb-active);
+}
+
+/* Optional: keep corner consistent on dual-axis scroll containers */
+html.dark *::-webkit-scrollbar-corner,
+html[data-theme="dark"] *::-webkit-scrollbar-corner,
+:root[data-theme="dark"] *::-webkit-scrollbar-corner,
+body[data-theme="dark"] *::-webkit-scrollbar-corner {
+  background: var(--aria-scrollbar-track);
+}

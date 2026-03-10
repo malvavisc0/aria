@@ -1,201 +1,281 @@
-# Aria: Your Personal AI Assistant
+<div align="center">
 
-Aria is a powerful, self-hosted AI assistant designed for reasoning, task completion, and seamless interaction. It provides a feature-rich chat interface with multi-session support, real-time streaming responses, and advanced AI capabilities.
+# 🧠 Aria
+
+**Your Local AI Assistant with Multi-Agent Intelligence**
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+*Run powerful AI agents locally with a beautiful web UI, CLI, or desktop GUI*
+
+[Features](#-features) • [Quick Start](#-quick-start) • [Agents](#-agent-system) • [Tools](#-tools) • [Installation](#-installation)
+
+</div>
+
+<div align="center">
+<img src="screenshot.png" alt="Aria Screenshot" width="80%">
+</div>
+
+---
 
 ## ✨ Features
 
-- **Multi-Session Chat**: Manage multiple conversations with persistent history.
-- **Real-Time Streaming**: Get instant responses from the AI as they are generated.
-- **Markdown & Mermaid Support**: Render rich text and diagrams directly in the chat.
-- **AI-Powered Tools**:
-  - **Web Search**: Access real-time information from the web.
-  - **Reasoning Engine**: Perform complex reasoning and analysis.
-  - **YouTube Analysis**: Extract insights from YouTube videos.
-  - **Weather & Finance Data**: Get up-to-date information on weather and financial markets.
-- **Prompt Improvement**: Automatically enhance your prompts for better AI responses.
-- **Dockerized Deployment**: Easy to set up and run with Docker.
+| 🎯 | **Multi-Agent Architecture** - Specialized agents that collaborate to solve complex tasks |
+|:--:|:--|
+| 🖥️ | **Multiple Interfaces** - Web UI, CLI, and native GUI application |
+| 🤖 | **Local LLM Support** - Run models locally with llama.cpp integration |
+| 🔒 | **Privacy First** - Your data stays on your machine |
+| 🌐 | **Web Research** - Search, weather, finance, and more |
+| 💻 | **Code Execution** - Safe Python sandbox and shell commands |
 
-## 🏗️ Architecture
+---
 
-Aria is built with a modern, modular architecture:
+## 🚀 Quick Start
 
-- **Backend**: A robust FastAPI server that handles all business logic, including:
-  - Session and message management
-  - Integration with Ollama for AI model access
-  - A suite of AI tools for enhanced capabilities
-- **Frontend**: A responsive web UI built with HTML, CSS, and JavaScript, providing a seamless user experience.
-- **AI Core**: Powered by Ollama, allowing you to use a variety of open-source language models.
-- **Services**:
-  - **Redis**: For caching and session management.
-  - **SearXNG**: For private and secure web search.
-  - **Byparr**: For additional backend functionality.
+```bash
+# Clone and install
+git clone <repository-url>
+cd aria
+uv sync
 
-## 🚀 Getting Started
+# Start the server
+aria server run
 
-![Aria](screenshot.png "Aria")
+# Open http://localhost:8000 in your browser
+```
+
+<details>
+<summary>📦 Install with GUI support</summary>
+
+```bash
+uv sync --extra gui
+aria-gui  # Launch desktop application
+```
+
+</details>
+
+---
+
+## 🤖 Agent System
+
+Aria uses a team of specialized agents that work together:
+
+| Agent | Role | Capabilities |
+|:------|:-----|:-------------|
+| 🎯 **Aria** | Orchestrator | Conversation, task routing, PDF parsing |
+| 🐍 **Guido** | Python Developer | Code execution, syntax validation, debugging |
+| 💻 **Stallman** | Shell Executor | Safe command execution, system diagnostics |
+| 🌐 **Wanderer** | Web Researcher | Web search, content download, data extraction |
+| 📊 **Wizard** | Market Analyst | Stock data, financial research, market insights |
+| 🎬 **Spielberg** | IMDb Expert | Movie/TV search, cast info, ratings, trivia |
+
+### How It Works
+
+```
+User Request → Aria (Orchestrator) → Specialist Agent → Response
+                     ↓
+         [Routes to best agent for the task]
+```
+
+Aria evaluates each request and either handles it directly or delegates to the most capable specialist.
+
+---
+
+## 🛠️ Tools
+
+Each agent has access to specialized tools:
+
+| Category | Tools |
+|:---------|:------|
+| 📁 **Files** | Read, write, search, manage files safely |
+| 🌐 **Search** | DuckDuckGo, weather, finance, YouTube transcripts |
+| 💻 **Shell** | Execute commands with platform-specific handling |
+| 🐍 **Development** | Python execution, syntax checking, debugging |
+| 🎬 **IMDb** | Movie/TV search, person lookup, episode guides |
+| 🧠 **Reasoning** | Step-by-step problem solving, scratchpad |
+| 🌍 **Browser** | Web automation, page interaction |
+
+---
+
+## 📦 Installation
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/get-started)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- An accessible [Ollama](https://ollama.com/) instance
+- Python 3.12 or higher
+- `uv` package manager (recommended)
+- Git
 
-### Installation
+### Install
 
-The recommended way to install Aria is by using the official Docker image.
+```bash
+# Clone the repository
+git clone <repository-url>
+cd aria
 
-1. **Create a `docker-compose.yml` file**:
-   ```yaml
-   networks:
-     mitty: null
+# Install dependencies
+uv sync
 
-   volumes:
-     redis: null
+# Or with GUI support
+uv sync --extra gui
+```
 
-   services:
-     aria:
-       image: 'ghcr.io/malvavisc0/aria:latest'
-       container_name: aria
-       hostname: aria
-       restart: always
-       env_file:
-         - ./.env
-       ports:
-         - '8000:8000'
-       environment:
-         TZ: '${TZ}'
-         SEARXNG_URL: '${SEARXNG_URL:-http://searxng:8080}'
-         BYPARR_URL: '${BYPARR_URL:-http://byparr:8191/v1}'
-         BYPARR_TIMEOUT: '${BYPARR_TIMEOUT:-120}'
-         AGNO_TELEMETRY: '${AGNO_TELEMETRY:-false}'
-         OLLAMA_URL: '${OLLAMA_URL}'
-         OLLAMA_MODEL_ID: '${OLLAMA_MODEL_ID}'
-         OLLAMA_MODEL_TEMPERATURE: '${OLLAMA_MODEL_TEMPERATURE:-0.65}'
-         OLLAMA_MODEL_CONTEXT_LENGTH: '${OLLAMA_MODEL_CONTEXT_LENGTH:-1280}'
-         DEBUG_MODE: '${DEBUG_MODE:-false}'
-       volumes:
-         - './data:/opt/storage'
-       networks:
-         - mitty
-     redis:
-       image: 'redis/redis-stack-server:latest'
-       container_name: redis
-       hostname: redis
-       restart: always
-       runtime: '${RUNTIME:-runc}'
-       expose:
-         - '${REDIS_PORT:-6379}'
-       environment:
-         TZ: '${TZ}'
-       volumes:
-         - 'redis:/data'
-       networks:
-         - mitty
-     searxng:
-       image: 'docker.io/searxng/searxng:latest'
-       container_name: searxng
-       hostname: searxng
-       restart: always
-       volumes:
-         - './searxng:/etc/searxng'
-       environment:
-         TZ: '${TZ}'
-         SEARXNG_BASE_URL: 'http://${SEARXNG_HOSTNAME:-searxng}:${SEARXNG_PORT:-8080}/'
-         SEARXNG_SECRET: '${SEARXNG_SECRET}'
-         UWSGI_WORKERS: '${SEARXNG_UWSGI_WORKERS:-4}'
-         UWSGI_THREADS: '${SEARXNG_UWSGI_THREADS:-4}'
-         SEARXNG_REDIS_URL: 'redis://redis:6379/10'
-       expose:
-         - '${SEARXNG_PORT:-8080}'
-       cap_add:
-         - CHOWN
-         - SETGID
-         - SETUID
-       networks:
-         - mitty
-     byparr:
-       image: 'ghcr.io/thephaseless/byparr:latest'
-       container_name: byparr
-       hostname: byparr
-       restart: always
-       runtime: '${RUNTIME:-runc}'
-       environment:
-         TZ: '${TZ}'
-       expose:
-         - '${BYPARR_PORT:-8191}'
-       networks:
-         - mitty
-     dozzle:
-       image: 'amir20/dozzle:latest'
-       container_name: dozzle
-       hostname: dozzle
-       ports:
-        - 8080:8080
-       volumes:
-         - '/var/run/docker.sock:/var/run/docker.sock:ro'
-       environment:
-         - DOZZLE_NO_ANALYTICS=1
-         - DOZZLE_HOSTNAME=aria
-         - DOZZLE_LEVEL=debug
-       networks:
-         - mitty
-   ```
+### First Run
 
-2. **Configure your environment**:
-   - Create a `.env` file and add your configuration. At a minimum, you need to set `OLLAMA_URL`.
-     ```env
-     TZ=Europe/Berlin
-     OLLAMA_URL=http://your-ollama-instance:11434
-     OLLAMA_MODEL_ID=cogito:14b
-     SEARXNG_SECRET=your-super-secret-key
-     ```
+On first launch, Aria automatically:
+- Creates configuration files
+- Sets up the database
+- Generates auth secrets
 
-3. **Run the application**:
-   ```bash
-   docker-compose up -d
-   ```
+```bash
+aria check     # Verify installation
+aria server run  # Start the web server
+```
 
-4. **Access Aria**:
-   - Open your web browser and navigate to `http://localhost:8000`.
+---
+
+## 💻 Usage
+
+### CLI Commands
+
+```bash
+# Server management
+aria server run     # Run in foreground
+aria server start   # Start in background
+aria server stop    # Stop the server
+aria server status  # Check status
+
+# User management
+aria users list     # List users
+aria users add      # Add new user
+
+# Model management
+aria models list        # List downloaded models
+aria models download    # Download a model
+
+# System info
+aria system info    # System information
+aria system gpu     # GPU information
+
+# Configuration
+aria config show    # Show current config
+```
+
+### GUI Application
+
+```bash
+aria-gui    # Launch desktop application
+```
+
+The GUI provides:
+- Server control (start/stop)
+- User management
+- Model downloads
+- Log viewing
+
+### Web UI
+
+After starting the server, access the web interface at `http://localhost:8000`
+
+---
 
 ## ⚙️ Configuration
 
-You can configure Aria using the following environment variables in your `.env` file:
-
-| Variable                      | Description                                       | Default                  |
-| ----------------------------- | ------------------------------------------------- | ------------------------ |
-| `TZ`                          | Timezone for the application                      | `Europe/Berlin`          |
-| `OLLAMA_URL`                  | URL of your Ollama instance                       | `http://ollama:11434`    |
-| `OLLAMA_MODEL_ID`             | The ID of the Ollama model to use                 | `cogito:14b`             |
-| `OLLAMA_MODEL_TEMPERATURE`    | The temperature for the AI model                  | `0.65`                   |
-| `OLLAMA_MODEL_CONTEXT_LENGTH` | The context length for the AI model               | `4096`                   |
-| `DEBUG_MODE`                  | Enable or disable debug mode                      | `false`                  |
-| `SEARXNG_SECRET`              | A secret key for SearXNG                          | `your-secret-key`        |
-
-## 🧑‍💻 Development
-
-To run Aria in development mode, you can use the following command:
+Aria uses environment variables stored in `.env`:
 
 ```bash
-python -m aria.cli run --reload
+# Core settings
+DATA_FOLDER=./data
+CHAINLIT_AUTH_SECRET=<auto-generated>
+
+# Model paths
+CHAT_MODEL=<path-to-chat-model>
+VISION_MODEL=<path-to-vision-model>
+EMBEDDING_MODEL=<path-to-embedding-model>
 ```
 
-This will start the FastAPI server with hot-reloading enabled.
+<details>
+<summary>📁 Directory Structure</summary>
+
+```
+aria/
+├── data/              # Database, models, binaries
+│   ├── aria.db        # SQLite database
+│   ├── models/        # GGUF model files
+│   └── bin/           # llama.cpp binaries
+├── storage/           # Uploaded files
+├── chromadb/          # Vector database
+└── .env               # Configuration
+```
+
+</details>
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Interfaces                          │
+│    ┌─────────┐    ┌─────────┐    ┌─────────┐          │
+│    │  Web UI │    │   CLI   │    │   GUI   │          │
+│    └────┬────┘    └────┬────┘    └────┬────┘          │
+└─────────┼──────────────┼──────────────┼────────────────┘
+          │              │              │
+          └──────────────┼──────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Agent Layer                           │
+│  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐    │
+│  │ Aria  │ │ Guido │ │Stallman│ │Wanderer│ │Wizard │    │
+│  └───┬───┘ └───┬───┘ └───┬───┘ └───┬───┘ └───┬───┘    │
+└──────┼───────────┼───────────┼───────────┼──────────────┘
+       └───────────┴───────────┴───────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Tools Layer                           │
+│  Files │ Search │ Shell │ Dev │ IMDb │ Reasoning      │
+└─────────────────────────────────────────────────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   LLM Layer                             │
+│            llama.cpp (Local Inference)                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+### Development Setup
+
+```bash
+# Install dev dependencies
+uv sync --group dev
+
+# Run tests
+uv run pytest
+
+# Format code
+uv run black src/
+uv run isort src/
+```
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📚 Documentation
+---
 
-Comprehensive documentation is available on our GitHub Pages site:
+<div align="center">
 
-- [Aria Documentation](https://malvavisc0.github.io/aria/)
+**Made with ❤️ by malvavisc0**
 
-The documentation includes:
-- [Installation Guide](https://malvavisc0.github.io/aria/installation.html)
-- [Configuration Options](https://malvavisc0.github.io/aria/configuration.html)
-- [Usage Guide](https://malvavisc0.github.io/aria/usage.html)
-- [Advanced Features](https://malvavisc0.github.io/aria/advanced.html)
-- [License Information](https://malvavisc0.github.io/aria/license.html)
-- [Contributing Guidelines](https://malvavisc0.github.io/aria/contributing.html)
+[Report Bug](https://github.com/malvavisc0/aria/issues) · [Request Feature](https://github.com/malvavisc0/aria/issues)
+
+</div>

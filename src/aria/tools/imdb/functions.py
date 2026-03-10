@@ -1,0 +1,530 @@
+"""
+IMDB tool functions for movie and TV series information retrieval.
+
+This module provides tool functions that wrap the imdbinfo package
+for use with the IMDB Expert agent.
+
+Each function returns a JSON string with explicitly documented fields.
+The imdbinfo package returns Pydantic models (MovieBriefInfo, PersonDetail,
+MovieDetail, BulkedEpisode) or plain dicts (reviews, trivia). We extract
+a curated subset of fields from each model to keep responses lean and
+self-documenting.
+"""
+
+import json
+from typing import Optional
+
+from imdbinfo import TitleType as ImdbTitleType
+from imdbinfo import (
+    get_all_episodes,
+    get_filmography,
+    get_movie,
+    get_name,
+    get_reviews,
+    get_trivia,
+    search_title,
+)
+from loguru import logger
+
+from aria.tools.imdb.constants import (
+    ERROR_EMPTY_IMDB_ID,
+    ERROR_EMPTY_QUERY,
+    ERROR_EPISODES_NOT_FOUND,
+    ERROR_FILMOGRAPHY_NOT_FOUND,
+    ERROR_INVALID_TITLE_TYPE,
+    ERROR_MOVIE_NOT_FOUND,
+    ERROR_NETWORK,
+    ERROR_NO_RESULTS,
+    ERROR_PERSON_NOT_FOUND,
+    ERROR_RATE_LIMIT,
+    ERROR_REVIEWS_NOT_FOUND,
+    ERROR_TIMEOUT,
+    ERROR_TRIVIA_NOT_FOUND,
+    ERROR_UNKNOWN,
+    VALID_TITLE_TYPES,
+)
+
+
+def _get_title_type(title_type: Optional[str]) -> Optional[ImdbTitleType]:
+    """
+    Convert user-friendly title type string to ImdbTitleType enum.
+
+    Args:
+        title_type: User-friendly title type string (e.g., 'movie', 'series')
+
+    Returns:
+        ImdbTitleType enum value or None if no filter specified
+
+    Raises:
+        ValueError: If title_type is not a valid type
+    """
+    if title_type is None:
+        return None
+
+    title_type_lower = title_type.lower().strip()
+    if title_type_lower not in VALID_TITLE_TYPES:
+        valid_types = ", ".join(sorted(VALID_TITLE_TYPES.keys()))
+        raise ValueError(
+            ERROR_INVALID_TITLE_TYPE.format(
+                value=title_type, valid_types=valid_types
+            )
+        )
+
+    # Get the imdbinfo TitleType enum value
+    enum_name = VALID_TITLE_TYPES[title_type_lower]
+    return getattr(ImdbTitleType, enum_name)
+
+
+def _classify_error(error: Exception) -> str:
+    """
+    Classify an exception into a user-friendly error message.
+
+    Args:
+        error: The exception that occurred
+
+    Returns:
+        A clean, agent-friendly error message string
+    """
+    error_str = str(error).lower()
+
+    # Network/connection errors
+    if any(
+        term in error_str
+        for term in ["connection", "network", "dns", "resolve", "unreachable"]
+    ):
+        return ERROR_NETWORK
+
+    # Timeout errors
+    if any(term in error_str for term in ["timeout", "timed out"]):
+        return ERROR_TIMEOUT
+
+    # Rate limiting
+    if any(term in error_str for term in ["rate limit", "429", "too many"]):
+        return ERROR_RATE_LIMIT
+
+    # Default to unknown error
+    return ERROR_UNKNOWN.format(error=str(error))
+
+
+def search_imdb_titles(
+    intent: str, query: str, title_type: Optional[str] = None
+) -> str:
+    """
+    Search for movies, TV series, and other titles on IMDb.
+
+    Args:
+        intent: Why you're searching (e.g., "Finding Matrix movie")
+        query: The title to search for
+        title_type: Optional filter - movie, series, episode, short,
+            tv_movie, video
+
+    Returns:
+        JSON with titles[{imdbId, title, year, kind, rating}],
+        names[{imdbId, name, job}]. Use when IMDb ID unknown.
+    """
+    logger.info(f"search_imdb_titles called with query='{query}'")
+
+    if not query or not query.strip():
+        return json.dumps({"error": ERROR_EMPTY_QUERY})
+
+    try:
+        imdb_title_type = _get_title_type(title_type)
+        logger.debug(f"Title type filter: {imdb_title_type}")
+
+        result = search_title(query.strip(), title_type=imdb_title_type)
+
+        if result is None or (
+            (not result.titles or len(result.titles) == 0)
+            and (not result.names or len(result.names) == 0)
+        ):
+            return json.dumps(
+                {
+                    "error": ERROR_NO_RESULTS.format(query=query),
+                    "titles": [],
+                    "names": [],
+                }
+            )
+
+        titles = [
+            {
+                "imdbId": t.imdbId,
+                "title": t.title,
+                "year": t.year,
+                "kind": t.kind,
+                "rating": t.rating,
+            }
+            for t in (result.titles or [])
+        ]
+
+        names = [
+            {
+                "imdbId": n.imdbId,
+                "name": n.name,
+                "job": n.job,
+            }
+            for n in (result.names or [])
+        ]
+
+        response = {"titles": titles, "names": names}
+
+        logger.info(f"Found {len(titles)} titles, {len(names)} names")
+        return json.dumps(response, default=str)
+
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        return json.dumps({"error": str(e)})
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        return json.dumps({"error": _classify_error(e)})
+
+
+def get_movie_details(intent: str, imdb_id: str) -> str:
+    """
+    Get comprehensive details for a movie or TV series.
+
+    Args:
+        intent: Why you're fetching (e.g., "Getting Matrix details")
+        imdb_id: IMDb ID with/without 'tt' prefix (e.g., tt0133093)
+
+    Returns:
+        JSON with imdbId, title, year, kind, duration, rating, votes,
+        plot, genres, directors, writers, producers, cast, stars,
+        release_date, awards, worldwide_gross, production_budget, etc.
+    """
+    logger.info(f"get_movie_details called with imdb_id='{imdb_id}'")
+
+    if not imdb_id or not imdb_id.strip():
+        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+
+    try:
+        movie = get_movie(imdb_id.strip())
+
+        if movie is None:
+            return json.dumps(
+                {"error": ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id)}
+            )
+
+        # Directors: prefer movie.directors, fall back to categories
+        directors = [
+            {"imdbId": d.imdbId, "name": d.name}
+            for d in (movie.directors or [])
+        ]
+        if not directors:
+            cat_directors = (movie.categories or {}).get("director", [])
+            directors = [
+                {"imdbId": d.imdbId, "name": d.name} for d in cat_directors
+            ]
+
+        # Writers: extracted from categories
+        cat_writers = (movie.categories or {}).get("writer", [])
+        writers = [{"imdbId": w.imdbId, "name": w.name} for w in cat_writers]
+
+        # Producers: extracted from categories
+        cat_producers = (movie.categories or {}).get("producer", [])
+        producers = [
+            {"imdbId": p.imdbId, "name": p.name} for p in cat_producers
+        ]
+
+        # Cast with characters: extracted from categories
+        cat_cast = (movie.categories or {}).get("cast", [])
+        cast = [
+            {
+                "imdbId": c.imdbId,
+                "name": c.name,
+                "characters": getattr(c, "characters", []),
+            }
+            for c in cat_cast
+        ]
+
+        stars = [
+            {"imdbId": s.imdbId, "name": s.name} for s in (movie.stars or [])
+        ]
+
+        awards = None
+        if movie.awards:
+            awards = {
+                "wins": movie.awards.wins,
+                "nominations": movie.awards.nominations,
+                "prestigious_award": movie.awards.prestigious_award,
+            }
+
+        result = {
+            "imdbId": movie.imdbId,
+            "title": movie.title,
+            "year": movie.year,
+            "kind": movie.kind,
+            "duration": movie.duration,
+            "rating": movie.rating,
+            "votes": movie.votes,
+            "metacritic_rating": movie.metacritic_rating,
+            "mpaa": movie.mpaa,
+            "plot": movie.plot,
+            "genres": movie.genres or [],
+            "languages_text": movie.languages_text or [],
+            "countries": movie.countries or [],
+            "directors": directors,
+            "writers": writers,
+            "producers": producers,
+            "cast": cast,
+            "stars": stars,
+            "release_date": movie.release_date,
+            "cover_url": movie.cover_url,
+            "worldwide_gross": movie.worldwide_gross,
+            "production_budget": movie.production_budget,
+            "awards": awards,
+        }
+
+        logger.info(f"Retrieved details for '{movie.title}' ({movie.year})")
+        return json.dumps(result, default=str)
+
+    except Exception as e:
+        logger.error(f"Failed to get movie details: {e}")
+        return json.dumps({"error": _classify_error(e)})
+
+
+def get_person_details(intent: str, person_id: str) -> str:
+    """
+    Get details about an actor, director, or other film industry person.
+
+    Args:
+        intent: Why you're fetching (e.g., "Getting Keanu Reeves info")
+        person_id: IMDb person ID with/without 'nm' prefix (e.g., nm0000206)
+
+    Returns:
+        JSON with imdbId, name, bio, image_url, birth_date, birth_place,
+        knownfor[], primary_profession[], height.
+    """
+    logger.info(f"get_person_details called with person_id='{person_id}'")
+
+    if not person_id or not person_id.strip():
+        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+
+    try:
+        person = get_name(person_id.strip())
+
+        if person is None:
+            return json.dumps(
+                {"error": ERROR_PERSON_NOT_FOUND.format(person_id=person_id)}
+            )
+
+        result = {
+            "imdbId": person.imdbId,
+            "name": person.name,
+            "bio": person.bio,
+            "image_url": person.image_url,
+            "birth_date": person.birth_date,
+            "birth_place": person.birth_place,
+            "death_date": person.death_date,
+            "death_place": person.death_place,
+            "knownfor": person.knownfor or [],
+            "primary_profession": person.primary_profession or [],
+            "height": person.height,
+        }
+
+        logger.info(f"Retrieved details for person '{person.name}'")
+        return json.dumps(result, default=str)
+
+    except Exception as e:
+        logger.error(f"Failed to get person details: {e}")
+        return json.dumps({"error": _classify_error(e)})
+
+
+def get_person_filmography(intent: str, person_id: str) -> str:
+    """
+    Get the complete filmography for an actor or director.
+
+    Args:
+        intent: Why you're fetching (e.g., "Getting Nolan filmography")
+        person_id: IMDb person ID with/without 'nm' prefix
+
+    Returns:
+        JSON with filmography{director[], actor[], producer[], writer[]}.
+        Each entry has imdbId, title, year, kind, rating.
+    """
+    logger.info(f"get_person_filmography called with person_id='{person_id}'")
+
+    if not person_id or not person_id.strip():
+        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+
+    try:
+        filmography = get_filmography(person_id.strip())
+
+        if not filmography:
+            return json.dumps(
+                {
+                    "error": ERROR_FILMOGRAPHY_NOT_FOUND.format(
+                        person_id=person_id
+                    ),
+                    "filmography": {},
+                }
+            )
+
+        serialized = {}
+        if isinstance(filmography, dict):
+            for category, credits in filmography.items():
+                serialized[category] = [
+                    {
+                        "imdbId": c.imdbId,
+                        "title": c.title,
+                        "year": c.year,
+                        "kind": c.kind,
+                        "rating": c.rating,
+                    }
+                    for c in credits
+                ]
+
+        result = {
+            "person_id": person_id,
+            "filmography": serialized,
+        }
+
+        logger.info(f"Retrieved filmography for person_id='{person_id}'")
+        return json.dumps(result, default=str)
+
+    except Exception as e:
+        logger.error(f"Failed to get filmography: {e}")
+        return json.dumps({"error": _classify_error(e)})
+
+
+def get_all_series_episodes(intent: str, imdb_id: str) -> str:
+    """
+    Get all episodes for a TV series.
+
+    Args:
+        intent: Why you're fetching (e.g., "Getting Breaking Bad episodes")
+        imdb_id: IMDb series ID with/without 'tt' prefix
+
+    Returns:
+        JSON with series_id, episode_count, episodes[{imdbId, title,
+        year, rating, votes, plot, release_date, duration, genres}].
+        Note: No season/episode numbers in this endpoint.
+    """
+    logger.info(f"get_all_series_episodes called with imdb_id='{imdb_id}'")
+
+    if not imdb_id or not imdb_id.strip():
+        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+
+    try:
+        episodes = get_all_episodes(imdb_id.strip())
+
+        if not episodes:
+            return json.dumps(
+                {
+                    "error": ERROR_EPISODES_NOT_FOUND.format(imdb_id=imdb_id),
+                    "episodes": [],
+                }
+            )
+
+        serialized_episodes = [
+            {
+                "imdbId": ep.imdbId,
+                "title": ep.title,
+                "year": ep.year,
+                "rating": ep.rating,
+                "votes": ep.votes,
+                "plot": ep.plot,
+                "release_date": ep.release_date,
+                "duration": ep.duration,
+                "genres": ep.genres or [],
+            }
+            for ep in episodes
+        ]
+
+        result = {
+            "series_id": imdb_id,
+            "episode_count": len(episodes),
+            "episodes": serialized_episodes,
+        }
+
+        logger.info(
+            f"Retrieved {len(episodes)} episodes for series '{imdb_id}'"
+        )
+        return json.dumps(result, default=str)
+
+    except Exception as e:
+        logger.error(f"Failed to get episodes: {e}")
+        return json.dumps({"error": _classify_error(e)})
+
+
+def get_movie_reviews(intent: str, imdb_id: str) -> str:
+    """
+    Get user reviews for a movie or TV series.
+
+    Args:
+        intent: Why you're fetching (e.g., "Checking Godfather reviews")
+        imdb_id: IMDb ID with/without 'tt' prefix
+
+    Returns:
+        JSON with imdb_id, review_count, reviews[{spoiler, summary,
+        text, authorRating, upVotes, downVotes}].
+    """
+    logger.info(f"get_movie_reviews called with imdb_id='{imdb_id}'")
+
+    if not imdb_id or not imdb_id.strip():
+        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+
+    try:
+        reviews = get_reviews(imdb_id.strip())
+
+        if not reviews:
+            return json.dumps(
+                {
+                    "error": ERROR_REVIEWS_NOT_FOUND.format(imdb_id=imdb_id),
+                    "reviews": [],
+                }
+            )
+
+        result = {
+            "imdb_id": imdb_id,
+            "review_count": len(reviews),
+            "reviews": reviews if isinstance(reviews, list) else [],
+        }
+
+        logger.info(f"Retrieved {len(reviews)} reviews for '{imdb_id}'")
+        return json.dumps(result, default=str)
+
+    except Exception as e:
+        logger.error(f"Failed to get reviews: {e}")
+        return json.dumps({"error": _classify_error(e)})
+
+
+def get_movie_trivia(intent: str, imdb_id: str) -> str:
+    """
+    Get trivia and interesting facts about a movie or TV series.
+
+    Args:
+        intent: Why you're fetching (e.g., "Getting Pulp Fiction trivia")
+        imdb_id: IMDb ID with/without 'tt' prefix
+
+    Returns:
+        JSON with imdb_id, trivia_count, trivia[{text, related_titles}].
+        Behind-the-scenes facts and production details.
+    """
+    logger.info(f"get_movie_trivia called with imdb_id='{imdb_id}'")
+
+    if not imdb_id or not imdb_id.strip():
+        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+
+    try:
+        trivia = get_trivia(imdb_id.strip())
+
+        if not trivia:
+            return json.dumps(
+                {
+                    "error": ERROR_TRIVIA_NOT_FOUND.format(imdb_id=imdb_id),
+                    "trivia": [],
+                }
+            )
+
+        result = {
+            "imdb_id": imdb_id,
+            "trivia_count": len(trivia),
+            "trivia": trivia if isinstance(trivia, list) else [],
+        }
+
+        logger.info(f"Retrieved {len(trivia)} trivia items for '{imdb_id}'")
+        return json.dumps(result, default=str)
+
+    except Exception as e:
+        logger.error(f"Failed to get trivia: {e}")
+        return json.dumps({"error": _classify_error(e)})

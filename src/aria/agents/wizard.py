@@ -1,0 +1,109 @@
+"""
+Market Analyst Agent
+
+This module defines a specialized agent for market analysis and financial
+research operations, providing tools for data retrieval, web search, and
+file operations within a secure sandboxed environment.
+"""
+
+import importlib
+from typing import List, Optional
+
+from llama_index.core.agent import FunctionAgent
+from llama_index.core.llms import LLM
+from llama_index.core.tools import FunctionTool
+
+from aria.agents.instructions import load_agent_instructions
+
+FILESYSTEM_TOOLS = "aria.tools.files"
+WEB_SEARCH_TOOLS = "aria.tools.search"
+
+
+class MarketAnalystAgent(FunctionAgent):
+    """
+    A specialized agent for market analysis and financial research operations.
+
+    This agent extends FunctionAgent to provide financial analysis capabilities
+    including data retrieval, web search, and file operations with security
+    constraints for handling sensitive financial information.
+    """
+
+    @staticmethod
+    def get_system_prompt(extras: str = "") -> str:
+        """
+        Return the system prompt for the Market Analyst Agent.
+
+        Args:
+            extras (str): Additional instructions to append to the system
+                         prompt. Defaults to empty string.
+
+        Returns:
+            str: The complete system prompt with guidelines and best practices
+        """
+        return load_agent_instructions("wizard", extras)
+
+
+def get_agent(
+    llm: LLM,
+    extras: Optional[str] = None,
+    can_handoff_to: Optional[List[str]] | None = None,
+) -> MarketAnalystAgent:
+    """
+    Create a market analyst agent with the given LLM.
+
+    Args:
+        llm (LLM): The language model to use for the agent
+        extras (str, optional): Additional system prompt instructions
+
+    Returns:
+        MarketAnalystAgent: A configured market analysis agent instance
+
+    The agent is initialized with tools for financial data retrieval, web
+    search, and file operations with security features including restricted
+    builtins,
+    execution timeouts, and isolated namespaces to prevent malicious code
+    execution.
+    """
+    filesystem_tools = importlib.import_module(FILESYSTEM_TOOLS)
+    web_search_tools = importlib.import_module(WEB_SEARCH_TOOLS)
+
+    tools_selection = {
+        WEB_SEARCH_TOOLS: [
+            "fetch_current_stock_price",
+            "fetch_company_information",
+            "fetch_ticker_news",
+            "web_search",
+            "get_file_from_url",
+        ],
+        FILESYSTEM_TOOLS: [
+            "read_full_file",
+            "read_file_chunk",
+            "write_full_file",
+            "file_exists",
+        ],
+    }
+
+    tools = [
+        FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
+        for name in tools_selection[FILESYSTEM_TOOLS]
+    ] + [
+        FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
+        for name in tools_selection[WEB_SEARCH_TOOLS]
+    ]
+
+    agent = MarketAnalystAgent(
+        name="Wizard",
+        description=(
+            "Specialized in financial market analysis, data retrieval, "
+            "and research with web search capabilities and secure file "
+            "operations."
+        ),
+        tools=tools,
+        llm=llm,
+        system_prompt=MarketAnalystAgent.get_system_prompt(extras or ""),
+        streaming=True,
+        verbose=True,
+        can_handoff_to=can_handoff_to,
+    )
+
+    return agent

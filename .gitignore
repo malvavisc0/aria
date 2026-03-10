@@ -1,7 +1,52 @@
-# Ignore uploads directory and local database
-aria/uploads/
-chat.db
-__pycache__
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Keep the `.files/` directory structure in the repo, but do not track its contents.
+#
+# Notes:
+# - Git does not track empty directories, so we keep directories by committing
+#   `.gitkeep` files.
+# - Everything else under `.files/` is ignored.
+.files/**
+!.files/**/.gitkeep
+
+# Persistent data directory (track structure, not contents)
+# The `data/` directory stores persistent application data like databases
+# that should survive server restarts, unlike `.files/` which is temporary.
+data/**
+!data/.gitkeep
+!data/models/
+!data/models/.gitkeep
+!data/bin/
+!data/bin/run-model
+!data/bin/llamacpp/
+!data/bin/llamacpp/.gitkeep
+
+# Binary files (track structure, not contents)
+# The `bin/` directory stores compiled binaries that can be re-downloaded
+bin/**
+!bin/.gitkeep
+
+# Build directories
+build/
+!build/.gitkeep
+
+# Virtual environments
+.venv
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+dist/
+wheels/
+*.egg-info
+
 .env
-./venv
-aria/__pycache__
