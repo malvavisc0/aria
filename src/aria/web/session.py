@@ -51,12 +51,14 @@ def create_memory(thread_id: str) -> Memory:
 
     assert _state.vector_db is not None
     assert _state.embeddings is not None
+    assert _state.llm is not None
 
     return get_default_memory(
         vector_db=_state.vector_db,
         thread_id=thread_id,
         embed_model=_state.embeddings,
         token_limit=EmbeddingsConfig.token_limit,
+        llm=_state.llm,
     )
 
 

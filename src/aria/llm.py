@@ -9,7 +9,12 @@ from llama_index.core.agent.workflow import (
     AgentWorkflow,
     ToolCallResult,
 )
-from llama_index.core.memory import InsertMethod, Memory, VectorMemoryBlock
+from llama_index.core.memory import (
+    FactExtractionMemoryBlock,
+    InsertMethod,
+    Memory,
+    VectorMemoryBlock,
+)
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.embeddings.openai_like import OpenAILikeEmbedding
 from llama_index.llms.openai_like import OpenAILike
@@ -336,7 +341,8 @@ def get_default_memory(
     vector_db: ChromaClientAPI,
     embed_model: OpenAIEmbedding,
     thread_id: str,
-    token_limit: int = 5120,
+    token_limit: int = 24576,
+    llm: OpenAILike | None = None,
 ) -> Memory:
     """Create a Memory instance backed by a per-thread ChromaDB vector store.
 
@@ -349,30 +355,59 @@ def get_default_memory(
             filter always matches embeddings from the same thread, across
             all sessions).
         token_limit: Total token budget shared between the short-term chat
-            buffer and the vector-retrieved context.
+            buffer and the vector-retrieved context. Default is 24576 to
+            utilize the embedding model's 32K context window effectively.
+        llm: LLM instance for fact extraction in long-term memory.
+            If provided, enables FactExtractionMemoryBlock.
 
     Returns:
         A configured :class:`Memory` instance.
     """
     collection = vector_db.get_or_create_collection(thread_id)
 
+    # Build memory blocks list
+    memory_blocks: list = []
+
+    # Add fact extraction block if LLM is provided
+    if llm is not None:
+        memory_blocks.append(
+            FactExtractionMemoryBlock(
+                name="extracted_facts",
+                llm=llm,
+                # Extract up to 50 facts from flushed messages
+                max_facts=50,
+                # Priority 1: can be disabled if token budget is exceeded
+                priority=1,
+            )
+        )
+
+    # Add vector memory block for semantic search
+    memory_blocks.append(
+        VectorMemoryBlock(
+            name="vector_memory",
+            vector_store=ChromaVectorStore(chroma_collection=collection),
+            embed_model=embed_model,
+            # Retrieve top 5 similar messages (increased from 3)
+            similarity_top_k=5,
+            # Include more context from previous messages
+            retrieval_context_window=10,
+            # Priority 2: lower priority than fact extraction
+            priority=2,
+        )
+    )
+
     memory = Memory.from_defaults(
         session_id=thread_id,
         # Insert retrieved memory as system prompts
         insert_method=InsertMethod.SYSTEM,
-        memory_blocks=[
-            VectorMemoryBlock(
-                vector_store=ChromaVectorStore(chroma_collection=collection),
-                embed_model=embed_model,
-                # Retrieve top 3 similar messages
-                similarity_top_k=3,
-            )
-        ],
+        memory_blocks=memory_blocks,
         # Total tokens for (Recent History + Vector Results)
         token_limit=token_limit,
-        # 70% for Recent History, 30% for Vector Results
-        chat_history_token_ratio=0.7,
-        token_flush_size=1024,
+        # 80% for Recent History, 20% for Vector Results
+        # This keeps more recent context in working memory
+        chat_history_token_ratio=0.8,
+        # Flush 8196 tokens at a time to long-term memory
+        token_flush_size=8196,
     )
 
     return memory
