@@ -50,7 +50,8 @@ hidden_imports = [
     # Aria packages
     "aria",
     "aria.gui",
-    "aria.gui.main_window",
+    "aria.gui.windows",
+    "aria.gui.windows.main_window",
     "aria.gui.dialogs",
     "aria.gui.ui",
     "aria.cli",
@@ -71,9 +72,8 @@ app_datas = [
     (str(ROOT / "chainlit.md"), "aria/chainlit.md"),
     # Default configuration template (copied to cwd on first run)
     (str(ROOT / "src" / "aria" / ".env.example"), "aria/.env.example"),
-    # Agent and tool system prompt files
+    # Agent system prompt files
     (str(ROOT / "src" / "aria" / "agents" / "instructions"), "aria/agents/instructions"),
-    (str(ROOT / "src" / "aria" / "tools" / "instructions"), "aria/tools/instructions"),
     # Chainlit assets
     *chainlit_datas,
     # ChromaDB assets
