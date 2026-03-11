@@ -161,10 +161,6 @@ def _validate_working_dir(working_dir: Optional[str]) -> Path:
     return path
 
 
-# Re-export shared utilities for backward compatibility
-_safe_json = safe_json
-
-
 def _build_response(
     operation: str,
     command: str,
@@ -269,12 +265,12 @@ def execute_command(
             execution_time=elapsed,
         )
         logger.info("Command executed with return code %s", result.returncode)
-        return _safe_json(response)
+        return safe_json(response)
 
     except subprocess.TimeoutExpired:
         elapsed = time.time() - start_time
         logger.warning(f"Command timed out after {actual_timeout}s")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 command,
@@ -287,7 +283,7 @@ def execute_command(
     except FileNotFoundError:
         cmd_name = _extract_command_name(command)
         logger.error(f"Command not found: {cmd_name}")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 command,
@@ -299,7 +295,7 @@ def execute_command(
 
     except PermissionError:
         logger.error(f"Permission denied executing command: {command}")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 command,
@@ -311,7 +307,7 @@ def execute_command(
 
     except Exception as exc:
         logger.error(f"Unexpected error executing command: {exc}")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 command,
@@ -364,7 +360,7 @@ def execute_command_safe(
     # Resolve the full path to the command to avoid PATH-based attacks.
     cmd_path = shutil.which(command_name)
     if cmd_path is None:
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 f"{command_name} {' '.join(args)}",
@@ -402,12 +398,12 @@ def execute_command_safe(
         logger.info(
             "Safe command executed with return code %s", result.returncode
         )
-        return _safe_json(response)
+        return safe_json(response)
 
     except subprocess.TimeoutExpired:
         elapsed = time.time() - start_time
         logger.warning(f"Safe command timed out after {actual_timeout}s")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 display_command,
@@ -419,7 +415,7 @@ def execute_command_safe(
 
     except PermissionError:
         logger.error(f"Permission denied: {display_command}")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 display_command,
@@ -431,7 +427,7 @@ def execute_command_safe(
 
     except Exception as exc:
         logger.error(f"Unexpected error executing safe command: {exc}")
-        return _safe_json(
+        return safe_json(
             _build_response(
                 "execute_command",
                 display_command,
@@ -531,7 +527,7 @@ def execute_command_batch(
         success_count,
         failure_count,
     )
-    return _safe_json(response)
+    return safe_json(response)
 
 
 def get_platform_info(intent: str) -> str:
@@ -561,4 +557,4 @@ def get_platform_info(intent: str) -> str:
     }
 
     logger.debug(f"Platform info: {CURRENT_OS}, shell: {SHELL}")
-    return _safe_json(response)
+    return safe_json(response)

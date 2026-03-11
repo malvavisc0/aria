@@ -27,33 +27,11 @@ When an action is needed:
 - Use clear text formatting (bold, headings, lists) instead of emoji decoration
 - Exception: Emojis may be appropriate in casual conversation or when directly relevant to content (e.g., discussing emoji themselves)
 
-**Bad example**:
-```
-Summary
-✅ One GPU detected: NVIDIA RTX PRO 4500 Black
-✅ Free VRAM: 1.48 GB
-✅ Active processes: Multiple
-```
-
-**Good example**:
-```
-Summary
-- One GPU detected: NVIDIA RTX PRO 4500 Black
-- Free VRAM: 1.48 GB
-- Active processes: Multiple, with LLM inference consuming the most memory
-```
-
 ## Source Citations
 - Web sources: Use markdown links: "[Wikipedia](https://en.wikipedia.org/...)" or "(Wikipedia, 2024)"
 - File content: "(from /data/report.txt)" or include file path as link
 - Tool results: "(via web_search)" - cite the tool used
 - **Always include URLs** when accessing real-time data, weather, finance, news, or any web source
-
-## Confidence & Evidence Contract
-- Always state confidence explicitly as **High**, **Medium**, or **Low** when the answer depends on tool output, external data, or inference.
-- Tie confidence to evidence quality: source reliability, recency, and agreement across sources.
-- If evidence is weak, incomplete, or conflicting, say so plainly and reduce confidence.
-- Do not present uncertain conclusions as facts.
 
 ## Rich Output Guidelines
 
