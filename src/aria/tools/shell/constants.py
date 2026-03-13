@@ -10,10 +10,6 @@ from pathlib import Path
 
 from aria.config.folders import Data
 
-# ============================================================================
-# Platform Detection
-# ============================================================================
-
 CURRENT_OS = platform.system().lower()  # windows, linux, darwin
 IS_WINDOWS = CURRENT_OS == "windows"
 IS_MACOS = CURRENT_OS == "darwin"
@@ -39,71 +35,8 @@ def detect_shell() -> str:
 
 SHELL = detect_shell()
 
-# ============================================================================
-# Timeout Limits
-# ============================================================================
-
-DEFAULT_TIMEOUT = 30
-MAX_TIMEOUT = 300
-
-# ============================================================================
-# Output Limits
-# ============================================================================
-
 MAX_OUTPUT_SIZE = 1024 * 1024  # 1MB
 MAX_LINE_LENGTH = 10000
-
-# ============================================================================
-# Safe Commands by Category
-# ============================================================================
-
-SAFE_COMMANDS = {
-    "file_ops": [
-        "ls",
-        "dir",
-        "cat",
-        "type",
-        "mkdir",
-        "rmdir",
-        "cp",
-        "copy",
-        "mv",
-        "move",
-        "rm",
-        "del",
-    ],
-    "text": [
-        "grep",
-        "findstr",
-        "sed",
-        "awk",
-        "sort",
-        "uniq",
-        "wc",
-        "head",
-        "tail",
-    ],
-    "system": [
-        "whoami",
-        "hostname",
-        "date",
-        "time",
-        "uptime",
-        "df",
-        "du",
-        "free",
-        "vm_stat",
-    ],
-    "network": ["ping", "curl", "wget", "nslookup", "dig"],
-    "dev": ["git", "npm", "pip", "python", "node", "uv"],
-}
-
-# Flatten safe commands for easy lookup
-SAFE_COMMANDS_SET = {cmd for cmds in SAFE_COMMANDS.values() for cmd in cmds}
-
-# ============================================================================
-# Blocked Commands (Never Allowed)
-# ============================================================================
 
 BLOCKED_COMMANDS = [
     "shutdown",
@@ -156,9 +89,95 @@ BLOCKED_UNIX = [
     "batch",
 ]
 
-# ============================================================================
-# Base Directory for Operations
-# ============================================================================
+# Whitelist of allowed commands for execute_command
+# Only commands in this list can be executed by the shell tool.
+SAFE_COMMANDS = [
+    # File operations
+    "ls",
+    "dir",
+    "cat",
+    "type",
+    "cd",
+    "pwd",
+    "mkdir",
+    "rmdir",
+    "rm",
+    "del",
+    "cp",
+    "copy",
+    "mv",
+    "move",
+    "touch",
+    "find",
+    "grep",
+    "rg",
+    "head",
+    "tail",
+    "less",
+    "more",
+    "wc",
+    "du",
+    "df",
+    "stat",
+    "tree",
+    # Git
+    "git",
+    # Python
+    "python",
+    "python3",
+    "pip",
+    "pip3",
+    "uv",
+    # System info
+    "uname",
+    "whoami",
+    "id",
+    "hostname",
+    "ps",
+    "top",
+    "htop",
+    "vm_stat",
+    "free",
+    "uptime",
+    # Networking
+    "curl",
+    "wget",
+    "ping",
+    "ip",
+    "netstat",
+    "ss",
+    "nslookup",
+    "dig",
+    "traceroute",
+    "tracert",
+    # Archive
+    "tar",
+    "zip",
+    "unzip",
+    "gzip",
+    "gunzip",
+    "7z",
+    # Text editors
+    "nano",
+    "vim",
+    "vi",
+    "code",
+    "sed",
+    "awk",
+    # Misc
+    "echo",
+    "printf",
+    "date",
+    "cal",
+    "which",
+    "where",
+    "chmod",
+    "chown",
+    # Windows-specific
+    "powershell",
+    "cmd",
+]
+
 
 BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Data.path))).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)

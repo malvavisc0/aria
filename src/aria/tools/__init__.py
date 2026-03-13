@@ -4,6 +4,7 @@ This top-level package exports common helpers used by multiple tool
 subpackages.
 """
 
+from aria.tools.decorators import log_tool_call
 from aria.tools.utils import (
     safe_json,
     tool_error_response,
@@ -13,6 +14,7 @@ from aria.tools.utils import (
 )
 
 __all__: list[str] = [
+    "log_tool_call",
     "safe_json",
     "tool_error_response",
     "tool_response",

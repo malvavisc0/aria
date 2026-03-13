@@ -1,16 +1,16 @@
 """DuckDuckGo-backed web search tool."""
 
-import inspect
 from typing import Any, Dict, List, Optional
 
 from ddgs import DDGS
 from loguru import logger
 
-from aria.tools import safe_json, utc_timestamp
+from aria.tools import log_tool_call, safe_json, utc_timestamp
 from aria.tools.constants import DEFAULT_TIMEOUT
 from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
 
+@log_tool_call
 def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
     """
     Search the web and return a small set of {title, href} results.
@@ -29,11 +29,6 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
     validation_error = _validate_inputs(query, max_results)
     if validation_error:
         return _create_error_response(validation_error)
-
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
 
     # Prepare response structure
     timestamp = utc_timestamp()

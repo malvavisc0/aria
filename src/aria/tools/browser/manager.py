@@ -25,7 +25,6 @@ Example:
 
 import asyncio
 import hashlib
-import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +33,7 @@ from typing import Optional
 from loguru import logger
 from playwright.async_api import Browser, Page, Playwright, async_playwright
 
+from aria.tools import safe_json
 from aria.tools.browser.constants import (
     BROWSER_COMMAND_TIMEOUT,
     BROWSER_CONTENT_DIR,
@@ -273,6 +273,32 @@ class LightpandaManager:
             raise RuntimeError("Lightpanda browser is not running")
         return self._page  # type: ignore
 
+    def _require_running_page(self) -> Page:
+        """Ensure browser is running and page is available.
+
+        Returns:
+            The current page.
+
+        Raises:
+            RuntimeError: If browser is not running or page is not open.
+        """
+        if not self.is_running:
+            raise RuntimeError("Browser is not running")
+        if not self._page:
+            raise RuntimeError("Page is not open")
+        return self._page
+
+    def _success(self, data: dict) -> str:
+        """Create a success JSON response."""
+        return safe_json(data)
+
+    def _error(self, message: str, recovery: bool = False) -> str:
+        """Create an error JSON response."""
+        result = {"error": message}
+        if recovery:
+            result["recovery"] = "Browser crashed. Restarted. Retry."
+        return safe_json(result)
+
     async def navigate(self, url: str) -> str:
         """Navigate to URL and return rendered content.
 
@@ -282,45 +308,42 @@ class LightpandaManager:
         Returns:
             JSON string with page content and metadata.
         """
-        if not self.is_running:
-            return json.dumps({"error": "Browser is not running"})
-
-        if not self._page:
-            return json.dumps({"error": "Page is not open"})
+        try:
+            page = self._require_running_page()
+        except RuntimeError as e:
+            return self._error(str(e))
 
         # Check if page is still valid before attempting navigation
         if not self._is_page_valid():
             logger.warning("Page is closed, attempting to restart browser...")
             if not await self._ensure_page():
-                return json.dumps(
-                    {"error": "Browser crashed and could not be restarted"}
+                return self._error(
+                    "Browser crashed and could not be restarted"
                 )
 
         try:
             # Navigate to URL
-            await self._page.goto(url, timeout=BROWSER_COMMAND_TIMEOUT * 1000)
+            await page.goto(url, timeout=BROWSER_COMMAND_TIMEOUT * 1000)
 
             # Wait for page to settle
-            await self._page.wait_for_load_state("networkidle", timeout=10000)
+            await page.wait_for_load_state("networkidle", timeout=10000)
 
             # Get and persist page content
             content = await self.get_page_content()
-            content_path = _build_content_filepath(self._page.url, "open")
+            content_path = _build_content_filepath(page.url, "open")
             content_path.write_text(content, encoding="utf-8")
 
             # Safely get title with fallback
             try:
                 title = (
-                    await self._page.title()
-                    if self._is_page_valid()
-                    else "Unknown"
+                    await page.title() if self._is_page_valid() else "Unknown"
                 )
             except Exception:
                 title = "Unknown"
 
-            return json.dumps(
+            return self._success(
                 {
-                    "url": self._page.url,
+                    "url": page.url,
                     "title": title,
                     "content_file": str(content_path),
                     "content_preview": (
@@ -329,8 +352,7 @@ class LightpandaManager:
                         else content
                     ),
                     "content_size": len(content),
-                },
-                indent=2,
+                }
             )
 
         except Exception as e:
@@ -342,14 +364,9 @@ class LightpandaManager:
                     "Browser crashed during navigation, attempting restart..."
                 )
                 if await self._ensure_page():
-                    return json.dumps(
-                        {
-                            "error": str(e),
-                            "recovery": "Browser crashed. Restarted. Retry.",
-                        }
-                    )
+                    return self._error(str(e), recovery=True)
 
-            return json.dumps({"error": str(e)})
+            return self._error(str(e))
 
     async def click(self, selector: str) -> str:
         """Click element by CSS selector and return updated content.
@@ -360,45 +377,42 @@ class LightpandaManager:
         Returns:
             JSON string with updated page content.
         """
-        if not self.is_running:
-            return json.dumps({"error": "Browser is not running"})
-
-        if not self._page:
-            return json.dumps({"error": "Page is not open"})
+        try:
+            page = self._require_running_page()
+        except RuntimeError as e:
+            return self._error(str(e))
 
         # Check if page is still valid before attempting click
         if not self._is_page_valid():
             logger.warning("Page is closed, attempting to restart browser...")
             if not await self._ensure_page():
-                return json.dumps(
-                    {"error": "Browser crashed and could not be restarted"}
+                return self._error(
+                    "Browser crashed and could not be restarted"
                 )
 
         try:
             # Click the element
-            await self._page.click(selector, timeout=10000)
+            await page.click(selector, timeout=10000)
 
             # Wait for any navigation/updates
-            await self._page.wait_for_load_state("networkidle", timeout=10000)
+            await page.wait_for_load_state("networkidle", timeout=10000)
 
             # Get and persist updated content
             content = await self.get_page_content()
-            content_path = _build_content_filepath(self._page.url, "click")
+            content_path = _build_content_filepath(page.url, "click")
             content_path.write_text(content, encoding="utf-8")
 
             # Safely get title with fallback
             try:
                 title = (
-                    await self._page.title()
-                    if self._is_page_valid()
-                    else "Unknown"
+                    await page.title() if self._is_page_valid() else "Unknown"
                 )
             except Exception:
                 title = "Unknown"
 
-            return json.dumps(
+            return self._success(
                 {
-                    "url": self._page.url,
+                    "url": page.url,
                     "title": title,
                     "content_file": str(content_path),
                     "content_preview": (
@@ -407,8 +421,7 @@ class LightpandaManager:
                         else content
                     ),
                     "content_size": len(content),
-                },
-                indent=2,
+                }
             )
 
         except Exception as e:
@@ -420,14 +433,9 @@ class LightpandaManager:
                     "Browser crashed during click, attempting restart..."
                 )
                 if await self._ensure_page():
-                    return json.dumps(
-                        {
-                            "error": str(e),
-                            "recovery": "Browser crashed. Restarted. Retry.",
-                        }
-                    )
+                    return self._error(str(e), recovery=True)
 
-            return json.dumps({"error": str(e)})
+            return self._error(str(e))
 
     async def screenshot(self, path: str) -> str:
         """Take a screenshot of the current page.
@@ -438,28 +446,27 @@ class LightpandaManager:
         Returns:
             JSON string with file path.
         """
-        if not self.is_running:
-            return json.dumps({"error": "Browser is not running"})
-        if not self._page:
-            return json.dumps({"error": "Page is not open"})
+        try:
+            page = self._require_running_page()
+        except RuntimeError as e:
+            return self._error(str(e))
 
         # Check if page is still valid before attempting screenshot
         if not self._is_page_valid():
             logger.warning("Page is closed, attempting to restart browser...")
             if not await self._ensure_page():
-                return json.dumps(
-                    {"error": "Browser crashed and could not be restarted"}
+                return self._error(
+                    "Browser crashed and could not be restarted"
                 )
 
         try:
-            await self._page.screenshot(path=path)
-            return json.dumps(
+            await page.screenshot(path=path)
+            return self._success(
                 {
                     "success": True,
                     "file_path": path,
                     "note": "Use vision tools to analyze the screenshot.",
-                },
-                indent=2,
+                }
             )
 
         except Exception as e:
@@ -471,14 +478,9 @@ class LightpandaManager:
                     "Browser crashed during screenshot, attempting restart..."
                 )
                 if await self._ensure_page():
-                    return json.dumps(
-                        {
-                            "error": str(e),
-                            "recovery": "Browser crashed. Restarted. Retry.",
-                        }
-                    )
+                    return self._error(str(e), recovery=True)
 
-            return json.dumps({"error": str(e)})
+            return self._error(str(e))
 
     async def get_page_content(self) -> str:
         """Get current page content as clean text.
@@ -486,22 +488,22 @@ class LightpandaManager:
         Returns:
             Page content as text, with scripts and styles removed.
         """
-        if not self.is_running:
-            return json.dumps({"error": "Browser is not running"})
-        if not self._page:
-            return json.dumps({"error": "Page is not open"})
+        try:
+            page = self._require_running_page()
+        except RuntimeError as e:
+            return self._error(str(e))
 
         # Check if page is still valid
         if not self._is_page_valid():
             logger.warning("Page is closed, attempting to restart browser...")
             if not await self._ensure_page():
-                return json.dumps(
-                    {"error": "Browser crashed and could not be restarted"}
+                return self._error(
+                    "Browser crashed and could not be restarted"
                 )
 
         try:
             # Get text content from body, excluding scripts and styles
-            content = await self._page.evaluate("""
+            content = await page.evaluate("""
                 () => {
                     // Clone the document to avoid modifying the original
                     const clone = document.body.cloneNode(true);
@@ -523,4 +525,4 @@ class LightpandaManager:
 
         except Exception as e:
             logger.warning(f"Error getting page content: {e}")
-            return await self._page.content()
+            return await page.content()

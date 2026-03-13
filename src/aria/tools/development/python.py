@@ -1,7 +1,6 @@
 """Python execution and syntax-check tools."""
 
 import ast
-import inspect
 import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -9,6 +8,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
+from aria.tools.decorators import tool_function
 from aria.tools.development._internals import (
     _build_response,
     _capture_execution_output,
@@ -24,8 +24,12 @@ from aria.tools.development.decorators import (
 )
 
 
-@with_input_validation(code=True)
-@with_runner_error_handling("check_python_syntax")
+@tool_function(
+    "check_python_syntax",
+    validate={"code": True},
+    error_handler=with_runner_error_handling,
+    validation_decorator=with_input_validation,
+)
 def check_python_syntax(intent: str, code: str) -> str:
     """
     Check Python syntax of a code string.
@@ -37,10 +41,7 @@ def check_python_syntax(intent: str, code: str) -> str:
     Returns:
         JSON with valid (bool), error_type, message, line_number, column
     """
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
 
     filename = "<block>"
     logger.info(f"Checking Python syntax for: {filename}")
@@ -74,8 +75,12 @@ def check_python_syntax(intent: str, code: str) -> str:
         )
 
 
-@with_input_validation(file_path=True)
-@with_runner_error_handling("check_python_file_syntax")
+@tool_function(
+    "check_python_file_syntax",
+    validate={"file_path": True},
+    error_handler=with_runner_error_handling,
+    validation_decorator=with_input_validation,
+)
 def check_python_file_syntax(intent: str, file_path: str) -> str:
     """
     Check Python syntax of a file.
@@ -88,10 +93,7 @@ def check_python_file_syntax(intent: str, file_path: str) -> str:
         JSON with valid (bool), error_type, message, line_number, column
     """
 
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
     logger.info(f"Checking syntax of file: {file_path}")
 
     code = _read_file_safely(file_path)
@@ -125,8 +127,12 @@ def check_python_file_syntax(intent: str, file_path: str) -> str:
         )
 
 
-@with_input_validation(code=True, timeout=True)
-@with_runner_error_handling("execute_python_code")
+@tool_function(
+    "execute_python_code",
+    validate={"code": True, "timeout": True},
+    error_handler=with_runner_error_handling,
+    validation_decorator=with_input_validation,
+)
 def execute_python_code(
     intent: str,
     code: str,
@@ -158,10 +164,7 @@ def execute_python_code(
     _validate_timeout(timeout)
 
     # Log reason
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
 
     try:
         # Create safe execution environment
@@ -291,8 +294,12 @@ def execute_python_code(
         )
 
 
-@with_input_validation(file_path=True, timeout=True)
-@with_runner_error_handling("execute_file")
+@tool_function(
+    "execute_file",
+    validate={"file_path": True, "timeout": True},
+    error_handler=with_runner_error_handling,
+    validation_decorator=with_input_validation,
+)
 def execute_python_file(
     intent: str,
     file_path: str,
@@ -319,10 +326,7 @@ def execute_python_file(
     logger.info(f"Executing Python file: {file_path} (timeout={timeout}s)")
 
     # Log reason
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
 
     # Validate timeout
     if not timeout:
@@ -473,6 +477,7 @@ def execute_python_file(
         )
 
 
+@tool_function("get_restricted_builtins")
 def get_restricted_builtins(intent: str) -> List[str]:
     """
     Return restricted builtins (security policy).
@@ -484,14 +489,12 @@ def get_restricted_builtins(intent: str) -> List[str]:
         List of blocked builtin names (e.g., eval, exec, open)
     """
     # Log reason
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
 
     return sorted(RESTRICTED_BUILTINS)
 
 
+@tool_function("get_timeout_limits")
 def get_timeout_limits(intent: str) -> Dict[str, int]:
     """
     Return timeout configuration limits.
@@ -503,9 +506,6 @@ def get_timeout_limits(intent: str) -> Dict[str, int]:
         Dict with default (30) and maximum (300) timeout in seconds
     """
     # Log reason
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
 
     return {"default": DEFAULT_TIMEOUT, "maximum": MAX_TIMEOUT}

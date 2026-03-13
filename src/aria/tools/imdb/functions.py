@@ -11,7 +11,8 @@ a curated subset of fields from each model to keep responses lean and
 self-documenting.
 """
 
-import json
+import inspect
+from functools import wraps
 from typing import Optional
 
 from imdbinfo import TitleType as ImdbTitleType
@@ -26,6 +27,7 @@ from imdbinfo import (
 )
 from loguru import logger
 
+from aria.tools import tool_error_response, tool_success_response
 from aria.tools.imdb.constants import (
     ERROR_EMPTY_IMDB_ID,
     ERROR_EMPTY_QUERY,
@@ -106,6 +108,63 @@ def _classify_error(error: Exception) -> str:
     return ERROR_UNKNOWN.format(error=str(error))
 
 
+def _imdb_tool(
+    error_not_found_msg_template: str, *, id_param: str = "imdb_id"
+):
+    """Decorator for IMDB tool functions.
+
+    Handles ID validation and standardized error handling.
+
+    Args:
+        error_not_found_msg_template: Message template for not-found cases.
+        id_param: Name of the ID parameter to validate and normalize.
+    """
+
+    def _format_not_found_msg(id_value: str) -> str:
+        return error_not_found_msg_template.format(**{id_param: id_value})
+
+    def decorator(func):
+        signature = inspect.signature(func)
+
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> str:
+            bound = signature.bind(*args, **kwargs)
+            bound.apply_defaults()
+
+            intent = str(bound.arguments.get("intent", "unknown"))
+            raw_id = bound.arguments.get(id_param)
+
+            if not isinstance(raw_id, str) or not raw_id.strip():
+                return tool_error_response(
+                    func.__name__, intent, ValueError(ERROR_EMPTY_IMDB_ID)
+                )
+
+            normalized_id = raw_id.strip()
+            bound.arguments[id_param] = normalized_id
+
+            try:
+                return func(*bound.args, **bound.kwargs)
+            except ValueError as e:
+                expected_not_found = _format_not_found_msg(normalized_id)
+                if "not found" in str(e).lower() or expected_not_found in str(
+                    e
+                ):
+                    return tool_error_response(
+                        func.__name__, intent, ValueError(expected_not_found)
+                    )
+                logger.error(f"{func.__name__} validation error: {e}")
+                return tool_error_response(func.__name__, intent, e)
+            except Exception as e:
+                logger.error(f"{func.__name__} failed: {e}")
+                return tool_error_response(
+                    func.__name__, intent, RuntimeError(_classify_error(e))
+                )
+
+        return wrapper
+
+    return decorator
+
+
 def search_imdb_titles(
     intent: str, query: str, title_type: Optional[str] = None
 ) -> str:
@@ -125,7 +184,9 @@ def search_imdb_titles(
     logger.info(f"search_imdb_titles called with query='{query}'")
 
     if not query or not query.strip():
-        return json.dumps({"error": ERROR_EMPTY_QUERY})
+        return tool_error_response(
+            "search_imdb_titles", intent, ValueError(ERROR_EMPTY_QUERY)
+        )
 
     try:
         imdb_title_type = _get_title_type(title_type)
@@ -137,12 +198,10 @@ def search_imdb_titles(
             (not result.titles or len(result.titles) == 0)
             and (not result.names or len(result.names) == 0)
         ):
-            return json.dumps(
-                {
-                    "error": ERROR_NO_RESULTS.format(query=query),
-                    "titles": [],
-                    "names": [],
-                }
+            return tool_error_response(
+                "search_imdb_titles",
+                intent,
+                ValueError(ERROR_NO_RESULTS.format(query=query)),
             )
 
         titles = [
@@ -168,120 +227,101 @@ def search_imdb_titles(
         response = {"titles": titles, "names": names}
 
         logger.info(f"Found {len(titles)} titles, {len(names)} names")
-        return json.dumps(response, default=str)
+        return tool_success_response("search_imdb_titles", intent, response)
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
-        return json.dumps({"error": str(e)})
+        return tool_error_response("search_imdb_titles", intent, e)
     except Exception as e:
         logger.error(f"Search failed: {e}")
-        return json.dumps({"error": _classify_error(e)})
+        return tool_error_response(
+            "search_imdb_titles", intent, RuntimeError(_classify_error(e))
+        )
 
 
+@_imdb_tool(ERROR_MOVIE_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_details(intent: str, imdb_id: str) -> str:
-    """
-    Get comprehensive details for a movie or TV series.
-
-    Args:
-        intent: Why you're fetching (e.g., "Getting Matrix details")
-        imdb_id: IMDb ID with/without 'tt' prefix (e.g., tt0133093)
-
-    Returns:
-        JSON with imdbId, title, year, kind, duration, rating, votes,
-        plot, genres, directors, writers, producers, cast, stars,
-        release_date, awards, worldwide_gross, production_budget, etc.
-    """
+    """Get comprehensive details for a movie or TV series."""
     logger.info(f"get_movie_details called with imdb_id='{imdb_id}'")
 
-    if not imdb_id or not imdb_id.strip():
-        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+    movie = get_movie(imdb_id)
 
-    try:
-        movie = get_movie(imdb_id.strip())
+    if movie is None:
+        raise ValueError(ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id))
 
-        if movie is None:
-            return json.dumps(
-                {"error": ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id)}
-            )
-
-        # Directors: prefer movie.directors, fall back to categories
+    # Directors: prefer movie.directors, fall back to categories
+    directors = [
+        {"imdbId": d.imdbId, "name": d.name} for d in (movie.directors or [])
+    ]
+    if not directors:
+        cat_directors = (movie.categories or {}).get("director", [])
         directors = [
-            {"imdbId": d.imdbId, "name": d.name}
-            for d in (movie.directors or [])
-        ]
-        if not directors:
-            cat_directors = (movie.categories or {}).get("director", [])
-            directors = [
-                {"imdbId": d.imdbId, "name": d.name} for d in cat_directors
-            ]
-
-        # Writers: extracted from categories
-        cat_writers = (movie.categories or {}).get("writer", [])
-        writers = [{"imdbId": w.imdbId, "name": w.name} for w in cat_writers]
-
-        # Producers: extracted from categories
-        cat_producers = (movie.categories or {}).get("producer", [])
-        producers = [
-            {"imdbId": p.imdbId, "name": p.name} for p in cat_producers
+            {"imdbId": d.imdbId, "name": d.name} for d in cat_directors
         ]
 
-        # Cast with characters: extracted from categories
-        cat_cast = (movie.categories or {}).get("cast", [])
-        cast = [
-            {
-                "imdbId": c.imdbId,
-                "name": c.name,
-                "characters": getattr(c, "characters", []),
-            }
-            for c in cat_cast
-        ]
+    # Writers: extracted from categories
+    cat_writers = (movie.categories or {}).get("writer", [])
+    writers = [{"imdbId": w.imdbId, "name": w.name} for w in cat_writers]
 
-        stars = [
-            {"imdbId": s.imdbId, "name": s.name} for s in (movie.stars or [])
-        ]
+    # Producers: extracted from categories
+    cat_producers = (movie.categories or {}).get("producer", [])
+    producers = [{"imdbId": p.imdbId, "name": p.name} for p in cat_producers]
 
-        awards = None
-        if movie.awards:
-            awards = {
-                "wins": movie.awards.wins,
-                "nominations": movie.awards.nominations,
-                "prestigious_award": movie.awards.prestigious_award,
-            }
+    # Cast with characters: extracted from categories
+    cat_cast = (movie.categories or {}).get("cast", [])
+    cast = [
+        {
+            "imdbId": c.imdbId,
+            "name": c.name,
+            "characters": getattr(c, "characters", []),
+        }
+        for c in cat_cast
+    ]
 
-        result = {
-            "imdbId": movie.imdbId,
-            "title": movie.title,
-            "year": movie.year,
-            "kind": movie.kind,
-            "duration": movie.duration,
-            "rating": movie.rating,
-            "votes": movie.votes,
-            "metacritic_rating": movie.metacritic_rating,
-            "mpaa": movie.mpaa,
-            "plot": movie.plot,
-            "genres": movie.genres or [],
-            "languages_text": movie.languages_text or [],
-            "countries": movie.countries or [],
-            "directors": directors,
-            "writers": writers,
-            "producers": producers,
-            "cast": cast,
-            "stars": stars,
-            "release_date": movie.release_date,
-            "cover_url": movie.cover_url,
-            "worldwide_gross": movie.worldwide_gross,
-            "production_budget": movie.production_budget,
-            "awards": awards,
+    stars = [{"imdbId": s.imdbId, "name": s.name} for s in (movie.stars or [])]
+
+    awards = None
+    if movie.awards:
+        awards = {
+            "wins": movie.awards.wins,
+            "nominations": movie.awards.nominations,
+            "prestigious_award": movie.awards.prestigious_award,
         }
 
-        logger.info(f"Retrieved details for '{movie.title}' ({movie.year})")
-        return json.dumps(result, default=str)
+    result = {
+        "imdbId": movie.imdbId,
+        "title": movie.title,
+        "year": movie.year,
+        "kind": movie.kind,
+        "duration": movie.duration,
+        "rating": movie.rating,
+        "votes": movie.votes,
+        "metacritic_rating": movie.metacritic_rating,
+        "mpaa": movie.mpaa,
+        "plot": movie.plot,
+        "genres": movie.genres or [],
+        "languages_text": movie.languages_text or [],
+        "countries": movie.countries or [],
+        "directors": directors,
+        "writers": writers,
+        "producers": producers,
+        "cast": cast,
+        "stars": stars,
+        "release_date": movie.release_date,
+        "cover_url": movie.cover_url,
+        "worldwide_gross": movie.worldwide_gross,
+        "production_budget": movie.production_budget,
+        "awards": awards,
+    }
 
-    except Exception as e:
-        logger.error(f"Failed to get movie details: {e}")
-        return json.dumps({"error": _classify_error(e)})
+    logger.info(f"Retrieved details for '{movie.title}' ({movie.year})")
+    return tool_success_response("get_movie_details", intent, result)
 
 
+@_imdb_tool(
+    ERROR_PERSON_NOT_FOUND.format(person_id="{person_id}"),
+    id_param="person_id",
+)
 def get_person_details(intent: str, person_id: str) -> str:
     """
     Get details about an actor, director, or other film industry person.
@@ -296,39 +336,33 @@ def get_person_details(intent: str, person_id: str) -> str:
     """
     logger.info(f"get_person_details called with person_id='{person_id}'")
 
-    if not person_id or not person_id.strip():
-        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+    person = get_name(person_id)
 
-    try:
-        person = get_name(person_id.strip())
+    if person is None:
+        raise ValueError(ERROR_PERSON_NOT_FOUND.format(person_id=person_id))
 
-        if person is None:
-            return json.dumps(
-                {"error": ERROR_PERSON_NOT_FOUND.format(person_id=person_id)}
-            )
+    result = {
+        "imdbId": person.imdbId,
+        "name": person.name,
+        "bio": person.bio,
+        "image_url": person.image_url,
+        "birth_date": person.birth_date,
+        "birth_place": person.birth_place,
+        "death_date": person.death_date,
+        "death_place": person.death_place,
+        "knownfor": person.knownfor or [],
+        "primary_profession": person.primary_profession or [],
+        "height": person.height,
+    }
 
-        result = {
-            "imdbId": person.imdbId,
-            "name": person.name,
-            "bio": person.bio,
-            "image_url": person.image_url,
-            "birth_date": person.birth_date,
-            "birth_place": person.birth_place,
-            "death_date": person.death_date,
-            "death_place": person.death_place,
-            "knownfor": person.knownfor or [],
-            "primary_profession": person.primary_profession or [],
-            "height": person.height,
-        }
-
-        logger.info(f"Retrieved details for person '{person.name}'")
-        return json.dumps(result, default=str)
-
-    except Exception as e:
-        logger.error(f"Failed to get person details: {e}")
-        return json.dumps({"error": _classify_error(e)})
+    logger.info(f"Retrieved details for person '{person.name}'")
+    return tool_success_response("get_person_details", intent, result)
 
 
+@_imdb_tool(
+    ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id="{person_id}"),
+    id_param="person_id",
+)
 def get_person_filmography(intent: str, person_id: str) -> str:
     """
     Get the complete filmography for an actor or director.
@@ -343,49 +377,37 @@ def get_person_filmography(intent: str, person_id: str) -> str:
     """
     logger.info(f"get_person_filmography called with person_id='{person_id}'")
 
-    if not person_id or not person_id.strip():
-        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+    filmography = get_filmography(person_id)
 
-    try:
-        filmography = get_filmography(person_id.strip())
+    if not filmography:
+        raise ValueError(
+            ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id=person_id)
+        )
 
-        if not filmography:
-            return json.dumps(
+    serialized = {}
+    if isinstance(filmography, dict):
+        for category, credits in filmography.items():
+            serialized[category] = [
                 {
-                    "error": ERROR_FILMOGRAPHY_NOT_FOUND.format(
-                        person_id=person_id
-                    ),
-                    "filmography": {},
+                    "imdbId": c.imdbId,
+                    "title": c.title,
+                    "year": c.year,
+                    "kind": c.kind,
+                    "rating": c.rating,
                 }
-            )
+                for c in credits
+            ]
 
-        serialized = {}
-        if isinstance(filmography, dict):
-            for category, credits in filmography.items():
-                serialized[category] = [
-                    {
-                        "imdbId": c.imdbId,
-                        "title": c.title,
-                        "year": c.year,
-                        "kind": c.kind,
-                        "rating": c.rating,
-                    }
-                    for c in credits
-                ]
+    result = {
+        "person_id": person_id,
+        "filmography": serialized,
+    }
 
-        result = {
-            "person_id": person_id,
-            "filmography": serialized,
-        }
-
-        logger.info(f"Retrieved filmography for person_id='{person_id}'")
-        return json.dumps(result, default=str)
-
-    except Exception as e:
-        logger.error(f"Failed to get filmography: {e}")
-        return json.dumps({"error": _classify_error(e)})
+    logger.info(f"Retrieved filmography for person_id='{person_id}'")
+    return tool_success_response("get_person_filmography", intent, result)
 
 
+@_imdb_tool(ERROR_EPISODES_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_all_series_episodes(intent: str, imdb_id: str) -> str:
     """
     Get all episodes for a TV series.
@@ -401,51 +423,37 @@ def get_all_series_episodes(intent: str, imdb_id: str) -> str:
     """
     logger.info(f"get_all_series_episodes called with imdb_id='{imdb_id}'")
 
-    if not imdb_id or not imdb_id.strip():
-        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+    episodes = get_all_episodes(imdb_id)
 
-    try:
-        episodes = get_all_episodes(imdb_id.strip())
+    if not episodes:
+        raise ValueError(ERROR_EPISODES_NOT_FOUND.format(imdb_id=imdb_id))
 
-        if not episodes:
-            return json.dumps(
-                {
-                    "error": ERROR_EPISODES_NOT_FOUND.format(imdb_id=imdb_id),
-                    "episodes": [],
-                }
-            )
-
-        serialized_episodes = [
-            {
-                "imdbId": ep.imdbId,
-                "title": ep.title,
-                "year": ep.year,
-                "rating": ep.rating,
-                "votes": ep.votes,
-                "plot": ep.plot,
-                "release_date": ep.release_date,
-                "duration": ep.duration,
-                "genres": ep.genres or [],
-            }
-            for ep in episodes
-        ]
-
-        result = {
-            "series_id": imdb_id,
-            "episode_count": len(episodes),
-            "episodes": serialized_episodes,
+    serialized_episodes = [
+        {
+            "imdbId": ep.imdbId,
+            "title": ep.title,
+            "year": ep.year,
+            "rating": ep.rating,
+            "votes": ep.votes,
+            "plot": ep.plot,
+            "release_date": ep.release_date,
+            "duration": ep.duration,
+            "genres": ep.genres or [],
         }
+        for ep in episodes
+    ]
 
-        logger.info(
-            f"Retrieved {len(episodes)} episodes for series '{imdb_id}'"
-        )
-        return json.dumps(result, default=str)
+    result = {
+        "series_id": imdb_id,
+        "episode_count": len(episodes),
+        "episodes": serialized_episodes,
+    }
 
-    except Exception as e:
-        logger.error(f"Failed to get episodes: {e}")
-        return json.dumps({"error": _classify_error(e)})
+    logger.info(f"Retrieved {len(episodes)} episodes for series '{imdb_id}'")
+    return tool_success_response("get_all_series_episodes", intent, result)
 
 
+@_imdb_tool(ERROR_REVIEWS_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_reviews(intent: str, imdb_id: str) -> str:
     """
     Get user reviews for a movie or TV series.
@@ -460,34 +468,22 @@ def get_movie_reviews(intent: str, imdb_id: str) -> str:
     """
     logger.info(f"get_movie_reviews called with imdb_id='{imdb_id}'")
 
-    if not imdb_id or not imdb_id.strip():
-        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+    reviews = get_reviews(imdb_id)
 
-    try:
-        reviews = get_reviews(imdb_id.strip())
+    if not reviews:
+        raise ValueError(ERROR_REVIEWS_NOT_FOUND.format(imdb_id=imdb_id))
 
-        if not reviews:
-            return json.dumps(
-                {
-                    "error": ERROR_REVIEWS_NOT_FOUND.format(imdb_id=imdb_id),
-                    "reviews": [],
-                }
-            )
+    result = {
+        "imdb_id": imdb_id,
+        "review_count": len(reviews),
+        "reviews": reviews if isinstance(reviews, list) else [],
+    }
 
-        result = {
-            "imdb_id": imdb_id,
-            "review_count": len(reviews),
-            "reviews": reviews if isinstance(reviews, list) else [],
-        }
-
-        logger.info(f"Retrieved {len(reviews)} reviews for '{imdb_id}'")
-        return json.dumps(result, default=str)
-
-    except Exception as e:
-        logger.error(f"Failed to get reviews: {e}")
-        return json.dumps({"error": _classify_error(e)})
+    logger.info(f"Retrieved {len(reviews)} reviews for '{imdb_id}'")
+    return tool_success_response("get_movie_reviews", intent, result)
 
 
+@_imdb_tool(ERROR_TRIVIA_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_trivia(intent: str, imdb_id: str) -> str:
     """
     Get trivia and interesting facts about a movie or TV series.
@@ -502,29 +498,16 @@ def get_movie_trivia(intent: str, imdb_id: str) -> str:
     """
     logger.info(f"get_movie_trivia called with imdb_id='{imdb_id}'")
 
-    if not imdb_id or not imdb_id.strip():
-        return json.dumps({"error": ERROR_EMPTY_IMDB_ID})
+    trivia = get_trivia(imdb_id)
 
-    try:
-        trivia = get_trivia(imdb_id.strip())
+    if not trivia:
+        raise ValueError(ERROR_TRIVIA_NOT_FOUND.format(imdb_id=imdb_id))
 
-        if not trivia:
-            return json.dumps(
-                {
-                    "error": ERROR_TRIVIA_NOT_FOUND.format(imdb_id=imdb_id),
-                    "trivia": [],
-                }
-            )
+    result = {
+        "imdb_id": imdb_id,
+        "trivia_count": len(trivia),
+        "trivia": trivia if isinstance(trivia, list) else [],
+    }
 
-        result = {
-            "imdb_id": imdb_id,
-            "trivia_count": len(trivia),
-            "trivia": trivia if isinstance(trivia, list) else [],
-        }
-
-        logger.info(f"Retrieved {len(trivia)} trivia items for '{imdb_id}'")
-        return json.dumps(result, default=str)
-
-    except Exception as e:
-        logger.error(f"Failed to get trivia: {e}")
-        return json.dumps({"error": _classify_error(e)})
+    logger.info(f"Retrieved {len(trivia)} trivia items for '{imdb_id}'")
+    return tool_success_response("get_movie_trivia", intent, result)

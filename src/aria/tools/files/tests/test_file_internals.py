@@ -12,26 +12,29 @@ from unittest.mock import patch
 
 import pytest
 
+from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import BASE_DIR
 from aria.tools.files._internals import (
-    _atomic_write,
-    _build_directory_tree,
-    _count_lines_efficiently,
-    _count_tree_items,
     _create_backup,
     _error_response,
-    _format_permissions_symbolic,
-    _modify_lines_streaming,
-    _read_lines_streaming,
-    _safe_json,
     _secure_resolve_dir,
     _secure_resolve_path,
-    _timestamp,
     _validate_inputs,
     validate_and_resolve_file,
     validate_and_resolve_two_files,
 )
 from aria.tools.files.exceptions import FileOperationError, FileSecurityError
+from aria.tools.files.read_operations import (
+    _build_directory_tree,
+    _count_lines_efficiently,
+    _count_tree_items,
+    _format_permissions_symbolic,
+    _read_lines_streaming,
+)
+from aria.tools.files.write_operations import (
+    _atomic_write,
+    _modify_lines_streaming,
+)
 
 
 class TestTimestamp:
@@ -39,7 +42,7 @@ class TestTimestamp:
 
     def test_timestamp_format(self):
         """Test that timestamp returns ISO format string."""
-        ts = _timestamp()
+        ts = utc_timestamp()
         assert isinstance(ts, str)
         assert "T" in ts  # ISO format contains T separator
 
@@ -105,7 +108,7 @@ class TestValidateInputs:
     def test_non_string_filename(self):
         """Test validation with non-string filename."""
         with pytest.raises(FileSecurityError, match="Invalid file name"):
-            _validate_inputs(123)
+            _validate_inputs(123)  # type: ignore[arg-type]
 
     def test_path_traversal_attempt(self):
         """Test validation detects path traversal."""
@@ -173,13 +176,13 @@ class TestSafeJson:
     def test_safe_json_success(self):
         """Test successful JSON serialization."""
         data = {"key": "value", "number": 42}
-        result = _safe_json(data)
+        result = safe_json(data)
         assert json.loads(result) == data
 
     def test_safe_json_with_unicode(self):
         """Test JSON serialization with unicode characters."""
         data = {"text": "Hello 世界"}
-        result = _safe_json(data)
+        result = safe_json(data)
         parsed = json.loads(result)
         assert parsed["text"] == "Hello 世界"
 
@@ -190,7 +193,7 @@ class TestSafeJson:
             pass
 
         data = {"obj": NonSerializable()}
-        result = _safe_json(data)
+        result = safe_json(data)
         parsed = json.loads(result)
         # safe_json uses a default handler that converts non-serializable
         # objects to strings rather than raising an error
@@ -537,7 +540,8 @@ class TestBuildDirectoryTree:
 
             tree = _build_directory_tree(tmpdir_path, 0, 2)
             assert any(
-                child["type"] == "directory" for child in tree["children"]
+                child["type"] == "directory"
+                for child in tree["children"].values()
             )
 
     def test_build_tree_max_depth(self):
@@ -548,7 +552,7 @@ class TestBuildDirectoryTree:
             subdir.mkdir()
 
             tree = _build_directory_tree(tmpdir_path, 0, 0)
-            assert tree["children"] == []
+            assert tree["type"] == "truncated"
 
     def test_build_tree_permission_error(self):
         """Test handling of permission errors."""
@@ -559,8 +563,7 @@ class TestBuildDirectoryTree:
             with patch.object(Path, "iterdir") as mock_iterdir:
                 mock_iterdir.side_effect = PermissionError("Access denied")
                 tree = _build_directory_tree(tmpdir_path, 0, 2)
-                # Should return tree with empty children
-                assert tree["children"] == []
+                assert tree["type"] == "permission_denied"
 
 
 class TestCountTreeItems:
@@ -570,18 +573,18 @@ class TestCountTreeItems:
         """Test counting files and directories in tree."""
         tree = {
             "type": "directory",
-            "children": [
-                {"type": "file", "name": "file1.txt"},
-                {"type": "file", "name": "file2.txt"},
-                {
+            "children": {
+                "file1.txt": {"type": "file", "size": 1},
+                "file2.txt": {"type": "file", "size": 1},
+                "subdir": {
                     "type": "directory",
-                    "children": [{"type": "file", "name": "file3.txt"}],
+                    "children": {"file3.txt": {"type": "file", "size": 1}},
                 },
-            ],
+            },
         }
         files, dirs = _count_tree_items(tree)
         assert files == 3
-        assert dirs == 2  # Root dir + 1 subdir
+        assert dirs == 1
 
 
 class TestFormatPermissionsSymbolic:

@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
+from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import MAX_TIMEOUT
 from aria.tools.development._internals import (
     _build_response,
@@ -22,9 +23,7 @@ from aria.tools.development._internals import (
     _error_response,
     _execute_without_capture,
     _read_file_safely,
-    _safe_json,
     _time_limit,
-    _timestamp,
     _validate_inputs,
     _validate_timeout,
 )
@@ -42,7 +41,7 @@ class TestTimestamp:
 
     def test_timestamp_format(self):
         """Test that timestamp is in ISO format"""
-        ts = _timestamp()
+        ts = utc_timestamp()
         assert isinstance(ts, str)
         assert "T" in ts  # ISO format contains T separator
         # Should be parseable as datetime
@@ -57,7 +56,7 @@ class TestSafeJson:
     def test_safe_json_success(self):
         """Test successful JSON serialization"""
         data = {"key": "value", "number": 42}
-        result = _safe_json(data)
+        result = safe_json(data)
         assert isinstance(result, str)
         parsed = json.loads(result)
         assert parsed == data
@@ -65,7 +64,7 @@ class TestSafeJson:
     def test_safe_json_with_unicode(self):
         """Test JSON serialization with unicode characters"""
         data = {"message": "Hello 世界 🌍"}
-        result = _safe_json(data)
+        result = safe_json(data)
         assert isinstance(result, str)
         parsed = json.loads(result)
         assert parsed == data
@@ -78,7 +77,7 @@ class TestSafeJson:
             pass
 
         data = {"obj": NonSerializable()}
-        result = _safe_json(data)
+        result = safe_json(data)
         assert isinstance(result, str)
         parsed = json.loads(result)
         # safe_json uses a default handler that converts non-serializable
@@ -615,6 +614,6 @@ print(z)
             "level1": {"level2": {"level3": {"value": "deep"}}},
             "list": [1, 2, 3],
         }
-        result = _safe_json(data)
+        result = safe_json(data)
         parsed = json.loads(result)
         assert parsed == data

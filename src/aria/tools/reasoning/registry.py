@@ -1,0 +1,79 @@
+"""Session registry helpers backed by the database."""
+
+from typing import Optional
+
+from loguru import logger
+
+from .database import get_database
+from .session import ReasoningSession
+
+# Get database instance
+_db = get_database()
+
+
+def get_active_session_id(agent_id: str) -> Optional[str]:
+    """Get most-recent active session ID for an agent from the database."""
+    sessions = _db.list_sessions(agent_id)
+    if not sessions:
+        return None
+
+    # list_sessions() returns newest-first
+    active_session_id = sessions[0]["session_id"]
+    logger.debug(
+        "Resolved active session '{}' for agent '{}' from database",
+        active_session_id,
+        agent_id,
+    )
+    return active_session_id
+
+
+def get_session(session_id: str, agent_id: str) -> ReasoningSession:
+    """Load session from database.
+
+    Args:
+        session_id: Session identifier
+        agent_id: Agent identifier for multi-agent isolation
+
+    Returns:
+        ReasoningSession instance for the given ID
+
+    Raises:
+        ValueError: If the session does not exist
+    """
+    session_data = _db.load_session(session_id, agent_id)
+    if session_data is None:
+        available = [s["session_id"] for s in _db.list_sessions(agent_id)]
+        logger.error(
+            f"Session '{session_id}' for agent '{agent_id}' "
+            f"does not exist. Available sessions: {available or ['(none)']}"
+        )
+        raise ValueError(
+            f"Session '{session_id}' for agent '{agent_id}' "
+            f"does not exist. Available sessions: {available or ['(none)']}"
+        )
+
+    session = ReasoningSession.from_dict(session_data)
+    session.set_database(_db)
+    logger.debug(
+        f"Loaded session {session_id} for agent {agent_id} from database"
+    )
+    return session
+
+
+def remove_session(agent_id: str, session_id: str) -> None:
+    """No-op for backward compatibility.
+
+    Session state is DB-backed; no in-memory registry is maintained.
+    """
+    _ = (agent_id, session_id)
+
+
+def clear_all() -> None:
+    """Reset in-memory state. Kept for test compatibility."""
+    # DB-backed registry has no in-memory state to clear.
+    return None
+
+
+def get_db():
+    """Get the database instance."""
+    return _db

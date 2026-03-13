@@ -1,0 +1,490 @@
+"""Internal helpers for URL download functionality.
+
+This module contains internal functions used by get_file_from_url.
+These are not part of the public API and may change without notice.
+"""
+
+import mimetypes
+import os
+import random
+import re
+import tempfile
+import time
+from pathlib import Path
+from typing import Dict, Optional, Union
+from urllib.parse import urlparse
+
+import httpx
+from loguru import logger
+from markitdown import MarkItDown
+
+from aria.tools import (
+    tool_error_response,
+    tool_success_response,
+    utc_timestamp,
+)
+from aria.tools.search.constants import (
+    BINARY_CONTENT_TYPES,
+    HTML_CONTENT_TYPES,
+    MAX_FILE_SIZE,
+    MAX_RETRIES,
+    SUPPORTED_FORMATS,
+    TIMEOUT,
+    USER_AGENTS,
+)
+
+
+def _validate_url(url: str) -> str:
+    """Validate that a URL is well-formed and uses HTTP or HTTPS protocol."""
+    from aria.tools.search.download import URLDownloadError
+
+    if not url:
+        raise URLDownloadError("URL cannot be empty")
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            raise URLDownloadError("Invalid URL format")
+        if parsed.scheme not in ["http", "https"]:
+            raise URLDownloadError("Only HTTP and HTTPS URLs are supported")
+    except Exception as exc:
+        raise URLDownloadError(f"URL validation failed: {exc}") from exc
+    return url
+
+
+def _validate_format(output_format: str) -> str:
+    """Validate that the requested output format is supported."""
+    from aria.tools.search.download import ContentParsingError
+
+    if output_format in SUPPORTED_FORMATS:
+        return output_format
+    supported = ", ".join(SUPPORTED_FORMATS)
+    error = (
+        f"Unsupported format '{output_format}'. Supported formats: {supported}"
+    )
+    raise ContentParsingError(error)
+
+
+def _is_html_content(content_type: str) -> bool:
+    """Check if a content type represents HTML content."""
+    return any(html_type in content_type for html_type in HTML_CONTENT_TYPES)
+
+
+def _is_binary_content(content_type: str) -> bool:
+    """Check if a content type represents binary content."""
+    return any(
+        binary_type in content_type for binary_type in BINARY_CONTENT_TYPES
+    )
+
+
+def _get_default_headers() -> Dict[str, str]:
+    """Generate default HTTP headers to mimic a real browser."""
+    return {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+
+def _extract_filename_from_response(
+    response: httpx.Response, url: str
+) -> Optional[str]:
+    """Extract filename from HTTP response headers or URL."""
+    content_disp = response.headers.get("content-disposition", "")
+    if content_disp:
+        match = re.search(r'filename[*]?=(["\']?)(.+?)\1', content_disp)
+        if match:
+            return os.path.basename(match.group(2))
+    parsed_url = urlparse(url)
+    if parsed_url.path:
+        filename = os.path.basename(parsed_url.path)
+        if filename and "." in filename:
+            return filename
+    return None
+
+
+def _fetch_file(
+    url: str,
+    custom_headers: Optional[Dict[str, str]] = None,
+    max_size: int = MAX_FILE_SIZE,
+) -> tuple[Union[str, bytes], str, Optional[str]]:
+    """Download a file from a URL with simple retry logic."""
+    from aria.tools.search.download import URLDownloadError
+
+    last_error = ""
+    headers = _get_default_headers()
+    if custom_headers:
+        headers.update(custom_headers)
+
+    client = httpx.Client(
+        timeout=httpx.Timeout(TIMEOUT),
+        follow_redirects=True,
+        headers=headers,
+        verify=False,
+    )
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            if attempt > 0:
+                delay = min(2**attempt, 10) + random.uniform(0, 1)
+                time.sleep(delay)
+
+            response = client.get(url)
+            response.raise_for_status()
+
+            content_length = response.headers.get("content-length")
+            if content_length:
+                size = int(content_length)
+                if size > max_size:
+                    raise URLDownloadError(
+                        f"File size ({size} bytes) exceeds maximum allowed size ({max_size} bytes)"
+                    )
+
+            content_type = response.headers.get("content-type", "").lower()
+            content_type = content_type.split(";", 1)[0].strip()
+            filename = _extract_filename_from_response(response, url)
+
+            if _is_html_content(content_type):
+                text_content = response.text
+                encoded_size = len(text_content.encode("utf-8"))
+                if encoded_size > max_size:
+                    raise URLDownloadError(
+                        f"File size ({encoded_size} bytes) exceeds maximum allowed size ({max_size} bytes)"
+                    )
+                return text_content, content_type, filename
+
+            content = response.content
+            if len(content) > max_size:
+                raise URLDownloadError(
+                    f"File size ({len(content)} bytes) exceeds maximum allowed size ({max_size} bytes)"
+                )
+            return content, content_type, filename
+
+        except httpx.TimeoutException:
+            last_error = (
+                f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
+            )
+        except httpx.HTTPStatusError as exc:
+            last_error = f"HTTP error {exc.response.status_code}"
+            if exc.response.status_code in [429, 503]:
+                time.sleep(2**attempt)
+                continue
+            break
+        except URLDownloadError:
+            raise
+        except Exception as exc:
+            last_error = f"Request failed: {exc}"
+            break
+
+    raise URLDownloadError(
+        f"Failed to fetch file after {MAX_RETRIES} attempts: {last_error}"
+    )
+
+
+def _is_markitdown_supported(content_type: str) -> bool:
+    """Check if a content type is supported by MarkItDown for conversion."""
+    supported_types = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/csv",
+        "application/json",
+        "text/xml",
+        "application/xml",
+    ]
+    return any(
+        supported_type in content_type for supported_type in supported_types
+    )
+
+
+def _auto_detect_format(content_type: str) -> str:
+    """Auto-detect the appropriate output format based on content type."""
+    if _is_html_content(content_type) or _is_markitdown_supported(
+        content_type
+    ):
+        return "markdown"
+    if _is_binary_content(content_type):
+        return "binary"
+    return "text"
+
+
+def _get_file_extension(url: str, content_type: str) -> str:
+    """Get the file extension from URL or content type."""
+    parsed_url = urlparse(url)
+    if parsed_url.path:
+        _, ext = os.path.splitext(parsed_url.path)
+        if ext:
+            return ext
+    content_type = (content_type or "").split(";", 1)[0].strip()
+    ext = mimetypes.guess_extension(content_type)
+    return ext or ".bin"
+
+
+def _clean_text(text: str) -> str:
+    """Clean and normalize text content."""
+    if not text:
+        return ""
+    text = re.sub(r"\s+", " ", text.strip())
+    text = "".join(char for char in text if ord(char) >= 32 or char in "\n\t")
+    return text
+
+
+def _markitdown(
+    content: Union[str, bytes], content_type: str, url: str
+) -> str:
+    """Convert content to markdown using MarkItDown."""
+    if isinstance(content, str):
+        content = content.encode("utf-8")
+    file_ext = _get_file_extension(url, content_type)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file_path = os.path.join(temp_dir, f"content{file_ext}")
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(content)
+        result = MarkItDown().convert(temp_file_path).text_content
+    return _clean_text(result)
+
+
+def _create_response(
+    tool: str, intent: str, file_path: str, metadata: Dict
+) -> str:
+    """Create a success JSON response."""
+    return tool_success_response(
+        tool,
+        intent,
+        {"file_path": file_path, "metadata": metadata},
+    )
+
+
+def _create_error_response(tool: str, intent: str, error_message: str) -> str:
+    """Create an error JSON response."""
+    return tool_error_response(tool, intent, RuntimeError(error_message))
+
+
+def _save_content_to_file(
+    content: Union[str, bytes],
+    url: str,
+    content_type: str,
+    output_format: str = "auto",
+    original_filename: Optional[str] = None,
+    download_path: Optional[str] = None,
+) -> tuple[str, Dict]:
+    """Save content to a file on disk and return the file path and metadata."""
+    if download_path:
+        resolved_path = Path(download_path).expanduser().resolve()
+        if resolved_path.is_dir() or (
+            not resolved_path.suffix and not resolved_path.exists()
+        ):
+            download_dir = resolved_path
+            download_dir.mkdir(parents=True, exist_ok=True)
+            if original_filename:
+                base_filename = Path(original_filename).stem
+                file_ext = Path(
+                    original_filename
+                ).suffix or _get_file_extension(url, content_type)
+            else:
+                url_path = urlparse(url).path
+                url_filename = (
+                    os.path.basename(url_path) if url_path else "content"
+                )
+                base_filename = Path(url_filename).stem or "content"
+                file_ext = Path(url_filename).suffix or _get_file_extension(
+                    url, content_type
+                )
+        else:
+            resolved_path.parent.mkdir(parents=True, exist_ok=True)
+            download_dir = resolved_path.parent
+            base_filename = resolved_path.stem
+            file_ext = resolved_path.suffix or _get_file_extension(
+                url, content_type
+            )
+    else:
+        download_dir = Path(tempfile.mkdtemp(prefix="aria2_download_"))
+        base_filename = "content"
+        file_ext = _get_file_extension(url, content_type)
+
+    if output_format == "auto":
+        output_format = _auto_detect_format(content_type)
+
+    is_markitdown_binary = _is_binary_content(
+        content_type
+    ) and _is_markitdown_supported(content_type)
+
+    if is_markitdown_binary:
+        original_file_name = f"{base_filename}{file_ext}"
+        original_file_path = download_dir / original_file_name
+
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+
+        with open(original_file_path, "wb") as f:
+            f.write(content)
+
+        try:
+            parsed_text = _markitdown(content, content_type, url)
+            parsed_file_name = f"{base_filename}_parsed.txt"
+            parsed_file_path = download_dir / parsed_file_name
+
+            with open(parsed_file_path, "w", encoding="utf-8") as f:
+                f.write(parsed_text)
+
+            file_size = original_file_path.stat().st_size
+            parsed_file_size = parsed_file_path.stat().st_size
+            metadata = {
+                "url": url,
+                "content_type": content_type,
+                "file_size": file_size,
+                "file_extension": file_ext,
+                "format": "binary",
+                "parsed": True,
+                "parsed_file_path": str(parsed_file_path),
+                "parsed_file_size": parsed_file_size,
+                "original_filename": original_filename,
+                "timestamp": utc_timestamp(),
+            }
+            return str(original_file_path), metadata
+        except Exception as e:
+            file_size = original_file_path.stat().st_size
+            metadata = {
+                "url": url,
+                "content_type": content_type,
+                "file_size": file_size,
+                "file_extension": file_ext,
+                "format": "binary",
+                "parsed": False,
+                "parse_error": str(e),
+                "original_filename": original_filename,
+                "timestamp": utc_timestamp(),
+            }
+            return str(original_file_path), metadata
+
+    elif _is_binary_content(content_type):
+        file_name = f"{base_filename}{file_ext}"
+        file_path = download_dir / file_name
+
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        file_size = file_path.stat().st_size
+        metadata = {
+            "url": url,
+            "content_type": content_type,
+            "file_size": file_size,
+            "file_extension": file_ext,
+            "format": "binary",
+            "parsed": False,
+            "original_filename": original_filename,
+            "timestamp": utc_timestamp(),
+        }
+        return str(file_path), metadata
+
+    elif isinstance(content, str):
+        if _is_html_content(content_type) and output_format == "markdown":
+            html_file_name = f"{base_filename}{file_ext}"
+            html_file_path = download_dir / html_file_name
+
+            with open(html_file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            try:
+                logger.debug(f"Converting HTML to markdown for {url}")
+                markdown_content = _markitdown(content, content_type, url)
+                logger.debug("HTML to markdown conversion successful")
+
+                markdown_file_name = f"{base_filename}.md"
+                markdown_file_path = download_dir / markdown_file_name
+
+                with open(markdown_file_path, "w", encoding="utf-8") as f:
+                    f.write(markdown_content)
+
+                html_file_size = html_file_path.stat().st_size
+                markdown_file_size = markdown_file_path.stat().st_size
+                metadata = {
+                    "url": url,
+                    "content_type": content_type,
+                    "file_size": html_file_size,
+                    "file_extension": file_ext,
+                    "format": "html",
+                    "parsed": True,
+                    "parsed_file_path": str(markdown_file_path),
+                    "parsed_file_size": markdown_file_size,
+                    "original_filename": original_filename,
+                    "timestamp": utc_timestamp(),
+                }
+                return str(html_file_path), metadata
+
+            except Exception as e:
+                logger.error(f"Failed to convert HTML to markdown: {e}")
+                html_file_size = html_file_path.stat().st_size
+                metadata = {
+                    "url": url,
+                    "content_type": content_type,
+                    "file_size": html_file_size,
+                    "file_extension": file_ext,
+                    "format": "html",
+                    "parsed": False,
+                    "parse_error": str(e),
+                    "original_filename": original_filename,
+                    "timestamp": utc_timestamp(),
+                }
+                return str(html_file_path), metadata
+
+        elif _is_html_content(content_type):
+            format_type = "html"
+            file_name = f"{base_filename}{file_ext}"
+        elif output_format == "markdown":
+            format_type = "markdown"
+            file_name = f"{base_filename}.md"
+            try:
+                content = _markitdown(content, content_type, url)
+            except Exception:
+                pass
+        else:
+            format_type = "text"
+            file_name = f"{base_filename}{file_ext}"
+
+        file_path = download_dir / file_name
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        file_size = file_path.stat().st_size
+        metadata = {
+            "url": url,
+            "content_type": content_type,
+            "file_size": file_size,
+            "file_extension": file_ext,
+            "format": format_type,
+            "parsed": False,
+            "original_filename": original_filename,
+            "timestamp": utc_timestamp(),
+        }
+        return str(file_path), metadata
+
+    else:
+        file_name = f"{base_filename}{file_ext}"
+        file_path = download_dir / file_name
+
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        file_size = file_path.stat().st_size
+        metadata = {
+            "url": url,
+            "content_type": content_type,
+            "file_size": file_size,
+            "file_extension": file_ext,
+            "format": "binary",
+            "parsed": False,
+            "original_filename": original_filename,
+            "timestamp": utc_timestamp(),
+        }
+        return str(file_path), metadata

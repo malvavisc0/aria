@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import inspect
 from typing import Any, Dict, Optional
 
 import httpx
 from loguru import logger
 
-from aria.tools import safe_json, utc_timestamp
+from aria.tools import log_tool_call, safe_json, utc_timestamp
 from aria.tools.constants import NETWORK_TIMEOUT
 
 # https://open-meteo.com/en/docs
@@ -44,10 +43,6 @@ _WEATHER_CODE_TEXT: dict[int, str] = {
 }
 
 
-# Re-export shared utilities for backward compatibility
-_now = utc_timestamp
-
-
 def _ok(*, result: Dict[str, Any]) -> str:
     return safe_json(
         {
@@ -76,6 +71,7 @@ def _get_weather_text(code: Optional[int]) -> str:
     return _WEATHER_CODE_TEXT.get(code, f"Unknown (code={code})")
 
 
+@log_tool_call
 def get_current_weather(intent: str, location: str) -> str:
     """Get current weather for a city/location string using Open-Meteo.
 
@@ -92,10 +88,7 @@ def get_current_weather(intent: str, location: str) -> str:
     if not location_value:
         return _err("location must be a non-empty string")
 
-    frame = inspect.currentframe()
-    if frame:
-        func_name = frame.f_code.co_name
-        logger.debug(f"Calling {func_name} to achieve: {intent}")
+    # Logging handled by @log_tool_call decorator
 
     try:
         # 1) Geocode

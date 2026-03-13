@@ -30,6 +30,14 @@ from aria.tools.imdb.functions import (
 )
 
 
+def _response_data(raw: str) -> dict:
+    return json.loads(raw)["data"]
+
+
+def _response_error(raw: str) -> str:
+    return json.loads(raw)["error"]["message"]
+
+
 class TestGetTitleType:
     """Tests for _get_title_type helper function."""
 
@@ -172,7 +180,9 @@ class TestSearchImdbTitles:
         mock_result.names = []
         mock_search.return_value = mock_result
 
-        result = json.loads(search_imdb_titles("Search for Matrix", "Matrix"))
+        result = _response_data(
+            search_imdb_titles("Search for Matrix", "Matrix")
+        )
         assert "titles" in result
         assert len(result["titles"]) == 1
         assert result["titles"][0]["imdbId"] == "tt0133093"
@@ -196,22 +206,20 @@ class TestSearchImdbTitles:
         mock_result.names = [mock_name]
         mock_search.return_value = mock_result
 
-        result = json.loads(search_imdb_titles("Search", "Matrix"))
+        result = _response_data(search_imdb_titles("Search", "Matrix"))
         assert len(result["titles"]) == 1
         assert len(result["names"]) == 1
         assert result["names"][0]["name"] == "Keanu Reeves"
 
     def test_search_empty_query(self):
         """Test search with empty query returns error."""
-        result = json.loads(search_imdb_titles("Search", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_QUERY
+        err = _response_error(search_imdb_titles("Search", ""))
+        assert err == ERROR_EMPTY_QUERY
 
     def test_search_whitespace_query(self):
         """Test search with whitespace-only query returns error."""
-        result = json.loads(search_imdb_titles("Search", "   "))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_QUERY
+        err = _response_error(search_imdb_titles("Search", "   "))
+        assert err == ERROR_EMPTY_QUERY
 
     @patch("aria.tools.imdb.functions.search_title")
     def test_search_no_results(self, mock_search):
@@ -221,9 +229,8 @@ class TestSearchImdbTitles:
         mock_result.names = []
         mock_search.return_value = mock_result
 
-        result = json.loads(search_imdb_titles("Search", "nonexistent"))
-        assert "error" in result
-        assert "No results found" in result["error"]
+        err = _response_error(search_imdb_titles("Search", "nonexistent"))
+        assert "No results found" in err
 
     @patch("aria.tools.imdb.functions.search_title")
     def test_search_with_title_type_filter(self, mock_search):
@@ -244,8 +251,8 @@ class TestSearchImdbTitles:
     def test_search_exception(self, mock_search):
         """Test search handling exceptions."""
         mock_search.side_effect = Exception("Network error")
-        result = json.loads(search_imdb_titles("Search", "Matrix"))
-        assert "error" in result
+        err = _response_error(search_imdb_titles("Search", "Matrix"))
+        assert err
 
 
 class TestGetMovieDetails:
@@ -281,7 +288,7 @@ class TestGetMovieDetails:
         mock_movie.awards.prestigious_award = None
         mock_get_movie.return_value = mock_movie
 
-        result = json.loads(get_movie_details("Get details", "tt0133093"))
+        result = _response_data(get_movie_details("Get details", "tt0133093"))
         assert result["imdbId"] == "tt0133093"
         assert result["title"] == "The Matrix"
         assert result["year"] == 1999
@@ -292,7 +299,7 @@ class TestGetMovieDetails:
 
     @patch("aria.tools.imdb.functions.get_movie")
     def test_get_details_with_writers_and_cast(self, mock_get_movie):
-        """Test movie details with writers, producers, and cast from categories."""
+        """Test details with writers, producers, and cast from categories."""
         mock_movie = MagicMock()
         mock_movie.imdbId = "tt0133093"
         mock_movie.title = "The Matrix"
@@ -336,7 +343,7 @@ class TestGetMovieDetails:
         }
         mock_get_movie.return_value = mock_movie
 
-        result = json.loads(get_movie_details("Get details", "tt0133093"))
+        result = _response_data(get_movie_details("Get details", "tt0133093"))
         assert len(result["writers"]) == 1
         assert result["writers"][0]["name"] == "Lilly Wachowski"
         assert result["writers"][0]["imdbId"] == "nm0905152"
@@ -350,7 +357,7 @@ class TestGetMovieDetails:
     def test_get_details_director_fallback_from_categories(
         self, mock_get_movie
     ):
-        """Test that directors fall back to categories when movie.directors is empty."""
+        """Test directors fall back to categories when direct list is empty."""
         mock_movie = MagicMock()
         mock_movie.imdbId = "tt0133093"
         mock_movie.title = "The Matrix"
@@ -386,30 +393,28 @@ class TestGetMovieDetails:
         }
         mock_get_movie.return_value = mock_movie
 
-        result = json.loads(get_movie_details("Get details", "tt0133093"))
+        result = _response_data(get_movie_details("Get details", "tt0133093"))
         assert len(result["directors"]) == 1
         assert result["directors"][0]["name"] == "Lana Wachowski"
 
     def test_get_details_empty_id(self):
         """Test get details with empty ID returns error."""
-        result = json.loads(get_movie_details("Get details", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_IMDB_ID
+        err = _response_error(get_movie_details("Get details", ""))
+        assert err == ERROR_EMPTY_IMDB_ID
 
     @patch("aria.tools.imdb.functions.get_movie")
     def test_get_details_not_found(self, mock_get_movie):
         """Test get details when movie not found."""
         mock_get_movie.return_value = None
-        result = json.loads(get_movie_details("Get details", "tt9999999"))
-        assert "error" in result
-        assert "No movie/series found" in result["error"]
+        err = _response_error(get_movie_details("Get details", "tt9999999"))
+        assert "No movie/series found" in err
 
     @patch("aria.tools.imdb.functions.get_movie")
     def test_get_details_exception(self, mock_get_movie):
         """Test get details handling exceptions."""
         mock_get_movie.side_effect = Exception("Network error")
-        result = json.loads(get_movie_details("Get details", "tt0133093"))
-        assert "error" in result
+        err = _response_error(get_movie_details("Get details", "tt0133093"))
+        assert err
 
 
 class TestGetPersonDetails:
@@ -432,24 +437,22 @@ class TestGetPersonDetails:
         mock_person.height = "6' 1\" (1.86 m)"
         mock_get_name.return_value = mock_person
 
-        result = json.loads(get_person_details("Get person", "nm0000206"))
+        result = _response_data(get_person_details("Get person", "nm0000206"))
         assert result["imdbId"] == "nm0000206"
         assert result["name"] == "Keanu Reeves"
         assert result["birth_place"] == "Beirut, Lebanon"
 
     def test_get_person_empty_id(self):
         """Test get person with empty ID returns error."""
-        result = json.loads(get_person_details("Get person", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_IMDB_ID
+        err = _response_error(get_person_details("Get person", ""))
+        assert err == ERROR_EMPTY_IMDB_ID
 
     @patch("aria.tools.imdb.functions.get_name")
     def test_get_person_not_found(self, mock_get_name):
         """Test get person when not found."""
         mock_get_name.return_value = None
-        result = json.loads(get_person_details("Get person", "nm9999999"))
-        assert "error" in result
-        assert "No person found" in result["error"]
+        err = _response_error(get_person_details("Get person", "nm9999999"))
+        assert "No person found" in err
 
 
 class TestGetPersonFilmography:
@@ -467,7 +470,7 @@ class TestGetPersonFilmography:
 
         mock_get_filmography.return_value = {"director": [mock_credit]}
 
-        result = json.loads(
+        result = _response_data(
             get_person_filmography("Get filmography", "nm0634240")
         )
         assert "filmography" in result
@@ -476,19 +479,17 @@ class TestGetPersonFilmography:
 
     def test_get_filmography_empty_id(self):
         """Test get filmography with empty ID returns error."""
-        result = json.loads(get_person_filmography("Get filmography", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_IMDB_ID
+        err = _response_error(get_person_filmography("Get filmography", ""))
+        assert err == ERROR_EMPTY_IMDB_ID
 
     @patch("aria.tools.imdb.functions.get_filmography")
     def test_get_filmography_not_found(self, mock_get_filmography):
         """Test get filmography when not found."""
         mock_get_filmography.return_value = None
-        result = json.loads(
+        err = _response_error(
             get_person_filmography("Get filmography", "nm9999999")
         )
-        assert "error" in result
-        assert "No filmography found" in result["error"]
+        assert "No filmography found" in err
 
 
 class TestGetAllSeriesEpisodes:
@@ -510,7 +511,7 @@ class TestGetAllSeriesEpisodes:
 
         mock_get_episodes.return_value = [mock_episode]
 
-        result = json.loads(
+        result = _response_data(
             get_all_series_episodes("Get episodes", "tt0903747")
         )
         assert "episodes" in result
@@ -519,29 +520,26 @@ class TestGetAllSeriesEpisodes:
 
     def test_get_episodes_empty_id(self):
         """Test get episodes with empty ID returns error."""
-        result = json.loads(get_all_series_episodes("Get episodes", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_IMDB_ID
+        err = _response_error(get_all_series_episodes("Get episodes", ""))
+        assert err == ERROR_EMPTY_IMDB_ID
 
     @patch("aria.tools.imdb.functions.get_all_episodes")
     def test_get_episodes_not_found(self, mock_get_episodes):
         """Test get episodes when not found."""
         mock_get_episodes.return_value = None
-        result = json.loads(
+        err = _response_error(
             get_all_series_episodes("Get episodes", "tt9999999")
         )
-        assert "error" in result
-        assert "No episodes found" in result["error"]
+        assert "No episodes found" in err
 
     @patch("aria.tools.imdb.functions.get_all_episodes")
     def test_get_episodes_empty_list(self, mock_get_episodes):
         """Test get episodes with empty list."""
         mock_get_episodes.return_value = []
-        result = json.loads(
+        err = _response_error(
             get_all_series_episodes("Get episodes", "tt9999999")
         )
-        assert "error" in result
-        assert "No episodes found" in result["error"]
+        assert "No episodes found" in err
 
 
 class TestGetMovieReviews:
@@ -560,24 +558,22 @@ class TestGetMovieReviews:
         }
         mock_get_reviews.return_value = [mock_review]
 
-        result = json.loads(get_movie_reviews("Get reviews", "tt0133093"))
+        result = _response_data(get_movie_reviews("Get reviews", "tt0133093"))
         assert "reviews" in result
         assert result["review_count"] == 1
         assert result["reviews"][0]["summary"] == "Great movie!"
 
     def test_get_reviews_empty_id(self):
         """Test get reviews with empty ID returns error."""
-        result = json.loads(get_movie_reviews("Get reviews", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_IMDB_ID
+        err = _response_error(get_movie_reviews("Get reviews", ""))
+        assert err == ERROR_EMPTY_IMDB_ID
 
     @patch("aria.tools.imdb.functions.get_reviews")
     def test_get_reviews_not_found(self, mock_get_reviews):
         """Test get reviews when not found."""
         mock_get_reviews.return_value = None
-        result = json.loads(get_movie_reviews("Get reviews", "tt9999999"))
-        assert "error" in result
-        assert "No reviews available" in result["error"]
+        err = _response_error(get_movie_reviews("Get reviews", "tt9999999"))
+        assert "No reviews available" in err
 
 
 class TestGetMovieTrivia:
@@ -592,28 +588,26 @@ class TestGetMovieTrivia:
         }
         mock_get_trivia.return_value = [mock_trivia]
 
-        result = json.loads(get_movie_trivia("Get trivia", "tt0110912"))
+        result = _response_data(get_movie_trivia("Get trivia", "tt0110912"))
         assert "trivia" in result
         assert result["trivia_count"] == 1
         assert "8 million" in result["trivia"][0]["body"]
 
     def test_get_trivia_empty_id(self):
         """Test get trivia with empty ID returns error."""
-        result = json.loads(get_movie_trivia("Get trivia", ""))
-        assert "error" in result
-        assert result["error"] == ERROR_EMPTY_IMDB_ID
+        err = _response_error(get_movie_trivia("Get trivia", ""))
+        assert err == ERROR_EMPTY_IMDB_ID
 
     @patch("aria.tools.imdb.functions.get_trivia")
     def test_get_trivia_not_found(self, mock_get_trivia):
         """Test get trivia when not found."""
         mock_get_trivia.return_value = None
-        result = json.loads(get_movie_trivia("Get trivia", "tt9999999"))
-        assert "error" in result
-        assert "No trivia available" in result["error"]
+        err = _response_error(get_movie_trivia("Get trivia", "tt9999999"))
+        assert "No trivia available" in err
 
 
 class TestIntentParameter:
-    """Tests to verify intent parameter is accepted but doesn't affect output."""
+    """Tests that intent parameter is accepted and does not affect output."""
 
     @patch("aria.tools.imdb.functions.search_title")
     def test_intent_parameter_accepted(self, mock_search):
@@ -654,5 +648,7 @@ class TestIntentParameter:
         mock_movie.awards = None
         mock_get_movie.return_value = mock_movie
 
-        result = json.loads(get_movie_details("My intent here", "tt0133093"))
+        result = _response_data(
+            get_movie_details("My intent here", "tt0133093")
+        )
         assert result["imdbId"] == "tt0133093"

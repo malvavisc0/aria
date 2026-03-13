@@ -6,13 +6,12 @@ module. These functions should not be imported directly by external modules.
 """
 
 import shutil
-import stat
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from loguru import logger
 
-from aria.tools import safe_json, tool_error_response, utc_timestamp
+from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import BASE_DIR, MAX_FILE_SIZE
 from aria.tools.files.constants import (
     ALLOWED_EXTENSIONS,
@@ -21,10 +20,6 @@ from aria.tools.files.constants import (
     MAX_LINE_LENGTH,
 )
 from aria.tools.files.exceptions import FileOperationError, FileSecurityError
-
-# Re-export shared utilities for backward compatibility
-_timestamp = utc_timestamp
-_safe_json = safe_json
 
 
 def _error_response(
@@ -72,12 +67,12 @@ def _error_response(
     if how_to_fix:
         error_block["how_to_fix"] = how_to_fix
 
-    return _safe_json(
+    return safe_json(
         {
             "status": "error",
             "tool": operation,
             "intent": intent,
-            "timestamp": _timestamp(),
+            "timestamp": utc_timestamp(),
             "error": error_block,
             "context": {"file_name": file_name},
         }
@@ -142,40 +137,9 @@ def _validate_inputs(
             line_length = len(line)
             if line_length > MAX_LINE_LENGTH:
                 raise FileSecurityError(
-                    f"Line length {line_length} exceeds limit: {MAX_LINE_LENGTH}"
+                    "Line length "
+                    f"{line_length} exceeds limit: {MAX_LINE_LENGTH}"
                 )
-
-
-def _count_lines_efficiently(file_path: Path) -> int:
-    """Memory-efficient line counting for large files.
-
-    Reads file in chunks to avoid loading entire file into memory.
-
-    Args:
-        file_path: Path to the file to count lines for
-
-    Returns:
-        int: Number of lines in the file
-
-    Raises:
-        FileOperationError: If path is a directory or file cannot be read
-    """
-    # Check if path is a directory
-    if file_path.is_dir():
-        raise FileOperationError(
-            f"Path is a directory, not a file: {file_path}"
-        )
-
-    count = 0
-    try:
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                count += chunk.count(b"\n")
-        return count
-    except OSError as exc:
-        raise FileOperationError(
-            f"Failed to read file for line counting: {exc}"
-        ) from exc
 
 
 def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
@@ -196,7 +160,8 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
         FileOperationError: If path is a directory or not absolute
     """
     try:
-        # Resolve BASE_DIR to handle symlinks (e.g., /var -> /private/var on macOS)
+        # Resolve BASE_DIR to handle symlinks.
+        # Example: /var -> /private/var on macOS.
         base_dir_resolved = BASE_DIR.resolve()
 
         # Only accept absolute paths
@@ -253,7 +218,8 @@ def _secure_resolve_dir(dir_name: str) -> Path:
         FileSecurityError: If path resolution fails
     """
     try:
-        # Resolve BASE_DIR to handle symlinks (e.g., /var -> /private/var on macOS)
+        # Resolve BASE_DIR to handle symlinks.
+        # Example: /var -> /private/var on macOS.
         base_dir_resolved = BASE_DIR.resolve()
 
         dir_path = (BASE_DIR / dir_name).resolve()
@@ -269,131 +235,6 @@ def _secure_resolve_dir(dir_name: str) -> Path:
         raise
     except Exception as exc:
         raise FileSecurityError(f"Path resolution failed: {exc}") from exc
-
-
-def _read_lines_streaming(
-    file_path: Path, offset: int, length: int
-) -> List[str]:
-    """Read lines from file using streaming.
-
-    Args:
-        file_path: Path to the file
-        offset: Starting line number (0-indexed)
-        length: Number of lines to read (0 = read all remaining)
-
-    Returns:
-        List[str]: Lines read from file (without newline characters)
-    """
-    lines = []
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            for i, line in enumerate(f):
-                if i < offset:
-                    continue
-                if length > 0 and i >= offset + length:
-                    break
-                lines.append(line.rstrip("\n\r"))
-        return lines
-    except OSError as exc:
-        raise FileOperationError(f"Failed to read file: {exc}") from exc
-
-
-def _modify_lines_streaming(
-    file_path: Path,
-    offset: int,
-    length: int,
-    new_lines: Optional[List[str]] = None,
-) -> tuple[int, int]:
-    """Modify lines in file using streaming to avoid loading entire file.
-
-    Args:
-        file_path: Path to the file
-        offset: Starting line number (0-indexed)
-        length: Number of lines to replace/delete
-        new_lines: New lines to insert (None for delete operation)
-
-    Returns:
-        tuple: (old_total_lines, new_total_lines)
-    """
-    temp_path = file_path.with_suffix(file_path.suffix + ".tmp")
-    old_total_lines = 0
-    new_total_lines = 0
-
-    try:
-        with (
-            open(file_path, "r", encoding="utf-8") as infile,
-            open(temp_path, "w", encoding="utf-8") as outfile,
-        ):
-            for i, line in enumerate(infile):
-                old_total_lines += 1
-                if i < offset:
-                    outfile.write(line)
-                    new_total_lines += 1
-                elif i == offset:
-                    # Insert new lines at offset position
-                    if new_lines:
-                        for new_line in new_lines:
-                            outfile.write(new_line + "\n")
-                            new_total_lines += 1
-                    # If length > 0, skip this line (it's being replaced)
-                    # If length == 0, write this line (pure insert)
-                    if length == 0:
-                        outfile.write(line)
-                        new_total_lines += 1
-                elif i < offset + length:
-                    # Skip lines in the range to be replaced/deleted
-                    pass
-                else:
-                    outfile.write(line)
-                    new_total_lines += 1
-
-            # If offset is at or beyond end of file, append new lines
-            if offset >= old_total_lines and new_lines:
-                for new_line in new_lines:
-                    outfile.write(new_line + "\n")
-                    new_total_lines += 1
-
-        # Replace original file with modified file
-        shutil.move(str(temp_path), str(file_path))
-        return old_total_lines, new_total_lines
-
-    except Exception as exc:
-        # Clean up temp file if it exists
-        try:
-            if temp_path.exists():
-                temp_path.unlink()
-        except OSError:
-            # Log but don't fail if cleanup fails
-            logger.warning(f"Failed to clean up temp file: {temp_path}")
-        raise FileOperationError(f"Failed to modify file: {exc}") from exc
-
-
-def _atomic_write(file_path: Path, content: str) -> None:
-    """Write file atomically using temp file and rename.
-
-    Args:
-        file_path: Path to the file to write
-        content: Content to write to the file
-
-    Raises:
-        FileOperationError: If write operation fails
-    """
-    temp_path = file_path.with_suffix(file_path.suffix + ".tmp")
-    try:
-        # Write to temp file
-        with open(temp_path, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        # Atomic rename (on POSIX systems)
-        shutil.move(str(temp_path), str(file_path))
-    except Exception as exc:
-        # Clean up temp file if it exists
-        try:
-            if temp_path.exists():
-                temp_path.unlink()
-        except OSError:
-            logger.warning(f"Failed to clean up temp file: {temp_path}")
-        raise FileOperationError(f"Failed to write file: {exc}") from exc
 
 
 def _create_backup(file_path: Path) -> Optional[Path]:
@@ -416,93 +257,6 @@ def _create_backup(file_path: Path) -> Optional[Path]:
     except Exception as exc:
         logger.warning(f"Failed to create backup for {file_path}: {exc}")
         return None
-
-
-def _build_directory_tree(
-    path: Path, current_depth: int, max_depth: int
-) -> Dict[str, Any]:
-    """Recursively build directory tree structure.
-
-    Args:
-        path: Path to build tree for
-        current_depth: Current recursion depth
-        max_depth: Maximum depth to traverse
-
-    Returns:
-        Dict: Tree structure with name, type, children, and size
-    """
-    tree = {"name": path.name or ".", "type": "directory", "children": []}
-
-    if current_depth >= max_depth:
-        return tree
-
-    try:
-        for item in sorted(path.iterdir()):
-            if item.is_file():
-                tree["children"].append(
-                    {
-                        "name": item.name,
-                        "type": "file",
-                        "size": item.stat().st_size,
-                    }
-                )
-            elif item.is_dir() and not item.is_symlink():
-                tree["children"].append(
-                    _build_directory_tree(item, current_depth + 1, max_depth)
-                )
-    except PermissionError:
-        pass
-
-    return tree
-
-
-def _count_tree_items(tree: Dict[str, Any]) -> tuple[int, int]:
-    """Count total files and directories in tree.
-
-    Args:
-        tree: Tree structure from _build_directory_tree
-
-    Returns:
-        tuple: (total_files, total_directories)
-    """
-    files = 0
-    dirs = 0
-
-    if tree["type"] == "directory":
-        dirs += 1
-        for child in tree.get("children", []):
-            child_files, child_dirs = _count_tree_items(child)
-            files += child_files
-            dirs += child_dirs
-    else:
-        files += 1
-
-    return files, dirs
-
-
-def _format_permissions_symbolic(mode: int) -> str:
-    """Convert numeric mode to symbolic format (e.g., 'rw-r--r--').
-
-    Args:
-        mode: File mode from stat.st_mode
-
-    Returns:
-        str: Symbolic permission string (9 characters)
-    """
-    perms = []
-    # Owner permissions
-    perms.append("r" if mode & stat.S_IRUSR else "-")
-    perms.append("w" if mode & stat.S_IWUSR else "-")
-    perms.append("x" if mode & stat.S_IXUSR else "-")
-    # Group permissions
-    perms.append("r" if mode & stat.S_IRGRP else "-")
-    perms.append("w" if mode & stat.S_IWGRP else "-")
-    perms.append("x" if mode & stat.S_IXGRP else "-")
-    # Others permissions
-    perms.append("r" if mode & stat.S_IROTH else "-")
-    perms.append("w" if mode & stat.S_IWOTH else "-")
-    perms.append("x" if mode & stat.S_IXOTH else "-")
-    return "".join(perms)
 
 
 def validate_and_resolve_file(

@@ -12,12 +12,12 @@ from aria.tools.reasoning import (
     evaluate_reasoning,
     get_reasoning_summary,
     list_reasoning_sessions,
+    registry,
     reset_reasoning,
     start_reasoning,
     use_scratchpad,
 )
 from aria.tools.reasoning.database import ReasoningDatabase
-from aria.tools.reasoning.functions import _active_sessions, _session_registry
 
 
 @pytest.fixture
@@ -31,26 +31,26 @@ def test_db():
     """Create a temporary database for testing and clean up after each test."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, "test_reasoning.db")
-        # Replace global database instance with test instance
-        from aria.tools.reasoning import functions
 
-        original_db = functions._db
+        original_db = registry.get_db()
 
         # Reset singleton to force new instance
         ReasoningDatabase._instance = None
         test_db_instance = ReasoningDatabase(db_path)
-        functions._db = test_db_instance
+        # Replace the database in registry module
+        import aria.tools.reasoning.registry as reg_module
+
+        reg_module._db = test_db_instance
 
         yield test_db_instance
 
         # Clean up after test
-        _session_registry.clear()
-        _active_sessions.clear()
+        registry.clear_all()
         test_db_instance.close()
         # Reset singleton again
         ReasoningDatabase._instance = None
         # Restore original
-        functions._db = original_db
+        reg_module._db = original_db
 
 
 def test_start_reasoning(test_agent_id, test_db):
@@ -63,7 +63,7 @@ def test_start_reasoning(test_agent_id, test_db):
     assert result["session_id"].startswith(f"{test_agent_id}_session_")
 
     # Verify active session was created
-    assert test_agent_id in _active_sessions
+    assert test_agent_id in registry.get_active_session_id(test_agent_id)
 
     # Clean up
     end_reasoning("Testing intent", test_agent_id)
@@ -267,7 +267,7 @@ def test_end_reasoning(test_agent_id, test_db):
     assert result["tool"] == "end_reasoning"
 
     # Verify it's gone from active sessions
-    assert test_agent_id not in _active_sessions
+    assert registry.get_active_session_id(test_agent_id) is None
 
     # Verify tools fail now
     result = get_reasoning_summary("Testing intent", test_agent_id)
@@ -399,8 +399,7 @@ def test_persistence_across_restart(test_agent_id, test_db):
         operation="set",
     )
 
-    # Simulate restart by clearing cache but keeping active sessions
-    _session_registry.clear()
+    # Simulate restart boundary: registry is DB-backed (no in-memory cache)
 
     # Verify data still accessible (loaded from database)
     summary = get_reasoning_summary("Testing intent", test_agent_id)
@@ -465,8 +464,7 @@ def test_session_data_integrity(test_agent_id, test_db):
         operation="set",
     )
 
-    # Clear cache to force reload from database
-    _session_registry.clear()
+    # DB-backed lookup should still load persisted session data
 
     # Verify all data is intact
     summary = get_reasoning_summary("Testing intent", test_agent_id)
@@ -522,8 +520,7 @@ def test_reset_clears_database(test_agent_id, test_db):
     # Reset session
     reset_reasoning("Testing intent", test_agent_id)
 
-    # Clear cache to force reload from database
-    _session_registry.clear()
+    # DB-backed lookup should still load persisted reset state
 
     # Verify session is empty after reload
     summary = get_reasoning_summary("Testing intent", test_agent_id)

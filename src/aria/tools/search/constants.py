@@ -82,4 +82,3 @@ USER_AGENTS = [
 
 # Maximum allowed results to prevent resource exhaustion
 MAX_RESULTS_LIMIT = 50
-DEFAULT_TIMEOUT = 30  # Timeout in seconds for search requests

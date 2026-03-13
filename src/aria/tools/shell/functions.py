@@ -5,320 +5,30 @@ proper timeout handling, output capture, and security constraints.
 """
 
 import json
-import os
-import re
+import shlex
 import shutil
-import subprocess
 import tempfile
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 from aria.tools import safe_json, utc_timestamp
-from aria.tools.shell.constants import (
-    BASE_DIR,
-    BLOCKED_COMMANDS,
-    BLOCKED_UNIX,
-    BLOCKED_WINDOWS,
-    CURRENT_OS,
-    DEFAULT_TIMEOUT,
-    IS_LINUX,
-    IS_MACOS,
-    IS_WINDOWS,
-    MAX_OUTPUT_SIZE,
-    MAX_TIMEOUT,
-    SAFE_COMMANDS_SET,
-    SHELL,
+from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
+from aria.tools.shell.constants import CURRENT_OS, SAFE_COMMANDS, SHELL
+from aria.tools.shell.exceptions import CommandBlockedError
+from aria.tools.shell.execution import (
+    _build_response,
+    _execute_command_internal,
 )
-from aria.tools.shell.exceptions import (
-    CommandBlockedError,
-    WorkingDirectoryError,
+from aria.tools.shell.validation import (
+    _has_shell_operators,
+    _is_blocked_command,
+    _validate_working_dir,
 )
-
-# Shell operators that could be used for injection.
-_SHELL_OPERATORS_RE = re.compile(
-    r"[;|&`]"  # semicolon, pipe, ampersand, backtick
-    r"|\$\("  # $( subshell
-    r"|\|\|"  # logical OR
-    r"|&&"  # logical AND
-)
-
-
-def _extract_command_name(command: str) -> str:
-    """Extract the base command name from a command string.
-
-    Args:
-        command: The full command string.
-
-    Returns:
-        The first word (command name), or empty string if blank.
-    """
-    stripped = command.strip()
-    return stripped.split()[0] if stripped else ""
-
-
-def _is_blocked_command(command: str) -> bool:
-    """Check if a command name is in the blocked list.
-
-    Blocked list only — no implicit whitelist. Injection/operators are
-    handled separately by ``_has_shell_operators``.
-
-    Args:
-        command: The full command string.
-
-    Returns:
-        True if the base command name is blocked, False otherwise.
-    """
-    cmd_name = _extract_command_name(command)
-
-    if cmd_name in BLOCKED_COMMANDS:
-        return True
-
-    if IS_WINDOWS and cmd_name in BLOCKED_WINDOWS:
-        return True
-
-    if (IS_LINUX or IS_MACOS) and cmd_name in BLOCKED_UNIX:
-        return True
-
-    return False
-
-
-def _has_shell_operators(command: str) -> bool:
-    """Check if a command contains shell operators that could bypass security.
-
-    Detects pipes, semicolons, &&, ||, backticks, and $() subshells.
-
-    Args:
-        command: The full command string.
-
-    Returns:
-        True if shell operators are found.
-    """
-    return bool(_SHELL_OPERATORS_RE.search(command))
-
-
-def _validate_command(command: str) -> None:
-    """Validate a command before execution.
-
-    Args:
-        command: The shell command to validate.
-
-    Raises:
-        CommandBlockedError: If the command is blocked or contains
-            shell operators that could bypass the blocked list.
-        ValueError: If the command is empty or too long.
-    """
-    if not command or not command.strip():
-        raise ValueError("Command cannot be empty")
-
-    if len(command) > 10000:
-        raise ValueError("Command too long")
-
-    if _is_blocked_command(command):
-        raise CommandBlockedError(
-            f"Command '{command}' is blocked for security reasons"
-        )
-
-    if _has_shell_operators(command):
-        raise CommandBlockedError(
-            f"Command '{command}' contains shell operators "
-            "(pipes, chains, or subshells are not allowed)"
-        )
-
-
-def _validate_working_dir(working_dir: Optional[str]) -> Path:
-    """Validate and resolve the working directory.
-
-    Args:
-        working_dir: The working directory path.
-
-    Returns:
-        Resolved Path object for the working directory.
-
-    Raises:
-        WorkingDirectoryError: If the working directory is invalid.
-    """
-    if working_dir is None:
-        return BASE_DIR
-
-    try:
-        path = Path(working_dir).resolve()
-    except (OSError, ValueError) as exc:
-        raise WorkingDirectoryError(
-            f"Invalid working directory path: {exc}"
-        ) from exc
-
-    if not path.exists():
-        raise WorkingDirectoryError(
-            f"Working directory does not exist: {working_dir}"
-        )
-    if not path.is_dir():
-        raise WorkingDirectoryError(
-            f"Working directory is not a directory: {working_dir}"
-        )
-    return path
-
-
-def _build_response(
-    operation: str,
-    command: str,
-    working_dir: str,
-    *,
-    stdout: str = "",
-    stderr: str = "",
-    return_code: int = -1,
-    execution_time: float = 0.0,
-    timed_out: bool = False,
-) -> Dict[str, Any]:
-    """Build a standard command execution response dict.
-
-    Args:
-        operation: The operation name (e.g. "execute_command").
-        command: The command that was executed.
-        working_dir: The resolved working directory path.
-        stdout: Captured standard output.
-        stderr: Captured standard error.
-        return_code: Process exit code.
-        execution_time: Duration in seconds.
-        timed_out: Whether the command timed out.
-
-    Returns:
-        Response dictionary with operation, result, and metadata.
-    """
-    return {
-        "operation": operation,
-        "result": {
-            "stdout": stdout[:MAX_OUTPUT_SIZE] if stdout else "",
-            "stderr": stderr[:MAX_OUTPUT_SIZE] if stderr else "",
-            "return_code": return_code,
-            "execution_time": round(execution_time, 3),
-            "timed_out": timed_out,
-            "command": command,
-            "platform": CURRENT_OS,
-            "working_dir": working_dir,
-        },
-        "metadata": {
-            "timestamp": utc_timestamp(),
-        },
-    }
 
 
 def execute_command(
-    intent: str,
-    command: str,
-    timeout: Optional[int] = None,
-    working_dir: Optional[str] = None,
-    env: Optional[Dict[str, str]] = None,
-) -> str:
-    """Execute a shell command and return the result.
-
-    Args:
-        intent: Why you're executing (e.g., "Checking git status")
-        command: The shell command to execute
-        timeout: Timeout in seconds (default: 30, max: 300)
-        working_dir: Working directory (default: BASE_DIR)
-        env: Additional environment variables
-
-    Returns:
-        JSON with stdout, stderr, return_code, execution_time, timed_out.
-        Blocked: sudo, chmod, shutdown, rm -rf, etc.
-    """
-    logger.info(f"Executing shell command: {command}")
-    logger.debug(f"Executing command to achieve: {intent}")
-
-    _validate_command(command)
-
-    actual_timeout = min(
-        timeout if timeout is not None else DEFAULT_TIMEOUT,
-        MAX_TIMEOUT,
-    )
-    resolved_working_dir = _validate_working_dir(working_dir)
-    working_dir_str = str(resolved_working_dir)
-
-    env_vars = dict(os.environ)
-    if env:
-        env_vars.update(env)
-
-    start_time = time.time()
-
-    try:
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=resolved_working_dir,
-            env=env_vars,
-            capture_output=True,
-            text=True,
-            timeout=actual_timeout,
-        )
-        elapsed = time.time() - start_time
-
-        response = _build_response(
-            "execute_command",
-            command,
-            working_dir_str,
-            stdout=result.stdout,
-            stderr=result.stderr,
-            return_code=result.returncode,
-            execution_time=elapsed,
-        )
-        logger.info("Command executed with return code %s", result.returncode)
-        return safe_json(response)
-
-    except subprocess.TimeoutExpired:
-        elapsed = time.time() - start_time
-        logger.warning(f"Command timed out after {actual_timeout}s")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                command,
-                working_dir_str,
-                execution_time=elapsed,
-                timed_out=True,
-            )
-        )
-
-    except FileNotFoundError:
-        cmd_name = _extract_command_name(command)
-        logger.error(f"Command not found: {cmd_name}")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                command,
-                working_dir_str,
-                stderr=f"Command not found: {cmd_name}",
-                return_code=127,
-            )
-        )
-
-    except PermissionError:
-        logger.error(f"Permission denied executing command: {command}")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                command,
-                working_dir_str,
-                stderr="Permission denied",
-                return_code=1,
-            )
-        )
-
-    except Exception as exc:
-        logger.error(f"Unexpected error executing command: {exc}")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                command,
-                working_dir_str,
-                stderr=str(exc),
-                return_code=1,
-            )
-        )
-
-
-def execute_command_safe(
     intent: str,
     command_name: str,
     args: List[str],
@@ -326,9 +36,6 @@ def execute_command_safe(
     working_dir: Optional[str] = None,
 ) -> str:
     """Execute a whitelisted command without shell interpretation.
-
-    This function only allows commands from a predefined whitelist and
-    runs them with ``shell=False`` to prevent shell injection attacks.
 
     Args:
         intent: Why you're executing (e.g., "Listing directory")
@@ -340,22 +47,36 @@ def execute_command_safe(
 
     Returns:
         JSON with stdout, stderr, return_code, execution_time.
-        Preferred over execute_command for security.
+        Runs with shell=False for safety.
     """
-    if command_name not in SAFE_COMMANDS_SET:
+    logger.info(f"Executing safe command: {command_name} {args}")
+    logger.debug(f"Safe command to achieve: {intent}")
+
+    # Validate against blocked commands before execution
+    if _is_blocked_command(command_name):
+        raise CommandBlockedError(
+            f"Command '{command_name}' is blocked for security reasons"
+        )
+
+    # Validate command against safe list - only allow specific whitelisted
+    # commands. This provides an additional layer of security.
+    if _has_shell_operators(command_name):
+        raise CommandBlockedError(
+            f"Command '{command_name}' contains shell operators "
+            "(pipes, chains, or subshells are not allowed)"
+        )
+
+    # Check if command is in the whitelist
+    if command_name not in SAFE_COMMANDS:
         raise CommandBlockedError(
             f"Command '{command_name}' is not in the safe list"
         )
-
-    logger.info(f"Executing safe command: {command_name} {args}")
-    logger.debug(f"Safe command to achieve: {intent}")
 
     actual_timeout = min(
         timeout if timeout is not None else DEFAULT_TIMEOUT,
         MAX_TIMEOUT,
     )
     resolved_working_dir = _validate_working_dir(working_dir)
-    working_dir_str = str(resolved_working_dir)
 
     # Resolve the full path to the command to avoid PATH-based attacks.
     cmd_path = shutil.which(command_name)
@@ -364,7 +85,7 @@ def execute_command_safe(
             _build_response(
                 "execute_command",
                 f"{command_name} {' '.join(args)}",
-                working_dir_str,
+                str(resolved_working_dir),
                 stderr=f"Command not found: {command_name}",
                 return_code=127,
             )
@@ -372,70 +93,15 @@ def execute_command_safe(
 
     cmd_list = [cmd_path, *args]
     display_command = f"{command_name} {' '.join(args)}"
-
-    start_time = time.time()
-
-    try:
-        result = subprocess.run(
-            cmd_list,
-            shell=False,
-            cwd=resolved_working_dir,
-            capture_output=True,
-            text=True,
-            timeout=actual_timeout,
-        )
-        elapsed = time.time() - start_time
-
-        response = _build_response(
-            "execute_command",
-            display_command,
-            working_dir_str,
-            stdout=result.stdout,
-            stderr=result.stderr,
-            return_code=result.returncode,
-            execution_time=elapsed,
-        )
-        logger.info(
-            "Safe command executed with return code %s", result.returncode
-        )
-        return safe_json(response)
-
-    except subprocess.TimeoutExpired:
-        elapsed = time.time() - start_time
-        logger.warning(f"Safe command timed out after {actual_timeout}s")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                display_command,
-                working_dir_str,
-                execution_time=elapsed,
-                timed_out=True,
-            )
-        )
-
-    except PermissionError:
-        logger.error(f"Permission denied: {display_command}")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                display_command,
-                working_dir_str,
-                stderr="Permission denied",
-                return_code=1,
-            )
-        )
-
-    except Exception as exc:
-        logger.error(f"Unexpected error executing safe command: {exc}")
-        return safe_json(
-            _build_response(
-                "execute_command",
-                display_command,
-                working_dir_str,
-                stderr=str(exc),
-                return_code=1,
-            )
-        )
+    response = _execute_command_internal(
+        "execute_command",
+        display_command,
+        cmd_list,
+        resolved_working_dir,
+        actual_timeout,
+        shell=False,
+    )
+    return safe_json(response)
 
 
 def execute_command_batch(
@@ -448,7 +114,8 @@ def execute_command_batch(
     Args:
         intent: Why you're batching (e.g., "Git status check")
         commands: List of command dicts, each with:
-            - command: The shell command to execute
+            - command_name: The command to execute
+            - args: Optional list of command arguments
             - timeout: Optional timeout in seconds
             - working_dir: Optional working directory
             - continue_on_error: Optional, continue if this fails
@@ -468,15 +135,28 @@ def execute_command_batch(
     stopped_early = False
 
     for i, cmd_dict in enumerate(commands):
-        command = cmd_dict.get("command", "")
+        command_name = cmd_dict.get("command_name", "")
+        args = cmd_dict.get("args", [])
         timeout = cmd_dict.get("timeout")
         working_dir = cmd_dict.get("working_dir")
         continue_on_error = cmd_dict.get("continue_on_error", False)
 
+        # Legacy fallback for old batch payloads using a single command string.
+        if not command_name and "command" in cmd_dict:
+            parsed = shlex.split(str(cmd_dict.get("command", "")))
+            command_name = parsed[0] if parsed else ""
+            args = parsed[1:] if len(parsed) > 1 else []
+
+        display_command = f"{command_name} {' '.join(args)}".strip()
+
         try:
             result_str = execute_command(
-                intent=f"Batch command {i+1}/{len(commands)}: {command}",
-                command=command,
+                intent=(
+                    f"Batch command {i+1}/{len(commands)}: "
+                    f"{display_command}"
+                ),
+                command_name=command_name,
+                args=args,
                 timeout=timeout,
                 working_dir=working_dir,
             )
@@ -497,7 +177,7 @@ def execute_command_batch(
         except Exception as e:
             results.append(
                 {
-                    "command": command,
+                    "command": display_command,
                     "error": str(e),
                     "success": False,
                 }
@@ -548,7 +228,7 @@ def get_platform_info(intent: str) -> str:
             "os": CURRENT_OS,
             "shell": SHELL,
             "home": str(Path.home()),
-            "path_separator": "\\" if IS_WINDOWS else "/",
+            "path_separator": "\\" if CURRENT_OS == "windows" else "/",
             "temp_dir": tempfile.gettempdir(),
         },
         "metadata": {

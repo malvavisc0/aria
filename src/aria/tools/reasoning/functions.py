@@ -9,63 +9,15 @@ by the framework. This eliminates the need for agents to track session_id
 parameters, solving the memory management problem inherent in LLM agents.
 """
 
-import time
+import uuid
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 from aria.tools import utc_timestamp
 
-from .database import get_database
+from . import registry
 from .session import ReasoningSession
-
-# Session registry - maps "agent_id:session_id" to ReasoningSession instances
-_session_registry: Dict[str, ReasoningSession] = {}
-
-# Active sessions - maps agent_id to their current active session_id
-_active_sessions: Dict[str, str] = {}
-
-# Get database instance
-_db = get_database()
-
-
-def _make_cache_key(agent_id: str, session_id: str) -> str:
-    """Create cache key from agent_id and session_id."""
-    return f"{agent_id}:{session_id}"
-
-
-def _get_active_session_id(agent_id: str) -> str:
-    """Get the active session ID for an agent.
-
-    Args:
-        agent_id: Agent identifier
-
-    Returns:
-        str: The active session ID for this agent
-
-    Raises:
-        ValueError: If no active session exists for this agent
-    """
-    session_id = _active_sessions.get(agent_id)
-    if session_id is None:
-        raise ValueError(
-            f"No active reasoning session for agent '{agent_id}'.\n"
-            f"Start reasoning first:\n"
-            f"  start_reasoning('Describe your reasoning goal', '{agent_id}')"
-        )
-    return session_id
-
-
-def _get_active_session_id_safe(agent_id: str) -> Optional[str]:
-    """Get the active session ID for an agent, or None if absent.
-
-    Prefer this helper in tool functions to avoid exceptions escaping.
-    """
-    return _active_sessions.get(agent_id)
-
-
-def _timestamp() -> str:
-    return utc_timestamp()
 
 
 def _ok(
@@ -83,7 +35,7 @@ def _ok(
         "intent": intent,
         "agent_id": agent_id,
         **({"session_id": session_id} if session_id is not None else {}),
-        "timestamp": timestamp or _timestamp(),
+        "timestamp": timestamp or utc_timestamp(),
         "data": data,
     }
 
@@ -109,7 +61,7 @@ def _err(
         "intent": intent,
         "agent_id": agent_id,
         **({"session_id": session_id} if session_id is not None else {}),
-        "timestamp": timestamp or _timestamp(),
+        "timestamp": timestamp or utc_timestamp(),
         "error": err,
     }
 
@@ -127,35 +79,7 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
     Raises:
         ValueError: If the session does not exist
     """
-    cache_key = _make_cache_key(agent_id, session_id)
-
-    # Check cache first
-    if cache_key not in _session_registry:
-        # Try to load from database
-        session_data = _db.load_session(session_id, agent_id)
-
-        if session_data:
-            # Reconstruct session from database
-            session = ReasoningSession.from_dict(session_data)
-            session.set_database(_db)
-            _session_registry[cache_key] = session
-            logger.debug(
-                f"Loaded session {session_id} for agent {agent_id} "
-                f"from database"
-            )
-        else:
-            # Session doesn't exist
-            available = list(_session_registry.keys()) or ["(none)"]
-            logger.error(
-                f"Session '{session_id}' for agent '{agent_id}' "
-                f"does not exist. Available sessions: {available}"
-            )
-            raise ValueError(
-                f"Session '{session_id}' for agent '{agent_id}' "
-                f"does not exist. Available sessions: {available}"
-            )
-
-    return _session_registry[cache_key]
+    return registry.get_session(session_id, agent_id)
 
 
 def start_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
@@ -172,34 +96,29 @@ def start_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Returns:
         Dict with status, session_id, message. REQUIRED FIRST for reasoning.
     """
-    # Auto-generate unique session ID
-    session_id = f"{agent_id}_session_{int(time.time() * 1000)}"
+    # Auto-generate unique session ID using UUID for collision resistance
+    session_id = f"{agent_id}_session_{uuid.uuid4().hex[:12]}"
 
-    # If agent already has active session, clean it up first
-    if agent_id in _active_sessions:
-        old_session_id = _active_sessions[agent_id]
+    # If agent already has active session, we'll mark it inactive AFTER
+    # successfully creating the new session to avoid losing active session
+    # on creation failure (atomic replacement).
+    old_session_id = registry.get_active_session_id(agent_id)
+
+    # Create new session
+    session = ReasoningSession(session_id=session_id, agent_id=agent_id)
+    session.set_database(registry.get_db())
+    session.persist_metadata()
+
+    # Now safe to mark old session as inactive (after new one succeeds)
+    if old_session_id is not None:
         logger.info(
             f"Replacing active session {old_session_id} with {session_id} "
             f"for agent '{agent_id}'"
         )
-        # Clean up old session
-        old_cache_key = _make_cache_key(agent_id, old_session_id)
-        if old_cache_key in _session_registry:
-            del _session_registry[old_cache_key]
-        _db.delete_session(old_session_id, agent_id)
-
-    # Create new session
-    session = ReasoningSession(session_id=session_id, agent_id=agent_id)
-    session.set_database(_db)
-    session.persist_metadata()
-
-    # Register session
-    cache_key = _make_cache_key(agent_id, session_id)
-    _session_registry[cache_key] = session
-    _active_sessions[agent_id] = session_id
+        registry.get_db().delete_session(old_session_id, agent_id)
 
     logger.success(f"Started reasoning session for agent '{agent_id}'")
-    now = _timestamp()
+    now = utc_timestamp()
     # Audit event
     session.persist_tool_event(
         tool_name="start_reasoning",
@@ -243,7 +162,7 @@ def add_reasoning_step(
     Returns:
         Dict with step details, timestamp, detected biases
     """
-    session_id = _get_active_session_id_safe(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="add_reasoning_step",
@@ -304,7 +223,7 @@ def add_reflection(
     Returns:
         Dict with reflection details, timestamp
     """
-    session_id = _get_active_session_id_safe(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="add_reflection",
@@ -363,7 +282,7 @@ def use_scratchpad(
     Returns:
         Dict with operation result, value (for get), keys (for list)
     """
-    session_id = _get_active_session_id_safe(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="use_scratchpad",
@@ -425,7 +344,7 @@ def evaluate_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Returns:
         Dict with quality_score, suggestions, step_count, reflection_count
     """
-    session_id = _get_active_session_id_safe(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="evaluate_reasoning",
@@ -471,7 +390,7 @@ def get_reasoning_summary(intent: str, agent_id: str) -> Dict[str, Any]:
     Returns:
         Dict with steps, reflections, scratchpad_keys, total_steps
     """
-    session_id = _get_active_session_id_safe(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="get_reasoning_summary",
@@ -517,7 +436,7 @@ def reset_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Returns:
         Dict with confirmation. Clears steps/scratchpad, keeps session.
     """
-    session_id = _get_active_session_id_safe(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="reset_reasoning",
@@ -565,7 +484,7 @@ def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     Returns:
         Dict with confirmation. Call when reasoning is complete.
     """
-    session_id = _active_sessions.get(agent_id)
+    session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="end_reasoning",
@@ -576,10 +495,10 @@ def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
             message=f"No active reasoning session for agent '{agent_id}'.",
         )
 
-    now = _timestamp()
+    now = utc_timestamp()
     try:
         # If we can still resolve the session, emit an audit event.
-        session = _get_session(session_id, agent_id)
+        session = registry.get_session(session_id, agent_id)
         session.persist_tool_event(
             tool_name="end_reasoning",
             intent=intent,
@@ -592,15 +511,8 @@ def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
             f"Could not persist end_reasoning tool event for {session_id}"
         )
 
-    # Remove from active sessions
-    del _active_sessions[agent_id]
-
-    # Clean up session
-    cache_key = _make_cache_key(agent_id, session_id)
-    if cache_key in _session_registry:
-        del _session_registry[cache_key]
-
-    _db.delete_session(session_id, agent_id)
+    # Mark inactive in persistence store
+    registry.get_db().delete_session(session_id, agent_id)
 
     logger.info(f"Ended reasoning session for agent '{agent_id}'")
     return _ok(
@@ -625,7 +537,7 @@ def list_reasoning_sessions(intent: str, agent_id: str) -> Dict[str, Any]:
         str: List of session IDs and their summaries
     """
     try:
-        sessions = _db.list_sessions(agent_id)
+        sessions = registry.get_db().list_sessions(agent_id)
         return _ok(
             tool="list_reasoning_sessions",
             intent=intent,

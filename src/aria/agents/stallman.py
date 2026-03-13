@@ -16,7 +16,6 @@ from aria.agents.instructions import load_agent_instructions
 from aria.tools.shell import (
     execute_command,
     execute_command_batch,
-    execute_command_safe,
     get_platform_info,
 )
 
@@ -88,7 +87,6 @@ def get_agent(
     tools = [
         FunctionTool.from_defaults(fn=get_platform_info),
         FunctionTool.from_defaults(fn=execute_command),
-        FunctionTool.from_defaults(fn=execute_command_safe),
         FunctionTool.from_defaults(fn=execute_command_batch),
     ]
 

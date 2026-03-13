@@ -11,7 +11,7 @@ Tests cover:
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, cast
 from unittest.mock import Mock, patch
 
@@ -23,7 +23,6 @@ from aria.tools.search.finance import (
     YFinanceDataError,
     YFinanceError,
     YFinanceValidationError,
-    _format_json_response,
     _get_ticker,
     _get_ticker_info,
     _process_news_article,
@@ -32,6 +31,22 @@ from aria.tools.search.finance import (
     fetch_current_stock_price,
     fetch_ticker_news,
 )
+
+
+def _response_data(raw: str) -> dict:
+    payload = json.loads(raw)
+    return payload["data"]
+
+
+def _response_error(raw: str) -> str:
+    payload = json.loads(raw)
+    return payload["error"]["message"]
+
+
+def _response_context(raw: str) -> dict:
+    payload = json.loads(raw)
+    return payload.get("context", {})
+
 
 # ============================================================================
 # Ticker Validation Tests
@@ -140,24 +155,9 @@ class TestHelperFunctions:
         ):
             _get_ticker_info(mock_ticker, "AAPL")
 
-    def test_format_json_response_success(self):
-        """Test successful JSON formatting."""
-        data = {"key": "value", "number": 123}
-        result = _format_json_response(data)
-        parsed = json.loads(result)
-        assert parsed == data
-
-    def test_format_json_response_with_datetime(self):
-        """Test JSON formatting with datetime objects."""
-        data = {"timestamp": datetime.now(timezone.utc)}
-        result = _format_json_response(data)
-        parsed = json.loads(result)
-        assert "timestamp" in parsed
-
-
-# ============================================================================
-# News Article Processing Tests
-# ============================================================================
+    # ============================================================================
+    # News Article Processing Tests
+    # ============================================================================
 
 
 class TestNewsArticleProcessing:
@@ -247,7 +247,7 @@ class TestFetchCurrentStockPrice:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_current_stock_price("Testing stock price", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["ticker"] == "AAPL"
             assert result_dict["current_price"] == 150.25
@@ -271,7 +271,7 @@ class TestFetchCurrentStockPrice:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_current_stock_price("Testing stock price", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["current_price"] == 150.25
 
@@ -285,20 +285,20 @@ class TestFetchCurrentStockPrice:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_current_stock_price("Testing stock price", "AAPL")
-            result_dict = json.loads(result)
-            assert result_dict["ticker"] == "AAPL"
-            assert result_dict["error_type"] == "data_error"
-            assert "No price data available" in result_dict["error"]
+            context = _response_context(result)
+            assert context["ticker"] == "AAPL"
+            assert context["error_type"] == "data_error"
+            assert "No price data available" in _response_error(result)
 
     def test_fetch_price_invalid_ticker(self):
         """Test price fetch with invalid ticker."""
         result = fetch_current_stock_price(
             "Testing stock price", "INVALID@TICKER"
         )
-        result_dict = json.loads(result)
-        assert result_dict["ticker"] == "INVALID@TICKER"
-        assert result_dict["error_type"] == "validation_error"
-        assert "Invalid ticker symbol format" in result_dict["error"]
+        context = _response_context(result)
+        assert context["ticker"] == "INVALID@TICKER"
+        assert context["error_type"] == "validation_error"
+        assert "Invalid ticker symbol format" in _response_error(result)
 
     def test_fetch_price_day_change_calculation(self):
         """Test day change percentage calculation."""
@@ -314,7 +314,7 @@ class TestFetchCurrentStockPrice:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_current_stock_price("Testing stock price", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["day_change"] == 10.0
             assert result_dict["day_change_percent"] == pytest.approx(
@@ -334,7 +334,7 @@ class TestFetchCurrentStockPrice:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_current_stock_price("Testing stock price", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["day_change"] is None
             assert result_dict["day_change_percent"] is None
@@ -372,7 +372,7 @@ class TestFetchCompanyInformation:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_company_information("Testing company info", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["basic_info"]["name"] == "Apple Inc."
             assert result_dict["basic_info"]["symbol"] == "AAPL"
@@ -395,7 +395,7 @@ class TestFetchCompanyInformation:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_company_information("Testing company info", "TEST")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["basic_info"]["symbol"] == "TEST"
             assert result_dict["basic_info"]["name"] is None
@@ -404,10 +404,10 @@ class TestFetchCompanyInformation:
     def test_fetch_company_info_invalid_ticker(self):
         """Test company info with invalid ticker."""
         result = fetch_company_information("Testing company info", "")
-        result_dict = json.loads(result)
-        assert result_dict["ticker"] == ""
-        assert result_dict["error_type"] == "validation_error"
-        assert "cannot be empty" in result_dict["error"]
+        context = _response_context(result)
+        assert context["ticker"] == ""
+        assert context["error_type"] == "validation_error"
+        assert "cannot be empty" in _response_error(result)
 
 
 # ============================================================================
@@ -445,7 +445,7 @@ class TestFetchTickerNews:
             result = fetch_ticker_news(
                 "Testing ticker news", "AAPL", max_articles=2
             )
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["ticker"] == "AAPL"
             assert result_dict["count"] == 2
@@ -464,7 +464,7 @@ class TestFetchTickerNews:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_ticker_news("Testing ticker news", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["ticker"] == "AAPL"
             assert result_dict["count"] == 0
@@ -491,7 +491,7 @@ class TestFetchTickerNews:
             result = fetch_ticker_news(
                 "Testing ticker news", "AAPL", max_articles=5
             )
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["count"] == 5
             assert len(result_dict["articles"]) == 5
@@ -509,14 +509,14 @@ class TestFetchTickerNews:
             result = fetch_ticker_news(
                 "Testing ticker news", "AAPL", max_articles=-5
             )
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
             assert result_dict["count"] >= 0
 
             # Test upper bound
             result = fetch_ticker_news(
                 "Testing ticker news", "AAPL", max_articles=1000
             )
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
             assert result_dict["count"] <= MAX_ARTICLES
 
     def test_fetch_news_invalid_max_articles_type(self):
@@ -524,32 +524,32 @@ class TestFetchTickerNews:
         result = fetch_ticker_news(
             "Testing ticker news", "AAPL", max_articles=cast(Any, "10")
         )
-        result_dict = json.loads(result)
-        assert result_dict["ticker"] == "AAPL"
-        assert result_dict["error_type"] == "validation_error"
-        assert "max_articles must be an integer" in result_dict["error"]
-        assert result_dict["articles"] == []
-        assert result_dict["count"] == 0
+        context = _response_context(result)
+        assert context["ticker"] == "AAPL"
+        assert context["error_type"] == "validation_error"
+        assert "max_articles must be an integer" in _response_error(result)
+        assert context["articles"] == []
+        assert context["count"] == 0
 
         result = fetch_ticker_news(
             "Testing ticker news", "AAPL", max_articles=cast(Any, 10.5)
         )
-        result_dict = json.loads(result)
-        assert result_dict["ticker"] == "AAPL"
-        assert result_dict["error_type"] == "validation_error"
-        assert "max_articles must be an integer" in result_dict["error"]
-        assert result_dict["articles"] == []
-        assert result_dict["count"] == 0
+        context = _response_context(result)
+        assert context["ticker"] == "AAPL"
+        assert context["error_type"] == "validation_error"
+        assert "max_articles must be an integer" in _response_error(result)
+        assert context["articles"] == []
+        assert context["count"] == 0
 
     def test_fetch_news_invalid_ticker(self):
         """Test news fetch with invalid ticker."""
         result = fetch_ticker_news("Testing ticker news", "")
-        result_dict = json.loads(result)
-        assert result_dict["ticker"] == ""
-        assert result_dict["error_type"] == "validation_error"
-        assert "cannot be empty" in result_dict["error"]
-        assert result_dict["articles"] == []
-        assert result_dict["count"] == 0
+        context = _response_context(result)
+        assert context["ticker"] == ""
+        assert context["error_type"] == "validation_error"
+        assert "cannot be empty" in _response_error(result)
+        assert context["articles"] == []
+        assert context["count"] == 0
 
     def test_fetch_news_api_exception(self):
         """Test news fetch with API exception."""
@@ -562,12 +562,12 @@ class TestFetchTickerNews:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_ticker_news("Testing ticker news", "AAPL")
-            result_dict = json.loads(result)
-            assert result_dict["ticker"] == "AAPL"
-            assert result_dict["error_type"] == "data_error"
-            assert "Failed to fetch news data" in result_dict["error"]
-            assert result_dict["articles"] == []
-            assert result_dict["count"] == 0
+            context = _response_context(result)
+            assert context["ticker"] == "AAPL"
+            assert context["error_type"] == "data_error"
+            assert "Failed to fetch news data" in _response_error(result)
+            assert context["articles"] == []
+            assert context["count"] == 0
 
     def test_fetch_news_malformed_articles(self):
         """Test news fetch with some malformed articles."""
@@ -594,7 +594,7 @@ class TestFetchTickerNews:
             result = fetch_ticker_news(
                 "Testing ticker news", "AAPL", max_articles=10
             )
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             # Should only include valid articles
             assert result_dict["count"] == 2
@@ -651,7 +651,7 @@ class TestIntegration:
             result = fetch_current_stock_price(
                 "Testing stock price", "aapl"
             )  # lowercase
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             assert result_dict["ticker"] == "AAPL"  # normalized
             assert result_dict["current_price"] == 175.50
@@ -667,7 +667,7 @@ class TestIntegration:
             mock_get_ticker.return_value = mock_ticker
 
             result = fetch_current_stock_price("Testing stock price", "AAPL")
-            result_dict = json.loads(result)
+            result_dict = _response_data(result)
 
             # Should be valid ISO format
             timestamp = result_dict["timestamp"]

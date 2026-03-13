@@ -1,14 +1,17 @@
 """Yahoo Finance-backed market data tools."""
 
-import inspect
-import json
 import re
 from typing import Any, Dict, Optional
 
 import yfinance
 from loguru import logger
 
-from aria.tools import utc_timestamp
+from aria.tools import (
+    log_tool_call,
+    tool_error_response,
+    tool_success_response,
+    utc_timestamp,
+)
 
 
 class YFinanceError(Exception):
@@ -45,6 +48,7 @@ MIN_ARTICLES = 1
 MAX_ARTICLES = 50
 
 
+@log_tool_call
 def fetch_current_stock_price(intent: str, ticker: str) -> str:
     """
     Fetch current price for a ticker.
@@ -62,10 +66,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
     try:
         ticker = _validate_ticker(ticker)
         logger.debug(f"Ticker validated: {ticker}")
-        frame = inspect.currentframe()
-        if frame:
-            func_name = frame.f_code.co_name
-            logger.debug(f"Calling {func_name} to achieve: {intent}")
+        # Logging handled by @log_tool_call decorator
 
         ticker_obj = _get_ticker(ticker)
         logger.debug(f"Ticker object created for {ticker}")
@@ -114,27 +115,27 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
             f"Successfully fetched price for {ticker}: "
             f"${result['current_price']} {result['currency']}"
         )
-        return _format_json_response(result)
+        return tool_success_response(
+            "fetch_current_stock_price", intent, result
+        )
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker}: {exc}")
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "error": str(exc),
-                "error_type": "validation_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_current_stock_price",
+            intent,
+            exc,
+            ticker=raw_ticker,
+            error_type="validation_error",
         )
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker}: {exc}")
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "error": str(exc),
-                "error_type": "data_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_current_stock_price",
+            intent,
+            exc,
+            ticker=raw_ticker,
+            error_type="data_error",
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         # Important: tools should never raise here; an exception can crash the
@@ -142,16 +143,16 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
         logger.exception(
             f"Unexpected error fetching price for {raw_ticker}: {exc}"
         )
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "error": f"Failed to get current price: {exc}",
-                "error_type": "unexpected_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_current_stock_price",
+            intent,
+            RuntimeError(f"Failed to get current price: {exc}"),
+            ticker=raw_ticker,
+            error_type="unexpected_error",
         )
 
 
+@log_tool_call
 def fetch_company_information(intent: str, ticker: str) -> str:
     """
     Fetch company fundamentals/metadata for a ticker.
@@ -169,10 +170,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
     try:
         ticker = _validate_ticker(ticker)
         logger.debug(f"Ticker validated: {ticker}")
-        frame = inspect.currentframe()
-        if frame:
-            func_name = frame.f_code.co_name
-            logger.debug(f"Calling {func_name} to achieve: {intent}")
+        # Logging handled by @log_tool_call decorator
 
         ticker_obj = _get_ticker(ticker)
         info = _get_ticker_info(ticker_obj, ticker)
@@ -246,42 +244,42 @@ def fetch_company_information(intent: str, ticker: str) -> str:
             f"Successfully fetched company info for {ticker}: "
             f"{company_info['basic_info'].get('name', 'Unknown')}"
         )
-        return _format_json_response(company_info)
+        return tool_success_response(
+            "fetch_company_information", intent, company_info
+        )
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker}: {exc}")
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "error": str(exc),
-                "error_type": "validation_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_company_information",
+            intent,
+            exc,
+            ticker=raw_ticker,
+            error_type="validation_error",
         )
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker}: {exc}")
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "error": str(exc),
-                "error_type": "data_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_company_information",
+            intent,
+            exc,
+            ticker=raw_ticker,
+            error_type="data_error",
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception(
             f"Unexpected error fetching company info for {raw_ticker}: {exc}"
         )
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "error": f"Failed to get company information: {exc}",
-                "error_type": "unexpected_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_company_information",
+            intent,
+            RuntimeError(f"Failed to get company information: {exc}"),
+            ticker=raw_ticker,
+            error_type="unexpected_error",
         )
 
 
+@log_tool_call
 def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
     """
     Fetch recent news for a ticker.
@@ -309,10 +307,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         max_articles = max(MIN_ARTICLES, min(MAX_ARTICLES, max_articles))
         logger.debug(f"Max articles set to: {max_articles}")
 
-        frame = inspect.currentframe()
-        if frame:
-            func_name = frame.f_code.co_name
-            logger.debug(f"Calling {func_name} to achieve: {intent}")
+        # Logging handled by @log_tool_call decorator
 
         ticker_obj = _get_ticker(ticker)
 
@@ -324,14 +319,16 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
             ) from exc
 
         if not news_data:
-            return _format_json_response(
+            return tool_success_response(
+                "fetch_ticker_news",
+                intent,
                 {
                     "ticker": ticker,
                     "articles": [],
                     "count": 0,
                     "message": "No news articles found",
                     "timestamp": utc_timestamp(),
-                }
+                },
             )
 
         articles = []
@@ -350,45 +347,42 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         logger.info(
             f"Successfully fetched {len(articles)} news articles for {ticker}"
         )
-        return _format_json_response(result)
+        return tool_success_response("fetch_ticker_news", intent, result)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker} news: {exc}")
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "articles": [],
-                "count": 0,
-                "error": str(exc),
-                "error_type": "validation_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_ticker_news",
+            intent,
+            exc,
+            ticker=raw_ticker,
+            error_type="validation_error",
+            articles=[],
+            count=0,
         )
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker} news: {exc}")
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "articles": [],
-                "count": 0,
-                "error": str(exc),
-                "error_type": "data_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_ticker_news",
+            intent,
+            exc,
+            ticker=raw_ticker,
+            error_type="data_error",
+            articles=[],
+            count=0,
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception(
             f"Unexpected error fetching news for {raw_ticker}: {exc}"
         )
-        return _format_json_response(
-            {
-                "ticker": raw_ticker,
-                "articles": [],
-                "count": 0,
-                "error": f"Failed to get news: {exc}",
-                "error_type": "unexpected_error",
-                "timestamp": utc_timestamp(),
-            }
+        return tool_error_response(
+            "fetch_ticker_news",
+            intent,
+            RuntimeError(f"Failed to get news: {exc}"),
+            ticker=raw_ticker,
+            error_type="unexpected_error",
+            articles=[],
+            count=0,
         )
 
 
@@ -473,23 +467,6 @@ def _get_ticker_info(ticker_obj: Any, ticker: str) -> Dict[str, Any]:
         raise YFinanceDataError(
             f"Failed to get ticker info for {ticker}: {exc}"
         ) from exc
-
-
-def _format_json_response(data: Any) -> str:
-    """
-    Format response data as clean JSON string.
-
-    Args:
-        data: Data to format
-
-    Returns:
-        Clean JSON string
-    """
-    try:
-        json_str = json.dumps(data, indent=2, ensure_ascii=False, default=str)
-        return json_str
-    except Exception as exc:
-        return json.dumps({"error": f"Failed to format response: {exc}"})
 
 
 def _process_news_article(article: Any) -> Optional[Dict[str, Any]]:

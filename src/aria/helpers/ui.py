@@ -60,7 +60,6 @@ TOOL_EMOJI: Dict[str, str] = {
     # Shell
     "execute_command": "🖥️",
     "execute_command_batch": "⚙️",
-    "execute_command_safe": "🔐",
     "get_platform_info": "💡",
     # Vision / OCR
     "parse_pdf": "🐾",

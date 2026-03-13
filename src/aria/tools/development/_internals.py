@@ -17,10 +17,6 @@ from aria.tools.constants import MAX_TIMEOUT
 from aria.tools.development.constants import RESTRICTED_BUILTINS
 from aria.tools.development.exceptions import PythonSecurityError
 
-# Re-export shared utilities for backward compatibility
-_timestamp = utc_timestamp
-_safe_json = safe_json
-
 
 def _build_response(
     operation: str,

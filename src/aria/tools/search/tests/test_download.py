@@ -14,9 +14,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
-from aria.tools.search.download import (
-    ContentParsingError,
-    URLDownloadError,
+from aria.tools.search._download_internals import (
     _auto_detect_format,
     _clean_text,
     _create_error_response,
@@ -32,9 +30,21 @@ from aria.tools.search.download import (
     _save_content_to_file,
     _validate_format,
     _validate_url,
+)
+from aria.tools.search.download import (
+    ContentParsingError,
+    URLDownloadError,
     get_file_from_url,
     get_youtube_video_transcription,
 )
+
+
+def _response_data(raw: str) -> dict:
+    return json.loads(raw)["data"]
+
+
+def _response_error(raw: str) -> str:
+    return json.loads(raw)["error"]["message"]
 
 
 class TestURLValidation:
@@ -139,7 +149,7 @@ class TestUtilityFunctions:
 class TestGetFileFromURL:
     """Test the main get_file_from_url function."""
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_download_html_success(self, mock_client):
         """Test successful HTML download."""
         # Mock HTTP response
@@ -156,12 +166,10 @@ class TestGetFileFromURL:
         result_json = get_file_from_url(
             "Testing file download", "https://example.com"
         )
-        data = json.loads(result_json)
+        data = _response_data(result_json)
 
         # Verify response structure
-        assert data["success"] is True
         assert data["file_path"] is not None
-        assert data["error"] is None
         assert os.path.exists(data["file_path"])
 
         # Verify metadata
@@ -182,20 +190,16 @@ class TestGetFileFromURL:
     def test_download_invalid_url(self):
         """Test download with invalid URL."""
         result_json = get_file_from_url("Testing file download", "not-a-url")
-        data = json.loads(result_json)
+        err = _response_error(result_json)
 
-        assert data["success"] is False
-        assert data["file_path"] is None
-        assert data["metadata"] is None
-        assert "Invalid URL format" in data["error"]
+        assert "Invalid URL format" in err
 
     def test_download_empty_url(self):
         """Test download with empty URL."""
         result_json = get_file_from_url("Testing file download", "")
-        data = json.loads(result_json)
+        err = _response_error(result_json)
 
-        assert data["success"] is False
-        assert "URL cannot be empty" in data["error"]
+        assert "URL cannot be empty" in err
 
     def test_json_response_structure(self):
         """Test that JSON response has correct structure."""
@@ -203,12 +207,13 @@ class TestGetFileFromURL:
         data = json.loads(result_json)
 
         # Check required fields
-        assert "success" in data
-        assert "file_path" in data
-        assert "metadata" in data
+        assert "status" in data
+        assert "tool" in data
+        assert "intent" in data
+        assert "timestamp" in data
         assert "error" in data
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_download_with_different_formats(self, mock_client):
         """Test download with different output formats."""
         mock_response = Mock()
@@ -224,8 +229,7 @@ class TestGetFileFromURL:
             result_json = get_file_from_url(
                 "Testing file download", "https://example.com", output=fmt
             )
-            data = json.loads(result_json)
-            assert data["success"] is True
+            data = _response_data(result_json)
             assert os.path.exists(data["file_path"])
 
 
@@ -237,9 +241,8 @@ class TestIntegration:
         result_json = get_file_from_url(
             "Testing file download", "https://www.example.com"
         )
-        data = json.loads(result_json)
+        data = _response_data(result_json)
 
-        assert data["success"] is True
         assert data["file_path"] is not None
         assert os.path.exists(data["file_path"])
 
@@ -258,9 +261,8 @@ class TestIntegration:
         result_json = get_file_from_url(
             "Testing file download", "https://www.example.com", output="auto"
         )
-        data = json.loads(result_json)
+        data = _response_data(result_json)
 
-        assert data["success"] is True
         assert data["metadata"]["format"] in ["html", "text", "markdown"]
 
 
@@ -312,7 +314,7 @@ class TestFilenameExtraction:
 class TestFetchFile:
     """Test file fetching with retry logic."""
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_fetch_file_success(self, mock_client_class):
         """Test successful file fetch."""
         mock_response = Mock()
@@ -331,7 +333,7 @@ class TestFetchFile:
         assert content == b"Test content"
         assert content_type == "text/plain"
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_fetch_file_with_custom_headers(self, mock_client_class):
         """Test file fetch with custom headers."""
         mock_response = Mock()
@@ -347,7 +349,7 @@ class TestFetchFile:
         _fetch_file("https://example.com", custom_headers=custom_headers)
         assert mock_client.get.called
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_fetch_file_size_limit_exceeded(self, mock_client_class):
         """Test file fetch with size limit exceeded."""
         mock_response = Mock()
@@ -364,8 +366,8 @@ class TestFetchFile:
         with pytest.raises(URLDownloadError, match="exceeds maximum"):
             _fetch_file("https://example.com", max_size=1000)
 
-    @patch("aria.tools.search.download.httpx.Client")
-    @patch("aria.tools.search.download.time.sleep")
+    @patch("aria.tools.search._download_internals.httpx.Client")
+    @patch("aria.tools.search._download_internals.time.sleep")
     def test_fetch_file_retry_on_timeout(self, mock_sleep, mock_client_class):
         """Test retry logic on timeout."""
         mock_client = Mock()
@@ -378,7 +380,7 @@ class TestFetchFile:
         # Should have retried
         assert mock_client.get.call_count > 1
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_fetch_file_html_size_check(self, mock_client_class):
         """Test HTML content size checking."""
         large_html = "x" * 200_000_000  # Very large HTML
@@ -394,7 +396,7 @@ class TestFetchFile:
         with pytest.raises(URLDownloadError, match="exceeds maximum"):
             _fetch_file("https://example.com", max_size=1000)
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_fetch_file_binary_size_check(self, mock_client_class):
         """Test binary content size checking."""
         large_content = b"x" * 200_000_000
@@ -510,7 +512,7 @@ class TestSaveContentToFile:
             assert os.path.exists(file_path)
             assert "custom" in file_path
 
-    @patch("aria.tools.search.download._markitdown")
+    @patch("aria.tools.search._download_internals._markitdown")
     def test_save_markitdown_supported_binary(self, mock_markitdown):
         """Test saving MarkItDown-supported binary content."""
         # Mock the markitdown conversion to avoid PDF parsing errors
@@ -536,29 +538,31 @@ class TestResponseCreation:
     def test_create_response(self):
         """Test creating success response."""
         metadata = {"url": "https://example.com", "size": 100}
-        response = _create_response("/path/to/file", metadata)
-        data = json.loads(response)
-        assert data["success"] is True
+        response = _create_response(
+            "get_file_from_url",
+            "test intent",
+            "/path/to/file",
+            metadata,
+        )
+        data = _response_data(response)
         assert data["file_path"] == "/path/to/file"
         assert data["metadata"] == metadata
-        assert data["error"] is None
 
     def test_create_error_response(self):
         """Test creating error response."""
-        response = _create_error_response("Test error")
-        data = json.loads(response)
-        assert data["success"] is False
-        assert data["file_path"] is None
-        assert data["metadata"] is None
-        assert data["error"] == "Test error"
+        response = _create_error_response(
+            "get_file_from_url", "test intent", "Test error"
+        )
+        err = _response_error(response)
+        assert err == "Test error"
 
 
 class TestYouTubeTranscription:
     """Test YouTube video transcription."""
 
-    @patch("aria.tools.search.download._save_content_to_file")
-    @patch("aria.tools.search.download.TextFormatter")
-    @patch("aria.tools.search.download.YouTubeTranscriptApi")
+    @patch("aria.tools.search._youtube._save_content_to_file")
+    @patch("aria.tools.search._youtube.TextFormatter")
+    @patch("aria.tools.search._youtube.YouTubeTranscriptApi")
     def test_youtube_transcription_success(
         self, mock_api_class, mock_formatter_class, mock_save
     ):
@@ -578,12 +582,11 @@ class TestYouTubeTranscription:
         mock_save.return_value = ("/tmp/mock_file.txt", {"file_size": 20})
 
         result = get_youtube_video_transcription(
-            intent="Testing YouTube transcription",  # Changed from reason to intent
-            url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Use valid video URL
+            intent="Testing YouTube transcription",
+            url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         )
 
-        data = json.loads(result)
-        assert data["success"] is True
+        data = _response_data(result)
         assert data["file_path"] == "/tmp/mock_file.txt"
         assert data["metadata"]["video_id"] == "dQw4w9WgXcQ"
         assert data["metadata"]["transcript_segments"] == 5
@@ -604,15 +607,14 @@ class TestYouTubeTranscription:
         result = get_youtube_video_transcription(
             "Testing YouTube transcription", "not-a-url"
         )
-        data = json.loads(result)
-        assert data["success"] is False
-        assert "Invalid URL format" in data["error"]
+        err = _response_error(result)
+        assert "Invalid URL format" in err
 
 
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_get_file_with_http_error(self, mock_client_class):
         """Test handling of HTTP errors."""
         mock_response = Mock()
@@ -629,8 +631,8 @@ class TestEdgeCases:
         result = get_file_from_url(
             "Testing file download", "https://example.com/notfound"
         )
-        data = json.loads(result)
-        assert data["success"] is False
+        payload = json.loads(result)
+        assert payload["status"] == "error"
 
     def test_get_file_with_invalid_format(self):
         """Test download with invalid output format."""
@@ -639,11 +641,10 @@ class TestEdgeCases:
             "https://example.com",
             output="invalid_format",
         )
-        data = json.loads(result)
-        assert data["success"] is False
-        assert "Unsupported format" in data["error"]
+        err = _response_error(result)
+        assert "Unsupported format" in err
 
-    @patch("aria.tools.search.download.httpx.Client")
+    @patch("aria.tools.search._download_internals.httpx.Client")
     def test_get_file_generic_exception(self, mock_client_class):
         """Test handling of generic exceptions."""
         mock_client = Mock()
@@ -653,9 +654,8 @@ class TestEdgeCases:
         result = get_file_from_url(
             "Testing file download", "https://example.com"
         )
-        data = json.loads(result)
-        assert data["success"] is False
-        assert "Failed to fetch" in data["error"]
+        err = _response_error(result)
+        assert "Failed to fetch" in err
 
 
 if __name__ == "__main__":

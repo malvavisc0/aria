@@ -6,16 +6,17 @@ from pathlib import Path
 
 import pytest
 
+from aria.tools.shell import (
+    execute_command,
+    execute_command_batch,
+    get_platform_info,
+)
 from aria.tools.shell.constants import IS_WINDOWS
 from aria.tools.shell.exceptions import CommandBlockedError
-from aria.tools.shell.functions import (
+from aria.tools.shell.validation import (
     _has_shell_operators,
     _is_blocked_command,
     _validate_command,
-    execute_command,
-    execute_command_batch,
-    execute_command_safe,
-    get_platform_info,
 )
 
 
@@ -105,7 +106,8 @@ class TestExecuteCommand:
         """Test executing a simple echo command."""
         result = execute_command(
             intent="Test echo command",
-            command="echo hello",
+            command_name="echo",
+            args=["hello"],
             timeout=5,
         )
         data = json.loads(result)
@@ -119,7 +121,8 @@ class TestExecuteCommand:
         """Test command execution with custom timeout."""
         result = execute_command(
             intent="Test sleep command",
-            command="sleep 0.1",
+            command_name="python",
+            args=["-c", "import time; time.sleep(0.1)"],
             timeout=5,
         )
         data = json.loads(result)
@@ -131,7 +134,8 @@ class TestExecuteCommand:
         with tempfile.TemporaryDirectory() as tmpdir:
             result = execute_command(
                 intent="Test ls in temp dir",
-                command="ls" if not IS_WINDOWS else "dir",
+                command_name="ls" if not IS_WINDOWS else "dir",
+                args=[],
                 timeout=5,
                 working_dir=tmpdir,
             )
@@ -140,26 +144,25 @@ class TestExecuteCommand:
             assert data["result"]["return_code"] == 0
             assert tmpdir in data["result"]["working_dir"]
 
-    def test_execute_command_with_env(self):
-        """Test command execution with custom environment variables."""
+    def test_execute_command_treats_shell_operators_as_literal_args(self):
+        """Test that shell operators in args are treated as literal text."""
         result = execute_command(
-            intent="Test env variable",
-            command=(
-                "echo $TEST_VAR" if not IS_WINDOWS else "echo %TEST_VAR%"
-            ),
+            intent="Test literal args",
+            command_name="echo",
+            args=["hello | world"],
             timeout=5,
-            env={"TEST_VAR": "test_value"},
         )
         data = json.loads(result)
 
         assert data["result"]["return_code"] == 0
-        assert "test_value" in data["result"]["stdout"]
+        assert "hello | world" in data["result"]["stdout"]
 
     def test_execute_command_timeout(self):
         """Test command execution timeout."""
         result = execute_command(
             intent="Test timeout",
-            command="sleep 10" if not IS_WINDOWS else "timeout /t 10",
+            command_name="python",
+            args=["-c", "import time; time.sleep(10)"],
             timeout=1,
         )
         data = json.loads(result)
@@ -170,7 +173,8 @@ class TestExecuteCommand:
         """Test command execution with non-zero exit code."""
         result = execute_command(
             intent="Test error handling",
-            command="exit 1",
+            command_name="python",
+            args=["-c", "import sys; sys.exit(1)"],
             timeout=5,
         )
         data = json.loads(result)
@@ -182,16 +186,28 @@ class TestExecuteCommand:
         with pytest.raises(CommandBlockedError):
             execute_command(
                 intent="Test blocked command",
-                command="sudo rm -rf /",
+                command_name="shutdown",
+                args=[],
                 timeout=5,
             )
 
-    def test_execute_command_with_shell_operators_raises_error(self):
-        """Test that shell operators in execute_command are rejected."""
+    def test_execute_command_not_in_whitelist_raises_error(self):
+        """Test that non-whitelisted commands are rejected."""
+        with pytest.raises(CommandBlockedError, match="not in the safe list"):
+            execute_command(
+                intent="Test non-whitelisted command",
+                command_name="nonexistent_command_xyz",
+                args=[],
+                timeout=5,
+            )
+
+    def test_execute_command_with_shell_operators_in_name_raises_error(self):
+        """Test that shell operators in command_name are rejected."""
         with pytest.raises(CommandBlockedError, match="shell operators"):
             execute_command(
                 intent="Test pipe injection",
-                command="echo hello | sudo rm -rf /",
+                command_name="echo|cat",
+                args=[],
                 timeout=5,
             )
 
@@ -199,7 +215,8 @@ class TestExecuteCommand:
         """Test that response includes metadata with timestamp."""
         result = execute_command(
             intent="Test metadata",
-            command="echo test",
+            command_name="echo",
+            args=["test"],
             timeout=5,
         )
         data = json.loads(result)
@@ -211,7 +228,8 @@ class TestExecuteCommand:
         """Test that response includes platform info."""
         result = execute_command(
             intent="Test platform in response",
-            command="echo test",
+            command_name="echo",
+            args=["test"],
             timeout=5,
         )
         data = json.loads(result)
@@ -219,31 +237,14 @@ class TestExecuteCommand:
         assert "platform" in data["result"]
         assert data["result"]["platform"] in ["windows", "linux", "darwin"]
 
-
-class TestExecuteCommandSafe:
-    """Tests for execute_command_safe function."""
-
-    def test_execute_safe_command(self):
-        """Test executing a safe command."""
-        result = execute_command_safe(
-            intent="Test safe ls command",
-            command_name="ls" if not IS_WINDOWS else "dir",
-            args=["."],
-            timeout=5,
-        )
-        data = json.loads(result)
-
-        assert data["operation"] == "execute_command"
-        assert data["result"]["return_code"] == 0
-
-    def test_execute_safe_command_with_args(self):
-        """Test executing a safe command with arguments."""
+    def test_execute_command_with_args(self):
+        """Test executing command with arguments."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.txt"
             test_file.write_text("test content")
 
-            result = execute_command_safe(
-                intent="Test safe cat command",
+            result = execute_command(
+                intent="Test cat command",
                 command_name="cat" if not IS_WINDOWS else "type",
                 args=[str(test_file)],
                 timeout=5,
@@ -253,54 +254,11 @@ class TestExecuteCommandSafe:
             assert data["result"]["return_code"] == 0
             assert "test content" in data["result"]["stdout"]
 
-    def test_execute_blocked_command_raises_error(self):
-        """Test that executing a blocked command raises an error."""
-        with pytest.raises(CommandBlockedError):
-            execute_command_safe(
-                intent="Test blocked command",
-                command_name="shutdown",
-                args=[],
-                timeout=5,
-            )
-
-    def test_safe_command_not_in_whitelist_raises_error(self):
-        """Test that a command not in the safe list is rejected."""
-        with pytest.raises(CommandBlockedError, match="not in the safe list"):
-            execute_command_safe(
-                intent="Test non-whitelisted command",
-                command_name="nonexistent_command_xyz",
-                args=[],
-                timeout=5,
-            )
-
-    def test_safe_command_uses_shell_false(self):
-        """Test that safe command doesn't interpret shell operators in args.
-
-        With shell=False, arguments containing shell operators are passed
-        as literal strings to the command, not interpreted by a shell.
-        """
-        # ls with a path containing a pipe character — shell=False means
-        # the pipe is treated as a literal filename, not a shell operator.
-        result = execute_command_safe(
-            intent="Test shell=False safety",
-            command_name="ls" if not IS_WINDOWS else "dir",
-            args=["nonexistent | rm -rf /"],
-            timeout=5,
-        )
-        data = json.loads(result)
-
-        # ls should fail because the literal path doesn't exist,
-        # but crucially it should NOT execute "rm -rf /"
-        assert data["result"]["return_code"] != 0
-        # The stderr should mention the literal filename, proving
-        # the pipe was not interpreted as a shell operator
-        assert "nonexistent" in data["result"]["stderr"]
-
-    def test_safe_command_not_found_returns_127(self):
+    def test_execute_command_not_found_returns_127(self):
         """Test that a whitelisted but missing command returns 127."""
         # vm_stat is in the safe list but only exists on macOS
         if not IS_WINDOWS:
-            result = execute_command_safe(
+            result = execute_command(
                 intent="Test command not found",
                 command_name="vm_stat",
                 args=[],

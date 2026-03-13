@@ -133,7 +133,18 @@ class ReasoningSession:
 
         Returns:
             Dict[str, Any]: JSON-compatible reflection payload
+
+        Raises:
+            ValueError: If on_step references a non-existent step
         """
+        # Validate on_step if provided
+        if on_step is not None:
+            valid_step_ids = [step["id"] for step in self.steps]
+            if on_step not in valid_step_ids:
+                raise ValueError(
+                    f"Invalid on_step={on_step}. Valid step IDs: {valid_step_ids}"
+                )
+
         entry: Dict[str, Any] = {
             "id": len(self.reflections) + 1,
             "content": reflection,
@@ -262,6 +273,15 @@ class ReasoningSession:
                         "operation": "clear",
                         "key": "all",
                         "timestamp": now,
+                    }
+                # Check if key exists before attempting to delete
+                if key not in self.scratchpad:
+                    return {
+                        "status": "error",
+                        "error": {
+                            "code": "KEY_NOT_FOUND",
+                            "message": f"Key '{key}' not found for clear operation",
+                        },
                     }
                 self.scratchpad.pop(key, None)
                 self.delete_scratchpad_item_db(key)

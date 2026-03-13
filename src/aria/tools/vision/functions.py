@@ -19,14 +19,13 @@ capabilities.
 
 import base64
 import io
-import json
 from pathlib import Path
 from typing import Callable
 
 import httpx
 from loguru import logger
 
-from aria.tools.errors import tool_error_response
+from aria.tools import tool_error_response, tool_success_response
 from aria.tools.vision.constants import VISION_OUTPUT_DIR
 from aria.tools.vision.exceptions import (
     UnsupportedFormatError,
@@ -249,7 +248,9 @@ def _persist_pdf_extraction_result(
     if len(extracted_text) > 500:
         preview += "..."
 
-    return json.dumps(
+    return tool_success_response(
+        "parse_pdf",
+        "persist_pdf_extraction_result",
         {
             "source_file": str(source_path),
             "output_file": str(output_path),
@@ -257,8 +258,6 @@ def _persist_pdf_extraction_result(
             "total_chars": len(extracted_text),
             "pages_processed": pages_processed,
         },
-        ensure_ascii=False,
-        indent=2,
     )
 
 

@@ -1,0 +1,206 @@
+import json
+import shutil
+import tempfile
+from pathlib import Path
+
+from aria.tools.files import (
+    append_to_file,
+    create_directory,
+    delete_lines_range,
+    insert_lines_at,
+    replace_lines_range,
+    write_full_file,
+)
+from aria.tools.files.write_operations import (
+    append_to_file as append_to_file_submodule,
+)
+from aria.tools.files.write_operations import (
+    create_directory as create_directory_submodule,
+)
+from aria.tools.files.write_operations import (
+    delete_lines_range as delete_lines_range_submodule,
+)
+from aria.tools.files.write_operations import (
+    insert_lines_at as insert_lines_at_submodule,
+)
+from aria.tools.files.write_operations import (
+    replace_lines_range as replace_lines_range_submodule,
+)
+from aria.tools.files.write_operations import (
+    write_full_file as write_full_file_submodule,
+)
+
+
+class TestWriteOperations:
+    """Test suite for write and content-modification file operations."""
+
+    def setup_method(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.base_dir = Path(self.test_dir)
+
+        import aria.tools.files._internals as internals_module
+
+        internals_module.BASE_DIR = self.base_dir
+
+        test_file = self.base_dir / "test.txt"
+        test_file.write_text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
+
+    def teardown_method(self):
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_package_exports_match_write_submodule(self):
+        assert append_to_file is append_to_file_submodule
+        assert create_directory is create_directory_submodule
+        assert delete_lines_range is delete_lines_range_submodule
+        assert insert_lines_at is insert_lines_at_submodule
+        assert replace_lines_range is replace_lines_range_submodule
+        assert write_full_file is write_full_file_submodule
+
+    def test_append_to_file(self):
+        result = append_to_file(
+            "Testing append", str(self.base_dir / "test.txt"), "New line\n"
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "append_to_file"
+        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
+        assert data["result"]["bytes_appended"] == 9
+        assert data["result"]["new_total_lines"] == 6
+
+    def test_create_directory(self):
+        result = create_directory(
+            "Testing directory creation",
+            str(self.base_dir / "new_dir" / "subdir"),
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "create_directory"
+        assert data["result"]["dir_name"] == str(
+            self.base_dir / "new_dir" / "subdir"
+        )
+        assert data["result"]["created"] is True
+
+    def test_delete_lines_range(self):
+        result = delete_lines_range(
+            "Testing line deletion", str(self.base_dir / "test.txt"), 1, 2
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "delete_lines_range"
+        assert data["result"]["lines_deleted"] == 2
+        assert data["result"]["old_total_lines"] == 5
+        assert data["result"]["new_total_lines"] == 3
+        assert data["result"]["backup_created"] is True
+
+    def test_insert_lines_at(self):
+        result = insert_lines_at(
+            "Testing line insertion",
+            str(self.base_dir / "test.txt"),
+            ["Inserted line"],
+            1,
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "insert_lines_at"
+        assert data["result"]["lines_inserted"] == 1
+        assert data["result"]["offset"] == 1
+        assert data["result"]["new_total_lines"] == 6
+
+    def test_replace_lines_range(self):
+        result = replace_lines_range(
+            "Testing line replacement",
+            str(self.base_dir / "test.txt"),
+            ["New line 1", "New line 2"],
+            1,
+            2,
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "replace_lines_range"
+        assert data["result"]["lines_replaced"] == 2
+        assert data["result"]["new_lines_inserted"] == 2
+        assert data["result"]["old_total_lines"] == 5
+        assert data["result"]["new_total_lines"] == 5
+        assert data["result"]["backup_created"] is True
+
+    def test_write_full_file(self):
+        result = write_full_file(
+            "Testing file write",
+            str(self.base_dir / "new_file.txt"),
+            "New content\nSecond line\n",
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "write_full_file"
+        assert data["result"]["file_name"] == str(
+            self.base_dir / "new_file.txt"
+        )
+        assert data["result"]["bytes_written"] == 24
+        assert data["result"]["lines_written"] == 2
+        assert data["result"]["created"] is True
+        assert data["result"]["backup_created"] is False
+
+        new_file = self.base_dir / "new_file.txt"
+        assert new_file.exists()
+        assert new_file.read_text() == "New content\nSecond line\n"
+
+    def test_write_full_file_with_backup(self):
+        (self.base_dir / "existing.txt").write_text("Original content\n")
+
+        result = write_full_file(
+            "Testing file overwrite",
+            str(self.base_dir / "existing.txt"),
+            "New content\n",
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "write_full_file"
+        assert data["result"]["backup_created"] is True
+
+    def test_write_full_file_exceeds_size_limit(self):
+        large_content = "A" * (100 * 1024 * 1024 + 1)
+
+        result = write_full_file(
+            "Testing size limit",
+            str(self.base_dir / "large.txt"),
+            large_content,
+        )
+        data = json.loads(result)
+
+        assert data["status"] == "error"
+        assert "exceed" in data["error"]["message"].lower()
+
+    def test_write_operations_with_invalid_paths(self):
+        invalid_paths = [
+            "../outside.txt",
+            "/etc/passwd",
+            "test/../other.txt",
+            "test/../../other.txt",
+        ]
+
+        for path in invalid_paths:
+            append_result = append_to_file(
+                "Testing invalid path", path, "test"
+            )
+            assert json.loads(append_result)["status"] == "error"
+
+            write_result = write_full_file(
+                "Testing invalid path", path, "test"
+            )
+            assert json.loads(write_result)["status"] == "error"
+
+    def test_append_to_file_with_invalid_path(self):
+        result = append_to_file(
+            "Testing invalid path", "../outside.txt", "test"
+        )
+        assert json.loads(result)["status"] == "error"
+
+    def test_write_full_file_with_invalid_path(self):
+        result = write_full_file(
+            "Testing invalid path", "../outside.txt", "test"
+        )
+        assert json.loads(result)["status"] == "error"
+
+    def test_directory_operations_with_invalid_paths(self):
+        result = create_directory("Testing invalid path", "../outside")
+        assert json.loads(result)["status"] == "error"
