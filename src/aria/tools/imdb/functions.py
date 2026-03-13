@@ -312,6 +312,7 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
         "worldwide_gross": movie.worldwide_gross,
         "production_budget": movie.production_budget,
         "awards": awards,
+        "trailers": movie.trailers or [],
     }
 
     logger.info(f"Retrieved details for '{movie.title}' ({movie.year})")
