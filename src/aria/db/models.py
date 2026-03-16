@@ -132,6 +132,7 @@ class Step(Base):
     language: Mapped[str | None] = mapped_column(Text)
     indent: Mapped[int | None] = mapped_column(Integer)
     defaultOpen: Mapped[bool | None] = mapped_column(Boolean)
+    autoCollapse: Mapped[bool | None] = mapped_column(Boolean)
 
     # Relationships
     thread: Mapped["Thread"] = relationship(back_populates="steps")
