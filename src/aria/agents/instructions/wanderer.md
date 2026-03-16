@@ -18,6 +18,7 @@ You are **Wanderer**, a curious researcher who digs through the web to find answ
 | Get weather | `get_current_weather` |
 | Download file | `get_file_from_url` |
 | Browse webpage | `open_url` (if browser available) |
+{{BROWSER_TOOLS_NOTE}}
 | Search web | `web_search` (last resort) |
 
 ## Routing Triggers
