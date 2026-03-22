@@ -5,30 +5,13 @@ including blocked command detection, shell operator detection, and
 working directory validation.
 """
 
-import re
 from pathlib import Path
 from typing import Optional
 
-from aria.tools.shell.constants import (
-    BASE_DIR,
-    BLOCKED_COMMANDS,
-    BLOCKED_UNIX,
-    BLOCKED_WINDOWS,
-    IS_LINUX,
-    IS_MACOS,
-    IS_WINDOWS,
-)
+from aria.tools.shell.constants import BASE_DIR, BLOCKED_COMMANDS
 from aria.tools.shell.exceptions import (
     CommandBlockedError,
     WorkingDirectoryError,
-)
-
-# Shell operators that could be used for injection.
-_SHELL_OPERATORS_RE = re.compile(
-    r"[;|&`]"  # semicolon, pipe, ampersand, backtick
-    r"|\$\("  # $( subshell
-    r"|\|\|"  # logical OR
-    r"|&&"  # logical AND
 )
 
 
@@ -48,9 +31,6 @@ def _extract_command_name(command: str) -> str:
 def _is_blocked_command(command: str) -> bool:
     """Check if a command name is in the blocked list.
 
-    Blocked list only — no implicit whitelist. Injection/operators are
-    handled separately by ``_has_shell_operators``.
-
     Args:
         command: The full command string.
 
@@ -59,30 +39,7 @@ def _is_blocked_command(command: str) -> bool:
     """
     cmd_name = _extract_command_name(command)
 
-    if cmd_name in BLOCKED_COMMANDS:
-        return True
-
-    if IS_WINDOWS and cmd_name in BLOCKED_WINDOWS:
-        return True
-
-    if (IS_LINUX or IS_MACOS) and cmd_name in BLOCKED_UNIX:
-        return True
-
-    return False
-
-
-def _has_shell_operators(command: str) -> bool:
-    """Check if a command contains shell operators that could bypass security.
-
-    Detects pipes, semicolons, &&, ||, backticks, and $() subshells.
-
-    Args:
-        command: The full command string.
-
-    Returns:
-        True if shell operators are found.
-    """
-    return bool(_SHELL_OPERATORS_RE.search(command))
+    return cmd_name in BLOCKED_COMMANDS
 
 
 def _validate_command(command: str) -> None:
@@ -105,12 +62,6 @@ def _validate_command(command: str) -> None:
     if _is_blocked_command(command):
         raise CommandBlockedError(
             f"Command '{command}' is blocked for security reasons"
-        )
-
-    if _has_shell_operators(command):
-        raise CommandBlockedError(
-            f"Command '{command}' contains shell operators "
-            "(pipes, chains, or subshells are not allowed)"
         )
 
 
