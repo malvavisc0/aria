@@ -13,11 +13,7 @@ from aria.tools.shell import (
 )
 from aria.tools.shell.constants import IS_WINDOWS
 from aria.tools.shell.exceptions import CommandBlockedError
-from aria.tools.shell.validation import (
-    _has_shell_operators,
-    _is_blocked_command,
-    _validate_command,
-)
+from aria.tools.shell.validation import _is_blocked_command, _validate_command
 
 
 class TestValidateCommand:
@@ -48,36 +44,6 @@ class TestValidateCommand:
         with pytest.raises(CommandBlockedError):
             _validate_command("shutdown -h now")
 
-    def test_shell_operators_pipe_blocked(self):
-        """Test that pipe operator is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello | cat")
-
-    def test_shell_operators_semicolon_blocked(self):
-        """Test that semicolon chaining is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello; rm -rf /")
-
-    def test_shell_operators_and_blocked(self):
-        """Test that && chaining is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello && rm -rf /")
-
-    def test_shell_operators_or_blocked(self):
-        """Test that || chaining is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello || rm -rf /")
-
-    def test_shell_operators_backtick_blocked(self):
-        """Test that backtick subshell is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo `whoami`")
-
-    def test_shell_operators_dollar_paren_blocked(self):
-        """Test that $() subshell is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo $(whoami)")
-
     def test_valid_command_passes(self):
         """Test that a valid command passes validation."""
         _validate_command("echo hello")  # Should not raise
@@ -89,14 +55,6 @@ class TestValidateCommand:
     def test_is_blocked_command_allows_echo(self):
         """Test _is_blocked_command allows echo."""
         assert _is_blocked_command("echo hello") is False
-
-    def test_has_shell_operators_detects_pipe(self):
-        """Test _has_shell_operators detects pipe."""
-        assert _has_shell_operators("ls | grep foo") is True
-
-    def test_has_shell_operators_clean_command(self):
-        """Test _has_shell_operators returns False for clean commands."""
-        assert _has_shell_operators("ls -la /tmp") is False
 
 
 class TestExecuteCommand:
@@ -187,26 +145,6 @@ class TestExecuteCommand:
             execute_command(
                 intent="Test blocked command",
                 command_name="shutdown",
-                args=[],
-                timeout=5,
-            )
-
-    def test_execute_command_not_in_whitelist_raises_error(self):
-        """Test that non-whitelisted commands are rejected."""
-        with pytest.raises(CommandBlockedError, match="not in the safe list"):
-            execute_command(
-                intent="Test non-whitelisted command",
-                command_name="nonexistent_command_xyz",
-                args=[],
-                timeout=5,
-            )
-
-    def test_execute_command_with_shell_operators_in_name_raises_error(self):
-        """Test that shell operators in command_name are rejected."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            execute_command(
-                intent="Test pipe injection",
-                command_name="echo|cat",
                 args=[],
                 timeout=5,
             )

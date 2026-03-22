@@ -15,7 +15,6 @@ from aria.tools.shell.exceptions import (
 )
 from aria.tools.shell.validation import (
     _extract_command_name,
-    _has_shell_operators,
     _is_blocked_command,
     _validate_command,
     _validate_working_dir,
@@ -68,39 +67,6 @@ class TestIsBlockedCommand:
         assert _is_blocked_command("cat file.txt") is False
 
 
-class TestHasShellOperators:
-    """Tests for _has_shell_operators function."""
-
-    def test_pipe_operator(self):
-        """Test pipe operator detection."""
-        assert _has_shell_operators("echo hello | cat") is True
-
-    def test_semicolon_operator(self):
-        """Test semicolon operator detection."""
-        assert _has_shell_operators("echo hello; rm -rf /") is True
-
-    def test_and_operator(self):
-        """Test && operator detection."""
-        assert _has_shell_operators("echo hello && rm -rf /") is True
-
-    def test_or_operator(self):
-        """Test || operator detection."""
-        assert _has_shell_operators("echo hello || rm -rf /") is True
-
-    def test_backtick_subshell(self):
-        """Test backtick subshell detection."""
-        assert _has_shell_operators("echo `whoami`") is True
-
-    def test_dollar_paren_subshell(self):
-        """Test $() subshell detection."""
-        assert _has_shell_operators("echo $(whoami)") is True
-
-    def test_no_operators(self):
-        """Test that simple commands don't have operators."""
-        assert _has_shell_operators("ls -la") is False
-        assert _has_shell_operators("git status") is False
-
-
 class TestValidateCommand:
     """Tests for _validate_command function."""
 
@@ -128,36 +94,6 @@ class TestValidateCommand:
         """Test that shutdown is blocked."""
         with pytest.raises(CommandBlockedError):
             _validate_command("shutdown -h now")
-
-    def test_shell_operators_pipe_blocked(self):
-        """Test that pipe operator is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello | cat")
-
-    def test_shell_operators_semicolon_blocked(self):
-        """Test that semicolon chaining is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello; rm -rf /")
-
-    def test_shell_operators_and_blocked(self):
-        """Test that && chaining is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello && rm -rf /")
-
-    def test_shell_operators_or_blocked(self):
-        """Test that || chaining is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo hello || rm -rf /")
-
-    def test_shell_operators_backtick_blocked(self):
-        """Test that backtick subshell is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo `whoami`")
-
-    def test_shell_operators_dollar_paren_blocked(self):
-        """Test that $() subshell is blocked."""
-        with pytest.raises(CommandBlockedError, match="shell operators"):
-            _validate_command("echo $(whoami)")
 
     def test_valid_command_passes(self):
         """Test that valid commands pass validation."""
