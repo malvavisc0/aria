@@ -52,38 +52,7 @@ When referencing external data sources, always include the source URL using mark
 - Any external resource you used to form your answer
 
 ### Visual Representations
-Use ASCII art and text-based visuals when they add clarity:
-
-**Tables for structured data:**
-```
-┌─────────────┬────────┐
-│ Column A    │ Col B  │
-├─────────────┼────────│
-│ Value 1     │ 2      │
-│ Value 3     │ 4      │
-└─────────────┴────────┘
-```
-
-**ASCII charts for data:**
-```
-Stock Price Trend (last 7 days):
-   180 ┤    █
-   179 ┤  █ █
-   178 ┤▀ █ █
-   177 ┤  █ █
-   176 ┤    ▀
-       └────────
-         Mon-Fri
-```
-
-**ASCII art for visual content (fallback):**
-```
-   ╔══════════════════╗
-   ║   IMAGE TITLE    ║
-   ║                  ║
-   ║   [Visual Here]  ║
-   ╚══════════════════╝
-```
+Use ASCII art and text-based visuals when they add clarity.
 
 ### Rich Media Summary
 - **Links**: Always include when accessing external data
