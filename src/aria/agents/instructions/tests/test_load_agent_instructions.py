@@ -14,7 +14,7 @@ class TestLoadAgentInstructions:
     def test_loads_agent_specific_instructions(self):
         """Agent-specific instructions should be loaded."""
         result = load_agent_instructions("aria")
-        assert "Chatter Agent" in result
+        assert "Aria" in result
 
     def test_core_and_agent_combined(self):
         """Both core rules and agent instructions should appear."""
@@ -29,7 +29,7 @@ class TestLoadAgentInstructions:
             include_core=False,
         )
         assert "Core Agent Rules" not in result
-        assert "Chatter Agent" in result
+        assert "Aria" in result
 
     def test_extras_appended(self):
         """Extras should appear in the output."""
