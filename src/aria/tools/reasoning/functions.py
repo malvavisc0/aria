@@ -19,6 +19,8 @@ from aria.tools import utc_timestamp
 from . import registry
 from .session import ReasoningSession
 
+_DEFAULT_AGENT_ID = "aria"
+
 
 def _ok(
     *,
@@ -82,19 +84,23 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
     return registry.get_session(session_id, agent_id)
 
 
-def start_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
+def start_reasoning(
+    intent: str, agent_id: str = _DEFAULT_AGENT_ID
+) -> Dict[str, Any]:
     """
-    Start a new reasoning session with automatic management.
+    Begin structured reasoning for a complex task.
 
-    Creates a new session and sets it as the active session for this agent.
-    Any previous active session for this agent is automatically replaced.
+    Use this BEFORE tackling tasks that need multiple steps, have tradeoffs,
+    or require tracking partial findings. This is always the first reasoning
+    tool to call. Follow with add_reasoning_step calls to build your analysis.
 
     Args:
-        intent: Why you're starting (e.g., "Analyzing problem X")
-        agent_id: Agent identifier for multi-agent isolation
+        intent: What you're reasoning about (e.g. "Analyzing deployment
+            options for the user's project")
+        agent_id: Agent identifier (auto-set, do not provide)
 
     Returns:
-        Dict with status, session_id, message. REQUIRED FIRST for reasoning.
+        Session confirmation with session_id. Call add_reasoning_step next.
     """
     # Auto-generate unique session ID using UUID for collision resistance
     session_id = f"{agent_id}_session_{uuid.uuid4().hex[:12]}"
@@ -139,28 +145,42 @@ def start_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
 def add_reasoning_step(
     intent: str,
     content: str,
-    agent_id: str,
+    agent_id: str = _DEFAULT_AGENT_ID,
     cognitive_mode: str = "analysis",
     reasoning_type: str = "deductive",
     evidence: Optional[List[str]] = None,
     confidence: float = 0.65,
 ) -> Dict[str, Any]:
     """
-    Add a structured reasoning step to the active session.
+    Record one reasoning step in the active session.
+
+    Use this to build your analysis step by step. Each call adds one thought
+    to the reasoning chain. Pick the cognitive_mode that matches what you're
+    doing:
+
+    - "planning" — outlining steps, constraints, or contingencies
+    - "analysis" — examining evidence, data, or tool results
+    - "evaluation" — assessing quality, failures, or comparing options
+    - "synthesis" — combining findings into a conclusion
+    - "creative" — generating alternatives or reframing the problem
+    - "reflection" — checking for bias, gaps, or assumptions
+
+    Requires an active session (call start_reasoning first).
 
     Args:
-        intent: Why you're adding (e.g., "Recording observation")
-        content: The reasoning content or thought
-        agent_id: Agent identifier for multi-agent isolation
-        cognitive_mode: analysis, synthesis, evaluation, planning,
-            creative, reflection (default: analysis)
-        reasoning_type: deductive, inductive, abductive, causal,
-            probabilistic, analogical (default: deductive)
-        evidence: Optional list of evidence supporting this reasoning
-        confidence: Confidence level 0.0-1.0 (default: 0.65)
+        intent: Why you're adding this step (e.g. "Recording observation
+            about file structure")
+        content: The reasoning content — your actual thought or analysis
+        agent_id: Agent identifier (auto-set, do not provide)
+        cognitive_mode: What kind of thinking this is (default: "analysis")
+        reasoning_type: Logical approach — deductive, inductive, abductive,
+            causal, probabilistic, analogical (default: "deductive")
+        evidence: Optional list of evidence supporting this step
+        confidence: How confident you are, 0.0-1.0 (default: 0.65)
 
     Returns:
-        Dict with step details, timestamp, detected biases
+        Step details with bias detection results. Add more steps or call
+        add_reflection to check your reasoning.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -171,7 +191,7 @@ def add_reasoning_step(
             session_id=None,
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
-            how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            how_to_fix="Call start_reasoning first.",
             recoverable=True,
         )
 
@@ -208,20 +228,28 @@ def add_reasoning_step(
 def add_reflection(
     intent: str,
     reflection: str,
-    agent_id: str,
+    agent_id: str = _DEFAULT_AGENT_ID,
     on_step: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    Add a meta-cognitive reflection to the active session.
+    Pause and reflect on your reasoning process.
+
+    Use this to check your own thinking — look for gaps, biases, or
+    assumptions you may have missed. Call this after a few reasoning steps
+    to ensure quality, or when you're unsure about a conclusion.
+
+    Requires an active session (call start_reasoning first).
 
     Args:
-        intent: Why you're reflecting (e.g., "Checking for bias")
-        reflection: Your reflection on the reasoning process
-        agent_id: Agent identifier for multi-agent isolation
+        intent: Why you're reflecting (e.g. "Checking for confirmation bias
+            in my analysis")
+        reflection: Your meta-cognitive observation about the reasoning
+        agent_id: Agent identifier (auto-set, do not provide)
         on_step: Optional step number this reflection refers to
 
     Returns:
-        Dict with reflection details, timestamp
+        Reflection confirmation. Continue with more steps or call
+        evaluate_reasoning to score your analysis.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -232,7 +260,7 @@ def add_reflection(
             session_id=None,
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
-            how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            how_to_fix="Call start_reasoning first.",
         )
 
     try:
@@ -265,22 +293,34 @@ def add_reflection(
 def use_scratchpad(
     intent: str,
     key: str,
-    agent_id: str,
+    agent_id: str = _DEFAULT_AGENT_ID,
     value: Optional[str] = None,
     operation: str = "get",
 ) -> Dict[str, Any]:
     """
-    Use a scratchpad for temporary working memory in the active session.
+    Working memory for storing and retrieving intermediate results.
+
+    Use this to save partial findings, plans, error logs, or any data you
+    need to reference later in the reasoning process. Think of it as your
+    notepad.
+
+    Operations:
+    - "set" — store a value (requires value parameter)
+    - "get" — retrieve a stored value by key
+    - "list" — show all stored keys and values
+    - "clear" — remove a key (or "all" to clear everything)
+
+    Requires an active session (call start_reasoning first).
 
     Args:
-        intent: Why you're using (e.g., "Storing hypothesis")
+        intent: Why you're using the scratchpad (e.g. "Storing plan outline")
         key: The key to operate on (or "all" for clear)
-        agent_id: Agent identifier for multi-agent isolation
-        value: Value to set (required for "set" operation)
-        operation: get, set, list, or clear (default: get)
+        agent_id: Agent identifier (auto-set, do not provide)
+        value: Value to store (required for "set" operation)
+        operation: One of "get", "set", "list", "clear" (default: "get")
 
     Returns:
-        Dict with operation result, value (for get), keys (for list)
+        Operation result with the stored/retrieved value.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -291,7 +331,7 @@ def use_scratchpad(
             session_id=None,
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
-            how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            how_to_fix="Call start_reasoning first.",
         )
 
     try:
@@ -333,16 +373,26 @@ def use_scratchpad(
         )
 
 
-def evaluate_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
+def evaluate_reasoning(
+    intent: str, agent_id: str = _DEFAULT_AGENT_ID
+) -> Dict[str, Any]:
     """
-    Evaluate the quality of your reasoning process in the active session.
+    Score the quality of your reasoning before concluding.
+
+    Use this before ending a session to check if your analysis is thorough
+    enough. Returns a quality score and specific recommendations for
+    improvement (e.g. "Add at least one reflection", "Low confidence").
+
+    Requires an active session (call start_reasoning first).
 
     Args:
-        intent: Why you're evaluating (e.g., "Quality check before conclusion")
-        agent_id: Agent identifier for multi-agent isolation
+        intent: Why you're evaluating (e.g. "Quality check before giving
+            my final answer")
+        agent_id: Agent identifier (auto-set, do not provide)
 
     Returns:
-        Dict with quality_score, suggestions, step_count, reflection_count
+        Quality score, step/reflection counts, and recommendations.
+        If score is low, add more steps or reflections before concluding.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -353,7 +403,7 @@ def evaluate_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
             session_id=None,
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
-            how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            how_to_fix="Call start_reasoning first.",
         )
 
     try:
@@ -379,16 +429,26 @@ def evaluate_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def get_reasoning_summary(intent: str, agent_id: str) -> Dict[str, Any]:
+def get_reasoning_summary(
+    intent: str, agent_id: str = _DEFAULT_AGENT_ID
+) -> Dict[str, Any]:
     """
-    Get a summary of your active reasoning session.
+    Review your progress in the current reasoning session.
+
+    Use this to check how many steps you've taken, your average confidence,
+    and what's in the scratchpad. Helpful mid-analysis to decide if you
+    need more steps or can wrap up.
+
+    Requires an active session (call start_reasoning first).
 
     Args:
-        intent: Why you're summarizing (e.g., "Reviewing progress")
-        agent_id: Agent identifier for multi-agent isolation
+        intent: Why you're checking progress (e.g. "Reviewing what I've
+            covered so far")
+        agent_id: Agent identifier (auto-set, do not provide)
 
     Returns:
-        Dict with steps, reflections, scratchpad_keys, total_steps
+        Session overview with step count, reflection count, scratchpad
+        item count, and average confidence.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -399,7 +459,7 @@ def get_reasoning_summary(intent: str, agent_id: str) -> Dict[str, Any]:
             session_id=None,
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
-            how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            how_to_fix="Call start_reasoning first.",
         )
 
     try:
@@ -425,16 +485,27 @@ def get_reasoning_summary(intent: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def reset_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
+def reset_reasoning(
+    intent: str, agent_id: str = _DEFAULT_AGENT_ID
+) -> Dict[str, Any]:
     """
-    Reset the active reasoning session and start fresh.
+    Wipe the current reasoning session and start fresh.
+
+    Use this when your current approach isn't working and you want to
+    try a completely different strategy. Clears all steps, reflections,
+    and scratchpad data but keeps the session active.
+
+    After resetting, call add_reasoning_step to begin your new approach.
+
+    Requires an active session (call start_reasoning first).
 
     Args:
-        intent: Why you're resetting (e.g., "Starting new approach")
-        agent_id: Agent identifier for multi-agent isolation
+        intent: Why you're resetting (e.g. "Previous approach failed,
+            trying alternative strategy")
+        agent_id: Agent identifier (auto-set, do not provide)
 
     Returns:
-        Dict with confirmation. Clears steps/scratchpad, keeps session.
+        Reset confirmation. Call add_reasoning_step to start over.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -445,7 +516,7 @@ def reset_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
             session_id=None,
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
-            how_to_fix="Call start_reasoning(intent, agent_id) first.",
+            how_to_fix="Call start_reasoning first.",
         )
 
     try:
@@ -471,18 +542,23 @@ def reset_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
+def end_reasoning(
+    intent: str, agent_id: str = _DEFAULT_AGENT_ID
+) -> Dict[str, Any]:
     """
-    End the active reasoning session for this agent.
+    Finish the reasoning session and clean up.
 
-    Cleans up the session and removes it from active sessions.
+    Call this when you've reached a conclusion and are ready to respond
+    to the user. Consider calling evaluate_reasoning first to verify
+    your analysis quality.
 
     Args:
-        intent: Why you're ending (e.g., "Analysis complete")
-        agent_id: Agent identifier for multi-agent isolation
+        intent: Why you're ending (e.g. "Analysis complete, ready to
+            respond")
+        agent_id: Agent identifier (auto-set, do not provide)
 
     Returns:
-        Dict with confirmation. Call when reasoning is complete.
+        Session ended confirmation. Now deliver your answer to the user.
     """
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -525,16 +601,23 @@ def end_reasoning(intent: str, agent_id: str) -> Dict[str, Any]:
     )
 
 
-def list_reasoning_sessions(intent: str, agent_id: str) -> Dict[str, Any]:
+def list_reasoning_sessions(
+    intent: str, agent_id: str = _DEFAULT_AGENT_ID
+) -> Dict[str, Any]:
     """
-    List all active reasoning sessions for an agent.
+    List all active reasoning sessions.
+
+    Use this to check if you have any open sessions before starting a
+    new one. Rarely needed — start_reasoning automatically replaces
+    any previous session.
 
     Args:
-        reason (str): Objective and reasoning
-        agent_id (str): Agent identifier to filter sessions
+        intent: Why you're listing sessions (e.g. "Checking for open
+            sessions")
+        agent_id: Agent identifier (auto-set, do not provide)
 
     Returns:
-        str: List of session IDs and their summaries
+        List of active session IDs and their metadata.
     """
     try:
         sessions = registry.get_db().list_sessions(agent_id)

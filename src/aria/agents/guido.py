@@ -14,6 +14,7 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
+from aria.tools.reasoning import make_reasoning_tools
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -115,6 +116,7 @@ def get_agent(
             FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
             for name in tools_selection[WEB_SEARCH_TOOLS]
         ]
+        + make_reasoning_tools("Guido")
     )
 
     logger.debug(f"Creating PythonDeveloperAgent with {len(tools)} tools")

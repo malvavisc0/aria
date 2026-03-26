@@ -16,17 +16,7 @@ from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
 from aria.tools.files import file_exists, read_file_chunk, read_full_file
-from aria.tools.reasoning import (
-    add_reasoning_step,
-    add_reflection,
-    end_reasoning,
-    evaluate_reasoning,
-    get_reasoning_summary,
-    list_reasoning_sessions,
-    reset_reasoning,
-    start_reasoning,
-    use_scratchpad,
-)
+from aria.tools.reasoning import make_reasoning_tools
 from aria.tools.search import (
     get_current_weather,
     get_file_from_url,
@@ -127,17 +117,7 @@ def get_agent(
                 "--- Page N --- separators."
             ),
         ),
-        # Reasoning tools
-        FunctionTool.from_defaults(fn=start_reasoning),
-        FunctionTool.from_defaults(fn=end_reasoning),
-        FunctionTool.from_defaults(fn=add_reasoning_step),
-        FunctionTool.from_defaults(fn=add_reflection),
-        FunctionTool.from_defaults(fn=evaluate_reasoning),
-        FunctionTool.from_defaults(fn=get_reasoning_summary),
-        FunctionTool.from_defaults(fn=use_scratchpad),
-        FunctionTool.from_defaults(fn=reset_reasoning),
-        FunctionTool.from_defaults(fn=list_reasoning_sessions),
-    ]
+    ] + make_reasoning_tools("Aria")
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
     logger.debug(f"LLM type: {type(llm)}")

@@ -14,6 +14,7 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
 from aria.agents.instructions import load_agent_instructions
+from aria.tools.reasoning import make_reasoning_tools
 
 FILESYSTEM_TOOLS = "aria.tools.files"
 WEB_SEARCH_TOOLS = "aria.tools.search"
@@ -83,13 +84,17 @@ def get_agent(
         ],
     }
 
-    tools = [
-        FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
-        for name in tools_selection[FILESYSTEM_TOOLS]
-    ] + [
-        FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
-        for name in tools_selection[WEB_SEARCH_TOOLS]
-    ]
+    tools = (
+        [
+            FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
+            for name in tools_selection[FILESYSTEM_TOOLS]
+        ]
+        + [
+            FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
+            for name in tools_selection[WEB_SEARCH_TOOLS]
+        ]
+        + make_reasoning_tools("Wizard")
+    )
 
     agent = MarketAnalystAgent(
         name="Wizard",
