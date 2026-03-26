@@ -196,7 +196,9 @@ class LlamaCppServerManager:
                 f"{bin_path}:{existing}" if existing else str(bin_path)
             )
 
-        # KV cache offloading: set NO_KV_OFFLOAD when loading to RAM
+        # KV cache location: when kv_cache_offload is True, pass
+        # --no-kv-offload to move KV cache from GPU VRAM to system RAM
+        # (slower but saves VRAM). Empty string = keep KV cache on GPU.
         env["NO_KV_OFFLOAD"] = (
             "--no-kv-offload" if LlamaCppConfig.kv_cache_offload else ""
         )

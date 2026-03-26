@@ -14,7 +14,6 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.reasoning import make_reasoning_tools
 
 IMDB_TOOLS = "aria.tools.imdb"
 
@@ -82,7 +81,7 @@ def get_agent(
     tools = [
         FunctionTool.from_defaults(fn=getattr(imdb_tools, name))
         for name in tools_selection[IMDB_TOOLS]
-    ] + make_reasoning_tools("Spielberg")
+    ]
 
     agent = IMDbExpertAgent(
         name="Spielberg",

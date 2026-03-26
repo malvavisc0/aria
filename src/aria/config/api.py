@@ -17,7 +17,9 @@ class LlamaCpp:
         get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192")
     )
 
-    # KV cache offloading: true = load KV cache to RAM, false = keep on GPU
+    # KV cache location:
+    #   True  = offload KV cache to system RAM (slower, saves VRAM)
+    #   False = keep KV cache on GPU (faster, uses more VRAM)
     kv_cache_offload = get_bool_env("KV_CACHE_OFFLOAD", True)
 
 

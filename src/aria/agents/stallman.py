@@ -13,7 +13,6 @@ from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.reasoning import make_reasoning_tools
 from aria.tools.shell import (
     execute_command,
     execute_command_batch,
@@ -89,7 +88,7 @@ def get_agent(
         FunctionTool.from_defaults(fn=get_platform_info),
         FunctionTool.from_defaults(fn=execute_command),
         FunctionTool.from_defaults(fn=execute_command_batch),
-    ] + make_reasoning_tools("Stallman")
+    ]
 
     agent = ShellExecutorAgent(
         name="Stallman",
