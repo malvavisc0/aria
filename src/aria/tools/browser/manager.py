@@ -538,8 +538,7 @@ class LightpandaManager:
 
         try:
             # Get text content from body, excluding scripts and styles
-            content = await page.evaluate(
-                """
+            content = await page.evaluate("""
                 () => {
                     // Clone the document to avoid modifying the original
                     const clone = document.body.cloneNode(true);
@@ -553,8 +552,7 @@ class LightpandaManager:
                     // Get text content
                     return clone.innerText || clone.textContent || '';
                 }
-            """
-            )
+            """)
 
             # Clean up whitespace
             lines = (line.strip() for line in content.splitlines())
