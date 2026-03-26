@@ -142,15 +142,18 @@ def _validate_inputs(
                 )
 
 
-def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
-    """Secure path resolution with comprehensive validation.
+def _secure_resolve_path(
+    file_name: str, check_exists: bool = True, enforce_base_dir: bool = False
+) -> Path:
+    """Secure path resolution with validation.
 
-    Resolves file path while preventing path traversal attacks and validating
-    file type restrictions. Only accepts absolute paths.
+    Resolves file path while validating file type restrictions.
+    By default, paths can be anywhere on the filesystem.
 
     Args:
         file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
         check_exists: Whether to check if file exists (default: True)
+        enforce_base_dir: If True, restrict paths to BASE_DIR (default: False)
 
     Returns:
         Path: Resolved absolute path to the file
@@ -160,8 +163,7 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
         FileOperationError: If path is a directory or not absolute
     """
     try:
-        # Resolve BASE_DIR to handle symlinks.
-        # Example: /var -> /private/var on macOS.
+        # Resolve BASE_DIR to handle symlinks (macOS /var -> /private/var)
         base_dir_resolved = BASE_DIR.resolve()
 
         # Only accept absolute paths
@@ -177,7 +179,9 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
         file_path = file_path.resolve()
 
         # Check for path traversal attacks - path must be within BASE_DIR
-        if not str(file_path).startswith(str(base_dir_resolved)):
+        if enforce_base_dir and not str(file_path).startswith(
+            str(base_dir_resolved)
+        ):
             raise FileSecurityError("Path traversal attempt detected")
 
         # Check if path is a directory
@@ -205,11 +209,17 @@ def _secure_resolve_path(file_name: str, check_exists: bool = True) -> Path:
         raise FileSecurityError(f"Path resolution failed: {exc}") from exc
 
 
-def _secure_resolve_dir(dir_name: str) -> Path:
+def _secure_resolve_dir(
+    dir_name: str, enforce_base_dir: bool = False, check_exists: bool = True
+) -> Path:
     """Secure directory path resolution.
+
+    Directory can be anywhere on the filesystem by default.
 
     Args:
         dir_name: Name of the directory to resolve
+        enforce_base_dir: If True, restrict paths to BASE_DIR (default: False)
+        check_exists: Whether to check if directory exists (default: True)
 
     Returns:
         Path: Resolved absolute path to the directory
@@ -218,20 +228,33 @@ def _secure_resolve_dir(dir_name: str) -> Path:
         FileSecurityError: If path resolution fails
     """
     try:
-        # Resolve BASE_DIR to handle symlinks.
-        # Example: /var -> /private/var on macOS.
+        # Resolve BASE_DIR to handle symlinks (macOS /var -> /private/var)
         base_dir_resolved = BASE_DIR.resolve()
 
-        dir_path = (BASE_DIR / dir_name).resolve()
+        # Only accept absolute paths
+        dir_path = Path(dir_name)
+        if not dir_path.is_absolute():
+            raise FileOperationError(f"Path must be absolute: {dir_name}")
 
-        if not str(dir_path).startswith(str(base_dir_resolved)):
-            raise FileSecurityError("Path traversal attempt detected")
-
+        # Check for symlinks BEFORE resolving
         if dir_path.is_symlink():
             raise FileSecurityError("Symlinks not allowed")
 
+        # Resolve the path
+        dir_path = dir_path.resolve()
+
+        # Check for path traversal attacks - path must be within BASE_DIR
+        if enforce_base_dir and not str(dir_path).startswith(
+            str(base_dir_resolved)
+        ):
+            raise FileSecurityError("Path traversal attempt detected")
+
+        # Check it's actually a directory if required
+        if check_exists and not dir_path.is_dir():
+            raise FileOperationError(f"Path is not a directory: {dir_name}")
+
         return dir_path
-    except FileSecurityError:
+    except (FileSecurityError, FileOperationError):
         raise
     except Exception as exc:
         raise FileSecurityError(f"Path resolution failed: {exc}") from exc

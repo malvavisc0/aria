@@ -7,17 +7,18 @@ file operations within a secure sandboxed environment.
 """
 
 import importlib
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
+from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.reasoning import make_reasoning_tools
 
 FILESYSTEM_TOOLS = "aria.tools.files"
 WEB_SEARCH_TOOLS = "aria.tools.search"
+BROWSER_TOOLS = "aria.tools.browser"
 
 
 class MarketAnalystAgent(FunctionAgent):
@@ -30,7 +31,10 @@ class MarketAnalystAgent(FunctionAgent):
     """
 
     @staticmethod
-    def get_system_prompt(extras: str = "") -> str:
+    def get_system_prompt(
+        extras: Optional[str] = None,
+        variables: Optional[Dict[str, str]] = None,
+    ) -> str:
         """
         Return the system prompt for the Market Analyst Agent.
 
@@ -41,7 +45,9 @@ class MarketAnalystAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("wizard", extras)
+        return load_agent_instructions(
+            agent_name="wizard", extras=extras, include_core=True
+        )
 
 
 def get_agent(
@@ -65,9 +71,6 @@ def get_agent(
     execution timeouts, and isolated namespaces to prevent malicious code
     execution.
     """
-    filesystem_tools = importlib.import_module(FILESYSTEM_TOOLS)
-    web_search_tools = importlib.import_module(WEB_SEARCH_TOOLS)
-
     tools_selection = {
         WEB_SEARCH_TOOLS: [
             "fetch_current_stock_price",
@@ -84,17 +87,46 @@ def get_agent(
         ],
     }
 
-    tools = (
-        [
-            FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
-            for name in tools_selection[FILESYSTEM_TOOLS]
+    # Conditionally add browser tools if Lightpanda is installed
+    from aria.config.api import Lightpanda
+
+    browser_tools_module = None
+    browser_available = Lightpanda.is_available()
+    if browser_available:
+        browser_tools_module = importlib.import_module(BROWSER_TOOLS)
+        tools_selection[BROWSER_TOOLS] = [
+            "open_url",
+            "browser_click",
+            "browser_screenshot",
         ]
-        + [
-            FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
-            for name in tools_selection[WEB_SEARCH_TOOLS]
-        ]
-        + make_reasoning_tools("Wizard")
+        logger.info("Browser tools enabled (Lightpanda available)")
+
+    browser_note = (
+        "Available and ready to use." if browser_available else "NOT available"
     )
+    template_vars = {"BROWSER_TOOLS_NOTE": browser_note}
+
+    filesystem_tools = importlib.import_module(FILESYSTEM_TOOLS)
+    web_search_tools = importlib.import_module(WEB_SEARCH_TOOLS)
+
+    tools = [
+        FunctionTool.from_defaults(fn=getattr(filesystem_tools, name))
+        for name in tools_selection[FILESYSTEM_TOOLS]
+    ] + [
+        FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
+        for name in tools_selection[WEB_SEARCH_TOOLS]
+    ]
+
+    if browser_tools_module:
+        tools += [
+            FunctionTool.from_defaults(
+                async_fn=getattr(browser_tools_module, name)
+            )
+            for name in tools_selection[BROWSER_TOOLS]
+        ]
+        logger.info("Browser tools enabled (Lightpanda available)")
+
+    logger.info(f"Creating WebResearcherAgent with {len(tools)} tools")
 
     agent = MarketAnalystAgent(
         name="Wizard",
@@ -105,7 +137,10 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=MarketAnalystAgent.get_system_prompt(extras or ""),
+        system_prompt=MarketAnalystAgent.get_system_prompt(
+            extras=extras,
+            variables=template_vars,
+        ),
         streaming=True,
         verbose=True,
         can_handoff_to=can_handoff_to,

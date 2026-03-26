@@ -12,6 +12,7 @@ from typing import List, Optional
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from llama_index.core.tools import FunctionTool
+from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
 
@@ -28,7 +29,7 @@ class IMDbExpertAgent(FunctionAgent):
     """
 
     @staticmethod
-    def get_system_prompt(extras: str = "") -> str:
+    def get_system_prompt(extras: Optional[str] = None) -> str:
         """
         Return the system prompt for the IMDB Expert Agent.
 
@@ -39,7 +40,9 @@ class IMDbExpertAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("spielberg", extras)
+        return load_agent_instructions(
+            agent_name="spielberg", extras=extras, include_core=True
+        )
 
 
 def get_agent(
@@ -83,6 +86,8 @@ def get_agent(
         for name in tools_selection[IMDB_TOOLS]
     ]
 
+    logger.debug(f"Creating IMDbExpertAgent with {len(tools)} tools")
+
     agent = IMDbExpertAgent(
         name="Spielberg",
         description=(
@@ -91,7 +96,7 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=IMDbExpertAgent.get_system_prompt(extras or ""),
+        system_prompt=IMDbExpertAgent.get_system_prompt(extras=extras),
         streaming=True,
         verbose=True,
         can_handoff_to=can_handoff_to,

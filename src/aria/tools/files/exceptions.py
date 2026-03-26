@@ -13,7 +13,7 @@ class FileSecurityError(ToolError):
 
     code = "SECURITY_VIOLATION"
     recoverable = False
-    how_to_fix = "Ensure the file path is within allowed directories."
+    how_to_fix = "Avoid using symlinks or restricted file types."
 
 
 class FileOperationError(ToolError):

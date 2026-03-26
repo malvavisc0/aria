@@ -291,6 +291,7 @@ class TestGetPlatformInfo:
         assert "home" in data["result"]
         assert "path_separator" in data["result"]
         assert "temp_dir" in data["result"]
+        assert "python_path" in data["result"]
 
     def test_platform_info_contains_valid_os(self):
         """Test that platform info contains a valid OS value."""

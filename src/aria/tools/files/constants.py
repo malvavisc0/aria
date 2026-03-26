@@ -16,6 +16,7 @@ MAX_LINE_LENGTH = 10000
 
 # Allowed file extensions for security
 ALLOWED_EXTENSIONS = {
+    # Text/Code
     ".txt",
     ".py",
     ".js",
@@ -27,6 +28,37 @@ ALLOWED_EXTENSIONS = {
     ".yml",
     ".xml",
     ".ts",
+    ".ini",
+    ".toml",
+    # Shell scripts
+    ".sh",
+    ".bash",
+    ".zsh",
+    # Code files
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".java",
+    ".go",
+    ".rs",
+    ".rb",
+    ".php",
+    # Web files
+    ".html",
+    ".css",
+    ".scss",
+    ".jsx",
+    ".tsx",
+    # Config files
+    ".env",
+    ".gitignore",
+    ".dockerignore",
+    ".sql",
+    # Build/Project files
+    "Dockerfile",
+    "Makefile",
+    "CMakeLists.txt",
 }
 
 # Blocked patterns that should not appear in file names

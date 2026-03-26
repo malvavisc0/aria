@@ -14,11 +14,11 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.reasoning import make_reasoning_tools
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
 WEB_SEARCH_TOOLS = "aria.tools.search"
+SYSTEM_TOOLS = "aria.tools.shell"
 
 
 class PythonDeveloperAgent(FunctionAgent):
@@ -31,7 +31,7 @@ class PythonDeveloperAgent(FunctionAgent):
     """
 
     @staticmethod
-    def get_system_prompt(extras: str = "") -> str:
+    def get_system_prompt(extras: Optional[str] = None) -> str:
         """
         Return the system prompt for the Python Developer Agent.
 
@@ -42,7 +42,9 @@ class PythonDeveloperAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("guido", extras)
+        return load_agent_instructions(
+            agent_name="guido", extras=extras, include_core=True
+        )
 
 
 def get_agent(
@@ -68,6 +70,7 @@ def get_agent(
     development_tools = importlib.import_module(PYTHON_DEVELOPMENT_TOOLS)
     filesystem_tools = importlib.import_module(FILESYSTEM_TOOLS)
     web_search_tools = importlib.import_module(WEB_SEARCH_TOOLS)
+    system_tools = importlib.import_module(SYSTEM_TOOLS)
 
     tools_selection = {
         PYTHON_DEVELOPMENT_TOOLS: [
@@ -101,6 +104,11 @@ def get_agent(
             "web_search",
             "get_file_from_url",
         ],
+        SYSTEM_TOOLS: [
+            "execute_command",
+            "execute_command_batch",
+            "get_platform_info",
+        ],
     }
 
     tools = (
@@ -116,12 +124,13 @@ def get_agent(
             FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
             for name in tools_selection[WEB_SEARCH_TOOLS]
         ]
-        + make_reasoning_tools("Guido")
+        + [
+            FunctionTool.from_defaults(fn=getattr(system_tools, name))
+            for name in tools_selection[SYSTEM_TOOLS]
+        ]
     )
 
     logger.debug(f"Creating PythonDeveloperAgent with {len(tools)} tools")
-    logger.debug(f"Tool names: {[tool.metadata.name for tool in tools]}")
-    logger.debug(f"LLM type: {type(llm)}")
 
     agent = PythonDeveloperAgent(
         name="Guido",
@@ -131,7 +140,7 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=PythonDeveloperAgent.get_system_prompt(extras or ""),
+        system_prompt=PythonDeveloperAgent.get_system_prompt(extras=extras),
         streaming=True,
         verbose=True,
         can_handoff_to=can_handoff_to,

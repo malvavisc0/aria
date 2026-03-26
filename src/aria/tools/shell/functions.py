@@ -203,8 +203,10 @@ def get_platform_info(intent: str) -> str:
 
     Returns:
         JSON with os (windows/linux/darwin), shell (bash/powershell/cmd),
-        home, path_separator, temp_dir.
+        home, path_separator, temp_dir, python_path.
     """
+    import sys
+
     logger.info("Getting platform information")
 
     response = {
@@ -215,6 +217,7 @@ def get_platform_info(intent: str) -> str:
             "home": str(Path.home()),
             "path_separator": "\\" if CURRENT_OS == "windows" else "/",
             "temp_dir": tempfile.gettempdir(),
+            "python_path": sys.executable,
         },
         "metadata": {
             "timestamp": utc_timestamp(),

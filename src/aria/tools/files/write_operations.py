@@ -187,8 +187,8 @@ def create_directory(intent: str, dir_name: str) -> str:
     """
     logger.info(f"Creating directory: {dir_name}")
 
-    # Resolve path
-    dir_path = _secure_resolve_dir(dir_name)
+    # Resolve path (don't check exists since we're creating it)
+    dir_path = _secure_resolve_dir(dir_name, check_exists=False)
 
     # Create directory
     already_existed = dir_path.exists()

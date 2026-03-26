@@ -7,7 +7,7 @@ to gather and analyze information from the internet.
 """
 
 import importlib
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
@@ -15,7 +15,6 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.reasoning import make_reasoning_tools
 
 PYTHON_DEVELOPMENT_TOOLS = "aria.tools.development"
 FILESYSTEM_TOOLS = "aria.tools.files"
@@ -34,8 +33,8 @@ class WebResearcherAgent(FunctionAgent):
 
     @staticmethod
     def get_system_prompt(
-        extras: str = "",
-        variables: dict[str, str] | None = None,
+        extras: Optional[str] = None,
+        variables: Optional[Dict[str, str]] = None,
     ) -> str:
         """
         Return the system prompt for the Web Researcher Agent.
@@ -51,9 +50,10 @@ class WebResearcherAgent(FunctionAgent):
             best practices.
         """
         return load_agent_instructions(
-            "wanderer",
-            extras,
+            agent_name="wanderer",
+            extras=extras,
             variables=variables,
+            include_core=True,
         )
 
 
@@ -110,18 +110,9 @@ def get_agent(
             "browser_screenshot",
         ]
         logger.info("Browser tools enabled (Lightpanda available)")
-    else:
-        logger.info(
-            "Lightpanda not installed — browser tools disabled. "
-            "Run 'aria lightpanda download' to enable."
-        )
 
     browser_note = (
-        "These tools are available and ready to use."
-        if browser_available
-        else "These tools are NOT available in this session "
-        "(Lightpanda not installed). Use web_search and "
-        "get_file_from_url instead."
+        "Available and ready to use." if browser_available else "NOT available"
     )
     template_vars = {"BROWSER_TOOLS_NOTE": browser_note}
 
@@ -138,7 +129,6 @@ def get_agent(
             FunctionTool.from_defaults(fn=getattr(web_search_tools, name))
             for name in tools_selection[WEB_SEARCH_TOOLS]
         ]
-        + make_reasoning_tools("Wanderer")
     )
 
     # Add browser tools if available (async — registered via async_fn)
@@ -149,11 +139,9 @@ def get_agent(
             )
             for name in tools_selection[BROWSER_TOOLS]
         ]
+        logger.info("Browser tools enabled (Lightpanda available)")
 
     logger.info(f"Creating WebResearcherAgent with {len(tools)} tools")
-    logger.info(f"Tool names: {[tool.metadata.name for tool in tools]}")
-    logger.info(f"LLM type: {type(llm)}")
-    logger.info(f"LLM model: {getattr(llm, 'model', 'unknown')}")
 
     agent = WebResearcherAgent(
         name="Wanderer",
@@ -165,7 +153,7 @@ def get_agent(
         tools=tools,
         llm=llm,
         system_prompt=WebResearcherAgent.get_system_prompt(
-            extras or "",
+            extras=extras,
             variables=template_vars,
         ),
         verbose=True,

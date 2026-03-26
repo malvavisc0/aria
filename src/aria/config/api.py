@@ -22,6 +22,14 @@ class LlamaCpp:
     #   False = keep KV cache on GPU (faster, uses more VRAM)
     kv_cache_offload = get_bool_env("KV_CACHE_OFFLOAD", True)
 
+    # Chat template file (Jinja2) for tool-calling format.
+    # Resolved relative to the project root (Path.cwd())
+    # Empty string = use model's built-in template.
+    _chat_template_raw = get_optional_env("CHAT_TEMPLATE_FILE", "")
+    chat_template_file: Optional[Path] = (
+        Path.cwd() / Path(_chat_template_raw) if _chat_template_raw else None
+    )
+
 
 class Lightpanda:
     """Configuration for Lightpanda browser binary (optional).

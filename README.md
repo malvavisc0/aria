@@ -66,7 +66,6 @@ Aria uses a team of specialized agents that work together:
 |:------|:-----|:-------------|
 | 🎯 **Aria** | Orchestrator | Conversation, task routing, PDF parsing |
 | 🐍 **Guido** | Python Developer | Code execution, syntax validation, debugging |
-| 💻 **Stallman** | Shell Executor | Safe command execution, system diagnostics |
 | 🌐 **Wanderer** | Web Researcher | Web search, content download, data extraction |
 | 📊 **Wizard** | Market Analyst | Stock data, financial research, market insights |
 | 🎬 **Spielberg** | IMDb Expert | Movie/TV search, cast info, ratings, trivia |
@@ -210,39 +209,6 @@ aria/
 ```
 
 </details>
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Interfaces                          │
-│    ┌─────────┐    ┌─────────┐    ┌─────────┐          │
-│    │  Web UI │    │   CLI   │    │   GUI   │          │
-│    └────┬────┘    └────┬────┘    └────┬────┘          │
-└─────────┼──────────────┼──────────────┼────────────────┘
-          │              │              │
-          └──────────────┼──────────────┘
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                   Agent Layer                           │
-│  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐    │
-│  │ Aria  │ │ Guido │ │Stallman│ │Wanderer│ │Wizard │    │
-│  └───┬───┘ └───┬───┘ └───┬───┘ └───┬───┘ └───┬───┘    │
-└──────┼───────────┼───────────┼───────────┼──────────────┘
-       └───────────┴───────────┴───────────┘
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                   Tools Layer                           │
-│  Files │ Search │ Shell │ Dev │ IMDb │ Reasoning      │
-└─────────────────────────────────────────────────────────┘
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                   LLM Layer                             │
-│            llama.cpp (Local Inference)                  │
-└─────────────────────────────────────────────────────────┘
-```
 
 ---
 

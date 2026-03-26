@@ -26,7 +26,6 @@ from aria.agents import (
     get_imdb_exper_agent,
     get_market_analyst_agent,
     get_python_developer_agent,
-    get_shell_executor_agent,
     get_web_researcher_agent,
 )
 from aria.config.models import Vision as VisionConfig
@@ -194,21 +193,6 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     Returns:
         str: A formatted string containing the current date, time, timezone,
             host information, and optionally agent ID.
-
-            Example (no agent id)::
-
-                "- **Current date**: January 15th 2026 "
-                "- **Current time**: 14:30 "
-                "- **Timezone**: America/New_York\n"
-                "- **Host**: Linux 6.18"
-
-            Example (with agent id)::
-
-                "- **Current date**: January 15th 2026 "
-                "- **Current time**: 14:30 "
-                "- **Timezone**: America/New_York\n"
-                "- **Host**: Linux 6.18\n"
-                "- **Agent ID**: aria_1a2b3c4d"
     """
 
     def _ordinal_suffix(day: int) -> str:
@@ -227,11 +211,19 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
         f"{timestamp.year}"
     )
 
+    shell_hint = (
+        "PowerShell/cmd"
+        if platform.system() == "Windows"
+        else "/bin/bash (likely)"
+    )
+
     lines: list[str] = [
         f"- **Current date**: {date_str}",
         f"- **Current time**: {timestamp.strftime('%H:%M')}",
         f"- **Timezone**: {timestamp.astimezone().tzinfo}",
-        f"- **Host**: {host}",
+        f"- **OS**: {host}",
+        f"- **Architecture**: {platform.machine()}",
+        f"- **Shell**: {shell_hint}",
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")
@@ -292,12 +284,7 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     python_developer = get_python_developer_agent(
         llm=llm,
         extras=get_instructions_extras(agent_name="Guido"),
-        can_handoff_to=["Stallman", "Wanderer"],
-    )
-    shell_executor = get_shell_executor_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="Stallman"),
-        can_handoff_to=["Guido"],
+        can_handoff_to=["Wanderer"],
     )
     web_researcher = get_web_researcher_agent(
         llm=llm,
@@ -314,7 +301,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
             "Guido",
             "Wanderer",
             "Wizard",
-            "Stallman",
             "Spielberg",
         ],
     )
@@ -326,7 +312,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
             market_analyst,
             python_developer,
             web_researcher,
-            shell_executor,
             imdb_expert,
         ],
         root_agent=chatter.name,

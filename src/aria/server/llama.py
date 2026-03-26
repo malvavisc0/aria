@@ -133,6 +133,7 @@ class LlamaCppServerManager:
         role: str,
         mmproj_path: Optional[Path] = None,
         embedding_mode: bool = False,
+        chat_template_file: Optional[Path] = None,
     ) -> list[str]:
         """Build command to launch a server via run-model script.
 
@@ -143,6 +144,9 @@ class LlamaCppServerManager:
             role: Server role name (chat/vl/embeddings), used for log file naming.
             mmproj_path: Optional path to mmproj file for vision models.
             embedding_mode: If True, run in embedding mode (deterministic).
+            chat_template_file: Optional path to a Jinja2 chat template
+                file.  Passed as ``--chat-template-file`` to
+                llama-server (chat mode only).
         """
         from aria.config.folders import Debug as DebugConfig
 
@@ -164,6 +168,16 @@ class LlamaCppServerManager:
 
         if mmproj_path:
             cmd.extend(["--mmproj", str(mmproj_path)])
+
+        # Chat template is only valid for chat mode — never for
+        # embedding servers which have no chat/tool-call handling.
+        if chat_template_file and not embedding_mode:
+            cmd.extend(
+                [
+                    "--chat-template-file",
+                    str(chat_template_file),
+                ]
+            )
 
         return cmd
 
@@ -262,6 +276,9 @@ class LlamaCppServerManager:
                     f"Run: aria models download --model vl"
                 )
 
+        # Chat template file (only used by the chat server)
+        chat_tpl = LlamaCppConfig.chat_template_file
+
         servers = [
             (
                 "chat",
@@ -270,6 +287,7 @@ class LlamaCppServerManager:
                 LlamaCppConfig.chat_context_size,
                 False,  # not embedding mode
                 None,  # no mmproj for chat
+                chat_tpl,  # chat template
             ),
             (
                 "vl",
@@ -278,6 +296,7 @@ class LlamaCppServerManager:
                 LlamaCppConfig.vl_context_size,
                 False,  # not embedding mode
                 mmproj_path,  # mmproj for vision
+                None,  # no chat template
             ),
             (
                 "embeddings",
@@ -286,6 +305,7 @@ class LlamaCppServerManager:
                 LlamaCppConfig.embeddings_context_size,
                 True,  # embedding mode
                 None,  # no mmproj for embeddings
+                None,  # no chat template
             ),
         ]
 
@@ -297,9 +317,16 @@ class LlamaCppServerManager:
             ctx_size,
             embedding_mode,
             mmproj,
+            tpl_file,
         ) in servers:
             cmd = self._build_run_model_cmd(
-                model_path, ctx_size, port, role, mmproj, embedding_mode
+                model_path,
+                ctx_size,
+                port,
+                role,
+                mmproj,
+                embedding_mode,
+                tpl_file,
             )
             env = self._get_env_for_run_model()
 
@@ -340,7 +367,7 @@ class LlamaCppServerManager:
 
         # Wait for all servers to become ready
         failed = []
-        for role, _, port, _, _, _ in servers:
+        for role, _, port, _, _, _, _ in servers:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)

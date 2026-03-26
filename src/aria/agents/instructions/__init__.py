@@ -5,13 +5,14 @@ to reduce code duplication and ensure consistent behavior.
 """
 
 from pathlib import Path
+from typing import Dict, Optional
 
 
 def load_agent_instructions(
     agent_name: str,
-    extras: str = "",
-    include_core: bool = True,
-    variables: dict[str, str] | None = None,
+    extras: Optional[str] = None,
+    include_core: Optional[bool] = True,
+    variables: Optional[Dict[str, str]] = None,
 ) -> str:
     """Load agent instructions from markdown files.
 

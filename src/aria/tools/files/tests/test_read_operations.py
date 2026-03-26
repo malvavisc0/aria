@@ -217,9 +217,9 @@ class TestReadOperations:
         assert data["error"] is not None
 
     def test_read_operations_with_invalid_paths(self):
+        """Test that non-absolute paths and blocked patterns are rejected."""
         invalid_paths = [
             "../outside.txt",
-            "/etc/passwd",
             "test/../other.txt",
             "test/../../other.txt",
         ]
@@ -230,6 +230,10 @@ class TestReadOperations:
             )
             assert json.loads(read_result)["status"] == "error"
 
+        # Absolute paths are now allowed by default (BASE_DIR restriction is OFF)
+        # Only relative paths and blocked patterns should fail
+
     def test_directory_operations_with_invalid_paths(self):
+        """Test that non-absolute paths are rejected."""
         result = get_directory_tree("Testing invalid path", "../outside")
         assert json.loads(result)["status"] == "error"

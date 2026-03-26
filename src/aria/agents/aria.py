@@ -6,7 +6,6 @@ assistant that responds to user queries, making it suitable for casual
 conversation, support, and information sharing.
 """
 
-from datetime import datetime
 from typing import List, Optional
 
 from llama_index.core.agent import FunctionAgent
@@ -15,13 +14,30 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
+from aria.config.api import Lightpanda
+from aria.tools.browser import browser_click, browser_screenshot, open_url
 from aria.tools.files import file_exists, read_file_chunk, read_full_file
-from aria.tools.reasoning import make_reasoning_tools
+from aria.tools.reasoning import (
+    add_reasoning_step,
+    add_reflection,
+    end_reasoning,
+    evaluate_reasoning,
+    get_reasoning_summary,
+    list_reasoning_sessions,
+    reset_reasoning,
+    start_reasoning,
+    use_scratchpad,
+)
 from aria.tools.search import (
     get_current_weather,
     get_file_from_url,
     get_youtube_video_transcription,
     web_search,
+)
+from aria.tools.shell import (
+    execute_command,
+    execute_command_batch,
+    get_platform_info,
 )
 from aria.tools.vision.functions import make_parse_pdf
 
@@ -39,7 +55,7 @@ class ChatterAgent(FunctionAgent):
     """
 
     @staticmethod
-    def get_system_prompt(extras: str = "") -> str:
+    def get_system_prompt(extras: Optional[str] = None) -> str:
         """
         Constructs the system prompt for the agent by combining the base
         instructions from a Markdown file with optional extra context.
@@ -51,7 +67,9 @@ class ChatterAgent(FunctionAgent):
         Returns:
             The combined system prompt as a string.
         """
-        return load_agent_instructions("aria", extras)
+        return load_agent_instructions(
+            agent_name="aria", extras=extras, include_core=True
+        )
 
 
 def get_agent(
@@ -83,21 +101,10 @@ def get_agent(
     Returns:
         A configured ChatterAgent instance ready for conversation.
     """
-    timestamp = datetime.now()
-    time_context = (
-        f"- **Current date**: "
-        f"{timestamp.strftime('%B %d, %Y')}\n"
-        f"- **Current time**: "
-        f"{timestamp.strftime('%H:%M')}\n"
-        f"- **Timezone**: "
-        f"{timestamp.astimezone().tzinfo}"
-    )
-    full_extras = f"{time_context}\n{extras}" if extras else time_context
 
     parse_pdf_fn = make_parse_pdf(api_base=vl_api_base, model=vl_model)
 
     tools = [
-        # Original tools
         FunctionTool.from_defaults(fn=get_youtube_video_transcription),
         FunctionTool.from_defaults(fn=get_current_weather),
         FunctionTool.from_defaults(fn=get_file_from_url),
@@ -105,6 +112,18 @@ def get_agent(
         FunctionTool.from_defaults(fn=read_file_chunk),
         FunctionTool.from_defaults(fn=file_exists),
         FunctionTool.from_defaults(fn=web_search),
+        FunctionTool.from_defaults(fn=get_platform_info),
+        FunctionTool.from_defaults(fn=execute_command),
+        FunctionTool.from_defaults(fn=execute_command_batch),
+        FunctionTool.from_defaults(fn=start_reasoning),
+        FunctionTool.from_defaults(fn=end_reasoning),
+        FunctionTool.from_defaults(fn=add_reasoning_step),
+        FunctionTool.from_defaults(fn=add_reflection),
+        FunctionTool.from_defaults(fn=evaluate_reasoning),
+        FunctionTool.from_defaults(fn=get_reasoning_summary),
+        FunctionTool.from_defaults(fn=use_scratchpad),
+        FunctionTool.from_defaults(fn=reset_reasoning),
+        FunctionTool.from_defaults(fn=list_reasoning_sessions),
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",
@@ -117,10 +136,17 @@ def get_agent(
                 "--- Page N --- separators."
             ),
         ),
-    ] + make_reasoning_tools("Aria")
+    ]
+
+    if Lightpanda.is_available():
+        tools += [
+            FunctionTool.from_defaults(async_fn=open_url),
+            FunctionTool.from_defaults(async_fn=browser_click),
+            FunctionTool.from_defaults(async_fn=browser_screenshot),
+        ]
+        logger.info("Browser tools enabled (Lightpanda available)")
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
-    logger.debug(f"LLM type: {type(llm)}")
 
     agent = ChatterAgent(
         name="Aria",
@@ -130,7 +156,7 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=ChatterAgent.get_system_prompt(full_extras),
+        system_prompt=ChatterAgent.get_system_prompt(extras=extras),
         streaming=True,
         verbose=True,
         can_handoff_to=can_handoff_to,

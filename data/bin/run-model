@@ -17,6 +17,7 @@ set -eo pipefail
 #   -t, --temp TEMP         Temperature for generation (default: 0.65)
 #   --top-p TOP_P           Top-p sampling value (default: 0.95)
 #   -m, --mmproj PATH       Path to mmproj file for vision models
+#   --chat-template-file F  Jinja2 chat template file for tool-calling format
 #   -d, --debug             Enable debug output
 #   -f, --log-file FILE     Log output to FILE (server logs in non-debug mode)
 #   -h, --help              Show this help message
@@ -83,6 +84,7 @@ DEFAULT_EMBEDDING_PARALLEL=4
 : "${EMBEDDING_MODE:=0}"
 : "${EMBEDDING_PARALLEL:=$DEFAULT_EMBEDDING_PARALLEL}"
 : "${PLATFORM:=""}"  # Force platform: nvidia, metal, cpu (auto-detect if empty)
+: "${CHAT_TEMPLATE_FILE:=""}"  # Jinja2 chat template file for tool-calling format
 
 # Global variables
 MODEL_PATH=""
@@ -1038,6 +1040,15 @@ parse_args() {
 				exit 1
 			fi
 			;;
+		--chat-template-file)
+			if [[ -n "$2" ]]; then
+				CHAT_TEMPLATE_FILE="$2"
+				shift 2
+			else
+				log_error "Path to chat template file required after --chat-template-file"
+				exit 1
+			fi
+			;;
 		*)
 			if [[ -z "$MODEL_PATH" ]]; then
 				MODEL_PATH="$1"
@@ -1073,6 +1084,7 @@ ${BOLD}${BCYAN}OPTIONS${RST}
   ${GREEN}-m, --mmproj${RST} PATH       Path to mmproj file for vision models
   ${GREEN}-e, --embedding${RST}         Run in embedding mode ${DIM}(deterministic, no sampling)${RST}
   ${GREEN}--parallel${RST} N            Parallel embedding requests ${DIM}(default: 4, embedding mode only)${RST}
+  ${GREEN}--chat-template-file${RST} F  Jinja2 chat template file for tool-calling format
   ${GREEN}-d, --debug${RST}             Enable debug output
   ${GREEN}-f, --log-file${RST} FILE     Log output to FILE
   ${GREEN}-h, --help${RST}              Show this help message
@@ -1091,6 +1103,7 @@ ${BOLD}${BCYAN}ENVIRONMENT VARIABLES${RST}
   ${CYAN}LLAMA_SERVER_PATH${RST}       Path to llama-server binary
   ${CYAN}EMBEDDING_MODE${RST}          Run in embedding mode ${DIM}(1/0, default: 0)${RST}
   ${CYAN}EMBEDDING_PARALLEL${RST}      Parallel embedding requests ${DIM}(default: 4)${RST}
+  ${CYAN}CHAT_TEMPLATE_FILE${RST}      Jinja2 chat template file path
 
 ${BOLD}${BCYAN}EXAMPLES${RST}
   ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 8192
@@ -1379,6 +1392,12 @@ build_command() {
 		# Add mmproj if specified (for vision models)
 		if [[ -n "$MMPROJ_PATH" ]]; then
 			cmd_array+=(--mmproj "$MMPROJ_PATH")
+		fi
+
+		# Add chat template if specified (for tool-calling models)
+		# --jinja is required for llama-server to process Jinja2 templates
+		if [[ -n "$CHAT_TEMPLATE_FILE" ]]; then
+			cmd_array+=(--jinja --chat-template-file "$CHAT_TEMPLATE_FILE")
 		fi
 	fi
 

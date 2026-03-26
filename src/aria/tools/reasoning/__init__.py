@@ -1,10 +1,5 @@
 """Structured reasoning tools for AI agents."""
 
-from functools import partial
-from typing import List
-
-from llama_index.core.tools import FunctionTool
-
 from .functions import (
     add_reasoning_step,
     add_reflection,
@@ -30,26 +25,6 @@ _REASONING_FUNCTIONS = {
 }
 
 
-def make_reasoning_tools(agent_id: str) -> List[FunctionTool]:
-    """Build reasoning FunctionTools with ``agent_id`` pre-filled.
-
-    This lets every agent register reasoning tools without the LLM
-    needing to know or supply the ``agent_id`` parameter.
-
-    Args:
-        agent_id: The agent name to bind (e.g. ``"Aria"``, ``"Guido"``).
-
-    Returns:
-        A list of :class:`FunctionTool` instances ready for registration.
-    """
-    return [
-        FunctionTool.from_defaults(
-            fn=partial(fn, agent_id=agent_id), name=name
-        )
-        for name, fn in _REASONING_FUNCTIONS.items()
-    ]
-
-
 __all__ = [
     "start_reasoning",
     "end_reasoning",
@@ -60,7 +35,6 @@ __all__ = [
     "get_reasoning_summary",
     "reset_reasoning",
     "list_reasoning_sessions",
-    "make_reasoning_tools",
 ]
 
 # ReasoningSession is available for direct import but not in __all__

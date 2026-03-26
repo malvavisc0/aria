@@ -59,7 +59,6 @@ class TestLoadAgentInstructions:
         agents = [
             "aria",
             "guido",
-            "stallman",
             "spielberg",
             "wanderer",
             "wizard",

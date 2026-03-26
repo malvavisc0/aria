@@ -12,7 +12,6 @@ Aria is a powerful AI assistant that runs entirely on your machine. It features 
 |:------|:----------|
 | 🎯 **Aria** | Your main assistant — handles conversations, routes tasks, and orchestrates other agents |
 | 🐍 **Guido** | Python development — code execution, debugging, and file operations |
-| 💻 **Stallman** | Shell commands — safe execution of system commands and diagnostics |
 | 🌐 **Wanderer** | Web research — search the web, download content, extract data |
 | 📊 **Wizard** | Market analysis — stock prices, financial data, and market insights |
 | 🎬 **Spielberg** | Entertainment — IMDb searches, movie/TV info, cast details |

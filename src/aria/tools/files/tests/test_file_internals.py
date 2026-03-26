@@ -218,16 +218,20 @@ class TestSecureResolvePath:
             temp_path.unlink()
 
     def test_resolve_path_traversal(self):
-        """Test that path traversal is blocked."""
+        """Test path traversal behavior with enforce_base_dir flag."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             # Create a file outside tmpdir that we try to access
             outside_file = tmpdir_path / "outside.txt"
             outside_file.write_text("content")
 
-            # Path traversal attempt - should be blocked
+            # With enforce_base_dir=False (default), path should be allowed
+            result = _secure_resolve_path(str(outside_file))
+            assert result == outside_file.resolve()
+
+            # With enforce_base_dir=True, path should be blocked
             with pytest.raises(FileSecurityError, match="Path traversal"):
-                _secure_resolve_path(str(outside_file))
+                _secure_resolve_path(str(outside_file), enforce_base_dir=True)
 
     def test_resolve_symlink(self):
         """Test that symlinks are detected (resolve follows them)."""
@@ -281,17 +285,28 @@ class TestSecureResolveDir:
             subdir = tmpdir_path / "subdir"
             subdir.mkdir()
 
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                result = _secure_resolve_dir("subdir")
-                assert result.is_dir()
+            # With enforce_base_dir=False (default), absolute paths work anywhere
+            result = _secure_resolve_dir(str(subdir))
+            assert result.is_dir()
 
     def test_resolve_dir_path_traversal(self):
-        """Test that path traversal is blocked for directories."""
-        with pytest.raises(FileSecurityError, match="Path traversal"):
-            _secure_resolve_dir("../etc")
+        """Test path traversal behavior with enforce_base_dir flag."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            # Create a directory outside current BASE_DIR
+            outside_dir = tmpdir_path / "outside"
+            outside_dir.mkdir()
+
+            # With enforce_base_dir=False (default), absolute paths work anywhere
+            result = _secure_resolve_dir(str(outside_dir))
+            assert result.is_dir()
+
+            # With enforce_base_dir=True, path outside BASE_DIR should be blocked
+            with pytest.raises(FileSecurityError, match="Path traversal"):
+                _secure_resolve_dir(str(outside_dir), enforce_base_dir=True)
 
     def test_resolve_dir_symlink(self):
-        """Test that symlinked directories are handled."""
+        """Test that symlinked directories are blocked."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             target_dir = tmpdir_path / "target"
@@ -299,20 +314,20 @@ class TestSecureResolveDir:
             link_dir = tmpdir_path / "link"
             link_dir.symlink_to(target_dir)
 
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                # Symlink check happens after resolve
-                result = _secure_resolve_dir("link")
-                # Should succeed since resolve() follows symlinks
-                assert result.is_dir()
+            # Symlinks are blocked
+            with pytest.raises(FileSecurityError, match="Symlinks"):
+                _secure_resolve_dir(str(link_dir))
 
     def test_resolve_dir_exception_handling(self):
         """Test exception handling in directory resolution."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            # Use a path that will cause traversal error
-            with patch("aria.tools.files._internals.BASE_DIR", tmpdir_path):
-                with pytest.raises(FileSecurityError, match="Path traversal"):
-                    _secure_resolve_dir("../outside")
+            outside_dir = tmpdir_path / "outside"
+            outside_dir.mkdir()
+
+            # With enforce_base_dir=True, path should be blocked
+            with pytest.raises(FileSecurityError, match="Path traversal"):
+                _secure_resolve_dir(str(outside_dir), enforce_base_dir=True)
 
 
 class TestReadLinesStreaming:
@@ -627,15 +642,9 @@ class TestValidateAndResolveFile:
 
     def test_validate_and_resolve_invalid_input(self):
         """Test validation with invalid input."""
-        # Test with a path outside of BASE_DIR (path traversal attempt)
-        outside_file = Path("/tmp/outside_test.txt")
-        outside_file.write_text("content")
-        try:
-            # Path traversal attempt - should be blocked
-            with pytest.raises(FileSecurityError, match="Path traversal"):
-                validate_and_resolve_file(str(outside_file))
-        finally:
-            outside_file.unlink()
+        # Test with a non-absolute path (should fail)
+        with pytest.raises(FileOperationError, match="Path must be absolute"):
+            validate_and_resolve_file("relative/path.txt")
 
 
 class TestValidateAndResolveTwoFiles:

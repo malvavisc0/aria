@@ -6,8 +6,6 @@ from .prompt_enhancer import PromptEnhancerAgent
 from .prompt_enhancer import get_agent as get_prompt_enhancer_agent
 from .spielberg import IMDbExpertAgent
 from .spielberg import get_agent as get_imdb_exper_agent
-from .stallman import ShellExecutorAgent
-from .stallman import get_agent as get_shell_executor_agent
 from .wanderer import WebResearcherAgent
 from .wanderer import get_agent as get_web_researcher_agent
 from .wizard import MarketAnalystAgent
@@ -20,12 +18,10 @@ __all__ = [
     "MarketAnalystAgent",
     "WebResearcherAgent",
     "ChatterAgent",
-    "ShellExecutorAgent",
     "get_python_developer_agent",
     "get_prompt_enhancer_agent",
     "get_market_analyst_agent",
     "get_web_researcher_agent",
     "get_chatter_agent",
-    "get_shell_executor_agent",
     "get_imdb_exper_agent",
 ]

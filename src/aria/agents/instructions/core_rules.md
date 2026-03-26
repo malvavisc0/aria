@@ -64,13 +64,10 @@ Think-do-act, not think-think-think. When you have enough info, **ACT**. Short p
 - **No redundant calls** — max 2 retries, change params first
 - **Hand off** — if request needs specialist capability, route to them
 
-
 ---
 
 ### 6. Rich Output
 
-**Links**: Always include for external data (weather, prices, news, docs).
-
-**Visuals**: ASCII tables for comparisons. ASCII art for trends/data.
-
-**Images**: `![alt](url)` when available.
+- **Links**: Always include for external data (weather, prices, news, docs).
+- **Visuals**: ASCII tables for comparisons. ASCII art for trends/data.
+- **Images**: `![alt](url)` when available.
