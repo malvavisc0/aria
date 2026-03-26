@@ -13,6 +13,7 @@ whenever a user sends a message.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import chainlit as cl
@@ -25,6 +26,41 @@ from aria.config.models import Chat as ChatConfig
 from aria.helpers.ui import maybe_remove_step, send_tool_step
 from aria.web.session import create_memory, extract_file_paths
 from aria.web.state import AppStateNotInitializedError, _state
+
+# Regex patterns to detect LLM thinking/reasoning content
+# These match opening tags (partial content being streamed)
+THINKING_OPEN_PATTERNS = [
+    re.compile(r"<think>", re.IGNORECASE),
+    re.compile(r"<reasoning", re.IGNORECASE),
+    re.compile(r"<reflection", re.IGNORECASE),
+]
+
+# These match closing tags
+THINKING_CLOSE_PATTERNS = [
+    re.compile(r"</think>", re.IGNORECASE),
+    re.compile(r"</reasoning>", re.IGNORECASE),
+    re.compile(r"</reflection>", re.IGNORECASE),
+]
+
+
+def _contains_thinking_open(text: str) -> bool:
+    """Check if text contains an opening thinking tag."""
+    if not text:
+        return False
+    for pattern in THINKING_OPEN_PATTERNS:
+        if pattern.search(text):
+            return True
+    return False
+
+
+def _contains_thinking_close(text: str) -> bool:
+    """Check if text contains a closing thinking tag."""
+    if not text:
+        return False
+    for pattern in THINKING_CLOSE_PATTERNS:
+        if pattern.search(text):
+            return True
+    return False
 
 
 def _extract_text_from_blocks(blocks: Any) -> str:
@@ -89,6 +125,18 @@ async def _handle_message(message: cl.Message) -> str:
     return prompt
 
 
+async def _show_thinking_step() -> cl.Step:
+    """Show a 'thinking' step in the UI while the LLM is reasoning."""
+    step = cl.Step(
+        name="Thinking",
+        type="tool",
+        show_input=False,
+        default_open=False,
+    )
+    await step.send()
+    return step
+
+
 async def on_message_handler(message: cl.Message) -> None:
     """Handle incoming user messages and execute the agent workflow.
 
@@ -122,24 +170,49 @@ async def on_message_handler(message: cl.Message) -> None:
         )
 
         current_step: cl.Step | None = None
+        thinking_step: cl.Step | None = None
         last_agent_output: AgentOutput | None = None
         stream_buffer: list[str] = []
         emitted_output = False
+        in_thinking_block = False
 
         async for event in handler.stream_events():
             if isinstance(event, ToolCall):
                 await maybe_remove_step(current_step)
+                await maybe_remove_step(thinking_step)
+                thinking_step = None
+                in_thinking_block = False
                 current_step = await send_tool_step(event)
             elif isinstance(event, AgentStream):
-                await maybe_remove_step(current_step)
-                current_step = None
                 delta = event.delta or ""
                 if delta:
-                    stream_buffer.append(delta)
+                    # Check if we're entering a thinking block
+                    if (
+                        _contains_thinking_open(delta)
+                        and not in_thinking_block
+                    ):
+                        # Clear buffer - thinking content won't be shown
+                        stream_buffer.clear()
+                        in_thinking_block = True
+                        # Show thinking indicator
+                        await maybe_remove_step(current_step)
+                        current_step = None
+                        thinking_step = await _show_thinking_step()
+                    # Check if we're exiting a thinking block
+                    elif in_thinking_block and _contains_thinking_close(delta):
+                        await maybe_remove_step(thinking_step)
+                        thinking_step = None
+                        in_thinking_block = False
+                    # Only add to buffer if not in thinking content
+                    elif not in_thinking_block:
+                        stream_buffer.append(delta)
             elif isinstance(event, AgentOutput):
                 last_agent_output = event
                 if not event.tool_calls:
                     await maybe_remove_step(current_step)
+                    await maybe_remove_step(thinking_step)
+                    thinking_step = None
+                    in_thinking_block = False
                     current_step = None
                     content = "".join(
                         stream_buffer
@@ -153,7 +226,9 @@ async def on_message_handler(message: cl.Message) -> None:
 
         if not emitted_output:
             await maybe_remove_step(current_step)
+            await maybe_remove_step(thinking_step)
             current_step = None
+            thinking_step = None
             result_response = getattr(handler_result, "response", None)
             content = "".join(stream_buffer).strip() or _extract_response_text(
                 result_response
@@ -198,13 +273,11 @@ async def on_message_handler(message: cl.Message) -> None:
     except Exception as e:
         error_msg = str(e)
         logger.exception(f"Error processing message: {e}")
-        if (
-            "exceed_context_size_error" in error_msg
-            or "exceeds the available context size" in error_msg
-        ):
+
+        if "maximum context length" in error_msg.lower():
             output.content = (
-                "The conversation has grown too large for the embeddings model"
-                " to process. Consider starting a new chat thread to continue."
+                "The conversation has grown too large for the embeddings "
+                "model to process. Please start a new conversation."
             )
         else:
             output.content = "An error occurred. Please try again."
