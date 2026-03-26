@@ -26,7 +26,7 @@ Example:
     ```
 """
 
-from aria.tools.browser.constants import SCREENSHOTS_DIR
+from aria.tools import safe_json
 from aria.tools.browser.manager import get_browser_manager
 
 
@@ -111,6 +111,9 @@ async def browser_click(intent: str, selector: str) -> str:
 async def browser_screenshot(intent: str, filename: str) -> str:
     """Take a screenshot of the current browser page.
 
+    NOTE: Lightpanda does not support screenshots as it lacks a graphical
+    rendering engine. This function always returns an error.
+
     The browser must have navigated to a page first with open_url.
 
     Args:
@@ -119,16 +122,20 @@ async def browser_screenshot(intent: str, filename: str) -> str:
         filename: Output filename, e.g. 'page.png'
 
     Returns:
-        JSON with the file path where the screenshot was saved.
+        JSON error indicating screenshots are not supported.
 
     Example:
         ```python
         # After open_url
         result = await browser_screenshot("Capturing page state", "page.png")
-        # Returns {"success": true, "file_path": "/path/to/downloads/page.png"}
+        # Returns {"error": "Screenshots not supported..."}
         ```
     """
-    manager = _get_manager()
-
-    filepath = SCREENSHOTS_DIR / filename
-    return await manager.screenshot(str(filepath))
+    return safe_json(
+        {
+            "error": (
+                "Screenshots not supported: "
+                "Lightpanda lacks rendering engine"
+            )
+        }
+    )

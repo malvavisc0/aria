@@ -142,8 +142,10 @@ class LightpandaManager:
                 cdp_url
             )
 
+            # Create context with SSL error ignore (Lightpanda workaround)
+            context = await self._browser.new_context(ignore_https_errors=True)
             # Create initial page
-            self._page = await self._browser.new_page()
+            self._page = await context.new_page()
 
             logger.info(f"Lightpanda browser started on port {self._port}")
             return True
@@ -330,6 +332,13 @@ class LightpandaManager:
 
             # Get and persist page content
             content = await self.get_page_content()
+
+            # Check if navigation actually failed (e.g., SSL errors, timeouts)
+            if self._is_navigation_failed(content):
+                error_reason = content if content else "Navigation failed"
+                logger.error(f"Navigation failed: {error_reason}")
+                return self._error(error_reason)
+
             content_path = _build_content_filepath(page.url, "open")
             content_path.write_text(content, encoding="utf-8")
 
@@ -367,6 +376,28 @@ class LightpandaManager:
                     return self._error(str(e), recovery=True)
 
             return self._error(str(e))
+
+    def _is_navigation_failed(self, content: str) -> bool:
+        """Check if the page content indicates a navigation failure.
+
+        Args:
+            content: The page content to check.
+
+        Returns:
+            True if navigation failed, False otherwise.
+        """
+        if not content:
+            return True
+        # Check for Lightpanda's navigation failure message
+        if "Navigation failed" in content:
+            return True
+        # Check for common browser error patterns
+        error_patterns = [
+            "Navigation failedReason:",
+            "net::ERR_",
+            "This page cannot be loaded",
+        ]
+        return any(pattern in content for pattern in error_patterns)
 
     async def click(self, selector: str) -> str:
         """Click element by CSS selector and return updated content.
@@ -460,7 +491,11 @@ class LightpandaManager:
                 )
 
         try:
-            await page.screenshot(path=path)
+            # Wait for page to be in a stable state before screenshot
+            await page.wait_for_load_state("load", timeout=5000)
+            await page.screenshot(
+                path=path, timeout=BROWSER_COMMAND_TIMEOUT * 1000
+            )
             return self._success(
                 {
                     "success": True,
@@ -503,7 +538,8 @@ class LightpandaManager:
 
         try:
             # Get text content from body, excluding scripts and styles
-            content = await page.evaluate("""
+            content = await page.evaluate(
+                """
                 () => {
                     // Clone the document to avoid modifying the original
                     const clone = document.body.cloneNode(true);
@@ -517,7 +553,8 @@ class LightpandaManager:
                     // Get text content
                     return clone.innerText || clone.textContent || '';
                 }
-            """)
+            """
+            )
 
             # Clean up whitespace
             lines = (line.strip() for line in content.splitlines())

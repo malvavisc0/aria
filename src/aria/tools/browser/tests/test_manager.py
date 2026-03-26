@@ -107,6 +107,7 @@ async def test_click_returns_recovery_error_after_crash() -> None:
 async def test_screenshot_returns_recovery_error_after_crash() -> None:
     manager = _make_manager()
     page = Mock()
+    page.wait_for_load_state = AsyncMock()
     page.screenshot = AsyncMock(side_effect=Exception("shot failed"))
 
     manager._process = Mock()
