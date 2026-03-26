@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from aria.config import get_optional_env, get_required_env
+from aria.config import get_bool_env, get_optional_env, get_required_env
 from aria.config.folders import Data
 
 
@@ -16,6 +16,9 @@ class LlamaCpp:
     embeddings_context_size = int(
         get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192")
     )
+
+    # KV cache offloading: true = load KV cache to RAM, false = keep on GPU
+    kv_cache_offload = get_bool_env("KV_CACHE_OFFLOAD", True)
 
 
 class Lightpanda:

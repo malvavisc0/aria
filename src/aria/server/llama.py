@@ -195,6 +195,12 @@ class LlamaCppServerManager:
             env["LD_LIBRARY_PATH"] = (
                 f"{bin_path}:{existing}" if existing else str(bin_path)
             )
+
+        # KV cache offloading: set NO_KV_OFFLOAD when loading to RAM
+        env["NO_KV_OFFLOAD"] = (
+            "--no-kv-offload" if LlamaCppConfig.kv_cache_offload else ""
+        )
+
         return env
 
     def _wait_for_ready(
