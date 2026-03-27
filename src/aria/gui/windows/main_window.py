@@ -209,8 +209,12 @@ class MainWindow(
             self.ui.label_DatabaseSize.setText("-")
             self.ui.label_DatabasePermissions.setText("-")
 
-        self.ui.label_LLMChatAPIURL.setText(Chat.api_url)
-        self.ui.label_LLMVisionAPIURL.setText(Vision.api_url)
+        self.ui.label_LLMChatAPIURL.setText(
+            f'<a href="{Chat.api_url}">{Chat.api_url}</a>'
+        )
+        self.ui.label_LLMVisionAPIURL.setText(
+            f'<a href="{Vision.api_url}">{Vision.api_url}</a>'
+        )
         self.ui.label_LLMEmbeddingsAPIURL.setText(Embeddings.api_url)
         self.ui.label_VectorDB.setText(str(ChromaDB.db_path.absolute()))
 

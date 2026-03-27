@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'mainwindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.2
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -365,6 +365,8 @@ class Ui_MainWindow(object):
 
         self.label_LLMChatAPIURL = QLabel(self.groupBox_LLMAPIs)
         self.label_LLMChatAPIURL.setObjectName("label_LLMChatAPIURL")
+        self.label_LLMChatAPIURL.setTextFormat(Qt.TextFormat.RichText)
+        self.label_LLMChatAPIURL.setOpenExternalLinks(True)
 
         self.formLayout_llmapis.setWidget(
             1, QFormLayout.ItemRole.FieldRole, self.label_LLMChatAPIURL
@@ -380,6 +382,8 @@ class Ui_MainWindow(object):
 
         self.label_LLMVisionAPIURL = QLabel(self.groupBox_LLMAPIs)
         self.label_LLMVisionAPIURL.setObjectName("label_LLMVisionAPIURL")
+        self.label_LLMVisionAPIURL.setTextFormat(Qt.TextFormat.RichText)
+        self.label_LLMVisionAPIURL.setOpenExternalLinks(True)
 
         self.formLayout_llmapis.setWidget(
             2, QFormLayout.ItemRole.FieldRole, self.label_LLMVisionAPIURL

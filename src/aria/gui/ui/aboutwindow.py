@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'aboutwindowMbHxyP.ui'
+## Form generated from reading UI file 'aboutwindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.2
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -58,12 +58,13 @@ class Ui_AboutDialog(object):
     def setupUi(self, AboutDialog):
         if not AboutDialog.objectName():
             AboutDialog.setObjectName("AboutDialog")
-        AboutDialog.resize(400, 240)
-        AboutDialog.setMinimumSize(QSize(400, 240))
-        AboutDialog.setMaximumSize(QSize(400, 240))
+        AboutDialog.resize(520, 320)
+        AboutDialog.setMinimumSize(QSize(520, 320))
+        AboutDialog.setMaximumSize(QSize(520, 320))
+        AboutDialog.setSizeGripEnabled(False)
         self.horizontalLayoutWidget = QWidget(AboutDialog)
         self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
-        self.horizontalLayoutWidget.setGeometry(QRect(9, 190, 381, 41))
+        self.horizontalLayoutWidget.setGeometry(QRect(9, 270, 501, 41))
         self.horizontalLayout = QHBoxLayout(self.horizontalLayoutWidget)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
@@ -80,7 +81,7 @@ class Ui_AboutDialog(object):
 
         self.formLayoutWidget = QWidget(AboutDialog)
         self.formLayoutWidget.setObjectName("formLayoutWidget")
-        self.formLayoutWidget.setGeometry(QRect(10, 20, 381, 71))
+        self.formLayoutWidget.setGeometry(QRect(10, 20, 501, 71))
         self.formLayout = QFormLayout(self.formLayoutWidget)
         self.formLayout.setObjectName("formLayout")
         self.formLayout.setContentsMargins(0, 0, 0, 0)
@@ -114,6 +115,8 @@ class Ui_AboutDialog(object):
 
         self.label = QLabel(self.formLayoutWidget)
         self.label.setObjectName("label")
+        self.label.setTextFormat(Qt.TextFormat.RichText)
+        self.label.setOpenExternalLinks(True)
 
         self.formLayout.setWidget(
             1, QFormLayout.ItemRole.FieldRole, self.label
@@ -121,10 +124,34 @@ class Ui_AboutDialog(object):
 
         self.verticalLayoutWidget = QWidget(AboutDialog)
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
-        self.verticalLayoutWidget.setGeometry(QRect(9, 100, 381, 80))
+        self.verticalLayoutWidget.setGeometry(QRect(9, 100, 501, 150))
         self.verticalLayout = QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.label_Tagline = QLabel(self.verticalLayoutWidget)
+        self.label_Tagline.setObjectName("label_Tagline")
+        font2 = QFont()
+        font2.setPointSize(11)
+        font2.setItalic(True)
+        self.label_Tagline.setFont(font2)
+        self.label_Tagline.setWordWrap(True)
+
+        self.verticalLayout.addWidget(self.label_Tagline)
+
+        self.label_Copyright = QLabel(self.verticalLayoutWidget)
+        self.label_Copyright.setObjectName("label_Copyright")
+        self.label_Copyright.setStyleSheet("color: rgb(61, 56, 70);")
+        self.label_Copyright.setWordWrap(True)
+
+        self.verticalLayout.addWidget(self.label_Copyright)
+
+        self.label_Details = QLabel(self.verticalLayoutWidget)
+        self.label_Details.setObjectName("label_Details")
+        self.label_Details.setTextFormat(Qt.TextFormat.RichText)
+        self.label_Details.setOpenExternalLinks(True)
+        self.label_Details.setWordWrap(True)
+
+        self.verticalLayout.addWidget(self.label_Details)
 
         self.retranslateUi(AboutDialog)
 
@@ -152,6 +179,27 @@ class Ui_AboutDialog(object):
             QCoreApplication.translate(
                 "AboutDialog",
                 '<a href="https://github.com/malvavisc0/aria">GitHub Repository</a>',
+                None,
+            )
+        )
+        self.label_Tagline.setText(
+            QCoreApplication.translate(
+                "AboutDialog",
+                "AI Assistant with web UI, CLI management, and local LLM support",
+                None,
+            )
+        )
+        self.label_Copyright.setText(
+            QCoreApplication.translate(
+                "AboutDialog",
+                "Built for local-first workflows with multi-agent orchestration.",
+                None,
+            )
+        )
+        self.label_Details.setText(
+            QCoreApplication.translate(
+                "AboutDialog",
+                "<b>Stack</b>: Chainlit, LlamaIndex, PySide6<br/><b>License</b>: See repository for project details",
                 None,
             )
         )
