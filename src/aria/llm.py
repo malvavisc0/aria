@@ -6,7 +6,9 @@ from typing import Any, cast
 from chromadb.api import ClientAPI as ChromaClientAPI
 from llama_index.core.agent.workflow import (
     AgentOutput,
+    AgentSetup,
     AgentWorkflow,
+    ToolCall,
     ToolCallResult,
 )
 from llama_index.core.memory import (
@@ -59,17 +61,38 @@ class StatefulAgentWorkflow(AgentWorkflow):
         await ctx.store.set("state", reduced_state)
         return reduced_state
 
-    async def run_agent_step(self, ctx: Any, ev: Any) -> AgentOutput:
-        """Run the parent agent step and synchronize custom state."""
+    async def run_agent_step(self, ctx: Any, ev: AgentSetup) -> AgentOutput:
+        """Run the parent agent step and synchronize custom state.
+
+        This override preserves the original event contract of
+        [`AgentWorkflow.run_agent_step()`](src/aria/llm.py:62) so workflow
+        validation still sees [`AgentOutput`](src/aria/llm.py:8) as a produced
+        event.
+        """
         output = await super().run_agent_step(ctx, ev)
         await self.reduce_state(ctx, output)
         return output
 
-    async def call_tool(self, ctx: Any, ev: Any) -> ToolCallResult:
-        """Run the parent tool call step and synchronize custom state."""
+    async def call_tool(self, ctx: Any, ev: ToolCall) -> ToolCallResult:
+        """Run the parent tool call step and synchronize custom state.
+
+        This override preserves the original event contract of
+        [`AgentWorkflow.call_tool()`](src/aria/llm.py:68) so workflow
+        validation still sees [`ToolCallResult`](src/aria/llm.py:10) as a
+        produced event.
+        """
         result = await super().call_tool(ctx, ev)
         await self.reduce_state(ctx, result)
         return result
+
+
+# Reuse base step metadata so overridden methods stay discoverable.
+StatefulAgentWorkflow.run_agent_step._step_config = (  # type: ignore[attr-defined]
+    AgentWorkflow.run_agent_step._step_config
+)
+StatefulAgentWorkflow.call_tool._step_config = (  # type: ignore[attr-defined]
+    AgentWorkflow.call_tool._step_config
+)
 
 
 class ToolCallRecord(TypedDict):

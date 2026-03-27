@@ -30,6 +30,21 @@ class _StopWorker(QObject):
         self.finished.emit()
 
 
+class _PreflightWorker(QObject):
+    """Background worker that runs preflight checks off the GUI thread."""
+
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def run(self):
+        try:
+            from aria.preflight import run_preflight_checks
+
+            self.finished.emit(run_preflight_checks())
+        except Exception as exc:  # pragma: no cover - defensive UI path
+            self.failed.emit(str(exc))
+
+
 class ServerHandlersMixin:
     """Mixin class providing server management handlers for MainWindow.
 
@@ -55,6 +70,7 @@ class ServerHandlersMixin:
         """
         self._server_manager = ServerManager()
         self._preflight_result = None
+        self._preflight_running = False
         self._is_stopping = False  # Track stopping state for UI feedback
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
@@ -82,9 +98,45 @@ class ServerHandlersMixin:
         (e.g. after a binary or model download completes, or when the user
         switches to the Overview / Setup tab).
         """
-        from aria.preflight import run_preflight_checks
+        if self._preflight_running:
+            return
 
-        self._preflight_result = run_preflight_checks()
+        self._preflight_running = True
+        self.statusBar().showMessage("Running preflight checks…")
+        self._preflight_thread = QThread()
+        self._preflight_worker = _PreflightWorker()
+        self._preflight_worker.moveToThread(self._preflight_thread)
+        self._preflight_thread.started.connect(self._preflight_worker.run)
+        self._preflight_worker.finished.connect(self._on_preflight_finished)
+        self._preflight_worker.failed.connect(self._on_preflight_failed)
+        self._preflight_worker.finished.connect(self._preflight_thread.quit)
+        self._preflight_worker.failed.connect(self._preflight_thread.quit)
+        self._preflight_worker.finished.connect(
+            self._preflight_worker.deleteLater
+        )
+        self._preflight_worker.failed.connect(
+            self._preflight_worker.deleteLater
+        )
+        self._preflight_thread.finished.connect(
+            self._preflight_thread.deleteLater
+        )
+        self._preflight_thread.start()
+
+    def _on_preflight_finished(self, result) -> None:
+        """Persist completed preflight results and refresh the UI."""
+        self._preflight_result = result
+        self._preflight_running = False
+        self._update_server_status()
+
+    def _on_preflight_failed(self, error: str) -> None:
+        """Recover UI state when background preflight execution fails."""
+        self._preflight_running = False
+        self.statusBar().showMessage(f"Preflight failed: {error}")
+        QMessageBox.warning(
+            self,
+            "Preflight Failed",
+            f"Preflight checks failed unexpectedly:\n{error}",
+        )
         self._update_server_status()
 
     def on_start_server(self):
@@ -227,11 +279,21 @@ class ServerHandlersMixin:
             and self._preflight_result.passed
         )
         can_start = not status.running and preflight_ok
-        self.ui.pushButton_ServiceStart.setEnabled(can_start)
-        self.ui.pushButton_ServiceStop.setEnabled(status.running)
+        if self._is_stopping:
+            self.ui.pushButton_ServiceStart.setEnabled(False)
+            self.ui.pushButton_ServiceStop.setEnabled(False)
+        else:
+            self.ui.pushButton_ServiceStart.setEnabled(
+                can_start and not self._preflight_running
+            )
+            self.ui.pushButton_ServiceStop.setEnabled(status.running)
         self.ui.pushButton_ServiceOpen.setEnabled(status.healthy)
 
-        if not status.running and not preflight_ok:
+        if self._preflight_running:
+            self.ui.pushButton_ServiceStart.setToolTip(
+                "Preflight checks are running…"
+            )
+        elif not status.running and not preflight_ok:
             if self._preflight_result is not None:
                 failures = "\n".join(
                     f"  \u2022 {c.name}: {c.error}"

@@ -16,6 +16,8 @@ from aria.llm import (
     StatefulAgentWorkflow,
     ToolCallRecord,
     WorkflowState,
+    get_agent_workflow,
+    get_chat_llm,
     initial_workflow_state,
     state_reducer,
 )
@@ -359,3 +361,16 @@ class TestStatefulAgentWorkflowReduceState:
 
         stored_state = await ctx.store.get("state")
         assert stored_state is result
+
+
+class TestStatefulAgentWorkflowRegistration:
+    """Regression tests for step discovery on workflow overrides."""
+
+    def test_override_steps_keep_step_metadata(self):
+        assert hasattr(StatefulAgentWorkflow.run_agent_step, "_step_config")
+        assert hasattr(StatefulAgentWorkflow.call_tool, "_step_config")
+
+    def test_get_agent_workflow_validation_succeeds(self):
+        workflow = get_agent_workflow(get_chat_llm("http://127.0.0.1:1"))
+
+        workflow._validate()

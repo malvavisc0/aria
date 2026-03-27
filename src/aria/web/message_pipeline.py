@@ -233,8 +233,6 @@ async def on_message_handler(message: cl.Message) -> None:
             content = "".join(stream_buffer).strip() or _extract_response_text(
                 result_response
             )
-            if last_agent_output is not None and last_agent_output.tool_calls:
-                content = ""
             if content:
                 await output.stream_token(content)
                 emitted_output = True

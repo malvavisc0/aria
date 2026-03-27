@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+import uuid
 from pathlib import Path
 
 import chainlit as cl
@@ -101,7 +102,10 @@ def extract_file_paths(message: cl.Message) -> list[str]:
         src = Path(path_str)
         name = getattr(element, "name", None)
         dest_name = name or src.name
-        dest = UploadsConfig.path / dest_name
+        thread_id = getattr(message, "thread_id", None) or "thread"
+        dest = UploadsConfig.path / (
+            f"{thread_id}_{uuid.uuid4().hex}_{Path(dest_name).name}"
+        )
 
         try:
             shutil.copy2(path_str, dest)
@@ -141,6 +145,14 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
 
     root_messages = [m for m in chat_steps if m.get("parentId") is None]
+    root_messages.sort(
+        key=lambda message_step: (
+            message_step.get("createdAt")
+            or message_step.get("created_at")
+            or "",
+            message_step.get("id") or "",
+        )
+    )
     logger.debug(f"Found {len(root_messages)} root-level messages")
 
     memory = create_memory(thread_id)
