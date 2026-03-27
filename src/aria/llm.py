@@ -1,7 +1,7 @@
 import platform
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from chromadb.api import ClientAPI as ChromaClientAPI
 from llama_index.core.agent.workflow import (
@@ -31,6 +31,47 @@ from aria.agents import (
 from aria.config.models import Vision as VisionConfig
 
 
+class StatefulAgentWorkflow(AgentWorkflow):
+    """`AgentWorkflow` variant that keeps custom state in `ctx.store` in sync.
+
+    LlamaIndex's built-in [`AgentWorkflow`](src/aria/llm.py:35) seeds
+    ``ctx.store['state']`` from ``initial_state`` and exposes that state to
+    the LLM via ``state_prompt``, but it does not provide a reducer hook for
+    streamed workflow events. This subclass closes that gap by applying
+    [`state_reducer()`](src/aria/llm.py:136) to the live context state.
+    """
+
+    async def reduce_state(self, ctx: Any, ev: Any) -> "WorkflowState":
+        """Apply [`state_reducer()`](src/aria/llm.py:136) to the stored state.
+
+        Args:
+            ctx: Workflow context exposing ``ctx.store``.
+            ev: Streamed workflow event to reduce into the state.
+
+        Returns:
+            The updated workflow state persisted back into ``ctx.store``.
+        """
+        state = await ctx.store.get("state", default=None)
+        if state is None:
+            state = dict(initial_workflow_state(root_agent=self.root_agent))
+
+        reduced_state = state_reducer(cast(WorkflowState, state), ev)
+        await ctx.store.set("state", reduced_state)
+        return reduced_state
+
+    async def run_agent_step(self, ctx: Any, ev: Any) -> AgentOutput:
+        """Run the parent agent step and synchronize custom state."""
+        output = await super().run_agent_step(ctx, ev)
+        await self.reduce_state(ctx, output)
+        return output
+
+    async def call_tool(self, ctx: Any, ev: Any) -> ToolCallResult:
+        """Run the parent tool call step and synchronize custom state."""
+        result = await super().call_tool(ctx, ev)
+        await self.reduce_state(ctx, result)
+        return result
+
+
 class ToolCallRecord(TypedDict):
     """A single tool invocation captured in the workflow state.
 
@@ -53,9 +94,11 @@ class WorkflowState(TypedDict):
     """Minimal shared state threaded through the multi-agent workflow.
 
     This dict is seeded into ``ctx.store`` by :func:`get_agent_workflow` via
-    ``AgentWorkflow(initial_state=...)``.  The :func:`state_reducer` function
-    updates it after every :class:`AgentOutput` and :class:`ToolCallResult`
-    event so that the state always reflects the latest activity.
+    ``AgentWorkflow(initial_state=...)``. In this project, live updates are
+    performed by :class:`StatefulAgentWorkflow`, which applies
+    :func:`state_reducer` after every :class:`AgentOutput` and
+    :class:`ToolCallResult` event so that the state reflects the latest
+    activity within the current workflow context.
 
     Attributes:
         current_agent: Name of the agent that is currently active.
@@ -98,8 +141,10 @@ def initial_workflow_state(root_agent: str) -> WorkflowState:
 def state_reducer(state: WorkflowState, ev: Any) -> WorkflowState:
     """Update *state* in response to a workflow event.
 
-    This function is designed to be called after every event emitted by the
-    :class:`AgentWorkflow` run loop.  It handles two event types:
+    This function is designed to be called after relevant events emitted by the
+    :class:`AgentWorkflow` run loop. In this project it is invoked by
+    :class:`StatefulAgentWorkflow` after agent-output and tool-result steps. It
+    handles two event types:
 
     * :class:`AgentOutput` — updates ``current_agent`` and appends to
       ``handoffs`` when a ``handoff`` tool call is detected.
@@ -306,7 +351,7 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
     )
 
     # Initialize Workflow (Chatter is the root agent)
-    workflow = AgentWorkflow(
+    workflow = StatefulAgentWorkflow(
         agents=[
             chatter,
             market_analyst,

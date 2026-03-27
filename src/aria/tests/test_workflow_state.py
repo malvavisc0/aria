@@ -4,13 +4,21 @@ These tests exercise the shared-state machinery in :mod:`aria.llm` in
 isolation — no LLM, no network, no agents required.
 """
 
+from types import SimpleNamespace
+
 import pytest
 from llama_index.core.agent.workflow import AgentOutput, ToolCallResult
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.llms.llm import ToolSelection
 from llama_index.core.tools.types import ToolOutput
 
-from aria.llm import ToolCallRecord, initial_workflow_state, state_reducer
+from aria.llm import (
+    StatefulAgentWorkflow,
+    ToolCallRecord,
+    WorkflowState,
+    initial_workflow_state,
+    state_reducer,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -295,3 +303,59 @@ class TestStateReducerUnknownEvents:
         assert state["tool_calls"] == []
         assert state["handoffs"] == []
         assert state["last_error"] is None
+
+
+class _FakeStore:
+    def __init__(self, initial: dict[str, object] | None = None):
+        self._data = dict(initial or {})
+
+    async def get(self, key: str, default: object = None) -> object:
+        return self._data.get(key, default)
+
+    async def set(self, key: str, value: object) -> None:
+        self._data[key] = value
+
+
+class TestStatefulAgentWorkflowReduceState:
+    """Tests for live state synchronization in StatefulAgentWorkflow."""
+
+    @staticmethod
+    def _make_workflow() -> StatefulAgentWorkflow:
+        workflow = StatefulAgentWorkflow.__new__(StatefulAgentWorkflow)
+        workflow.root_agent = "Aria"
+        return workflow
+
+    @pytest.mark.asyncio
+    async def test_reduce_state_initializes_missing_state(self):
+        workflow = self._make_workflow()
+        ctx = SimpleNamespace(store=_FakeStore())
+
+        result = await workflow.reduce_state(
+            ctx, _make_agent_output("Wanderer")
+        )
+
+        assert result["current_agent"] == "Wanderer"
+        assert result["tool_calls"] == []
+        assert result["handoffs"] == []
+        assert result["last_error"] is None
+
+        stored_state = await ctx.store.get("state")
+        assert stored_state == result
+
+    @pytest.mark.asyncio
+    async def test_reduce_state_updates_existing_state(self):
+        workflow = self._make_workflow()
+        existing_state: WorkflowState = initial_workflow_state("Aria")
+        ctx = SimpleNamespace(store=_FakeStore({"state": existing_state}))
+
+        result = await workflow.reduce_state(
+            ctx,
+            _make_tool_call_result("web_search", {"query": "test"}, "results"),
+        )
+
+        assert result["tool_calls"][0]["tool"] == "web_search"
+        assert result["tool_calls"][0]["agent"] == "Aria"
+        assert result["last_error"] is None
+
+        stored_state = await ctx.store.get("state")
+        assert stored_state is result
