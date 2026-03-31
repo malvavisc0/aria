@@ -83,6 +83,10 @@ Generate a UTC ISO timestamp string.
 
 Safe JSON serialization with error handling. Falls back to `str()` for non-serializable objects.
 
+#### `tool_response(tool, intent, data=None, exc=None, **context) -> str`
+
+Convenience wrapper that auto-selects between success and error response based on whether `exc` is provided. Delegates to `tool_success_response()` or `tool_error_response()`.
+
 #### `tool_success_response(tool, intent, data, **context) -> str`
 
 Generate a standardized JSON success response.
@@ -100,7 +104,7 @@ Generate a standardized JSON success response.
 
 #### `tool_error_response(tool, intent, exc, **context) -> str`
 
-Generate a standardized JSON error response from an exception.
+Generate a standardized JSON error response from an exception. Extracts `code`, `recoverable`, and `how_to_fix` from the exception if available.
 
 **Response structure:**
 ```json
@@ -113,10 +117,23 @@ Generate a standardized JSON error response from an exception.
     "code": "ERROR_CODE",
     "message": "human readable message",
     "type": "ExceptionType",
-    "recoverable": true,
-    "how_to_fix": "guidance for recovery"
+    "recoverable": true
   }
 }
+```
+
+> **Note:** The `how_to_fix` field is only included when the exception defines it.
+
+#### `get_function_name(depth=1) -> str`
+
+Return the name of the function at a given call-stack depth. Used to populate the `tool` field in responses dynamically instead of hardcoding strings.
+
+```python
+from aria.tools import get_function_name, tool_success_response
+
+def my_tool(intent: str) -> str:
+    return tool_success_response(get_function_name(), intent, {"key": "val"})
+    # tool field will be "my_tool"
 ```
 
 ### Error Handling ([`aria.tools.errors`](src/aria/tools/errors.py))
@@ -265,20 +282,22 @@ Execute a Python file.
 | `capture_output` | `bool` | `True` | Capture stdout/stderr |
 | `argv` | `list[str]` | `None` | CLI arguments for `sys.argv` |
 
-#### `get_restricted_builtins(intent: str) -> str`
+#### `get_restricted_builtins(intent: str) -> list[str]`
 
 Get list of builtins blocked for security.
 
 ```python
 result = get_restricted_builtins("Checking security restrictions")
+# Returns: ["eval", "exec", "open", ...]
 ```
 
-#### `get_timeout_limits(intent: str) -> str`
+#### `get_timeout_limits(intent: str) -> dict[str, int]`
 
 Get the default and maximum timeout limits.
 
 ```python
 result = get_timeout_limits("Checking timeout configuration")
+# Returns: {"default": 30, "maximum": 300}
 ```
 
 ---
@@ -942,7 +961,7 @@ Safe shell command execution with timeout handling, output capture, and security
 
 ### Functions
 
-#### `execute_command(intent: str, command_name: str, args: list[str], timeout=30, working_dir=None) -> str`
+#### `execute_command(intent: str, command_name: str, args: list[str], timeout=None, working_dir=None) -> str`
 
 Execute a whitelisted command without shell interpretation.
 
@@ -951,7 +970,7 @@ Execute a whitelisted command without shell interpretation.
 | `intent` | `str` | - | Why you're executing |
 | `command_name` | `str` | - | Command from safe list (`ls`, `cat`, `git`, `python`, etc.) |
 | `args` | `list[str]` | - | Command arguments |
-| `timeout` | `int` | `30` | Timeout in seconds (max 300) |
+| `timeout` | `int` | `None` (30) | Timeout in seconds (max 300) |
 | `working_dir` | `str` | `BASE_DIR` | Working directory |
 
 **Returns:** JSON with `stdout`, `stderr`, `return_code`, `execution_time`.
@@ -1101,6 +1120,7 @@ flowchart TB
     end
 
     subgraph Files["File Operations"]
+        Inspect["file_exists<br>get_file_info<br>get_file_permissions<br>list_files<br>get_directory_tree"]
         Read["read_file_chunk<br>read_full_file"]
         Write["append_to_file<br>create_directory<br>write_full_file<br>insert_lines_at<br>replace_lines_range<br>delete_lines_range"]
         Search["search_in_files<br>search_files_by_name"]
