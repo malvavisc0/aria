@@ -6,6 +6,7 @@ subpackages.
 
 from aria.tools.decorators import log_tool_call
 from aria.tools.utils import (
+    get_function_name,
     safe_json,
     tool_error_response,
     tool_response,
@@ -20,4 +21,5 @@ __all__: list[str] = [
     "tool_response",
     "tool_success_response",
     "utc_timestamp",
+    "get_function_name",
 ]

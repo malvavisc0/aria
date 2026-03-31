@@ -2,6 +2,8 @@
 
 from typing import Dict, Optional
 
+from html_to_markdown import convert
+
 from aria.tools import (
     log_tool_call,
     tool_error_response,
@@ -9,6 +11,7 @@ from aria.tools import (
 )
 from aria.tools.search._download_internals import (
     _fetch_file,
+    _is_html_content,
     _save_content_to_file,
     _validate_format,
     _validate_url,
@@ -44,22 +47,23 @@ class ContentParsingError(Exception):
 
 
 @log_tool_call
-def get_file_from_url(
+def grab_from_url(
     intent: str,
     url: str,
     output: Optional[str] = "auto",
     custom_headers: Optional[Dict[str, str]] = None,
     max_size: Optional[int] = None,
     download_path: Optional[str] = None,
+    convert_to_markdown: bool = False,
 ) -> str:
-    """Download a file from a URL (PDFs, images, archives, etc.).
+    """Download a file from a URL (PDFs, images, archives, HTML, etc.).
 
-    This function is for downloading files only:
+    This function is for downloading files:
     - PDFs, DOCX, XLSX
     - Images, videos, audio
     - ZIP, TAR, archives
     - Raw data files (JSON, CSV, XML)
-    - Static HTML pages (when explicitly needed)
+    - HTML pages (optionally converted to markdown)
 
     Args:
         intent: Why you're downloading (e.g., "Downloading PDF report")
@@ -68,9 +72,10 @@ def get_file_from_url(
         custom_headers: Optional HTTP headers
         max_size: Max bytes (default: 5MB)
         download_path: Save directory (default: DOWNLOADS_DIR)
+        convert_to_markdown: Convert HTML content to markdown (default: False)
 
     Returns:
-        JSON with file_path, mime_type, size_bytes.
+        JSON with file_path, mime_type, size_bytes, and content (if markdown).
     """
     try:
         validated_url = _validate_url(url)
@@ -89,6 +94,13 @@ def get_file_from_url(
             max_size=max_size_value,
         )
 
+        # Handle HTML to markdown conversion if requested
+        markdown_content = None
+        if convert_to_markdown and _is_html_content(content_type or ""):
+            if isinstance(response_data, bytes):
+                response_data = response_data.decode("utf-8", errors="replace")
+            markdown_content = convert(str(response_data))
+
         file_path, metadata = _save_content_to_file(
             response_data,
             validated_url,
@@ -98,18 +110,22 @@ def get_file_from_url(
             download_path=download_path_value,
         )
 
+        result_data = {"file_path": file_path, "metadata": metadata}
+        if markdown_content:
+            result_data["content"] = markdown_content
+
         return tool_success_response(
-            "get_file_from_url",
+            "grab_from_url",
             intent,
-            {"file_path": file_path, "metadata": metadata},
+            result_data,
         )
 
     except URLDownloadError as exc:
-        return tool_error_response("get_file_from_url", intent, exc)
+        return tool_error_response("grab_from_url", intent, exc)
     except ContentParsingError as exc:
-        return tool_error_response("get_file_from_url", intent, exc)
+        return tool_error_response("grab_from_url", intent, exc)
     except Exception as exc:
-        return tool_error_response("get_file_from_url", intent, exc)
+        return tool_error_response("grab_from_url", intent, exc)
 
 
 # Re-export YouTube function for backwards compatibility

@@ -8,7 +8,6 @@ app startup.
 Tools:
     open_url: Navigate to a URL and persist page content
     browser_click: Click elements by CSS selector
-    browser_screenshot: Take screenshots of the current page
 
 Example:
     ```python
@@ -22,14 +21,9 @@ Example:
     ```
 """
 
-from aria.tools.browser.functions import (
-    browser_click,
-    browser_screenshot,
-    open_url,
-)
+from aria.tools.browser.functions import browser_click, open_url
 
 __all__ = [
     "open_url",
     "browser_click",
-    "browser_screenshot",
 ]

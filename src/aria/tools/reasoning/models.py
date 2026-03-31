@@ -1,6 +1,6 @@
 """SQLAlchemy models for reasoning persistence."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import (
@@ -13,13 +13,12 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-class Base(DeclarativeBase):
-    """Base class for all models."""
-
-    pass
+# Import shared tools Base and re-export for backward compatibility
+from aria.tools.models import (  # noqa: F401 - re-exported for compatibility
+    Base,
+)
 
 
 class ReasoningSessionModel(Base):
@@ -42,13 +41,13 @@ class ReasoningSessionModel(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Soft delete flag
@@ -126,7 +125,7 @@ class ReasoningStepModel(Base):
     biases_detected: Mapped[str] = mapped_column(Text, nullable=True)
 
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationship
@@ -167,7 +166,7 @@ class ReasoningReflectionModel(Base):
     # Why this reflection was added (echoed from tool `intent`)
     intent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationship
@@ -205,8 +204,8 @@ class ReasoningScratchpadModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationship
@@ -247,7 +246,10 @@ class ReasoningToolEventModel(Base):
     payload_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow, index=True
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
     )
 
     session: Mapped["ReasoningSessionModel"] = relationship(

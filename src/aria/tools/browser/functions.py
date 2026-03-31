@@ -3,7 +3,6 @@
 Tools for:
 1. Opening URLs and getting page content
 2. Clicking elements (accept cookies, pagination, etc.)
-3. Taking screenshots
 
 The browser is started automatically when the Aria server starts.
 Lightpanda must be installed first:
@@ -11,22 +10,16 @@ Lightpanda must be installed first:
 
 Example:
     ```python
-    from aria.tools.browser import (
-        open_url, browser_click, browser_screenshot
-    )
+    from aria.tools.browser import open_url, browser_click
 
     # Open a URL and get page content
     result = open_url("Reading documentation", "https://example.com")
 
     # Click an element by CSS selector
     result = browser_click("Accepting cookies", "button.accept")
-
-    # Take a screenshot
-    result = browser_screenshot("Capturing page state", "page.png")
     ```
 """
 
-from aria.tools import safe_json
 from aria.tools.browser.manager import get_browser_manager
 
 
@@ -106,36 +99,3 @@ async def browser_click(intent: str, selector: str) -> str:
     """
     manager = _get_manager()
     return await manager.click(selector)
-
-
-async def browser_screenshot(intent: str, filename: str) -> str:
-    """Take a screenshot of the current browser page.
-
-    NOTE: Lightpanda does not support screenshots as it lacks a graphical
-    rendering engine. This function always returns an error.
-
-    The browser must have navigated to a page first with open_url.
-
-    Args:
-        intent: Why you are taking the screenshot
-            (e.g., "Capturing error state")
-        filename: Output filename, e.g. 'page.png'
-
-    Returns:
-        JSON error indicating screenshots are not supported.
-
-    Example:
-        ```python
-        # After open_url
-        result = await browser_screenshot("Capturing page state", "page.png")
-        # Returns {"error": "Screenshots not supported..."}
-        ```
-    """
-    return safe_json(
-        {
-            "error": (
-                "Screenshots not supported: "
-                "Lightpanda lacks rendering engine"
-            )
-        }
-    )

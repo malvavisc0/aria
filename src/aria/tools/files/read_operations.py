@@ -272,14 +272,15 @@ def get_directory_tree(
 )
 def get_file_info(intent: str, file_name: str) -> str:
     """
-    Return file metadata (size/lines/type).
+    Return file metadata (size/lines/type/timestamps).
 
     Args:
         intent: Why you're checking (e.g., "Determining read strategy")
         file_name: Path relative to BASE_DIR
 
     Returns:
-        JSON with total_lines, file_size_bytes, mime_type
+        JSON with file_name, size_bytes, size_mb, total_lines, mime_type,
+        modified, created, is_directory, is_file, is_symlink
     """
     logger.info(f"Retrieving information for file: {file_name}")
 
@@ -303,9 +304,19 @@ def get_file_info(intent: str, file_name: str) -> str:
         "operation": "get_file_info",
         "result": {
             "file_name": file_name,
+            "size_bytes": file_stats.st_size,
+            "size_mb": round(file_stats.st_size / (1024 * 1024), 4),
             "total_lines": line_count,
-            "file_size_bytes": file_stats.st_size,
             "mime_type": mimetypes.guess_type(file_name)[0],
+            "modified": datetime.fromtimestamp(file_stats.st_mtime).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            "created": datetime.fromtimestamp(file_stats.st_ctime).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            "is_directory": stat.S_ISDIR(file_stats.st_mode),
+            "is_file": stat.S_ISREG(file_stats.st_mode),
+            "is_symlink": stat.S_ISLNK(file_stats.st_mode),
         },
         "metadata": {"timestamp": utc_timestamp()},
     }
@@ -399,7 +410,7 @@ def get_file_permissions(intent: str, file_name: str) -> str:
 )
 def list_files(
     intent: str,
-    pattern: Optional[str] = "**/*",
+    pattern: Optional[str] = "*",
     recursive: Optional[bool] = False,
     max_results: Optional[int] = 100,
 ) -> str:
@@ -408,14 +419,14 @@ def list_files(
 
     Args:
         intent: Why you're listing (e.g., "Finding all Python files")
-        pattern: Glob pattern (default: "**/*")
-        recursive: Search recursively (default: False)
+        pattern: Glob pattern relative to BASE_DIR (default: "*")
+        recursive: Search recursively from BASE_DIR (default: False)
         max_results: Maximum results (default: 100)
 
     Returns:
         JSON with files, count, truncated
     """
-    pattern_value = pattern or "**/*"
+    pattern_value = pattern or "*"
     recursive_value = False if recursive is None else recursive
     max_results_value = 100 if max_results is None else max_results
 
@@ -590,7 +601,7 @@ def search_files_by_name(
     max_results: Optional[int] = 500,
 ) -> str:
     """
-    Search for files by name using a regex.
+    Search for files by name using a regex pattern from BASE_DIR.
 
     Args:
         intent: Why you're searching (e.g., "Finding test files")
@@ -662,7 +673,7 @@ def search_in_files(
     context_lines: int = 2,
 ) -> str:
     """
-    Search file contents using a regex.
+    Search file contents using a regex within files matched from BASE_DIR.
 
     Args:
         intent: Why you're searching (e.g., "Finding TODOs")

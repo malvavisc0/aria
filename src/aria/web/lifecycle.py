@@ -19,7 +19,6 @@ from chromadb.config import Settings as ChromaDBSettings
 from loguru import logger
 from sqlalchemy import create_engine
 
-from aria.config import DEBUG
 from aria.config.database import ChromaDB as ChromaDBConfig
 from aria.config.database import SQLite as SQLiteConfig
 from aria.config.folders import Debug as DebugConfig
@@ -99,13 +98,21 @@ async def on_app_startup_handler() -> None:
         logger.remove()
 
         log_path = DebugConfig.logs_path
+        # Always store INFO+ to avoid DEBUG log spam (WebSocket frames, etc.)
         _log_sink_id = logger.add(
             log_path,
             rotation="10 MB",
-            level="DEBUG" if DEBUG else "INFO",
+            level="INFO",  # Never store DEBUG to keep logs clean
             format=LOG_FORMAT,
         )
         logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
+        # Suppress WebSocket frame debug logs (TEXT/PING/PONG/keepalive spam)
+        for _ws_logger_name in (
+            "websockets",
+            "uvicorn.protocol.websockets",
+            "uvicorn.protocols.websockets",
+        ):
+            logging.getLogger(_ws_logger_name).setLevel(logging.WARNING)
         logger.info("Starting Aria web UI...")
 
         logger.info("Initializing database...")

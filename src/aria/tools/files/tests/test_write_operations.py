@@ -201,6 +201,90 @@ class TestWriteOperations:
         )
         assert json.loads(result)["status"] == "error"
 
+    def test_write_full_file_lines_written_empty(self):
+        """Empty content should report 0 lines written."""
+        result = write_full_file(
+            "Testing empty file",
+            str(self.base_dir / "empty.txt"),
+            "",
+        )
+        data = json.loads(result)
+        assert data["result"]["lines_written"] == 0
+        assert data["result"]["bytes_written"] == 0
+
+    def test_write_full_file_lines_written_single_no_newline(self):
+        """Single line without trailing newline should report 1 line."""
+        content = "Single line content"
+        result = write_full_file(
+            "Testing single line",
+            str(self.base_dir / "single.txt"),
+            content,
+        )
+        data = json.loads(result)
+        assert data["result"]["lines_written"] == 1
+        assert data["result"]["bytes_written"] == len(content.encode("utf-8"))
+
+    def test_write_full_file_lines_written_single_with_newline(self):
+        """Single line with trailing newline should report 1 line."""
+        content = "Single line content\n"
+        result = write_full_file(
+            "Testing single line with newline",
+            str(self.base_dir / "single_newline.txt"),
+            content,
+        )
+        data = json.loads(result)
+        assert data["result"]["lines_written"] == 1
+
+    def test_write_full_file_lines_written_multiple_no_trailing_newline(self):
+        """Multiple lines without trailing newline count as newlines + 1."""
+        content = "Line 1\nLine 2\nLine 3"
+        result = write_full_file(
+            "Testing multiple lines",
+            str(self.base_dir / "multi.txt"),
+            content,
+        )
+        data = json.loads(result)
+        # 2 newlines + 1 = 3 lines
+        assert data["result"]["lines_written"] == 3
+        assert data["result"]["bytes_written"] == len(content.encode("utf-8"))
+
+    def test_write_full_file_lines_written_only_newlines(self):
+        """Content with only newlines should count newline characters."""
+        content = "\n\n\n"
+        result = write_full_file(
+            "Testing only newlines",
+            str(self.base_dir / "newlines.txt"),
+            content,
+        )
+        data = json.loads(result)
+        # 3 newline characters = 3 lines
+        assert data["result"]["lines_written"] == 3
+
+    def test_write_full_file_lines_written_crlf(self):
+        """Content with CRLF line endings should count correctly."""
+        content = "Line 1\r\nLine 2\r\nLine 3\r\n"
+        result = write_full_file(
+            "Testing CRLF",
+            str(self.base_dir / "crlf.txt"),
+            content,
+        )
+        data = json.loads(result)
+        # Should count \n characters, not \r\n pairs
+        # \n\n\n results in 3 lines when there's trailing content
+        assert data["result"]["lines_written"] == 3
+
+    def test_write_full_file_bytes_written_utf8(self):
+        """UTF-8 content with non-ASCII chars should count bytes correctly."""
+        content = "Hello 你好 🌍\n"
+        result = write_full_file(
+            "Testing UTF-8",
+            str(self.base_dir / "utf8.txt"),
+            content,
+        )
+        data = json.loads(result)
+        assert data["result"]["bytes_written"] == len(content.encode("utf-8"))
+        assert data["result"]["lines_written"] == 1
+
     def test_directory_operations_with_invalid_paths(self):
         result = create_directory("Testing invalid path", "../outside")
         assert json.loads(result)["status"] == "error"

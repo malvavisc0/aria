@@ -5,6 +5,7 @@ import tempfile
 
 import pytest
 
+from aria.tools.database import ToolsDatabase
 from aria.tools.reasoning import (
     add_reasoning_step,
     add_reflection,
@@ -30,25 +31,37 @@ def test_agent_id():
 def test_db():
     """Create a temporary database for testing and clean up after each test."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_reasoning.db")
+        db_path = os.path.join(tmpdir, "test_tools.db")
 
         original_db = registry.get_db()
 
-        # Reset singleton to force new instance
+        # Reset singletons to force new instance
+        ToolsDatabase._instance = None
         ReasoningDatabase._instance = None
-        test_db_instance = ReasoningDatabase(db_path)
+
+        # Reset the module-level _db_instance in get_tools_database
+        import aria.tools.database as db_module
+
+        db_module._db_instance = None
+
+        # Create shared tools database with temp path
+        test_tools_db = ToolsDatabase(db_path)
+        test_reasoning_db = ReasoningDatabase()
+
         # Replace the database in registry module
         import aria.tools.reasoning.registry as reg_module
 
-        reg_module._db = test_db_instance
+        reg_module._db = test_reasoning_db
 
-        yield test_db_instance
+        yield test_reasoning_db
 
         # Clean up after test
         registry.clear_all()
-        test_db_instance.close()
-        # Reset singleton again
+        test_tools_db.close()
+        # Reset singletons again
+        ToolsDatabase._instance = None
         ReasoningDatabase._instance = None
+        db_module._db_instance = None
         # Restore original
         reg_module._db = original_db
 

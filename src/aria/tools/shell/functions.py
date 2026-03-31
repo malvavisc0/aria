@@ -16,7 +16,6 @@ from loguru import logger
 from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
 from aria.tools.shell.constants import CURRENT_OS, SHELL
-from aria.tools.shell.exceptions import CommandBlockedError
 from aria.tools.shell.execution import (
     _build_response,
     _execute_command_internal,
@@ -52,10 +51,8 @@ def execute_command(
     logger.debug(f"Safe command to achieve: {intent}")
 
     # Validate against blocked commands before execution
-    if _validate_command(command_name):
-        raise CommandBlockedError(
-            f"Command '{command_name}' is blocked for security reasons"
-        )
+    # _validate_command raises on blocked, returns None otherwise
+    _validate_command(command_name)
 
     actual_timeout = min(
         timeout if timeout is not None else DEFAULT_TIMEOUT,

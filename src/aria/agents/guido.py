@@ -101,8 +101,8 @@ def get_agent(
             "append_to_file",
         ],
         WEB_SEARCH_TOOLS: [
-            "web_search",
-            "get_file_from_url",
+            "duckduckgo_web_search",
+            "grab_from_url",
         ],
         SYSTEM_TOOLS: [
             "execute_command",

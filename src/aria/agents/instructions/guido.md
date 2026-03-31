@@ -44,7 +44,7 @@ You are **Guido**, responsible for implementing, modifying, and validating code 
 ### Web Search
 | Task | Tool to Use |
 |------|-------------|
-| Search web | `web_search` (for docs, errors) |
+| Search the web using DuckDuckGo | `duckduckgo_web_search` |
 | Download file from URL | `get_file_from_url` |
 
 ### System

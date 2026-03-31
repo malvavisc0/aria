@@ -1,26 +1,22 @@
 """Database operations for reasoning persistence using SQLAlchemy."""
 
 import json
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from loguru import logger
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from aria.config.folders import Data
+from aria.tools.database import get_tools_database
 
 from .models import (
-    Base,
     ReasoningReflectionModel,
     ReasoningScratchpadModel,
     ReasoningSessionModel,
     ReasoningStepModel,
     ReasoningToolEventModel,
 )
-
-_DEFAULT_DB_PATH = str(Data.path / "reasoning.db")
 
 
 class ReasoningDatabase:
@@ -30,62 +26,29 @@ class ReasoningDatabase:
     _initialized: bool
 
     _instance = None
-    _engine = None
-    _session_factory = None
 
-    def __new__(cls, db_path: str = _DEFAULT_DB_PATH):
+    def __new__(cls):
         """Singleton pattern for database instance."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, db_path: str = _DEFAULT_DB_PATH):
+    def __init__(self):
         """Initialize database connection."""
         # Ensure the attribute exists before accessing it (pylint-friendly).
         self._initialized = getattr(self, "_initialized", False)
         if self._initialized:
             return
 
-        self.db_path = db_path
-        self._ensure_directory()
-        self._setup_engine()
-        self._create_tables()
+        self._tools_db = get_tools_database()
+        self._tools_db.create_tables()  # ensures reasoning tables exist
         self._initialized = True
-        logger.info(f"ReasoningDatabase initialized at {db_path}")
-
-    def _ensure_directory(self) -> None:
-        """Create database directory if it doesn't exist."""
-        db_dir = Path(self.db_path).parent
-        db_dir.mkdir(parents=True, exist_ok=True)
-
-    def _setup_engine(self) -> None:
-        """Setup SQLAlchemy engine and session factory."""
-        # Create engine with SQLite
-        database_url = f"sqlite:///{self.db_path}"
-        self._engine = create_engine(
-            database_url,
-            echo=False,  # Set to True for SQL debugging
-            pool_pre_ping=True,  # Verify connections before using
-        )
-
-        # Create session factory
-        self._session_factory = sessionmaker(
-            bind=self._engine, expire_on_commit=False
-        )
-
-        logger.debug(f"Database engine created: {database_url}")
-
-    def _create_tables(self) -> None:
-        """Create all tables if they don't exist."""
-        assert self._engine is not None
-        Base.metadata.create_all(self._engine)
-        logger.debug("Database tables created/verified")
+        logger.info("ReasoningDatabase initialized")
 
     def get_session(self) -> Session:
         """Get a new database session."""
-        assert self._session_factory is not None
-        return self._session_factory()
+        return self._tools_db.get_session()
 
     def save_session_metadata(
         self,
@@ -104,7 +67,7 @@ class ReasoningDatabase:
 
             if existing:
                 # Update existing
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = datetime.now(timezone.utc)
                 existing.is_active = True
             else:
                 # Create new
@@ -113,7 +76,7 @@ class ReasoningDatabase:
                     session_id=session_id,
                     agent_id=agent_id,
                     created_at=datetime.fromisoformat(created_at),
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.now(timezone.utc),
                     is_active=True,
                 )
                 session.add(new_session)
@@ -239,7 +202,7 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.utcnow()
+            session_model.updated_at = datetime.now(timezone.utc)
 
             session.commit()
             logger.debug(
@@ -265,7 +228,7 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.utcnow()
+            session_model.updated_at = datetime.now(timezone.utc)
 
             session.commit()
             logger.debug(f"Saved reflection for session {session_internal_id}")
@@ -334,7 +297,7 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.utcnow()
+            session_model.updated_at = datetime.now(timezone.utc)
 
             session.commit()
             logger.debug(
@@ -425,7 +388,7 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.utcnow()
+            session_model.updated_at = datetime.now(timezone.utc)
 
             session.commit()
             logger.debug(f"Reset session {session_internal_id}")
@@ -459,7 +422,7 @@ class ReasoningDatabase:
     ) -> int:
         """Permanently delete inactive sessions older than specified days."""
         with self.get_session() as session:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
             stmt = select(ReasoningSessionModel).where(
                 ReasoningSessionModel.is_active == False,  # noqa: E712
@@ -480,10 +443,8 @@ class ReasoningDatabase:
             return count
 
     def close(self) -> None:
-        """Close database connections."""
-        if self._engine:
-            self._engine.dispose()
-            logger.debug("Database connections closed")
+        """Close is handled by the shared ToolsDatabase."""
+        pass
 
 
 # Global database instance

@@ -46,8 +46,8 @@ TOOL_EMOJI: Dict[str, str] = {
     "move_file": "🚚",
     "rename_file": "🏷️",
     # Web/search
-    "web_search": "🔍",
-    "get_file_from_url": "⬇️",
+    "duckduckgo_web_search": "🔍",
+    "grab_from_url": "⬇️",
     "get_youtube_video_transcription": "📹",
     "get_current_weather": "🌦️",
     # Development

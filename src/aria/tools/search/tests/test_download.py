@@ -1,7 +1,7 @@
 """
 Test suite for the download module.
 
-This module tests the get_file_from_url function to ensure it properly
+This module tests the grab_from_url function to ensure it properly
 downloads files, saves them to disk, and returns JSON responses with
 metadata for AI agent consumption.
 """
@@ -34,8 +34,8 @@ from aria.tools.search._download_internals import (
 from aria.tools.search.download import (
     ContentParsingError,
     URLDownloadError,
-    get_file_from_url,
     get_youtube_video_transcription,
+    grab_from_url,
 )
 
 
@@ -147,7 +147,7 @@ class TestUtilityFunctions:
 
 
 class TestGetFileFromURL:
-    """Test the main get_file_from_url function."""
+    """Test the main grab_from_url function."""
 
     @patch("aria.tools.search._download_internals.httpx.Client")
     def test_download_html_success(self, mock_client):
@@ -163,7 +163,7 @@ class TestGetFileFromURL:
         mock_client.return_value = mock_client_instance
 
         # Download file
-        result_json = get_file_from_url(
+        result_json = grab_from_url(
             "Testing file download", "https://example.com"
         )
         data = _response_data(result_json)
@@ -189,21 +189,21 @@ class TestGetFileFromURL:
 
     def test_download_invalid_url(self):
         """Test download with invalid URL."""
-        result_json = get_file_from_url("Testing file download", "not-a-url")
+        result_json = grab_from_url("Testing file download", "not-a-url")
         err = _response_error(result_json)
 
         assert "Invalid URL format" in err
 
     def test_download_empty_url(self):
         """Test download with empty URL."""
-        result_json = get_file_from_url("Testing file download", "")
+        result_json = grab_from_url("Testing file download", "")
         err = _response_error(result_json)
 
         assert "URL cannot be empty" in err
 
     def test_json_response_structure(self):
         """Test that JSON response has correct structure."""
-        result_json = get_file_from_url("Testing file download", "invalid-url")
+        result_json = grab_from_url("Testing file download", "invalid-url")
         data = json.loads(result_json)
 
         # Check required fields
@@ -226,7 +226,7 @@ class TestGetFileFromURL:
         mock_client.return_value = mock_client_instance
 
         for fmt in ["auto", "text", "html"]:
-            result_json = get_file_from_url(
+            result_json = grab_from_url(
                 "Testing file download", "https://example.com", output=fmt
             )
             data = _response_data(result_json)
@@ -238,7 +238,7 @@ class TestIntegration:
 
     def test_real_download_example_com(self):
         """Test real download from example.com."""
-        result_json = get_file_from_url(
+        result_json = grab_from_url(
             "Testing file download", "https://www.example.com"
         )
         data = _response_data(result_json)
@@ -258,7 +258,7 @@ class TestIntegration:
 
     def test_real_download_with_auto_format(self):
         """Test real download with auto format detection."""
-        result_json = get_file_from_url(
+        result_json = grab_from_url(
             "Testing file download", "https://www.example.com", output="auto"
         )
         data = _response_data(result_json)
@@ -539,7 +539,7 @@ class TestResponseCreation:
         """Test creating success response."""
         metadata = {"url": "https://example.com", "size": 100}
         response = _create_response(
-            "get_file_from_url",
+            "grab_from_url",
             "test intent",
             "/path/to/file",
             metadata,
@@ -551,7 +551,7 @@ class TestResponseCreation:
     def test_create_error_response(self):
         """Test creating error response."""
         response = _create_error_response(
-            "get_file_from_url", "test intent", "Test error"
+            "grab_from_url", "test intent", "Test error"
         )
         err = _response_error(response)
         assert err == "Test error"
@@ -628,7 +628,7 @@ class TestEdgeCases:
         mock_client.get.return_value = mock_response
         mock_client_class.return_value = mock_client
 
-        result = get_file_from_url(
+        result = grab_from_url(
             "Testing file download", "https://example.com/notfound"
         )
         payload = json.loads(result)
@@ -636,7 +636,7 @@ class TestEdgeCases:
 
     def test_get_file_with_invalid_format(self):
         """Test download with invalid output format."""
-        result = get_file_from_url(
+        result = grab_from_url(
             "Testing file download",
             "https://example.com",
             output="invalid_format",
@@ -651,9 +651,7 @@ class TestEdgeCases:
         mock_client.get.side_effect = Exception("Unexpected error")
         mock_client_class.return_value = mock_client
 
-        result = get_file_from_url(
-            "Testing file download", "https://example.com"
-        )
+        result = grab_from_url("Testing file download", "https://example.com")
         err = _response_error(result)
         assert "Failed to fetch" in err
 

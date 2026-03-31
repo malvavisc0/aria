@@ -19,6 +19,7 @@ capabilities.
 
 import base64
 import io
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
@@ -73,7 +74,7 @@ def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
     pages_png: list[bytes] = []
     doc = pdfium.PdfDocument(str(pdf_path))
     try:
-        scale = int(_PDF_RENDER_DPI / 72.0)  # pdfium uses 72 DPI as base
+        scale = _PDF_RENDER_DPI / 72.0
         for page_index in range(len(doc)):
             page = doc[page_index]
             bitmap = page.render(scale=scale, rotation=0)
@@ -221,6 +222,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
             # Fall back to text-based extraction
             extracted_text = _extract_text_from_pdf(path)
             return _persist_pdf_extraction_result(
+                intent=intent,
                 source_path=path,
                 extracted_text=extracted_text,
                 pages_processed=len(pages),
@@ -228,6 +230,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
 
         extracted_text = "\n\n".join(parts)
         return _persist_pdf_extraction_result(
+            intent=intent,
             source_path=path,
             extracted_text=extracted_text,
             pages_processed=len(pages),
@@ -237,10 +240,14 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
 
 
 def _persist_pdf_extraction_result(
-    source_path: Path, extracted_text: str, pages_processed: int
+    intent: str,
+    source_path: Path,
+    extracted_text: str,
+    pages_processed: int,
 ) -> str:
     """Persist extracted PDF markdown and return compact JSON metadata."""
-    output_filename = f"{source_path.stem}_extracted.md"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"{source_path.stem}_extracted_{timestamp}.md"
     output_path = VISION_OUTPUT_DIR / output_filename
     output_path.write_text(extracted_text, encoding="utf-8")
 
@@ -250,7 +257,7 @@ def _persist_pdf_extraction_result(
 
     return tool_success_response(
         "parse_pdf",
-        "persist_pdf_extraction_result",
+        intent,
         {
             "source_file": str(source_path),
             "output_file": str(output_path),

@@ -76,8 +76,8 @@ def get_agent(
             "fetch_current_stock_price",
             "fetch_company_information",
             "fetch_ticker_news",
-            "web_search",
-            "get_file_from_url",
+            "duckduckgo_web_search",
+            "grab_from_url",
         ],
         FILESYSTEM_TOOLS: [
             "read_full_file",
@@ -97,7 +97,6 @@ def get_agent(
         tools_selection[BROWSER_TOOLS] = [
             "open_url",
             "browser_click",
-            "browser_screenshot",
         ]
         logger.info("Browser tools enabled (Lightpanda available)")
 

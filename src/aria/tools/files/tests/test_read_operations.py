@@ -122,7 +122,13 @@ class TestReadOperations:
         assert data["operation"] == "get_file_info"
         assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["result"]["total_lines"] == 5
-        assert data["result"]["file_size_bytes"] == 35
+        assert data["result"]["size_bytes"] == 35
+        assert "size_mb" in data["result"]
+        assert "modified" in data["result"]
+        assert "created" in data["result"]
+        assert "is_directory" in data["result"]
+        assert "is_file" in data["result"]
+        assert "is_symlink" in data["result"]
         assert data["result"]["mime_type"] is not None
 
     def test_get_file_permissions(self):
@@ -144,9 +150,21 @@ class TestReadOperations:
         data = json.loads(result)
 
         assert data["operation"] == "list_files"
-        assert data["result"]["pattern"] == "**/*"
+        assert data["result"]["pattern"] == "*"
         assert len(data["result"]["files"]) >= 1
         assert data["result"]["count"] >= 1
+
+    def test_list_files_recursive_pattern(self):
+        result = list_files(
+            "Testing recursive file listing", "*.txt", recursive=True
+        )
+        data = json.loads(result)
+
+        assert data["operation"] == "list_files"
+        assert data["result"]["pattern"] == "*.txt"
+        assert any(
+            path.endswith("test.txt") for path in data["result"]["files"]
+        )
 
     def test_read_file_chunk(self):
         result = read_file_chunk(
@@ -229,9 +247,6 @@ class TestReadOperations:
                 "Testing invalid path", path, chunk_size=10
             )
             assert json.loads(read_result)["status"] == "error"
-
-        # Absolute paths are now allowed by default (BASE_DIR restriction is OFF)
-        # Only relative paths and blocked patterns should fail
 
     def test_directory_operations_with_invalid_paths(self):
         """Test that non-absolute paths are rejected."""

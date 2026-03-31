@@ -173,7 +173,7 @@ class TestStateReducerAgentOutput:
         state = initial_workflow_state("Aria")
         ts = ToolSelection(
             tool_id="t",
-            tool_name="web_search",
+            tool_name="duckduckgo_web_search",
             tool_kwargs={"query": "test"},
         )
         ev = _make_agent_output("Aria", tool_calls=[ts])
@@ -209,17 +209,17 @@ class TestStateReducerToolCallResult:
 
     def test_appends_tool_call_record(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result("web_search", {"query": "test"}, "results")
+        ev = _make_tool_call_result("duckduckgo_web_search", {"query": "test"}, "results")
         state_reducer(state, ev)
         assert len(state["tool_calls"]) == 1
 
     def test_tool_call_record_fields_success(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result("web_search", {"query": "test"}, "results")
+        ev = _make_tool_call_result("duckduckgo_web_search", {"query": "test"}, "results")
         state_reducer(state, ev)
         record = state["tool_calls"][0]
         assert record["agent"] == "Aria"
-        assert record["tool"] == "web_search"
+        assert record["tool"] == "duckduckgo_web_search"
         assert record["args"] == {"query": "test"}
         assert record["result"] == "results"
         assert record["error"] is None
@@ -234,7 +234,7 @@ class TestStateReducerToolCallResult:
 
     def test_last_error_none_on_success(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result("web_search", {}, "ok")
+        ev = _make_tool_call_result("duckduckgo_web_search", {}, "ok")
         state_reducer(state, ev)
         assert state["last_error"] is None
 
@@ -352,10 +352,10 @@ class TestStatefulAgentWorkflowReduceState:
 
         result = await workflow.reduce_state(
             ctx,
-            _make_tool_call_result("web_search", {"query": "test"}, "results"),
+            _make_tool_call_result("duckduckgo_web_search", {"query": "test"}, "results"),
         )
 
-        assert result["tool_calls"][0]["tool"] == "web_search"
+        assert result["tool_calls"][0]["tool"] == "duckduckgo_web_search"
         assert result["tool_calls"][0]["agent"] == "Aria"
         assert result["last_error"] is None
 

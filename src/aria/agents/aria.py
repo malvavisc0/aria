@@ -15,8 +15,17 @@ from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
 from aria.config.api import Lightpanda
-from aria.tools.browser import browser_click, browser_screenshot, open_url
+from aria.tools.browser import browser_click, open_url
 from aria.tools.files import file_exists, read_file_chunk, read_full_file
+from aria.tools.planner import (
+    add_plan_step,
+    create_execution_plan,
+    get_execution_plan,
+    remove_plan_step,
+    reorder_plan_steps,
+    replace_plan_step,
+    update_plan_step,
+)
 from aria.tools.reasoning import (
     add_reasoning_step,
     add_reflection,
@@ -29,10 +38,10 @@ from aria.tools.reasoning import (
     use_scratchpad,
 )
 from aria.tools.search import (
+    duckduckgo_web_search,
     get_current_weather,
-    get_file_from_url,
     get_youtube_video_transcription,
-    web_search,
+    grab_from_url,
 )
 from aria.tools.shell import (
     execute_command,
@@ -107,11 +116,11 @@ def get_agent(
     tools = [
         FunctionTool.from_defaults(fn=get_youtube_video_transcription),
         FunctionTool.from_defaults(fn=get_current_weather),
-        FunctionTool.from_defaults(fn=get_file_from_url),
+        FunctionTool.from_defaults(fn=grab_from_url),
         FunctionTool.from_defaults(fn=read_full_file),
         FunctionTool.from_defaults(fn=read_file_chunk),
         FunctionTool.from_defaults(fn=file_exists),
-        FunctionTool.from_defaults(fn=web_search),
+        FunctionTool.from_defaults(fn=duckduckgo_web_search),
         FunctionTool.from_defaults(fn=get_platform_info),
         FunctionTool.from_defaults(fn=execute_command),
         FunctionTool.from_defaults(fn=execute_command_batch),
@@ -124,6 +133,13 @@ def get_agent(
         FunctionTool.from_defaults(fn=use_scratchpad),
         FunctionTool.from_defaults(fn=reset_reasoning),
         FunctionTool.from_defaults(fn=list_reasoning_sessions),
+        FunctionTool.from_defaults(fn=add_plan_step),
+        FunctionTool.from_defaults(fn=create_execution_plan),
+        FunctionTool.from_defaults(fn=get_execution_plan),
+        FunctionTool.from_defaults(fn=remove_plan_step),
+        FunctionTool.from_defaults(fn=reorder_plan_steps),
+        FunctionTool.from_defaults(fn=replace_plan_step),
+        FunctionTool.from_defaults(fn=update_plan_step),
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",
@@ -142,7 +158,6 @@ def get_agent(
         tools += [
             FunctionTool.from_defaults(async_fn=open_url),
             FunctionTool.from_defaults(async_fn=browser_click),
-            FunctionTool.from_defaults(async_fn=browser_screenshot),
         ]
         logger.info("Browser tools enabled (Lightpanda available)")
 

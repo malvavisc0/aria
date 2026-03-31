@@ -1,65 +1,76 @@
 {%- if tools %}
-    {{- '<|im_start|>system\n' }}
-    {%- if messages and messages[0].role == 'system' %}
-        {{- messages[0].content + '\n\n' }}
-    {%- endif %}
-    {{- "# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>\n" }}
-    {%- for tool in tools %}
-        {%- set tool_dict = tool.function if tool.function else tool %}
-        {{- tool_dict | tojson + "\n" }}
-    {%- endfor %}
-    {{- "</tools>\n\nYou can call **multiple tools in parallel** when they are independent.\n\nFor each function call, return a JSON object with the function name and arguments inside <tool_call></tool_call> XML tags:\n\n<tool_call>\n{\"name\": \"function_name\", \"arguments\": {\"arg1\": \"value1\"}}\n</tool_call>\n\nExample of multiple parallel calls:\n<tool_call>\n{\"name\": \"func_a\", \"arguments\": {\"x\": 1}}\n</tool_call>\n<tool_call>\n{\"name\": \"func_b\", \"arguments\": {\"y\": 2}}\n</tool_call>\n\nThe tool results will be returned to you inside <tool_response name=\"function_name\"></tool_response> tags.\n\nOnly call tools when necessary. Prefer fewer calls when possible.<|im_end|>\n" }}
+{{- '<|im_start|>system\n' }}
+{%- if messages and messages[0].role == 'system' %}
+{{- messages[0].content.strip() + '\n\n' }}
+{%- endif %}
+{{- '# Tools\n\n' }}
+{{- 'You can call functions when needed.\n' }}
+{{- 'When calling a function, output only one or more <tool_call> blocks with valid JSON.\n' }}
+{{- 'Do not add explanation around tool calls.\n' }}
+{{- 'Call multiple tools in parallel only when they are independent.\n\n' }}
+{{- '<tools>\n' }}
+{%- for tool in tools %}
+{%- set tool_dict = tool.function if tool.function else tool %}
+{{- tool_dict | tojson + '\n' }}
+{%- endfor %}
+{{- '</tools>\n\n' }}
+{{- 'Tool results will be returned inside <tool_response name=function_name>...</tool_response>.\n' }}
+{{- 'Treat tool results as observations to continue the task.\n' }}
+{{- '<|im_end|>\n' }}
 {%- else %}
-    {%- if messages and messages[0].role == 'system' %}
-        {{- '<|im_start|>system\n' + messages[0].content + '<|im_end|>\n' }}
-    {%- endif %}
+{%- if messages and messages[0].role == 'system' %}
+{{- '<|im_start|>system\n' + messages[0].content.strip() + '<|im_end|>\n' }}
+{%- endif %}
 {%- endif %}
 
 {%- for message in messages %}
-    {%- set content = message.content if message.content is string else '' %}
+{%- set content = message.content if message.content is string else '' %}
 
-    {%- if message.role == "user" or (message.role == "system" and not loop.first) %}
-        {{- '<|im_start|>' + message.role + '\n' + content + '<|im_end|>\n' }}
+{%- if message.role == 'user' %}
+{{- '<|im_start|>user\n' + content + '<|im_end|>\n' }}
 
-    {%- elif message.role == "assistant" %}
-        {{- '<|im_start|>' + message.role + '\n' }}
-        {%- if content %}
-            {{- content }}
-        {%- endif %}
-        
-        {%- if message.tool_calls %}
-            {%- if content %}
-                {{- '\n' }}
-            {%- endif %}
-            {%- for tool_call in message.tool_calls %}
-                {%- set tc = tool_call.function if tool_call.function else tool_call %}
-                {{- '<tool_call>\n{"name": "' + tc.name + '", "arguments": ' }}
-                {%- if tc.arguments is string %}
-                    {{- tc.arguments }}
-                {%- else %}
-                    {{- tc.arguments | tojson }}
-                {%- endif %}
-                {{- '}\n</tool_call>' }}
-                {%- if not loop.last %}
-                    {{- '\n' }}
-                {%- endif %}
-            {%- endfor %}
-        {%- endif %}
-        {{- '<|im_end|>\n' }}
+{%- elif message.role == 'system' and not loop.first %}
+{{- '<|im_start|>system\n' + content + '<|im_end|>\n' }}
 
-    {%- elif message.role == "tool" %}
-        {%- if loop.first or (loop.index0 > 0 and messages[loop.index0 - 1].role != "tool") %}
-            {{- '<|im_start|>user\n' }}
-        {%- endif %}
-        
-        {{- '<tool_response name="' + (message.name | default('unknown')) + '">\n' + content + '\n</tool_response>\n' }}
-        
-        {%- if loop.last or (loop.index0 + 1 >= messages|length) or messages[loop.index0 + 1].role != "tool" %}
-            {{- '<|im_end|>\n' }}
-        {%- endif %}
-    {%- endif %}
+{%- elif message.role == 'assistant' %}
+{{- '<|im_start|>assistant\n' }}
+{%- if content %}
+{{- content }}
+{%- endif %}
+{%- if message.tool_calls %}
+{%- if content %}
+{{- '\n' }}
+{%- endif %}
+{%- for tool_call in message.tool_calls %}
+{%- set tc = tool_call.function if tool_call.function else tool_call %}
+{{- '<tool_call>\n' }}
+{{- '{"name": ' + (tc.name | tojson) + ', "arguments": ' }}
+{%- if tc.arguments is string %}
+{{- tc.arguments }}
+{%- else %}
+{{- tc.arguments | tojson }}
+{%- endif %}
+{{- '}\n</tool_call>' }}
+{%- if not loop.last %}
+{{- '\n' }}
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{{- '<|im_end|>\n' }}
+
+{%- elif message.role == 'tool' %}
+{%- if loop.first or (loop.index0 > 0 and messages[loop.index0 - 1].role != 'tool') %}
+{{- '<|im_start|>user\n' }}
+{%- endif %}
+{{- '<tool_response name=' + ((message.name | default('unknown')) | tojson) + '>\n' }}
+{{- content + '\n' }}
+{{- '</tool_response>\n' }}
+{%- if loop.last or (loop.index0 + 1 >= messages|length) or messages[loop.index0 + 1].role != 'tool' %}
+{{- '<|im_end|>\n' }}
+{%- endif %}
+{%- endif %}
 {%- endfor %}
 
 {%- if add_generation_prompt %}
-    {{- '<|im_start|>assistant\n' }}
+{{- '<|im_start|>assistant\n' }}
 {%- endif %}

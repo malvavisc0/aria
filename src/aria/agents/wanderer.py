@@ -90,8 +90,9 @@ def get_agent(
             "file_exists",
         ],
         WEB_SEARCH_TOOLS: [
-            "web_search",
-            "get_file_from_url",
+            "duckduckgo_web_search",
+            "searxng_web_search",
+            "grab_from_url",
             "get_youtube_video_transcription",
             "get_current_weather",
         ],
@@ -107,7 +108,6 @@ def get_agent(
         tools_selection[BROWSER_TOOLS] = [
             "open_url",
             "browser_click",
-            "browser_screenshot",
         ]
         logger.info("Browser tools enabled (Lightpanda available)")
 

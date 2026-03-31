@@ -5,6 +5,7 @@ subpackages to ensure consistency in timestamp handling, JSON serialization,
 and response formatting.
 """
 
+import inspect
 import json
 import logging
 from datetime import datetime, timezone
@@ -199,3 +200,37 @@ def tool_response(
         data = {}
 
     return tool_success_response(tool, intent, data, **context)
+
+
+def get_function_name(depth: int = 1) -> str:
+    """
+    Get the name of the function at a specific call depth.
+
+    Args:
+        depth: Number of frames to go back from the caller of this function.
+            Default is 1 (the immediate caller of the function that called
+            this helper).
+
+    Returns:
+        The function name as a string, or ``"<unknown>"`` if unable
+        to determine.
+
+    Example:
+        If ``function_a`` calls ``function_b`` which calls
+        ``_get_function_name(1)``, it returns ``"function_a"`` (the caller
+        of the function that invoked this helper).
+    """
+    try:
+        frame = inspect.currentframe()
+        if not frame:
+            return "<unknown>"
+        frame = frame.f_back
+        for _ in range(depth - 1):
+            if not frame:
+                return "<unknown>"
+            frame = frame.f_back
+        if not frame:
+            return "<unknown>"
+        return frame.f_code.co_name
+    except AttributeError:
+        return "<unknown>"

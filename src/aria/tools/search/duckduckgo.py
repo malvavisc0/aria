@@ -11,7 +11,9 @@ from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
 
 @log_tool_call
-def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
+def duckduckgo_web_search(
+    intent: str, query: str, max_results: Optional[int] = 5
+) -> str:
     """
     Search the web and return a small set of {title, href} results.
 
@@ -23,7 +25,7 @@ def web_search(intent: str, query: str, max_results: Optional[int] = 5) -> str:
     Returns:
         JSON with results[{title, href}], error if failed.
         Use open_url to read web pages from the results.
-        Use get_file_from_url to download files (PDFs, images, etc.).
+        Use grab_from_url to download files (PDFs, images, etc.).
     """
     # Validate inputs
     validation_error = _validate_inputs(query, max_results)

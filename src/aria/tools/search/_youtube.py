@@ -68,10 +68,14 @@ def get_youtube_video_transcription(
     url: str,
     download_path: Optional[str] = None,
 ) -> str:
-    """Save a YouTube video's full captions/transcript as a text file.
+    """Download and save a YouTube video's captions/transcript as a text file.
+
+    Note: Despite the 'get_*' naming, this function is persistence-first:
+    it writes the transcript to disk and returns file metadata, not the
+    transcript content directly.
 
     Args:
-        intent: Why you're getting the transcript
+        intent: Why you're downloading the transcript
         url: YouTube video URL
         download_path: Optional path to save the transcript
 
@@ -123,7 +127,10 @@ def get_youtube_video_transcription(
         )
 
     except NoTranscriptFound:
-        error_msg = f"No transcripts found for video {video_id}. Video may lack captions."
+        error_msg = (
+            f"No transcripts found for video {video_id}. "
+            "Video may lack captions."
+        )
         logger.warning(error_msg)
         return tool_error_response(
             "get_youtube_video_transcription", intent, RuntimeError(error_msg)

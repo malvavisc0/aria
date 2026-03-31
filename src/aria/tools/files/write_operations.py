@@ -380,7 +380,7 @@ def write_full_file(intent: str, file_name: str, contents: str) -> str:
 
     Args:
         intent: Why you're writing (e.g., "Creating new module")
-        file_name: Path relative to BASE_DIR
+        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
         contents: Full file content
 
     Returns:

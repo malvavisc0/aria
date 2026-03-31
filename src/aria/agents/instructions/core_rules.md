@@ -66,7 +66,7 @@ Think-do-act, not think-think-think. When you have enough info, **ACT**. Short p
 
 ---
 
-### 6. Rich Output
+### 5. Rich Output
 
 - **Links**: Always include for external data (weather, prices, news, docs).
 - **Visuals**: ASCII tables for comparisons. ASCII art for trends/data.

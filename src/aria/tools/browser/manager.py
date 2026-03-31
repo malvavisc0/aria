@@ -28,7 +28,7 @@ import hashlib
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from loguru import logger
 from playwright.async_api import Browser, Page, Playwright, async_playwright
@@ -101,6 +101,10 @@ class LightpandaManager:
         self._browser: Optional[Browser] = None
         self._page: Optional[Page] = None
 
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
     async def start(self) -> bool:
         """Start Lightpanda serve and connect Playwright via CDP.
 
@@ -111,7 +115,6 @@ class LightpandaManager:
             True if started successfully, False otherwise.
         """
         try:
-            # Start Lightpanda serve process
             cmd = [
                 str(self._binary),
                 "serve",
@@ -129,22 +132,19 @@ class LightpandaManager:
                 text=True,
             )
 
-            # Wait for CDP endpoint to be ready
             if not await self._wait_for_cdp():
                 logger.error("Lightpanda CDP endpoint did not become ready")
                 self._cleanup_process()
                 return False
 
-            # Connect Playwright via CDP
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
             self._browser = await self._playwright.chromium.connect_over_cdp(
                 cdp_url
             )
 
-            # Create context with SSL error ignore (Lightpanda workaround)
+            # Lightpanda workaround: ignore SSL errors
             context = await self._browser.new_context(ignore_https_errors=True)
-            # Create initial page
             self._page = await context.new_page()
 
             logger.info(f"Lightpanda browser started on port {self._port}")
@@ -160,7 +160,6 @@ class LightpandaManager:
 
         Called from on_app_shutdown().
         """
-        # Close browser connection
         if self._browser:
             try:
                 await self._browser.close()
@@ -169,7 +168,6 @@ class LightpandaManager:
             finally:
                 self._browser = None
 
-        # Stop Playwright
         if self._playwright:
             try:
                 await self._playwright.stop()
@@ -178,9 +176,7 @@ class LightpandaManager:
             finally:
                 self._playwright = None
 
-        # Terminate Lightpanda process
         self._cleanup_process()
-
         self._page = None
         logger.info("Lightpanda browser stopped")
 
@@ -218,7 +214,6 @@ class LightpandaManager:
                 result = sock.connect_ex(("127.0.0.1", self._port))
                 sock.close()
                 if result == 0:
-                    # Port is open, give it a moment to fully initialize
                     await asyncio.sleep(0.5)
                     return True
             except Exception:
@@ -226,6 +221,10 @@ class LightpandaManager:
             await asyncio.sleep(0.1)
 
         return False
+
+    # ------------------------------------------------------------------
+    # Page state helpers
+    # ------------------------------------------------------------------
 
     @property
     def is_running(self) -> bool:
@@ -236,27 +235,18 @@ class LightpandaManager:
             and self._page is not None
         )
 
-    def _is_page_valid(self) -> bool:
-        """Check if the page is still valid and not closed."""
-        try:
-            return self._page is not None and not self._page.is_closed()
-        except Exception:
-            return False
-
     async def _ensure_page(self) -> bool:
-        """Ensure we have a valid page, restart browser if needed.
+        """Ensure a valid page exists, restarting browser if needed.
 
         Returns:
-            True if page is available, False otherwise.
+            True if a valid page is available, False otherwise.
         """
         if self._is_page_valid():
             return True
 
-        # Try to restart the browser
         logger.warning("Browser page invalid, attempting to restart...")
         await self.stop()
 
-        # Try to start again
         if await self.start():
             logger.info("Browser restarted successfully")
             return True
@@ -264,31 +254,16 @@ class LightpandaManager:
         logger.error("Failed to restart browser")
         return False
 
-    @property
-    def page(self) -> Page:
-        """Get the current Playwright page.
+    def _is_page_valid(self) -> bool:
+        """Check if the page is still valid and not closed."""
+        try:
+            return self._page is not None and not self._page.is_closed()
+        except Exception:
+            return False
 
-        Raises:
-            RuntimeError: If browser is not running.
-        """
-        if not self.is_running:
-            raise RuntimeError("Lightpanda browser is not running")
-        return self._page  # type: ignore
-
-    def _require_running_page(self) -> Page:
-        """Ensure browser is running and page is available.
-
-        Returns:
-            The current page.
-
-        Raises:
-            RuntimeError: If browser is not running or page is not open.
-        """
-        if not self.is_running:
-            raise RuntimeError("Browser is not running")
-        if not self._page:
-            raise RuntimeError("Page is not open")
-        return self._page
+    # ------------------------------------------------------------------
+    # Response helpers
+    # ------------------------------------------------------------------
 
     def _success(self, data: dict) -> str:
         """Create a success JSON response."""
@@ -301,6 +276,99 @@ class LightpandaManager:
             result["recovery"] = "Browser crashed. Restarted. Retry."
         return safe_json(result)
 
+    def _persist_content(self, content: str, url: str, action: str) -> Path:
+        """Write content to a timestamped file and return the path.
+
+        Args:
+            content: Text content to persist.
+            url: URL the content came from (used for filename hash).
+            action: Action label (e.g. "open", "click").
+
+        Returns:
+            Path to the written file.
+        """
+        path = _build_content_filepath(url, action)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    async def _safe_title(self) -> str:
+        """Get page title with fallback to 'Unknown'."""
+        try:
+            if self._is_page_valid():
+                return await self._page.title()  # type: ignore[union-attr]
+        except Exception:
+            pass
+        return "Unknown"
+
+    def _content_response(
+        self, content: str, url: str, title: str, content_path: Path
+    ) -> str:
+        """Build the standard content JSON response.
+
+        Args:
+            content: Page text content.
+            url: Current page URL.
+            title: Page title.
+            content_path: Path where content was persisted.
+
+        Returns:
+            JSON string with page metadata.
+        """
+        return self._success(
+            {
+                "url": url,
+                "title": title,
+                "content_file": str(content_path),
+                "content_preview": (
+                    content[:500] + "..." if len(content) > 500 else content
+                ),
+                "content_size": len(content),
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # Recovery wrapper
+    # ------------------------------------------------------------------
+
+    async def _with_recovery(
+        self,
+        action_name: str,
+        fn: Callable[[Page], Awaitable[str]],
+    ) -> str:
+        """Run *fn* with page validation and crash recovery.
+
+        Ensures a valid page before calling *fn(page)*. If *fn* raises
+        and the page has crashed, the browser is restarted and a
+        recovery error is returned so the caller can retry.
+
+        Args:
+            action_name: Human-readable label for log messages.
+            fn: Async callable that receives the current Page and
+                returns a JSON string result.
+
+        Returns:
+            JSON string — either the result of *fn* or an error.
+        """
+        if not await self._ensure_page():
+            return self._error("Browser not available")
+
+        try:
+            return await fn(self._page)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.error(f"{action_name} error: {e}")
+            if not self._is_page_valid():
+                logger.warning(
+                    f"Browser crashed during {action_name}, "
+                    "attempting restart..."
+                )
+                if await self._ensure_page():
+                    return self._error(str(e), recovery=True)
+            return self._error(str(e))
+
+    # ------------------------------------------------------------------
+    # Browser actions
+    # ------------------------------------------------------------------
+
     async def navigate(self, url: str) -> str:
         """Navigate to URL and return rendered content.
 
@@ -310,94 +378,25 @@ class LightpandaManager:
         Returns:
             JSON string with page content and metadata.
         """
-        try:
-            page = self._require_running_page()
-        except RuntimeError as e:
-            return self._error(str(e))
 
-        # Check if page is still valid before attempting navigation
-        if not self._is_page_valid():
-            logger.warning("Page is closed, attempting to restart browser...")
-            if not await self._ensure_page():
-                return self._error(
-                    "Browser crashed and could not be restarted"
-                )
-
-        try:
-            # Navigate to URL
+        async def _do_navigate(page: Page) -> str:
             await page.goto(url, timeout=BROWSER_COMMAND_TIMEOUT * 1000)
-
-            # Wait for page to settle
             await page.wait_for_load_state("networkidle", timeout=10000)
 
-            # Get and persist page content
-            content = await self.get_page_content()
+            content = await self._get_text_content(page)
 
-            # Check if navigation actually failed (e.g., SSL errors, timeouts)
-            if self._is_navigation_failed(content):
-                error_reason = content if content else "Navigation failed"
-                logger.error(f"Navigation failed: {error_reason}")
-                return self._error(error_reason)
+            if self._is_navigation_failed(content, page.url):
+                reason = content if content else "Navigation failed"
+                logger.error(f"Navigation failed: {reason}")
+                return self._error(reason)
 
-            content_path = _build_content_filepath(page.url, "open")
-            content_path.write_text(content, encoding="utf-8")
-
-            # Safely get title with fallback
-            try:
-                title = (
-                    await page.title() if self._is_page_valid() else "Unknown"
-                )
-            except Exception:
-                title = "Unknown"
-
-            return self._success(
-                {
-                    "url": page.url,
-                    "title": title,
-                    "content_file": str(content_path),
-                    "content_preview": (
-                        content[:500] + "..."
-                        if len(content) > 500
-                        else content
-                    ),
-                    "content_size": len(content),
-                }
+            content_path = self._persist_content(content, page.url, "open")
+            title = await self._safe_title()
+            return self._content_response(
+                content, page.url, title, content_path
             )
 
-        except Exception as e:
-            logger.error(f"Navigation error: {e}")
-
-            # Check if browser crashed during navigation
-            if not self._is_page_valid():
-                logger.warning(
-                    "Browser crashed during navigation, attempting restart..."
-                )
-                if await self._ensure_page():
-                    return self._error(str(e), recovery=True)
-
-            return self._error(str(e))
-
-    def _is_navigation_failed(self, content: str) -> bool:
-        """Check if the page content indicates a navigation failure.
-
-        Args:
-            content: The page content to check.
-
-        Returns:
-            True if navigation failed, False otherwise.
-        """
-        if not content:
-            return True
-        # Check for Lightpanda's navigation failure message
-        if "Navigation failed" in content:
-            return True
-        # Check for common browser error patterns
-        error_patterns = [
-            "Navigation failedReason:",
-            "net::ERR_",
-            "This page cannot be loaded",
-        ]
-        return any(pattern in content for pattern in error_patterns)
+        return await self._with_recovery("navigate", _do_navigate)
 
     async def click(self, selector: str) -> str:
         """Click element by CSS selector and return updated content.
@@ -408,153 +407,87 @@ class LightpandaManager:
         Returns:
             JSON string with updated page content.
         """
-        try:
-            page = self._require_running_page()
-        except RuntimeError as e:
-            return self._error(str(e))
 
-        # Check if page is still valid before attempting click
-        if not self._is_page_valid():
-            logger.warning("Page is closed, attempting to restart browser...")
-            if not await self._ensure_page():
-                return self._error(
-                    "Browser crashed and could not be restarted"
-                )
-
-        try:
-            # Click the element
+        async def _do_click(page: Page) -> str:
             await page.click(selector, timeout=10000)
-
-            # Wait for any navigation/updates
             await page.wait_for_load_state("networkidle", timeout=10000)
 
-            # Get and persist updated content
-            content = await self.get_page_content()
-            content_path = _build_content_filepath(page.url, "click")
-            content_path.write_text(content, encoding="utf-8")
-
-            # Safely get title with fallback
-            try:
-                title = (
-                    await page.title() if self._is_page_valid() else "Unknown"
-                )
-            except Exception:
-                title = "Unknown"
-
-            return self._success(
-                {
-                    "url": page.url,
-                    "title": title,
-                    "content_file": str(content_path),
-                    "content_preview": (
-                        content[:500] + "..."
-                        if len(content) > 500
-                        else content
-                    ),
-                    "content_size": len(content),
-                }
+            content = await self._get_text_content(page)
+            content_path = self._persist_content(content, page.url, "click")
+            title = await self._safe_title()
+            return self._content_response(
+                content, page.url, title, content_path
             )
 
-        except Exception as e:
-            logger.error(f"Click error: {e}")
-
-            # Check if browser crashed during click
-            if not self._is_page_valid():
-                logger.warning(
-                    "Browser crashed during click, attempting restart..."
-                )
-                if await self._ensure_page():
-                    return self._error(str(e), recovery=True)
-
-            return self._error(str(e))
-
-    async def screenshot(self, path: str) -> str:
-        """Take a screenshot of the current page.
-
-        Args:
-            path: File path to save screenshot.
-
-        Returns:
-            JSON string with file path.
-        """
-        try:
-            page = self._require_running_page()
-        except RuntimeError as e:
-            return self._error(str(e))
-
-        # Check if page is still valid before attempting screenshot
-        if not self._is_page_valid():
-            logger.warning("Page is closed, attempting to restart browser...")
-            if not await self._ensure_page():
-                return self._error(
-                    "Browser crashed and could not be restarted"
-                )
-
-        try:
-            # Wait for page to be in a stable state before screenshot
-            await page.wait_for_load_state("load", timeout=5000)
-            await page.screenshot(
-                path=path, timeout=BROWSER_COMMAND_TIMEOUT * 1000
-            )
-            return self._success(
-                {
-                    "success": True,
-                    "file_path": path,
-                    "note": "Use vision tools to analyze the screenshot.",
-                }
-            )
-
-        except Exception as e:
-            logger.error(f"Screenshot error: {e}")
-
-            # Check if browser crashed during screenshot
-            if not self._is_page_valid():
-                logger.warning(
-                    "Browser crashed during screenshot, attempting restart..."
-                )
-                if await self._ensure_page():
-                    return self._error(str(e), recovery=True)
-
-            return self._error(str(e))
+        return await self._with_recovery("click", _do_click)
 
     async def get_page_content(self) -> str:
         """Get current page content as clean text.
 
         Returns:
-            Page content as text, with scripts and styles removed.
+            Page content as text, or error JSON if unavailable.
+        """
+
+        async def _do_get_content(page: Page) -> str:
+            return await self._get_text_content(page)
+
+        return await self._with_recovery("get_page_content", _do_get_content)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_navigation_failed(content: str, url: str) -> bool:
+        """Check if navigation produced valid content.
+
+        Args:
+            content: The page content to check.
+            url: The current page URL.
+
+        Returns:
+            True if navigation failed, False otherwise.
+        """
+        if not content or not content.strip():
+            return True
+        if url == "about:blank":
+            return True
+        error_patterns = [
+            "Navigation failed",
+            "Navigation failedReason:",
+            "net::ERR_",
+            "This page cannot be loaded",
+        ]
+        return any(pattern in content for pattern in error_patterns)
+
+    @staticmethod
+    async def _get_text_content(page: Page) -> str:
+        """Extract clean text content from the page.
+
+        Removes script, style, and noscript elements, then collapses
+        whitespace.  Falls back to raw HTML on evaluation errors.
+
+        Args:
+            page: Playwright Page instance.
+
+        Returns:
+            Cleaned text content string.
         """
         try:
-            page = self._require_running_page()
-        except RuntimeError as e:
-            return self._error(str(e))
-
-        # Check if page is still valid
-        if not self._is_page_valid():
-            logger.warning("Page is closed, attempting to restart browser...")
-            if not await self._ensure_page():
-                return self._error(
-                    "Browser crashed and could not be restarted"
-                )
-
-        try:
-            # Get text content from body, excluding scripts and styles
-            content = await page.evaluate("""
+            content = await page.evaluate(
+                """
                 () => {
-                    // Clone the document to avoid modifying the original
                     const clone = document.body.cloneNode(true);
-
-                    // Remove script and style elements
                     const remove = ['script', 'style', 'noscript'];
                     remove.forEach(tag => {
-                        clone.querySelectorAll(tag).forEach(el => el.remove());
+                        clone.querySelectorAll(tag).forEach(
+                            el => el.remove()
+                        );
                     });
-
-                    // Get text content
                     return clone.innerText || clone.textContent || '';
                 }
-            """)
-
-            # Clean up whitespace
+            """
+            )
             lines = (line.strip() for line in content.splitlines())
             return "\n".join(line for line in lines if line)
 
