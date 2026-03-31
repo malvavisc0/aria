@@ -2,13 +2,13 @@
 
 # 🧠 Aria
 
-**Your Local AI Assistant with Unified Agent Intelligence**
+**Your local AI assistant with a unified tool-driven architecture**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-*Run powerful AI agents locally with a beautiful web UI, CLI, or desktop GUI*
+*Run a local AI assistant with a web UI, CLI, and desktop GUI*
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Agents](#-agent-system) • [Tools](#-tools) • [Installation](#-installation)
 
@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-| 🎯 | **Unified Agent Architecture** - Single agent with 33+ tools for any task |
+| 🎯 | **Unified Tool Architecture** - Consolidated tool registry with tiered domain loading |
 |:--:|:--|
 | 🖥️ | **Multiple Interfaces** - Web UI, CLI, and native GUI application |
 | 🤖 | **Local LLM Support** - Run models locally with llama.cpp integration |
@@ -60,7 +60,17 @@ aria-gui  # Launch desktop application
 
 ## 🤖 Agent System
 
-Aria uses a single unified agent with a comprehensive toolset:
+Aria is in the middle of a tool-first consolidation: the recent architecture work reduces duplicated specialist behavior and centers capability around one primary Aria agent plus a separate prompt-enhancement utility.
+
+### Recent Changes
+
+- Tooling was consolidated into **33 total tools** with a centralized registry and category-based loading.
+- Core and file tools are treated as always available, while domain tools load on demand.
+- Redundant tool variants were merged into unified interfaces such as [`python()`](docs/tools-inventory.md), `read_file`, `write_file`, `edit_file`, `web_search`, `download`, and `shell`.
+- New persistent capability areas now include a **knowledge store** plus system tools for **HTTP requests** and **process management**.
+- The specialist-agent model is being phased out in favor of a simpler unified workflow, while [`PromptEnhancerAgent`](src/aria/agents/prompt_enhancer.py:32) remains separate.
+
+### Current Tool Categories
 
 | Category | Tools | Capabilities |
 |:---------|:------|:-------------|
@@ -76,26 +86,41 @@ Aria uses a single unified agent with a comprehensive toolset:
 ### How It Works
 
 ```
-User Request → Aria (Unified Agent) → Tool Call → Response
+User Request → Aria → Registry-selected tools → Response
 ```
 
-Aria evaluates each request and selects the most appropriate tool to handle it directly.
+Aria evaluates each request, keeps core capabilities available by default, and pulls in domain-specific tools only when the task requires them.
 
 ---
 
 ## 🛠️ Tools
 
-Each agent has access to specialized tools:
+The recent tool redesign merged previously overlapping functions into a smaller, clearer inventory. The registry now organizes tools into always-loaded and on-demand domains.
 
 | Category | Tools |
 |:---------|:------|
-| 📁 **Files** | Read, write, search, manage files safely |
-| 🌐 **Search** | DuckDuckGo, weather, finance, YouTube transcripts |
-| 💻 **Shell** | Execute commands with platform-specific handling |
-| 🐍 **Development** | Python execution, syntax checking, debugging |
-| 🎬 **IMDb** | Movie/TV search, person lookup, episode guides |
-| 🧠 **Reasoning** | Step-by-step problem solving, scratchpad |
-| 🌍 **Browser** | Web automation, page interaction |
+| 🧠 **Core** | reasoning, plan, knowledge, scratchpad, web_search, download, get_current_weather, shell |
+| 📁 **Files** | read_file, write_file, edit_file, file_info, list_files, search_files, copy_file, delete_file, rename_file |
+| 🌍 **Web** | open_url, browser_click |
+| 🐍 **Development** | python |
+| 📊 **Finance** | fetch_current_stock_price, fetch_company_information, fetch_ticker_news |
+| 🎬 **Entertainment** | search_imdb_titles, get_movie_details, get_person_details, get_person_filmography, get_all_series_episodes, get_movie_reviews, get_movie_trivia, get_youtube_video_transcription |
+| 🖥️ **System** | http_request, process |
+
+For the full inventory, parameter reference, and category mapping, see [`docs/tools-inventory.md`](docs/tools-inventory.md).
+
+### Architecture Direction
+
+The current implementation direction documented in [`plans/agent-consolidation-review.md`](plans/agent-consolidation-review.md) is:
+
+1. Delete redundant tools.
+2. Merge overlapping tools into broader interfaces.
+3. Add the knowledge store.
+4. Add `http_request` and `process`.
+5. Consolidate specialist agents into a unified Aria workflow.
+6. Preserve specialist guidance as prompt sections instead of separate agents.
+
+This reduces routing complexity, lowers prompt overhead, and makes future capabilities easier to add.
 
 ---
 
