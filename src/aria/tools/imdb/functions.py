@@ -27,7 +27,11 @@ from imdbinfo import (
 )
 from loguru import logger
 
-from aria.tools import tool_error_response, tool_success_response
+from aria.tools import (
+    get_function_name,
+    tool_error_response,
+    tool_success_response,
+)
 from aria.tools.imdb.constants import (
     ERROR_EMPTY_IMDB_ID,
     ERROR_EMPTY_QUERY,
@@ -136,7 +140,9 @@ def _imdb_tool(
 
             if not isinstance(raw_id, str) or not raw_id.strip():
                 return tool_error_response(
-                    func.__name__, intent, ValueError(ERROR_EMPTY_IMDB_ID)
+                    get_function_name(),
+                    intent,
+                    ValueError(ERROR_EMPTY_IMDB_ID),
                 )
 
             normalized_id = raw_id.strip()
@@ -150,14 +156,18 @@ def _imdb_tool(
                     e
                 ):
                     return tool_error_response(
-                        func.__name__, intent, ValueError(expected_not_found)
+                        get_function_name(),
+                        intent,
+                        ValueError(expected_not_found),
                     )
-                logger.error(f"{func.__name__} validation error: {e}")
-                return tool_error_response(func.__name__, intent, e)
+                logger.error(f"{get_function_name()} validation error: {e}")
+                return tool_error_response(get_function_name(), intent, e)
             except Exception as e:
                 logger.error(f"{func.__name__} failed: {e}")
                 return tool_error_response(
-                    func.__name__, intent, RuntimeError(_classify_error(e))
+                    get_function_name(),
+                    intent,
+                    RuntimeError(_classify_error(e)),
                 )
 
         return wrapper
@@ -185,7 +195,7 @@ def search_imdb_titles(
 
     if not query or not query.strip():
         return tool_error_response(
-            "search_imdb_titles", intent, ValueError(ERROR_EMPTY_QUERY)
+            get_function_name(), intent, ValueError(ERROR_EMPTY_QUERY)
         )
 
     try:
@@ -199,7 +209,7 @@ def search_imdb_titles(
             and (not result.names or len(result.names) == 0)
         ):
             return tool_error_response(
-                "search_imdb_titles",
+                get_function_name(),
                 intent,
                 ValueError(ERROR_NO_RESULTS.format(query=query)),
             )
@@ -227,15 +237,15 @@ def search_imdb_titles(
         response = {"titles": titles, "names": names}
 
         logger.info(f"Found {len(titles)} titles, {len(names)} names")
-        return tool_success_response("search_imdb_titles", intent, response)
+        return tool_success_response(get_function_name(), intent, response)
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
-        return tool_error_response("search_imdb_titles", intent, e)
+        return tool_error_response(get_function_name(), intent, e)
     except Exception as e:
         logger.error(f"Search failed: {e}")
         return tool_error_response(
-            "search_imdb_titles", intent, RuntimeError(_classify_error(e))
+            get_function_name(), intent, RuntimeError(_classify_error(e))
         )
 
 
@@ -316,7 +326,7 @@ def get_movie_details(intent: str, imdb_id: str) -> str:
     }
 
     logger.info(f"Retrieved details for '{movie.title}' ({movie.year})")
-    return tool_success_response("get_movie_details", intent, result)
+    return tool_success_response(get_function_name(), intent, result)
 
 
 @_imdb_tool(
@@ -357,7 +367,7 @@ def get_person_details(intent: str, person_id: str) -> str:
     }
 
     logger.info(f"Retrieved details for person '{person.name}'")
-    return tool_success_response("get_person_details", intent, result)
+    return tool_success_response(get_function_name(), intent, result)
 
 
 @_imdb_tool(
@@ -405,7 +415,7 @@ def get_person_filmography(intent: str, person_id: str) -> str:
     }
 
     logger.info(f"Retrieved filmography for person_id='{person_id}'")
-    return tool_success_response("get_person_filmography", intent, result)
+    return tool_success_response(get_function_name(), intent, result)
 
 
 @_imdb_tool(ERROR_EPISODES_NOT_FOUND.format(imdb_id="{imdb_id}"))
@@ -451,7 +461,7 @@ def get_all_series_episodes(intent: str, imdb_id: str) -> str:
     }
 
     logger.info(f"Retrieved {len(episodes)} episodes for series '{imdb_id}'")
-    return tool_success_response("get_all_series_episodes", intent, result)
+    return tool_success_response(get_function_name(), intent, result)
 
 
 @_imdb_tool(ERROR_REVIEWS_NOT_FOUND.format(imdb_id="{imdb_id}"))
@@ -481,7 +491,7 @@ def get_movie_reviews(intent: str, imdb_id: str) -> str:
     }
 
     logger.info(f"Retrieved {len(reviews)} reviews for '{imdb_id}'")
-    return tool_success_response("get_movie_reviews", intent, result)
+    return tool_success_response(get_function_name(), intent, result)
 
 
 @_imdb_tool(ERROR_TRIVIA_NOT_FOUND.format(imdb_id="{imdb_id}"))
@@ -511,4 +521,4 @@ def get_movie_trivia(intent: str, imdb_id: str) -> str:
     }
 
     logger.info(f"Retrieved {len(trivia)} trivia items for '{imdb_id}'")
-    return tool_success_response("get_movie_trivia", intent, result)
+    return tool_success_response(get_function_name(), intent, result)

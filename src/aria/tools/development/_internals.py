@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from aria.tools import safe_json, tool_error_response, utc_timestamp
+from aria.tools import get_function_name, tool_error_response, utc_timestamp
 from aria.tools.constants import MAX_TIMEOUT
 from aria.tools.development.constants import RESTRICTED_BUILTINS
 from aria.tools.development.exceptions import PythonSecurityError
@@ -35,13 +35,27 @@ def _build_response(
     Returns:
         str: JSON formatted response string
     """
+    from aria.tools import tool_response
+
     metadata = {"timestamp": utc_timestamp()}
     if error:
         metadata["error"] = error
     metadata.update(metadata_fields)
 
-    response = {"operation": operation, "result": result, "metadata": metadata}
-    return safe_json(response)
+    if error:
+        return tool_response(
+            tool=operation,
+            intent="",
+            data={"error": error},
+            **metadata,
+        )
+
+    return tool_response(
+        tool=operation,
+        intent="",
+        data={"result": result, "tool": operation},
+        **metadata,
+    )
 
 
 def _error_response(
@@ -53,7 +67,7 @@ def _error_response(
     """Generate error response for Python runner operations.
 
     Args:
-        operation: The operation that failed
+        operation: The operation that failed (unused, kept for API compatibility)
         identifier: Code snippet or filename involved in the operation
         exc: The exception that occurred
         intent: The agent's stated intent for calling this tool
@@ -62,7 +76,7 @@ def _error_response(
         str: JSON formatted error response string
     """
     return tool_error_response(
-        tool=operation,
+        tool=get_function_name(depth=2),
         intent=intent,
         exc=exc,
         identifier=identifier,

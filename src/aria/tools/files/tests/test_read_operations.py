@@ -89,17 +89,17 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "file_exists"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert data["result"]["exists"] is True
-        assert data["result"]["is_file"] is True
-        assert data["result"]["is_directory"] is False
+        assert data["tool"] == "file_exists"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert data["data"]["exists"] is True
+        assert data["data"]["is_file"] is True
+        assert data["data"]["is_directory"] is False
 
         result = file_exists(
             "Testing non-existent file", str(self.base_dir / "nonexistent.txt")
         )
         data = json.loads(result)
-        assert data["result"]["exists"] is False
+        assert data["data"]["exists"] is False
 
     def test_get_directory_tree(self):
         result = get_directory_tree(
@@ -107,11 +107,11 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "get_directory_tree"
-        assert data["result"]["path"] == str(self.base_dir)
-        assert "tree" in data["result"]
-        assert "total_files" in data["result"]
-        assert "total_directories" in data["result"]
+        assert data["tool"] == "get_directory_tree"
+        assert data["data"]["path"] == str(self.base_dir)
+        assert "tree" in data["data"]
+        assert "total_files" in data["data"]
+        assert "total_directories" in data["data"]
 
     def test_get_file_info(self):
         result = get_file_info(
@@ -119,17 +119,17 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "get_file_info"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert data["result"]["total_lines"] == 5
-        assert data["result"]["size_bytes"] == 35
-        assert "size_mb" in data["result"]
-        assert "modified" in data["result"]
-        assert "created" in data["result"]
-        assert "is_directory" in data["result"]
-        assert "is_file" in data["result"]
-        assert "is_symlink" in data["result"]
-        assert data["result"]["mime_type"] is not None
+        assert data["tool"] == "get_file_info"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert data["data"]["total_lines"] == 5
+        assert data["data"]["size_bytes"] == 35
+        assert "size_mb" in data["data"]
+        assert "modified" in data["data"]
+        assert "created" in data["data"]
+        assert "is_directory" in data["data"]
+        assert "is_file" in data["data"]
+        assert "is_symlink" in data["data"]
+        assert data["data"]["mime_type"] is not None
 
     def test_get_file_permissions(self):
         result = get_file_permissions(
@@ -137,22 +137,22 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "get_file_permissions"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert "mode_octal" in data["result"]
-        assert "mode_symbolic" in data["result"]
-        assert "permissions" in data["result"]
-        assert "is_readable" in data["result"]
-        assert "is_writable" in data["result"]
+        assert data["tool"] == "get_file_permissions"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert "mode_octal" in data["data"]
+        assert "mode_symbolic" in data["data"]
+        assert "permissions" in data["data"]
+        assert "is_readable" in data["data"]
+        assert "is_writable" in data["data"]
 
     def test_list_files(self):
         result = list_files("Testing file listing")
         data = json.loads(result)
 
-        assert data["operation"] == "list_files"
-        assert data["result"]["pattern"] == "*"
-        assert len(data["result"]["files"]) >= 1
-        assert data["result"]["count"] >= 1
+        assert data["tool"] == "list_files"
+        assert data["data"]["pattern"] == "*"
+        assert len(data["data"]["files"]) >= 1
+        assert data["data"]["count"] >= 1
 
     def test_list_files_recursive_pattern(self):
         result = list_files(
@@ -160,11 +160,9 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "list_files"
-        assert data["result"]["pattern"] == "*.txt"
-        assert any(
-            path.endswith("test.txt") for path in data["result"]["files"]
-        )
+        assert data["tool"] == "list_files"
+        assert data["data"]["pattern"] == "*.txt"
+        assert any(path.endswith("test.txt") for path in data["data"]["files"])
 
     def test_read_file_chunk(self):
         result = read_file_chunk(
@@ -175,13 +173,13 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "read_file_chunk"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert len(data["result"]["lines"]) == 2
-        assert data["result"]["offset"] == 0
-        assert data["result"]["chunk_size"] == 2
-        assert data["result"]["total_lines"] == 5
-        assert data["result"]["has_more"] is True
+        assert data["tool"] == "read_file_chunk"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert len(data["data"]["lines"]) == 2
+        assert data["data"]["offset"] == 0
+        assert data["data"]["chunk_size"] == 2
+        assert data["data"]["total_lines"] == 5
+        assert data["data"]["has_more"] is True
 
     def test_read_full_file(self):
         result = read_full_file(
@@ -189,27 +187,27 @@ class TestReadOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "read_full_file"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert "content" in data["result"]
-        assert data["result"]["total_lines"] == 5
+        assert data["tool"] == "read_full_file"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert "content" in data["data"]
+        assert data["data"]["total_lines"] == 5
 
     def test_search_files_by_name(self):
         result = search_files_by_name("Testing file search", r".*\.txt")
         data = json.loads(result)
 
-        assert data["operation"] == "search_files_by_name"
-        assert data["result"]["pattern"] == r".*\.txt"
-        assert len(data["result"]["matches"]) >= 1
+        assert data["tool"] == "search_files_by_name"
+        assert data["data"]["pattern"] == r".*\.txt"
+        assert len(data["data"]["matches"]) >= 1
 
     def test_search_in_files(self):
         result = search_in_files("Testing content search", r"Line")
         data = json.loads(result)
 
-        assert data["operation"] == "search_in_files"
-        assert data["result"]["pattern"] == r"Line"
-        assert len(data["result"]["matches"]) >= 1
-        assert data["result"]["total_matches"] >= 1
+        assert data["tool"] == "search_in_files"
+        assert data["data"]["pattern"] == r"Line"
+        assert len(data["data"]["matches"]) >= 1
+        assert data["data"]["total_matches"] >= 1
 
     def test_read_file_chunk_exceeds_chunk_size(self):
         result = read_file_chunk(

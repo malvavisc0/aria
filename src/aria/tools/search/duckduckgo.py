@@ -1,11 +1,11 @@
 """DuckDuckGo-backed web search tool."""
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from ddgs import DDGS
 from loguru import logger
 
-from aria.tools import log_tool_call, safe_json, utc_timestamp
+from aria.tools import get_function_name, log_tool_call, tool_error_response
 from aria.tools.constants import DEFAULT_TIMEOUT
 from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
@@ -30,11 +30,10 @@ def duckduckgo_web_search(
     # Validate inputs
     validation_error = _validate_inputs(query, max_results)
     if validation_error:
-        return _create_error_response(validation_error)
+        return tool_error_response(
+            get_function_name(), intent, RuntimeError(validation_error)
+        )
 
-    # Prepare response structure
-    timestamp = utc_timestamp()
-    metadata: Dict[str, Any] = {"timestamp": timestamp, "error": None}
     results: List[Dict[str, str]] = []
 
     try:
@@ -64,18 +63,17 @@ def duckduckgo_web_search(
 
     except Exception as exc:
         error_msg = f"Web search failed: {str(exc)}"
-        metadata["error"] = error_msg
         logger.error(error_msg)
         # Log the full exception for debugging
         logger.debug(f"Full exception details: {type(exc).__name__}: {exc}")
+        return tool_error_response(get_function_name(), intent, exc)
 
     # Create and return final response
-    response = {
-        "operation": "web_search",
-        "result": results,
-        "metadata": metadata,
-    }
-    return safe_json(response)
+    from aria.tools import tool_success_response
+
+    return tool_success_response(
+        get_function_name(), intent, {"results": results}
+    )
 
 
 def _validate_inputs(query: str, max_results: Optional[int]) -> Optional[str]:
@@ -133,54 +131,3 @@ def _validate_inputs(query: str, max_results: Optional[int]) -> Optional[str]:
         return f"Invalid max_results: must not exceed {MAX_RESULTS_LIMIT}"
 
     return None
-
-
-def _create_error_response(error_message: str) -> str:
-    """
-    Create a standardized error response JSON string.
-
-    This internal function generates a consistent error response format when
-    validation fails or when search operations encounter issues. The response
-    follows the same structure as successful searches but with empty results
-    and error metadata.
-
-    Args:
-        error_message (str): The error message to include in the response.
-            This should be a descriptive error message from validation or
-            exception handling.
-
-    Returns:
-        str: A JSON formatted string containing:
-            - operation (str): The operation performed ("web_search")
-            - result (List[Dict]): Empty list since no results were found
-            - metadata (Dict): Additional information including:
-                * timestamp (str): ISO timestamp of when the error occurred
-                * error (str): The provided error message
-
-    Note:
-        This is an internal helper function used by web_search(). It's not
-        intended to be called directly by external code.
-
-    Example:
-        >>> error_response = _create_error_response(
-        ...     "Invalid query: must be a string"
-        ... )
-        >>> print(error_response)
-        {
-          "operation": "web_search",
-          "result": [],
-          "metadata": {
-            "timestamp": "2023-01-01T12:00:00.000000",
-            "error": "Invalid query: must be a string"
-          }
-        }
-    """
-    response = {
-        "operation": "web_search",
-        "result": [],
-        "metadata": {
-            "timestamp": utc_timestamp(),
-            "error": error_message,
-        },
-    }
-    return safe_json(response)

@@ -5,6 +5,7 @@ from typing import Dict, Optional
 from html_to_markdown import convert
 
 from aria.tools import (
+    get_function_name,
     log_tool_call,
     tool_error_response,
     tool_success_response,
@@ -15,9 +16,6 @@ from aria.tools.search._download_internals import (
     _save_content_to_file,
     _validate_format,
     _validate_url,
-)
-from aria.tools.search._youtube import (
-    get_youtube_video_transcription as _get_youtube_transcript,
 )
 from aria.tools.search.constants import DOWNLOADS_DIR, MAX_FILE_SIZE
 
@@ -115,33 +113,14 @@ def grab_from_url(
             result_data["content"] = markdown_content
 
         return tool_success_response(
-            "grab_from_url",
+            get_function_name(),
             intent,
             result_data,
         )
 
     except URLDownloadError as exc:
-        return tool_error_response("grab_from_url", intent, exc)
+        return tool_error_response(get_function_name(), intent, exc)
     except ContentParsingError as exc:
-        return tool_error_response("grab_from_url", intent, exc)
+        return tool_error_response(get_function_name(), intent, exc)
     except Exception as exc:
-        return tool_error_response("grab_from_url", intent, exc)
-
-
-# Re-export YouTube function for backwards compatibility
-def get_youtube_video_transcription(
-    intent: str,
-    url: str,
-    download_path: Optional[str] = None,
-) -> str:
-    """Save a YouTube video's full captions/transcript as a text file.
-
-    Args:
-        intent: Why you're getting the transcript
-        url: YouTube video URL
-        download_path: Optional path to save the transcript
-
-    Returns:
-        JSON string with file path and metadata
-    """
-    return _get_youtube_transcript(intent, url, download_path)
+        return tool_error_response(get_function_name(), intent, exc)

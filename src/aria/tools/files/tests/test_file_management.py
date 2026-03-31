@@ -45,13 +45,11 @@ class TestFileManagement:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "copy_file"
-        assert data["result"]["source"] == str(self.base_dir / "test.txt")
-        assert data["result"]["destination"] == str(
-            self.base_dir / "copied.txt"
-        )
-        assert data["result"]["bytes_copied"] == 35
-        assert data["result"]["success"] is True
+        assert data["tool"] == "copy_file"
+        assert data["data"]["source"] == str(self.base_dir / "test.txt")
+        assert data["data"]["destination"] == str(self.base_dir / "copied.txt")
+        assert data["data"]["bytes_copied"] == 35
+        assert data["data"]["success"] is True
 
     def test_delete_file(self):
         result = delete_file(
@@ -59,10 +57,10 @@ class TestFileManagement:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "delete_file"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert data["result"]["deleted"] is True
-        assert data["result"]["backup_created"] is True
+        assert data["tool"] == "delete_file"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert data["data"]["deleted"] is True
+        assert data["data"]["backup_created"] is True
         assert not (self.base_dir / "test.txt").exists()
         assert (self.base_dir / "test.txt.backup").exists()
 
@@ -74,10 +72,10 @@ class TestFileManagement:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "rename_file"
-        assert data["result"]["old_name"] == str(self.base_dir / "test.txt")
-        assert data["result"]["new_name"] == str(self.base_dir / "moved.txt")
-        assert data["result"]["success"] is True
+        assert data["tool"] == "rename_file"
+        assert data["data"]["old_name"] == str(self.base_dir / "test.txt")
+        assert data["data"]["new_name"] == str(self.base_dir / "moved.txt")
+        assert data["data"]["success"] is True
 
     def test_rename_file(self):
         result = rename_file(
@@ -87,7 +85,7 @@ class TestFileManagement:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "rename_file"
-        assert data["result"]["old_name"] == str(self.base_dir / "test.txt")
-        assert data["result"]["new_name"] == str(self.base_dir / "renamed.txt")
-        assert data["result"]["success"] is True
+        assert data["tool"] == "rename_file"
+        assert data["data"]["old_name"] == str(self.base_dir / "test.txt")
+        assert data["data"]["new_name"] == str(self.base_dir / "renamed.txt")
+        assert data["data"]["success"] is True

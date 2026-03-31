@@ -88,12 +88,9 @@ def tool_success_response(
     Returns:
         JSON string with standardized success format.
     """
-    # Handle missing/empty intent with fallback
+
     if not intent or not intent.strip():
         intent = f"unspecified_{tool}_operation"
-        logger.warning(
-            f"Missing intent for tool '{tool}', using fallback: {intent}"
-        )
 
     response: Dict[str, Any] = {
         "status": "success",
@@ -125,13 +122,6 @@ def tool_error_response(
     Returns:
         JSON string with standardized error format.
     """
-    # Handle missing/empty intent with fallback
-    if not intent or not intent.strip():
-        intent = f"unspecified_{tool}_operation"
-        logger.warning(
-            f"Missing intent for tool '{tool}', using fallback: {intent}"
-        )
-
     error_code = getattr(exc, "code", type(exc).__name__.upper())
     recoverable = getattr(exc, "recoverable", False)
     how_to_fix = getattr(exc, "how_to_fix", None)

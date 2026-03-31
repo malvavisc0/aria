@@ -14,7 +14,11 @@ from youtube_transcript_api import (
 )
 from youtube_transcript_api.formatters import TextFormatter
 
-from aria.tools import tool_error_response, tool_success_response
+from aria.tools import (
+    get_function_name,
+    tool_error_response,
+    tool_success_response,
+)
 from aria.tools.search._download_internals import (
     _save_content_to_file,
     _validate_url,
@@ -88,16 +92,14 @@ def get_youtube_video_transcription(
         validated_url = _validate_url(url)
     except URLDownloadError as exc:
         logger.error(f"Invalid URL for YouTube transcription: {exc}")
-        return tool_error_response(
-            "get_youtube_video_transcription", intent, exc
-        )
+        return tool_error_response(get_function_name(), intent, exc)
 
     video_id = _extract_video_id(validated_url)
     if not video_id:
         error_msg = "Could not extract YouTube video ID from URL"
         logger.error(error_msg)
         return tool_error_response(
-            "get_youtube_video_transcription", intent, RuntimeError(error_msg)
+            get_function_name(), intent, RuntimeError(error_msg)
         )
 
     logger.debug(f"Extracted video ID: {video_id} from {validated_url}")
@@ -121,7 +123,7 @@ def get_youtube_video_transcription(
         metadata["estimated_duration"] = duration
 
         return tool_success_response(
-            "get_youtube_video_transcription",
+            get_function_name(),
             intent,
             {"file_path": file_path, "metadata": metadata},
         )
@@ -133,17 +135,17 @@ def get_youtube_video_transcription(
         )
         logger.warning(error_msg)
         return tool_error_response(
-            "get_youtube_video_transcription", intent, RuntimeError(error_msg)
+            get_function_name(), intent, RuntimeError(error_msg)
         )
     except TranscriptsDisabled:
         error_msg = f"Transcripts disabled for video {video_id} by uploader."
         logger.warning(error_msg)
         return tool_error_response(
-            "get_youtube_video_transcription", intent, RuntimeError(error_msg)
+            get_function_name(), intent, RuntimeError(error_msg)
         )
     except Exception as exc:
         error_msg = f"Failed to get YouTube transcription from {url}: {exc}"
         logger.error(error_msg)
         return tool_error_response(
-            "get_youtube_video_transcription", intent, RuntimeError(error_msg)
+            get_function_name(), intent, RuntimeError(error_msg)
         )

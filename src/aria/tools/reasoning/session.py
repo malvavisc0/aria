@@ -214,11 +214,11 @@ class ReasoningSession:
                     tool_name="use_scratchpad",
                     intent=intent,
                     timestamp=now,
-                    payload={"operation": "set", "key": key},
+                    payload={"tool": "set", "key": key},
                 )
 
                 return {
-                    "operation": "set",
+                    "tool": "set",
                     "key": key,
                     "value": value,
                     "intent": intent,
@@ -227,7 +227,7 @@ class ReasoningSession:
             case "get":
                 if key in self.scratchpad:
                     return {
-                        "operation": "get",
+                        "tool": "get",
                         "key": key,
                         "value": self.scratchpad[key]["value"],
                         "timestamp": now,
@@ -242,12 +242,12 @@ class ReasoningSession:
             case "list":
                 if not self.scratchpad:
                     return {
-                        "operation": "list",
+                        "tool": "list",
                         "items": [],
                         "timestamp": now,
                     }
                 return {
-                    "operation": "list",
+                    "tool": "list",
                     "items": [
                         {
                             "key": k,
@@ -267,10 +267,10 @@ class ReasoningSession:
                         tool_name="use_scratchpad",
                         intent=intent,
                         timestamp=now,
-                        payload={"operation": "clear", "key": "all"},
+                        payload={"tool": "clear", "key": "all"},
                     )
                     return {
-                        "operation": "clear",
+                        "tool": "clear",
                         "key": "all",
                         "timestamp": now,
                     }
@@ -289,10 +289,10 @@ class ReasoningSession:
                     tool_name="use_scratchpad",
                     intent=intent,
                     timestamp=now,
-                    payload={"operation": "clear", "key": key},
+                    payload={"tool": "clear", "key": key},
                 )
                 return {
-                    "operation": "clear",
+                    "tool": "clear",
                     "key": key,
                     "timestamp": now,
                 }

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
 
-from aria.tools import utc_timestamp
+from aria.tools import get_function_name, utc_timestamp
 from aria.tools.shell.constants import CURRENT_OS, MAX_OUTPUT_SIZE
 from aria.tools.shell.validation import _extract_command_name
 
@@ -43,8 +43,11 @@ def _build_response(
         Response dictionary with operation, result, and metadata.
     """
     return {
-        "operation": operation,
-        "result": {
+        "status": "success",
+        "tool": get_function_name(),
+        "intent": "",
+        "timestamp": utc_timestamp(),
+        "data": {
             "stdout": stdout[:MAX_OUTPUT_SIZE] if stdout else "",
             "stderr": stderr[:MAX_OUTPUT_SIZE] if stderr else "",
             "return_code": return_code,
@@ -53,9 +56,6 @@ def _build_response(
             "command": command,
             "platform": CURRENT_OS,
             "working_dir": working_dir,
-        },
-        "metadata": {
-            "timestamp": utc_timestamp(),
         },
     }
 

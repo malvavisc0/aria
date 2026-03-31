@@ -5,13 +5,13 @@ from typing import List, Optional
 
 from loguru import logger
 
-from aria.tools import safe_json, utc_timestamp
 from aria.tools.decorators import tool_function
 from aria.tools.files._internals import (
     _create_backup,
     _secure_resolve_dir,
     _secure_resolve_path,
 )
+from aria.tools.files._responses import file_success_response
 from aria.tools.files.decorators import (
     with_file_operation_error_handling,
     with_input_validation,
@@ -154,18 +154,14 @@ def append_to_file(intent: str, file_name: str, contents: str) -> str:
     new_file_size = resolved_path.stat().st_size
 
     # Build and return response
-    result = {
-        "operation": "append_to_file",
-        "result": {
-            "file_name": file_name,
-            "bytes_appended": bytes_appended,
-            "new_total_lines": new_total_lines,
-            "new_file_size": new_file_size,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "bytes_appended": bytes_appended,
+        "new_total_lines": new_total_lines,
+        "new_file_size": new_file_size,
     }
     logger.info(f"Successfully appended {bytes_appended} bytes to {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -195,17 +191,13 @@ def create_directory(intent: str, dir_name: str) -> str:
     dir_path.mkdir(parents=True, exist_ok=True)
 
     # Build and return response
-    result = {
-        "operation": "create_directory",
-        "result": {
-            "dir_name": dir_name,
-            "created": not already_existed,
-            "already_existed": already_existed,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "dir_name": dir_name,
+        "created": not already_existed,
+        "already_existed": already_existed,
     }
     logger.info(f"Successfully created directory: {dir_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -246,20 +238,16 @@ def delete_lines_range(
     )
 
     # Build and return response
-    result = {
-        "operation": "delete_lines_range",
-        "result": {
-            "file_name": file_name,
-            "lines_deleted": length,
-            "offset": offset,
-            "old_total_lines": old_total_lines,
-            "new_total_lines": new_total_lines,
-            "backup_created": backup_path is not None,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "lines_deleted": length,
+        "offset": offset,
+        "old_total_lines": old_total_lines,
+        "new_total_lines": new_total_lines,
+        "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully deleted {length} lines from {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -296,19 +284,15 @@ def insert_lines_at(
     )
 
     # Build and return response
-    result = {
-        "operation": "insert_lines_at",
-        "result": {
-            "file_name": file_name,
-            "lines_inserted": len(new_lines),
-            "offset": offset,
-            "old_total_lines": old_total_lines,
-            "new_total_lines": new_total_lines,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "lines_inserted": len(new_lines),
+        "offset": offset,
+        "old_total_lines": old_total_lines,
+        "new_total_lines": new_total_lines,
     }
     logger.info(f"Successfully inserted {len(new_lines)} lines in {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -351,21 +335,17 @@ def replace_lines_range(
     )
 
     # Build and return response
-    result = {
-        "operation": "replace_lines_range",
-        "result": {
-            "file_name": file_name,
-            "lines_replaced": length,
-            "new_lines_inserted": len(new_lines),
-            "offset": offset,
-            "old_total_lines": old_total_lines,
-            "new_total_lines": new_total_lines,
-            "backup_created": backup_path is not None,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "lines_replaced": length,
+        "new_lines_inserted": len(new_lines),
+        "offset": offset,
+        "old_total_lines": old_total_lines,
+        "new_total_lines": new_total_lines,
+        "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully replaced {length} lines in {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -412,16 +392,12 @@ def write_full_file(intent: str, file_name: str, contents: str) -> str:
         lines_written += 1
 
     # Build and return response
-    result = {
-        "operation": "write_full_file",
-        "result": {
-            "file_name": file_name,
-            "bytes_written": bytes_written,
-            "lines_written": lines_written,
-            "created": not file_existed,
-            "backup_created": backup_path is not None,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "bytes_written": bytes_written,
+        "lines_written": lines_written,
+        "created": not file_existed,
+        "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully wrote {bytes_written} bytes to {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)

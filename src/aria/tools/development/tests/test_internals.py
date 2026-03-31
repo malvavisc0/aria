@@ -93,17 +93,17 @@ class TestBuildResponse:
         """Test building successful response"""
         result = _build_response("test_op", result={"data": "value"})
         parsed = json.loads(result)
-        assert parsed["operation"] == "test_op"
-        assert parsed["result"]["data"] == "value"
-        assert "timestamp" in parsed["metadata"]
+        assert parsed["data"]["tool"] == "test_op"
+        assert parsed["data"]["result"]["data"] == "value"
+        assert "timestamp" in parsed["context"]
 
     def test_build_response_with_error(self):
         """Test building error response"""
         result = _build_response("test_op", error="Something went wrong")
         parsed = json.loads(result)
-        assert parsed["operation"] == "test_op"
-        assert parsed["result"] is None
-        assert parsed["metadata"]["error"] == "Something went wrong"
+        assert parsed["status"] == "success"
+        assert parsed["data"]["error"] == "Something went wrong"
+        assert parsed["context"]["error"] == "Something went wrong"
 
     def test_build_response_with_metadata(self):
         """Test building response with additional metadata"""
@@ -111,7 +111,7 @@ class TestBuildResponse:
             "test_op", result={"data": "value"}, custom_field="custom_value"
         )
         parsed = json.loads(result)
-        assert parsed["metadata"]["custom_field"] == "custom_value"
+        assert parsed["context"]["custom_field"] == "custom_value"
 
 
 class TestErrorResponse:

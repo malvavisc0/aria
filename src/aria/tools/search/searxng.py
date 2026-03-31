@@ -6,7 +6,11 @@ from urllib.parse import urlencode
 
 import httpx
 
-from aria.tools import safe_json, utc_timestamp
+from aria.tools import (
+    get_function_name,
+    tool_error_response,
+    tool_success_response,
+)
 
 SEARXNG_URL = getenv("SEARXNG_URL", "").rstrip("/")
 _REQUEST_TIMEOUT_SECONDS = 10.0
@@ -101,18 +105,25 @@ def searxng_web_search(
         - `metadata`: Request parameters, success flags, stats.
     """
     if not SEARXNG_URL:
-        return _create_error_response(
-            "SEARXNG_URL environment variable is not set"
+        return tool_error_response(
+            get_function_name(),
+            intent,
+            RuntimeError("SEARXNG_URL environment variable is not set"),
         )
     if not query:
-        return _create_error_response("query cannot be empty")
+        return tool_error_response(
+            get_function_name(), intent, RuntimeError("query cannot be empty")
+        )
     if max_results < 1:
-        return _create_error_response("max_results must be positive")
+        return tool_error_response(
+            get_function_name(),
+            intent,
+            RuntimeError("max_results must be positive"),
+        )
 
     # Calculate pages needed (approx 10 results per page)
     pages = max(1, (max_results + 9) // 10)
 
-    timestamp = utc_timestamp()
     results: list[dict[str, Any]] = []
     page_errors: list[dict[str, Any]] = []
     dropped_results = 0
@@ -154,7 +165,7 @@ def searxng_web_search(
                     break
 
     except Exception as exc:
-        return _create_error_response(str(exc))
+        return tool_error_response(get_function_name(), intent, exc)
 
     # Trim to max_results
     results = results[:max_results]
@@ -162,31 +173,26 @@ def searxng_web_search(
     success = stats["succeeded"] > 0
     error_message = _build_error_message(stats=stats, page_errors=page_errors)
 
-    return safe_json(
+    return tool_success_response(
+        get_function_name(),
+        intent,
         {
-            "result": {
-                "count": len(results),
-                "findings": results,
-            },
+            "count": len(results),
+            "findings": results,
             "error": error_message,
-            "metadata": {
-                "timestamp": timestamp,
-                "reason": intent,
-                "params": {
-                    "query": query,
-                    "category": category,
-                    "time_range": time_range,
-                    "max_results": max_results,
-                    "pages_requested": pages,
-                },
-                "operation": "searxng_web_search",
-                "success": success,
-                "partial_success": success and stats["failed"] > 0,
-                "page_stats": stats,
-                "dropped_results": dropped_results,
-                "page_errors": page_errors,
+            "params": {
+                "query": query,
+                "category": category,
+                "time_range": time_range,
+                "max_results": max_results,
+                "pages_requested": pages,
             },
-        }
+            "success": success,
+            "partial_success": success and stats["failed"] > 0,
+            "page_stats": stats,
+            "dropped_results": dropped_results,
+            "page_errors": page_errors,
+        },
     )
 
 
@@ -283,19 +289,4 @@ def _build_error_message(
     return (
         f"Partial search failure: {stats['failed']} of {stats['requested']} "
         f"page requests failed. First error: {first_error}"
-    )
-
-
-def _create_error_response(error_message: str) -> str:
-    """Create a standardized error response."""
-    return safe_json(
-        {
-            "result": {"count": 0, "findings": []},
-            "error": error_message,
-            "metadata": {
-                "timestamp": utc_timestamp(),
-                "operation": "searxng_web_search",
-                "success": False,
-            },
-        }
     )

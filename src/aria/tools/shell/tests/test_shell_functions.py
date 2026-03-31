@@ -70,10 +70,10 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "execute_command"
-        assert data["result"]["return_code"] == 0
-        assert "hello" in data["result"]["stdout"]
-        assert data["result"]["timed_out"] is False
+        assert data["tool"] == "execute_command"
+        assert data["data"]["return_code"] == 0
+        assert "hello" in data["data"]["stdout"]
+        assert data["data"]["timed_out"] is False
 
     def test_execute_command_with_timeout(self):
         """Test command execution with custom timeout."""
@@ -85,7 +85,7 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert data["result"]["return_code"] == 0
+        assert data["data"]["return_code"] == 0
 
     def test_execute_command_with_working_dir(self):
         """Test command execution with custom working directory."""
@@ -99,8 +99,8 @@ class TestExecuteCommand:
             )
             data = json.loads(result)
 
-            assert data["result"]["return_code"] == 0
-            assert tmpdir in data["result"]["working_dir"]
+            assert data["data"]["return_code"] == 0
+            assert tmpdir in data["data"]["working_dir"]
 
     def test_execute_command_treats_shell_operators_as_literal_args(self):
         """Test that shell operators in args are treated as literal text."""
@@ -112,8 +112,8 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert data["result"]["return_code"] == 0
-        assert "hello | world" in data["result"]["stdout"]
+        assert data["data"]["return_code"] == 0
+        assert "hello | world" in data["data"]["stdout"]
 
     def test_execute_command_timeout(self):
         """Test command execution timeout."""
@@ -125,7 +125,7 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert data["result"]["timed_out"] is True
+        assert data["data"]["timed_out"] is True
 
     def test_execute_command_error_handling(self):
         """Test command execution with non-zero exit code."""
@@ -137,7 +137,7 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert data["result"]["return_code"] == 1
+        assert data["data"]["return_code"] == 1
 
     def test_execute_blocked_command_raises_error(self):
         """Test that executing a blocked command raises CommandBlockedError."""
@@ -149,8 +149,8 @@ class TestExecuteCommand:
                 timeout=5,
             )
 
-    def test_response_has_metadata(self):
-        """Test that response includes metadata with timestamp."""
+    def test_response_has_timestamp(self):
+        """Test that response includes timestamp at top level."""
         result = execute_command(
             intent="Test metadata",
             command_name="echo",
@@ -159,8 +159,7 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert "metadata" in data
-        assert "timestamp" in data["metadata"]
+        assert "timestamp" in data
 
     def test_response_has_platform(self):
         """Test that response includes platform info."""
@@ -172,8 +171,8 @@ class TestExecuteCommand:
         )
         data = json.loads(result)
 
-        assert "platform" in data["result"]
-        assert data["result"]["platform"] in ["windows", "linux", "darwin"]
+        assert "platform" in data["data"]
+        assert data["data"]["platform"] in ["windows", "linux", "darwin"]
 
     def test_execute_command_with_args(self):
         """Test executing command with arguments."""
@@ -189,8 +188,8 @@ class TestExecuteCommand:
             )
             data = json.loads(result)
 
-            assert data["result"]["return_code"] == 0
-            assert "test content" in data["result"]["stdout"]
+            assert data["data"]["return_code"] == 0
+            assert "test content" in data["data"]["stdout"]
 
     def test_execute_command_not_found_returns_127(self):
         """Test that a whitelisted but missing command returns 127."""
@@ -205,7 +204,7 @@ class TestExecuteCommand:
             data = json.loads(result)
             # On Linux, vm_stat won't be found
             # On macOS, it will succeed — both are valid outcomes
-            assert data["result"]["return_code"] in [0, 127]
+            assert data["data"]["return_code"] in [0, 127]
 
 
 class TestExecuteCommandBatch:
@@ -224,10 +223,10 @@ class TestExecuteCommandBatch:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "execute_command_batch"
-        assert data["result"]["success_count"] == 2
-        assert data["result"]["failure_count"] == 0
-        assert data["result"]["stopped_early"] is False
+        assert data["tool"] == "execute_command_batch"
+        assert data["data"]["success_count"] == 2
+        assert data["data"]["failure_count"] == 0
+        assert data["data"]["stopped_early"] is False
 
     def test_execute_batch_with_error(self):
         """Test executing a batch with one failing command."""
@@ -243,9 +242,9 @@ class TestExecuteCommandBatch:
         )
         data = json.loads(result)
 
-        assert data["result"]["success_count"] == 1
-        assert data["result"]["failure_count"] >= 1
-        assert data["result"]["stopped_early"] is True
+        assert data["data"]["success_count"] == 1
+        assert data["data"]["failure_count"] >= 1
+        assert data["data"]["stopped_early"] is True
 
     def test_execute_batch_continue_on_error(self):
         """Test executing a batch with continue_on_error flag."""
@@ -261,11 +260,11 @@ class TestExecuteCommandBatch:
         )
         data = json.loads(result)
 
-        assert data["result"]["success_count"] == 2
-        assert data["result"]["stopped_early"] is False
+        assert data["data"]["success_count"] == 2
+        assert data["data"]["stopped_early"] is False
 
-    def test_execute_batch_metadata(self):
-        """Test that batch response includes metadata."""
+    def test_execute_batch_has_timestamp(self):
+        """Test that batch response includes timestamp."""
         commands = [{"command": "echo test"}]
         result = execute_command_batch(
             intent="Test batch metadata",
@@ -273,8 +272,8 @@ class TestExecuteCommandBatch:
         )
         data = json.loads(result)
 
-        assert "metadata" in data
-        assert data["metadata"]["total_commands"] == 1
+        assert "timestamp" in data
+        assert data["data"]["success_count"] == 1
 
 
 class TestGetPlatformInfo:
@@ -285,13 +284,13 @@ class TestGetPlatformInfo:
         result = get_platform_info(intent="Test platform info")
         data = json.loads(result)
 
-        assert data["operation"] == "get_platform_info"
-        assert "os" in data["result"]
-        assert "shell" in data["result"]
-        assert "home" in data["result"]
-        assert "path_separator" in data["result"]
-        assert "temp_dir" in data["result"]
-        assert "python_path" in data["result"]
+        assert data["tool"] == "get_platform_info"
+        assert "os" in data["data"]
+        assert "shell" in data["data"]
+        assert "home" in data["data"]
+        assert "path_separator" in data["data"]
+        assert "temp_dir" in data["data"]
+        assert "python_path" in data["data"]
 
     def test_platform_info_contains_valid_os(self):
         """Test that platform info contains a valid OS value."""
@@ -299,14 +298,14 @@ class TestGetPlatformInfo:
         data = json.loads(result)
 
         # CURRENT_OS returns "darwin" for macOS, not "macos"
-        assert data["result"]["os"] in ["windows", "linux", "darwin"]
+        assert data["data"]["os"] in ["windows", "linux", "darwin"]
 
     def test_platform_info_path_separator(self):
         """Test that path separator matches the OS."""
         result = get_platform_info(intent="Test path separator")
         data = json.loads(result)
 
-        if data["result"]["os"] == "windows":
-            assert data["result"]["path_separator"] == "\\"
+        if data["data"]["os"] == "windows":
+            assert data["data"]["path_separator"] == "\\"
         else:
-            assert data["result"]["path_separator"] == "/"
+            assert data["data"]["path_separator"] == "/"

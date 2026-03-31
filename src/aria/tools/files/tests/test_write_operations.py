@@ -62,10 +62,10 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "append_to_file"
-        assert data["result"]["file_name"] == str(self.base_dir / "test.txt")
-        assert data["result"]["bytes_appended"] == 9
-        assert data["result"]["new_total_lines"] == 6
+        assert data["tool"] == "append_to_file"
+        assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
+        assert data["data"]["bytes_appended"] == 9
+        assert data["data"]["new_total_lines"] == 6
 
     def test_create_directory(self):
         result = create_directory(
@@ -74,11 +74,11 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "create_directory"
-        assert data["result"]["dir_name"] == str(
+        assert data["tool"] == "create_directory"
+        assert data["data"]["dir_name"] == str(
             self.base_dir / "new_dir" / "subdir"
         )
-        assert data["result"]["created"] is True
+        assert data["data"]["created"] is True
 
     def test_delete_lines_range(self):
         result = delete_lines_range(
@@ -86,11 +86,11 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "delete_lines_range"
-        assert data["result"]["lines_deleted"] == 2
-        assert data["result"]["old_total_lines"] == 5
-        assert data["result"]["new_total_lines"] == 3
-        assert data["result"]["backup_created"] is True
+        assert data["tool"] == "delete_lines_range"
+        assert data["data"]["lines_deleted"] == 2
+        assert data["data"]["old_total_lines"] == 5
+        assert data["data"]["new_total_lines"] == 3
+        assert data["data"]["backup_created"] is True
 
     def test_insert_lines_at(self):
         result = insert_lines_at(
@@ -101,10 +101,10 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "insert_lines_at"
-        assert data["result"]["lines_inserted"] == 1
-        assert data["result"]["offset"] == 1
-        assert data["result"]["new_total_lines"] == 6
+        assert data["tool"] == "insert_lines_at"
+        assert data["data"]["lines_inserted"] == 1
+        assert data["data"]["offset"] == 1
+        assert data["data"]["new_total_lines"] == 6
 
     def test_replace_lines_range(self):
         result = replace_lines_range(
@@ -116,12 +116,12 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "replace_lines_range"
-        assert data["result"]["lines_replaced"] == 2
-        assert data["result"]["new_lines_inserted"] == 2
-        assert data["result"]["old_total_lines"] == 5
-        assert data["result"]["new_total_lines"] == 5
-        assert data["result"]["backup_created"] is True
+        assert data["tool"] == "replace_lines_range"
+        assert data["data"]["lines_replaced"] == 2
+        assert data["data"]["new_lines_inserted"] == 2
+        assert data["data"]["old_total_lines"] == 5
+        assert data["data"]["new_total_lines"] == 5
+        assert data["data"]["backup_created"] is True
 
     def test_write_full_file(self):
         result = write_full_file(
@@ -131,14 +131,12 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "write_full_file"
-        assert data["result"]["file_name"] == str(
-            self.base_dir / "new_file.txt"
-        )
-        assert data["result"]["bytes_written"] == 24
-        assert data["result"]["lines_written"] == 2
-        assert data["result"]["created"] is True
-        assert data["result"]["backup_created"] is False
+        assert data["tool"] == "write_full_file"
+        assert data["data"]["file_name"] == str(self.base_dir / "new_file.txt")
+        assert data["data"]["bytes_written"] == 24
+        assert data["data"]["lines_written"] == 2
+        assert data["data"]["created"] is True
+        assert data["data"]["backup_created"] is False
 
         new_file = self.base_dir / "new_file.txt"
         assert new_file.exists()
@@ -154,8 +152,8 @@ class TestWriteOperations:
         )
         data = json.loads(result)
 
-        assert data["operation"] == "write_full_file"
-        assert data["result"]["backup_created"] is True
+        assert data["tool"] == "write_full_file"
+        assert data["data"]["backup_created"] is True
 
     def test_write_full_file_exceeds_size_limit(self):
         large_content = "A" * (100 * 1024 * 1024 + 1)
@@ -209,8 +207,8 @@ class TestWriteOperations:
             "",
         )
         data = json.loads(result)
-        assert data["result"]["lines_written"] == 0
-        assert data["result"]["bytes_written"] == 0
+        assert data["data"]["lines_written"] == 0
+        assert data["data"]["bytes_written"] == 0
 
     def test_write_full_file_lines_written_single_no_newline(self):
         """Single line without trailing newline should report 1 line."""
@@ -221,8 +219,8 @@ class TestWriteOperations:
             content,
         )
         data = json.loads(result)
-        assert data["result"]["lines_written"] == 1
-        assert data["result"]["bytes_written"] == len(content.encode("utf-8"))
+        assert data["data"]["lines_written"] == 1
+        assert data["data"]["bytes_written"] == len(content.encode("utf-8"))
 
     def test_write_full_file_lines_written_single_with_newline(self):
         """Single line with trailing newline should report 1 line."""
@@ -233,7 +231,7 @@ class TestWriteOperations:
             content,
         )
         data = json.loads(result)
-        assert data["result"]["lines_written"] == 1
+        assert data["data"]["lines_written"] == 1
 
     def test_write_full_file_lines_written_multiple_no_trailing_newline(self):
         """Multiple lines without trailing newline count as newlines + 1."""
@@ -245,8 +243,8 @@ class TestWriteOperations:
         )
         data = json.loads(result)
         # 2 newlines + 1 = 3 lines
-        assert data["result"]["lines_written"] == 3
-        assert data["result"]["bytes_written"] == len(content.encode("utf-8"))
+        assert data["data"]["lines_written"] == 3
+        assert data["data"]["bytes_written"] == len(content.encode("utf-8"))
 
     def test_write_full_file_lines_written_only_newlines(self):
         """Content with only newlines should count newline characters."""
@@ -258,7 +256,7 @@ class TestWriteOperations:
         )
         data = json.loads(result)
         # 3 newline characters = 3 lines
-        assert data["result"]["lines_written"] == 3
+        assert data["data"]["lines_written"] == 3
 
     def test_write_full_file_lines_written_crlf(self):
         """Content with CRLF line endings should count correctly."""
@@ -271,7 +269,7 @@ class TestWriteOperations:
         data = json.loads(result)
         # Should count \n characters, not \r\n pairs
         # \n\n\n results in 3 lines when there's trailing content
-        assert data["result"]["lines_written"] == 3
+        assert data["data"]["lines_written"] == 3
 
     def test_write_full_file_bytes_written_utf8(self):
         """UTF-8 content with non-ASCII chars should count bytes correctly."""
@@ -282,8 +280,8 @@ class TestWriteOperations:
             content,
         )
         data = json.loads(result)
-        assert data["result"]["bytes_written"] == len(content.encode("utf-8"))
-        assert data["result"]["lines_written"] == 1
+        assert data["data"]["bytes_written"] == len(content.encode("utf-8"))
+        assert data["data"]["lines_written"] == 1
 
     def test_directory_operations_with_invalid_paths(self):
         result = create_directory("Testing invalid path", "../outside")

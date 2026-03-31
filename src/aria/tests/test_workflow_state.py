@@ -209,13 +209,17 @@ class TestStateReducerToolCallResult:
 
     def test_appends_tool_call_record(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result("duckduckgo_web_search", {"query": "test"}, "results")
+        ev = _make_tool_call_result(
+            "duckduckgo_web_search", {"query": "test"}, "results"
+        )
         state_reducer(state, ev)
         assert len(state["tool_calls"]) == 1
 
     def test_tool_call_record_fields_success(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result("duckduckgo_web_search", {"query": "test"}, "results")
+        ev = _make_tool_call_result(
+            "duckduckgo_web_search", {"query": "test"}, "results"
+        )
         state_reducer(state, ev)
         record = state["tool_calls"][0]
         assert record["agent"] == "Aria"
@@ -352,7 +356,9 @@ class TestStatefulAgentWorkflowReduceState:
 
         result = await workflow.reduce_state(
             ctx,
-            _make_tool_call_result("duckduckgo_web_search", {"query": "test"}, "results"),
+            _make_tool_call_result(
+                "duckduckgo_web_search", {"query": "test"}, "results"
+            ),
         )
 
         assert result["tool_calls"][0]["tool"] == "duckduckgo_web_search"

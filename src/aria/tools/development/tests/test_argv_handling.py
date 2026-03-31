@@ -33,8 +33,8 @@ for i in range(args.count):
         result = execute_python_code("Testing argparse", code)
         result_dict = json.loads(result)
 
-        assert result_dict["result"]["success"] is True
-        assert "Hello, World!" in result_dict["result"]["stdout"]
+        assert result_dict["data"]["result"]["success"] is True
+        assert "Hello, World!" in result_dict["data"]["result"]["stdout"]
 
     def test_argparse_with_custom_argv(self):
         """Test that argparse works with custom argv values."""
@@ -57,8 +57,8 @@ for i in range(args.count):
         )
         result_dict = json.loads(result)
 
-        assert result_dict["result"]["success"] is True
-        stdout = result_dict["result"]["stdout"]
+        assert result_dict["data"]["result"]["success"] is True
+        stdout = result_dict["data"]["result"]["stdout"]
         assert "Hello, Alice!" in stdout
         assert stdout.count("Hello, Alice!") == 3
 
@@ -72,8 +72,8 @@ sys.exit(0)
         result = execute_python_code("Testing sys.exit(0)", code)
         result_dict = json.loads(result)
 
-        assert result_dict["result"]["success"] is True
-        assert result_dict["result"]["exit_code"] == 0
+        assert result_dict["data"]["result"]["success"] is True
+        assert result_dict["data"]["result"]["exit_code"] == 0
 
     def test_sys_exit_nonzero(self):
         """Test that sys.exit(1) is handled and marked as failure."""
@@ -85,8 +85,8 @@ sys.exit(1)
         result = execute_python_code("Testing sys.exit(1)", code)
         result_dict = json.loads(result)
 
-        assert result_dict["result"]["success"] is False
-        assert result_dict["result"]["exit_code"] == 1
+        assert result_dict["data"]["result"]["success"] is False
+        assert result_dict["data"]["result"]["exit_code"] == 1
 
     def test_argparse_help_flag(self):
         """Test that argparse --help is handled gracefully."""
@@ -105,8 +105,8 @@ print(f"Hello, {args.name}!")
         result_dict = json.loads(result)
 
         # --help causes sys.exit(0), which should be success
-        assert result_dict["result"]["success"] is True
-        assert result_dict["result"]["exit_code"] == 0
+        assert result_dict["data"]["result"]["success"] is True
+        assert result_dict["data"]["result"]["exit_code"] == 0
 
     def test_argv_isolation(self):
         """Test that sys.argv changes don't affect parent process."""
@@ -120,8 +120,11 @@ print(f"sys.argv: {sys.argv}")
         )
         result_dict = json.loads(result)
 
-        assert result_dict["result"]["success"] is True
-        assert "['test.py', 'arg1', 'arg2']" in result_dict["result"]["stdout"]
+        assert result_dict["data"]["result"]["success"] is True
+        assert (
+            "['test.py', 'arg1', 'arg2']"
+            in result_dict["data"]["result"]["stdout"]
+        )
 
         # Verify parent process argv is unchanged
         import sys

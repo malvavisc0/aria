@@ -10,14 +10,16 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import BASE_DIR, MAX_FILE_SIZE
 from aria.tools.decorators import tool_function
 from aria.tools.files._internals import (
-    _error_response,
     _secure_resolve_dir,
     _secure_resolve_path,
     validate_and_resolve_file,
+)
+from aria.tools.files._responses import (
+    file_error_response,
+    file_success_response,
 )
 from aria.tools.files.decorators import (
     with_file_operation_error_handling,
@@ -201,18 +203,14 @@ def file_exists(intent: str, file_name: str) -> str:
     is_directory = resolved_path.is_dir() if exists else False
 
     # Build and return response
-    result = {
-        "operation": "file_exists",
-        "result": {
-            "file_name": file_name,
-            "exists": exists,
-            "is_file": is_file,
-            "is_directory": is_directory,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "exists": exists,
+        "is_file": is_file,
+        "is_directory": is_directory,
     }
     logger.info(f"Existence check complete for: {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -252,18 +250,14 @@ def get_directory_tree(
     total_files, total_directories = _count_tree_items(tree)
 
     # Build and return response
-    result = {
-        "operation": "get_directory_tree",
-        "result": {
-            "path": path,
-            "tree": tree,
-            "total_files": total_files,
-            "total_directories": total_directories,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "path": path,
+        "tree": tree,
+        "total_files": total_files,
+        "total_directories": total_directories,
     }
     logger.info(f"Successfully built directory tree for: {path}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -293,36 +287,31 @@ def get_file_info(intent: str, file_name: str) -> str:
 
     # Check file size limit
     if file_stats.st_size > MAX_FILE_SIZE:
-        return _error_response(
-            "get_file_info",
-            file_name,
+        return file_error_response(
+            intent,
             FileOperationError("File size exceeds maximum allowed limit"),
         )
 
     # Build and return response
-    result = {
-        "operation": "get_file_info",
-        "result": {
-            "file_name": file_name,
-            "size_bytes": file_stats.st_size,
-            "size_mb": round(file_stats.st_size / (1024 * 1024), 4),
-            "total_lines": line_count,
-            "mime_type": mimetypes.guess_type(file_name)[0],
-            "modified": datetime.fromtimestamp(file_stats.st_mtime).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
-            "created": datetime.fromtimestamp(file_stats.st_ctime).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
-            "is_directory": stat.S_ISDIR(file_stats.st_mode),
-            "is_file": stat.S_ISREG(file_stats.st_mode),
-            "is_symlink": stat.S_ISLNK(file_stats.st_mode),
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "size_bytes": file_stats.st_size,
+        "size_mb": round(file_stats.st_size / (1024 * 1024), 4),
+        "total_lines": line_count,
+        "mime_type": mimetypes.guess_type(file_name)[0],
+        "modified": datetime.fromtimestamp(file_stats.st_mtime).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        "created": datetime.fromtimestamp(file_stats.st_ctime).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        "is_directory": stat.S_ISDIR(file_stats.st_mode),
+        "is_file": stat.S_ISREG(file_stats.st_mode),
+        "is_symlink": stat.S_ISLNK(file_stats.st_mode),
     }
 
     logger.info(f"Successfully retrieved information for file: {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -383,25 +372,21 @@ def get_file_permissions(intent: str, file_name: str) -> str:
     last_accessed = datetime.fromtimestamp(file_stats.st_atime).isoformat()
 
     # Build and return response
-    result = {
-        "operation": "get_file_permissions",
-        "result": {
-            "file_name": file_name,
-            "mode_octal": mode_octal,
-            "mode_symbolic": mode_symbolic,
-            "permissions": permissions,
-            "is_readable": is_readable,
-            "is_writable": is_writable,
-            "is_executable": is_executable,
-            "owner_uid": file_stats.st_uid,
-            "group_gid": file_stats.st_gid,
-            "last_modified": last_modified,
-            "last_accessed": last_accessed,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "mode_octal": mode_octal,
+        "mode_symbolic": mode_symbolic,
+        "permissions": permissions,
+        "is_readable": is_readable,
+        "is_writable": is_writable,
+        "is_executable": is_executable,
+        "owner_uid": file_stats.st_uid,
+        "group_gid": file_stats.st_gid,
+        "last_modified": last_modified,
+        "last_accessed": last_accessed,
     }
     logger.info(f"Successfully retrieved permissions for file: {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -456,18 +441,14 @@ def list_files(
     truncated = len(matches) > max_results_value
 
     # Build and return response
-    result = {
-        "operation": "list_files",
-        "result": {
-            "pattern": pattern_value,
-            "files": files,
-            "count": len(files),
-            "truncated": truncated,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "pattern": pattern_value,
+        "files": files,
+        "count": len(files),
+        "truncated": truncated,
     }
     logger.info(f"Found {len(files)} files matching pattern {pattern_value}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -515,22 +496,18 @@ def read_file_chunk(
     has_more = next_offset < total_lines
 
     # Build and return response
-    result = {
-        "operation": "read_file_chunk",
-        "result": {
-            "file_name": file_name,
-            "lines": lines,
-            "offset": offset_value,
-            "chunk_size": chunk_size_value,
-            "lines_returned": lines_returned,
-            "total_lines": total_lines,
-            "has_more": has_more,
-            "next_offset": next_offset if has_more else None,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "lines": lines,
+        "offset": offset_value,
+        "chunk_size": chunk_size_value,
+        "lines_returned": lines_returned,
+        "total_lines": total_lines,
+        "has_more": has_more,
+        "next_offset": next_offset if has_more else None,
     }
     logger.info(f"Successfully read {lines_returned} lines from {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -565,9 +542,8 @@ def read_full_file(
             "File has %s lines, exceeds limit of %s. "
             "Use read_file_chunk() instead." % (total_lines, max_lines_value)
         )
-        return _error_response(
-            "read_full_file",
-            file_name,
+        return file_error_response(
+            intent,
             FileOperationError(msg),
         )
 
@@ -576,18 +552,14 @@ def read_full_file(
         content = f.read()
 
     # Build and return response
-    result = {
-        "operation": "read_full_file",
-        "result": {
-            "file_name": file_name,
-            "content": content,
-            "total_lines": total_lines,
-            "max_lines_used": max_lines_value,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "content": content,
+        "total_lines": total_lines,
+        "max_lines_used": max_lines_value,
     }
     logger.info(f"Successfully read {total_lines} lines from {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -619,9 +591,8 @@ def search_files_by_name(
         pattern = re.compile(regex_pattern)
     except re.error as exc:
         logger.error(f"Invalid regex pattern {regex_pattern}: {exc}")
-        return _error_response(
-            "search_files_by_name",
-            regex_pattern,
+        return file_error_response(
+            intent,
             FileOperationError(f"Invalid regex pattern: {exc}"),
         )
 
@@ -645,18 +616,14 @@ def search_files_by_name(
     truncated = len(matches) >= max_results_value
 
     # Build and return response
-    result = {
-        "operation": "search_files_by_name",
-        "result": {
-            "pattern": regex_pattern,
-            "matches": matches,
-            "count": len(matches),
-            "truncated": truncated,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "pattern": regex_pattern,
+        "matches": matches,
+        "count": len(matches),
+        "truncated": truncated,
     }
     logger.info(f"Found {len(matches)} files matching pattern {regex_pattern}")
-    return safe_json(result)
+    return file_success_response(intent, data)
 
 
 @tool_function(
@@ -694,9 +661,8 @@ def search_in_files(
         pattern = re.compile(regex_pattern)
     except re.error as exc:
         logger.error(f"Invalid regex pattern {regex_pattern}: {exc}")
-        return _error_response(
-            "search_in_files",
-            regex_pattern,
+        return file_error_response(
+            intent,
             FileOperationError(f"Invalid regex pattern: {exc}"),
         )
 
@@ -760,16 +726,12 @@ def search_in_files(
     truncated = len(matches) >= max_matches or files_searched >= max_files
 
     # Build and return response
-    result = {
-        "operation": "search_in_files",
-        "result": {
-            "pattern": regex_pattern,
-            "matches": matches,
-            "total_matches": len(matches),
-            "files_searched": files_searched,
-            "truncated": truncated,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "pattern": regex_pattern,
+        "matches": matches,
+        "total_matches": len(matches),
+        "files_searched": files_searched,
+        "truncated": truncated,
     }
     logger.info(f"Found {len(matches)} matches in {files_searched} files")
-    return safe_json(result)
+    return file_success_response(intent, data)

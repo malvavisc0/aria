@@ -67,16 +67,15 @@ def _error_response(
     if how_to_fix:
         error_block["how_to_fix"] = how_to_fix
 
-    return safe_json(
-        {
-            "status": "error",
-            "tool": operation,
-            "intent": intent,
-            "timestamp": utc_timestamp(),
-            "error": error_block,
-            "context": {"file_name": file_name},
-        }
-    )
+    response = {
+        "status": "error",
+        "tool": operation,
+        "intent": intent,
+        "timestamp": utc_timestamp(),
+        "error": error_block,
+    }
+
+    return safe_json(response)
 
 
 def _validate_inputs(

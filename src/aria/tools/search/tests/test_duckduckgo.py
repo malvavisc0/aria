@@ -31,18 +31,18 @@ def test_web_search_success():
         )
         result_dict = json.loads(result)
 
-        assert result_dict["operation"] == "web_search"
-        assert len(result_dict["result"]) == 2
-        assert result_dict["metadata"]["error"] is None
-        assert "timestamp" in result_dict["metadata"]
+        assert result_dict["tool"] == "duckduckgo_web_search"
+        assert result_dict["status"] == "success"
+        assert len(result_dict["data"]["results"]) == 2
+        assert "timestamp" in result_dict
 
         # Check first result
         assert (
-            result_dict["result"][0]["title"]
+            result_dict["data"]["results"][0]["title"]
             == "Elon Musk Is a Far-Right Activist - The Atlantic"
         )
         assert (
-            result_dict["result"][0]["href"]
+            result_dict["data"]["results"][0]["href"]
             == "https://www.theatlantic.com/technology/archive/2022/12/elon-musk-twitter-far-right-activist/672436/"
         )
 
@@ -52,9 +52,9 @@ def test_web_search_empty_query():
     result = duckduckgo_web_search("Testing web search", "")
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid query" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid query" in result_dict["error"]["message"]
 
 
 def test_web_search_invalid_max_results():
@@ -64,9 +64,9 @@ def test_web_search_invalid_max_results():
     )
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid max_results" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid max_results" in result_dict["error"]["message"]
 
 
 def test_web_search_exception_handling():
@@ -79,9 +79,9 @@ def test_web_search_exception_handling():
         result = duckduckgo_web_search("Testing web search", "test query")
         result_dict = json.loads(result)
 
-        assert result_dict["operation"] == "web_search"
-        assert result_dict["result"] == []
-        assert "Web search failed" in result_dict["metadata"]["error"]
+        assert result_dict["tool"] == "duckduckgo_web_search"
+        assert result_dict["status"] == "error"
+        assert "Network error" in result_dict["error"]["message"]
 
 
 def test_web_search_default_max_results():
@@ -104,10 +104,10 @@ def test_web_search_default_max_results():
         )  # No max_results specified
         result_dict = json.loads(result)
 
-        assert result_dict["operation"] == "web_search"
-        assert len(result_dict["result"]) == 1
-        assert result_dict["metadata"]["error"] is None
-        assert result_dict["result"][0]["title"] == "Test Result 1"
+        assert result_dict["tool"] == "duckduckgo_web_search"
+        assert result_dict["status"] == "success"
+        assert len(result_dict["data"]["results"]) == 1
+        assert result_dict["data"]["results"][0]["title"] == "Test Result 1"
 
 
 def test_web_search_whitespace_only_query():
@@ -115,9 +115,9 @@ def test_web_search_whitespace_only_query():
     result = duckduckgo_web_search("Testing web search", "   ")
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid query" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid query" in result_dict["error"]["message"]
 
 
 def test_web_search_query_with_leading_trailing_whitespace():
@@ -144,8 +144,8 @@ def test_web_search_query_with_leading_trailing_whitespace():
         mock_search_instance.text.assert_called_once_with(
             query="test query", max_results=1
         )
-        assert result_dict["metadata"]["error"] is None
-        assert len(result_dict["result"]) == 1
+        assert result_dict["status"] == "success"
+        assert len(result_dict["data"]["results"]) == 1
 
 
 def test_web_search_zero_max_results():
@@ -155,9 +155,9 @@ def test_web_search_zero_max_results():
     )
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid max_results" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid max_results" in result_dict["error"]["message"]
 
 
 def test_web_search_non_integer_max_results():
@@ -167,9 +167,9 @@ def test_web_search_non_integer_max_results():
     )
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid max_results" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid max_results" in result_dict["error"]["message"]
 
 
 def test_web_search_empty_results():
@@ -184,9 +184,9 @@ def test_web_search_empty_results():
         )
         result_dict = json.loads(result)
 
-        assert result_dict["operation"] == "web_search"
-        assert result_dict["result"] == []
-        assert result_dict["metadata"]["error"] is None
+        assert result_dict["tool"] == "duckduckgo_web_search"
+        assert result_dict["status"] == "success"
+        assert result_dict["data"]["results"] == []
 
 
 def test_web_search_result_structure():
@@ -210,8 +210,8 @@ def test_web_search_result_structure():
         )
         result_dict = json.loads(result)
 
-        assert len(result_dict["result"]) == 1
-        result_item = result_dict["result"][0]
+        assert len(result_dict["data"]["results"]) == 1
+        result_item = result_dict["data"]["results"][0]
         assert "title" in result_item
         assert "href" in result_item
         assert "body" not in result_item
@@ -235,17 +235,17 @@ def test_web_search_json_format():
         # Should be valid JSON
         result_dict = json.loads(result)
 
-        # Check top-level structure
-        assert "operation" in result_dict
-        assert "result" in result_dict
-        assert "metadata" in result_dict
+        # Check top-level structure (Standard Envelope)
+        assert "tool" in result_dict
+        assert "status" in result_dict
+        assert "data" in result_dict
+        assert "timestamp" in result_dict
 
-        # Check metadata structure
-        assert "timestamp" in result_dict["metadata"]
-        assert "error" in result_dict["metadata"]
+        # Check data structure
+        assert "results" in result_dict["data"]
 
         # Check result is a list
-        assert isinstance(result_dict["result"], list)
+        assert isinstance(result_dict["data"]["results"], list)
 
 
 @pytest.mark.parametrize(
@@ -263,9 +263,9 @@ def test_web_search_invalid_query_types(invalid_query):
     result = duckduckgo_web_search("Testing web search", invalid_query)
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid query" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid query" in result_dict["error"]["message"]
 
 
 @pytest.mark.parametrize(
@@ -287,6 +287,6 @@ def test_web_search_invalid_max_results_types(invalid_max_results):
     )
     result_dict = json.loads(result)
 
-    assert result_dict["operation"] == "web_search"
-    assert result_dict["result"] == []
-    assert "Invalid max_results" in result_dict["metadata"]["error"]
+    assert result_dict["tool"] == "duckduckgo_web_search"
+    assert result_dict["status"] == "error"
+    assert "Invalid max_results" in result_dict["error"]["message"]

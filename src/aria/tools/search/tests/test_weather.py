@@ -42,9 +42,9 @@ def test_get_current_weather_success(monkeypatch):
     monkeypatch.setattr(httpx, "get", fake_get)
 
     out = json.loads(get_current_weather("need current conditions", "Berlin"))
-    assert out["success"] is True
-    assert out["result"]["resolved"]["name"] == "Berlin"
-    assert out["result"]["current"]["conditions"]
+    assert out["status"] == "success"
+    assert out["data"]["resolved"]["name"] == "Berlin"
+    assert out["data"]["current"]["conditions"]
 
 
 def test_get_current_weather_no_geocode_results(monkeypatch):
@@ -60,11 +60,11 @@ def test_get_current_weather_no_geocode_results(monkeypatch):
     monkeypatch.setattr(httpx, "get", fake_get)
 
     out = json.loads(get_current_weather("test", "Nowhere"))
-    assert out["success"] is False
-    assert "No geocoding result" in out["error"]
+    assert out["status"] == "error"
+    assert "No geocoding result" in out["error"]["message"]
 
 
 def test_get_current_weather_requires_location():
     out = json.loads(get_current_weather("test", ""))
-    assert out["success"] is False
-    assert "location" in out["error"]
+    assert out["status"] == "error"
+    assert "location" in out["error"]["message"]

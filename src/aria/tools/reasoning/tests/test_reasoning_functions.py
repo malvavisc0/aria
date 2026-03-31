@@ -187,7 +187,7 @@ def test_scratchpad_with_session(test_agent_id, test_db):
         operation="set",
     )
     assert result["status"] == "success"
-    assert result["data"]["operation"] == "set"
+    assert result["data"]["tool"] == "set"
     assert result["data"]["key"] == "key1"
     assert result["data"]["value"] == "value1"
 
@@ -199,7 +199,7 @@ def test_scratchpad_with_session(test_agent_id, test_db):
         operation="get",
     )
     assert result["status"] == "success"
-    assert result["data"]["operation"] == "get"
+    assert result["data"]["tool"] == "get"
     assert result["data"]["value"] == "value1"
 
     # Clean up

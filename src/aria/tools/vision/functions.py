@@ -26,7 +26,11 @@ from typing import Callable
 import httpx
 from loguru import logger
 
-from aria.tools import tool_error_response, tool_success_response
+from aria.tools import (
+    get_function_name,
+    tool_error_response,
+    tool_success_response,
+)
 from aria.tools.vision.constants import VISION_OUTPUT_DIR
 from aria.tools.vision.exceptions import (
     UnsupportedFormatError,
@@ -74,7 +78,7 @@ def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
     pages_png: list[bytes] = []
     doc = pdfium.PdfDocument(str(pdf_path))
     try:
-        scale = _PDF_RENDER_DPI / 72.0
+        scale = int(_PDF_RENDER_DPI / 72.0)
         for page_index in range(len(doc)):
             page = doc[page_index]
             bitmap = page.render(scale=scale, rotation=0)
@@ -143,7 +147,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         path = Path(file_path)
         if not path.exists():
             return tool_error_response(
-                "parse_pdf",
+                get_function_name(),
                 intent,
                 VisionFileNotFoundError(f"File not found: {file_path}"),
             )
@@ -151,7 +155,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         suffix = path.suffix.lower()
         if suffix != ".pdf":
             return tool_error_response(
-                "parse_pdf",
+                get_function_name(),
                 intent,
                 UnsupportedFormatError(
                     f"Unsupported file format '{suffix}'. "

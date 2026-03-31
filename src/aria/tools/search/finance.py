@@ -7,6 +7,7 @@ import yfinance
 from loguru import logger
 
 from aria.tools import (
+    get_function_name,
     log_tool_call,
     tool_error_response,
     tool_success_response,
@@ -115,14 +116,12 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
             f"Successfully fetched price for {ticker}: "
             f"${result['current_price']} {result['currency']}"
         )
-        return tool_success_response(
-            "fetch_current_stock_price", intent, result
-        )
+        return tool_success_response(get_function_name(), intent, result)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker}: {exc}")
         return tool_error_response(
-            "fetch_current_stock_price",
+            get_function_name(),
             intent,
             exc,
             ticker=raw_ticker,
@@ -131,7 +130,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker}: {exc}")
         return tool_error_response(
-            "fetch_current_stock_price",
+            get_function_name(),
             intent,
             exc,
             ticker=raw_ticker,
@@ -144,7 +143,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
             f"Unexpected error fetching price for {raw_ticker}: {exc}"
         )
         return tool_error_response(
-            "fetch_current_stock_price",
+            get_function_name(),
             intent,
             RuntimeError(f"Failed to get current price: {exc}"),
             ticker=raw_ticker,
@@ -244,14 +243,12 @@ def fetch_company_information(intent: str, ticker: str) -> str:
             f"Successfully fetched company info for {ticker}: "
             f"{company_info['basic_info'].get('name', 'Unknown')}"
         )
-        return tool_success_response(
-            "fetch_company_information", intent, company_info
-        )
+        return tool_success_response(get_function_name(), intent, company_info)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker}: {exc}")
         return tool_error_response(
-            "fetch_company_information",
+            get_function_name(),
             intent,
             exc,
             ticker=raw_ticker,
@@ -260,7 +257,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker}: {exc}")
         return tool_error_response(
-            "fetch_company_information",
+            get_function_name(),
             intent,
             exc,
             ticker=raw_ticker,
@@ -271,7 +268,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
             f"Unexpected error fetching company info for {raw_ticker}: {exc}"
         )
         return tool_error_response(
-            "fetch_company_information",
+            get_function_name(),
             intent,
             RuntimeError(f"Failed to get company information: {exc}"),
             ticker=raw_ticker,
@@ -320,7 +317,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
 
         if not news_data:
             return tool_success_response(
-                "fetch_ticker_news",
+                get_function_name(),
                 intent,
                 {
                     "ticker": ticker,
@@ -347,12 +344,12 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         logger.info(
             f"Successfully fetched {len(articles)} news articles for {ticker}"
         )
-        return tool_success_response("fetch_ticker_news", intent, result)
+        return tool_success_response(get_function_name(), intent, result)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker} news: {exc}")
         return tool_error_response(
-            "fetch_ticker_news",
+            get_function_name(),
             intent,
             exc,
             ticker=raw_ticker,
@@ -363,7 +360,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
     except YFinanceDataError as exc:
         logger.error(f"Data error for {raw_ticker} news: {exc}")
         return tool_error_response(
-            "fetch_ticker_news",
+            get_function_name(),
             intent,
             exc,
             ticker=raw_ticker,
@@ -376,7 +373,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
             f"Unexpected error fetching news for {raw_ticker}: {exc}"
         )
         return tool_error_response(
-            "fetch_ticker_news",
+            get_function_name(),
             intent,
             RuntimeError(f"Failed to get news: {exc}"),
             ticker=raw_ticker,

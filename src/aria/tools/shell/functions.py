@@ -13,13 +13,10 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from aria.tools import safe_json, utc_timestamp
+from aria.tools import get_function_name, tool_response
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
 from aria.tools.shell.constants import CURRENT_OS, SHELL
-from aria.tools.shell.execution import (
-    _build_response,
-    _execute_command_internal,
-)
+from aria.tools.shell.execution import _execute_command_internal
 from aria.tools.shell.validation import (
     _validate_command,
     _validate_working_dir,
@@ -63,27 +60,36 @@ def execute_command(
     # Resolve the full path to the command to avoid PATH-based attacks.
     cmd_path = shutil.which(command_name)
     if cmd_path is None:
-        return safe_json(
-            _build_response(
-                "execute_command",
-                f"{command_name} {' '.join(args)}",
-                str(resolved_working_dir),
-                stderr=f"Command not found: {command_name}",
-                return_code=127,
-            )
+        return tool_response(
+            tool=get_function_name(),
+            intent=intent,
+            data={
+                "stdout": "",
+                "stderr": f"Command not found: {command_name}",
+                "return_code": 127,
+                "execution_time": 0.0,
+                "timed_out": False,
+                "command": f"{command_name} {' '.join(args)}",
+                "platform": CURRENT_OS,
+                "working_dir": str(resolved_working_dir),
+            },
         )
 
     cmd_list = [cmd_path, *args]
     display_command = f"{command_name} {' '.join(args)}"
     response = _execute_command_internal(
-        "execute_command",
+        get_function_name(),
         display_command,
         cmd_list,
         resolved_working_dir,
         actual_timeout,
         shell=False,
     )
-    return safe_json(response)
+    return tool_response(
+        tool=get_function_name(),
+        intent=intent,
+        data=response["data"],
+    )
 
 
 def execute_command_batch(
@@ -145,7 +151,7 @@ def execute_command_batch(
             result = json.loads(result_str)
             results.append(result)
 
-            return_code = result["result"].get("return_code", -1)
+            return_code = result["data"].get("return_code", -1)
             if return_code == 0:
                 success_count += 1
             else:
@@ -154,7 +160,7 @@ def execute_command_batch(
                     stopped_early = True
                     break
 
-            total_execution_time += result["result"].get("execution_time", 0)
+            total_execution_time += result["data"].get("execution_time", 0)
 
         except Exception as e:
             results.append(
@@ -169,19 +175,12 @@ def execute_command_batch(
                 stopped_early = True
                 break
 
-    response = {
-        "operation": "execute_command_batch",
-        "result": {
-            "results": results,
-            "total_execution_time": round(total_execution_time, 3),
-            "success_count": success_count,
-            "failure_count": failure_count,
-            "stopped_early": stopped_early,
-        },
-        "metadata": {
-            "timestamp": utc_timestamp(),
-            "total_commands": len(commands),
-        },
+    data = {
+        "results": results,
+        "total_execution_time": round(total_execution_time, 3),
+        "success_count": success_count,
+        "failure_count": failure_count,
+        "stopped_early": stopped_early,
     }
 
     logger.info(
@@ -189,7 +188,11 @@ def execute_command_batch(
         success_count,
         failure_count,
     )
-    return safe_json(response)
+    return tool_response(
+        tool=get_function_name(),
+        intent=intent,
+        data=data,
+    )
 
 
 def get_platform_info(intent: str) -> str:
@@ -206,20 +209,18 @@ def get_platform_info(intent: str) -> str:
 
     logger.info("Getting platform information")
 
-    response = {
-        "operation": "get_platform_info",
-        "result": {
-            "os": CURRENT_OS,
-            "shell": SHELL,
-            "home": str(Path.home()),
-            "path_separator": "\\" if CURRENT_OS == "windows" else "/",
-            "temp_dir": tempfile.gettempdir(),
-            "python_path": sys.executable,
-        },
-        "metadata": {
-            "timestamp": utc_timestamp(),
-        },
+    data = {
+        "os": CURRENT_OS,
+        "shell": SHELL,
+        "home": str(Path.home()),
+        "path_separator": "\\" if CURRENT_OS == "windows" else "/",
+        "temp_dir": tempfile.gettempdir(),
+        "python_path": sys.executable,
     }
 
     logger.debug(f"Platform info: {CURRENT_OS}, shell: {SHELL}")
-    return safe_json(response)
+    return tool_response(
+        tool=get_function_name(),
+        intent=intent,
+        data=data,
+    )

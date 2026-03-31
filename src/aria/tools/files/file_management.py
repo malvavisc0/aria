@@ -5,13 +5,15 @@ from typing import Optional
 
 from loguru import logger
 
-from aria.tools import safe_json, utc_timestamp
 from aria.tools.decorators import tool_function
 from aria.tools.files._internals import (
     _create_backup,
-    _error_response,
     validate_and_resolve_file,
     validate_and_resolve_two_files,
+)
+from aria.tools.files._responses import (
+    file_error_response,
+    file_success_response,
 )
 from aria.tools.files.decorators import with_file_operation_error_handling
 from aria.tools.files.exceptions import FileOperationError
@@ -48,9 +50,8 @@ def copy_file(
 
     # Check overwrite policy
     if dest_path.exists() and not overwrite:
-        return _error_response(
-            "copy_file",
-            destination,
+        return file_error_response(
+            intent,
             FileOperationError(
                 f"Destination {destination} already exists and overwrite=False"
             ),
@@ -63,18 +64,14 @@ def copy_file(
     bytes_copied = dest_path.stat().st_size
 
     # Build and return response
-    result = {
-        "operation": "copy_file",
-        "result": {
-            "source": source,
-            "destination": destination,
-            "bytes_copied": bytes_copied,
-            "success": True,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "source": source,
+        "destination": destination,
+        "bytes_copied": bytes_copied,
+        "success": True,
     }
     logger.info(f"Successfully copied {source} to {destination}")
-    return safe_json(result)
+    return file_success_response(intent, data, tool="copy_file")
 
 
 @tool_function(
@@ -104,17 +101,13 @@ def delete_file(intent: str, file_name: str) -> str:
     resolved_path.unlink()
 
     # Build and return response
-    result = {
-        "operation": "delete_file",
-        "result": {
-            "file_name": file_name,
-            "deleted": True,
-            "backup_created": backup_path is not None,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "file_name": file_name,
+        "deleted": True,
+        "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully deleted file: {file_name}")
-    return safe_json(result)
+    return file_success_response(intent, data, tool="delete_file")
 
 
 @tool_function("move_file")
@@ -162,14 +155,10 @@ def rename_file(intent: str, old_name: str, new_name: str) -> str:
     old_path.rename(new_path)
 
     # Build and return response
-    result = {
-        "operation": "rename_file",
-        "result": {
-            "old_name": old_name,
-            "new_name": new_name,
-            "success": True,
-        },
-        "metadata": {"timestamp": utc_timestamp()},
+    data = {
+        "old_name": old_name,
+        "new_name": new_name,
+        "success": True,
     }
     logger.info(f"Successfully renamed {old_name} to {new_name}")
-    return safe_json(result)
+    return file_success_response(intent, data, tool="rename_file")

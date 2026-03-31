@@ -58,7 +58,7 @@ def test_scratchpad_operations():
         operation="set",
         value="value1",
     )
-    assert result["operation"] == "set"
+    assert result["tool"] == "set"
     assert result["key"] == "key1"
     assert result["value"] == "value1"
 
@@ -68,7 +68,7 @@ def test_scratchpad_operations():
         key="key1",
         operation="get",
     )
-    assert result["operation"] == "get"
+    assert result["tool"] == "get"
     assert result["value"] == "value1"
 
     # List all
@@ -77,7 +77,7 @@ def test_scratchpad_operations():
         key="",
         operation="list",
     )
-    assert result["operation"] == "list"
+    assert result["tool"] == "list"
     assert any(item["key"] == "key1" for item in result["items"])
 
     # Clear one
@@ -86,7 +86,7 @@ def test_scratchpad_operations():
         key="key1",
         operation="clear",
     )
-    assert result["operation"] == "clear"
+    assert result["tool"] == "clear"
     assert result["key"] == "key1"
 
     # Verify empty
@@ -268,7 +268,7 @@ def test_scratchpad_clear_all():
         operation="clear",
     )
 
-    assert result["operation"] == "clear"
+    assert result["tool"] == "clear"
     assert result["key"] == "all"
     assert len(session.scratchpad) == 0
 

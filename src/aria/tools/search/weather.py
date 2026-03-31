@@ -7,7 +7,12 @@ from typing import Any, Dict, Optional
 import httpx
 from loguru import logger
 
-from aria.tools import log_tool_call, safe_json, utc_timestamp
+from aria.tools import (
+    get_function_name,
+    log_tool_call,
+    tool_error_response,
+    tool_success_response,
+)
 from aria.tools.constants import NETWORK_TIMEOUT
 
 # https://open-meteo.com/en/docs
@@ -43,25 +48,13 @@ _WEATHER_CODE_TEXT: dict[int, str] = {
 }
 
 
-def _ok(*, result: Dict[str, Any]) -> str:
-    return safe_json(
-        {
-            "success": True,
-            "result": result,
-            "error": None,
-            "timestamp": utc_timestamp(),
-        },
-    )
+def _ok(intent: str, result: Dict[str, Any]) -> str:
+    return tool_success_response(get_function_name(), intent, result)
 
 
-def _err(message: str) -> str:
-    return safe_json(
-        {
-            "success": False,
-            "result": None,
-            "error": message,
-            "timestamp": utc_timestamp(),
-        },
+def _err(intent: str, message: str) -> str:
+    return tool_error_response(
+        get_function_name(), intent, RuntimeError(message)
     )
 
 
@@ -86,7 +79,7 @@ def get_current_weather(intent: str, location: str) -> str:
 
     location_value = (location or "").strip()
     if not location_value:
-        return _err("location must be a non-empty string")
+        return _err(intent, "location must be a non-empty string")
 
     # Logging handled by @log_tool_call decorator
 
@@ -101,13 +94,17 @@ def get_current_weather(intent: str, location: str) -> str:
         geo_json = geo.json()
         results = geo_json.get("results") or []
         if not results:
-            return _err(f"No geocoding result for location: {location_value}")
+            return _err(
+                intent, f"No geocoding result for location: {location_value}"
+            )
 
         first = results[0]
         lat = first.get("latitude")
         lon = first.get("longitude")
         if lat is None or lon is None:
-            return _err("Geocoding response missing latitude/longitude")
+            return _err(
+                intent, "Geocoding response missing latitude/longitude"
+            )
 
         resolved_name = first.get("name") or location_value
         country = first.get("country")
@@ -135,8 +132,9 @@ def get_current_weather(intent: str, location: str) -> str:
         weather_code = current.get("weather_code")
 
         return _ok(
-            result={
-                "operation": "get_current_weather",
+            intent,
+            {
+                "tool": "get_current_weather",
                 "query": {"location": location_value},
                 "resolved": {
                     "name": resolved_name,
@@ -152,15 +150,14 @@ def get_current_weather(intent: str, location: str) -> str:
                     "weather_code": weather_code,
                     "conditions": _get_weather_text(weather_code),
                 },
-                "intent": intent,
-            }
+            },
         )
     except httpx.HTTPError as exc:
         logger.warning(f"Weather lookup failed for {location_value}: {exc}")
-        return _err(f"Weather request failed: {exc}")
+        return _err(intent, f"Weather request failed: {exc}")
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception("Unexpected error in get_current_weather")
-        return _err(f"Unexpected error: {type(exc).__name__}: {exc}")
+        return _err(intent, f"Unexpected error: {type(exc).__name__}: {exc}")
 
 
 __all__ = ["get_current_weather"]

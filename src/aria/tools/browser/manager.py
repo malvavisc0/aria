@@ -474,8 +474,7 @@ class LightpandaManager:
             Cleaned text content string.
         """
         try:
-            content = await page.evaluate(
-                """
+            content = await page.evaluate("""
                 () => {
                     const clone = document.body.cloneNode(true);
                     const remove = ['script', 'style', 'noscript'];
@@ -486,8 +485,7 @@ class LightpandaManager:
                     });
                     return clone.innerText || clone.textContent || '';
                 }
-            """
-            )
+            """)
             lines = (line.strip() for line in content.splitlines())
             return "\n".join(line for line in lines if line)
 

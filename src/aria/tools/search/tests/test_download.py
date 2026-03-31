@@ -14,6 +14,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
+from aria.tools.search import get_youtube_video_transcription, grab_from_url
 from aria.tools.search._download_internals import (
     _auto_detect_format,
     _clean_text,
@@ -31,12 +32,7 @@ from aria.tools.search._download_internals import (
     _validate_format,
     _validate_url,
 )
-from aria.tools.search.download import (
-    ContentParsingError,
-    URLDownloadError,
-    get_youtube_video_transcription,
-    grab_from_url,
-)
+from aria.tools.search.download import ContentParsingError, URLDownloadError
 
 
 def _response_data(raw: str) -> dict:
@@ -560,9 +556,9 @@ class TestResponseCreation:
 class TestYouTubeTranscription:
     """Test YouTube video transcription."""
 
-    @patch("aria.tools.search._youtube._save_content_to_file")
-    @patch("aria.tools.search._youtube.TextFormatter")
-    @patch("aria.tools.search._youtube.YouTubeTranscriptApi")
+    @patch("aria.tools.search.youtube._save_content_to_file")
+    @patch("aria.tools.search.youtube.TextFormatter")
+    @patch("aria.tools.search.youtube.YouTubeTranscriptApi")
     def test_youtube_transcription_success(
         self, mock_api_class, mock_formatter_class, mock_save
     ):

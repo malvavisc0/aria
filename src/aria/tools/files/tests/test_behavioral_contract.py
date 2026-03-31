@@ -45,9 +45,9 @@ class TestFilesReturnJsonContract:
         )
         data = json.loads(result)
         # Verify required fields in actual format
-        assert "operation" in data
-        assert "result" in data
-        assert "metadata" in data
+        assert "status" in data
+        assert "data" in data
+        assert data["status"] == "success"
 
     def test_read_full_file_returns_json(self):
         """read_full_file should return valid JSON response."""
@@ -59,8 +59,8 @@ class TestFilesReturnJsonContract:
             str(self.base_dir / "read_test.txt"),
         )
         data = json.loads(result)
-        assert "operation" in data
-        assert "result" in data
+        assert "status" in data
+        assert "data" in data
 
     def test_append_to_file_returns_json(self):
         """append_to_file should return valid JSON response."""
@@ -73,8 +73,8 @@ class TestFilesReturnJsonContract:
             "added\n",
         )
         data = json.loads(result)
-        assert "operation" in data
-        assert "result" in data
+        assert "status" in data
+        assert "data" in data
 
 
 class TestFilesErrorResponseContract:

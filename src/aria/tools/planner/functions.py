@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Dict, Optional
 
-from aria.tools.utils import get_function_name, safe_json
+from aria.tools import get_function_name, tool_response
 
 from . import registry
 
@@ -113,19 +113,10 @@ def _no_active_plan_error(
         if execution_id
         else "No active plan. Use create_execution_plan first."
     )
-    return safe_json(
-        {
-            "result": "",
-            "error": error_msg,
-            "metadata": {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "reason": reason,
-                "params": params,
-                "operation": operation,
-                "execution_id": execution_id,
-                "success": False,
-            },
-        }
+    return tool_response(
+        tool=operation,
+        intent="",
+        data={"error": error_msg},
     )
 
 
@@ -240,37 +231,37 @@ def create_execution_plan(
             created_at=created_at,
         )
 
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason or "",
+            data={
                 "result": _serialize_plan(plan),
                 "error": "",
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {
                         "task": task,
                         "steps": steps,
                         "agent_id": agent_id,
                     },
-                    "operation": get_function_name(),
                     "execution_id": execution_id,
                     "success": True,
                 },
-            }
+            },
         )
     except Exception as exc:
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason or "",
+            data={
                 "result": "",
                 "error": str(exc),
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"task": task, "steps": steps},
-                    "operation": get_function_name(),
                     "success": False,
                 },
-            }
+            },
         )
 
 
@@ -290,32 +281,16 @@ def get_execution_plan(reason: str, execution_id: str) -> str:
     try:
         current_plan = _get_current_plan(execution_id)
 
-        return safe_json(
-            {
-                "result": _serialize_plan(current_plan),
-                "error": "",
-                "metadata": {
-                    "timestamp": timestamp,
-                    "reason": reason,
-                    "operation": get_function_name(),
-                    "execution_id": execution_id,
-                    "success": True,
-                },
-            }
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data=_serialize_plan(current_plan),
         )
     except Exception as exc:
-        return safe_json(
-            {
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
-                    "reason": reason,
-                    "operation": get_function_name(),
-                    "execution_id": execution_id,
-                    "success": False,
-                },
-            }
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            exc=Exception(str(exc)),
         )
 
 
@@ -350,18 +325,18 @@ def update_plan_step(
             error = (
                 f"Invalid status '{status}'. Valid values: {valid_statuses}"
             )
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": error,
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id, "status": status},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Update in database
@@ -371,18 +346,18 @@ def update_plan_step(
         )
 
         if not success:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id, "status": status},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Reload to get updated step data
@@ -390,50 +365,50 @@ def update_plan_step(
         step = next((s for s in current_plan.steps if s.id == step_id), None)
 
         if step is None:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id, "status": status},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": _serialize_step(step),
                 "error": "",
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {
                         "step_id": step_id,
                         "status": status,
                         "result": result,
                     },
-                    "operation": get_function_name(),
                     "success": True,
                 },
-            }
+            },
         )
     except Exception as exc:
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": "",
                 "error": str(exc),
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_id": step_id, "status": status},
-                    "operation": get_function_name(),
                     "success": False,
                 },
-            }
+            },
         )
 
 
@@ -463,21 +438,21 @@ def add_plan_step(
         step_data = db.add_step(execution_id, step_id, new_step, after_step_id)
 
         if step_data is None:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{after_step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {
                             "after_step_id": after_step_id,
                             "new_step": new_step,
                         },
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Convert status string to StepStatus enum
@@ -487,8 +462,10 @@ def add_plan_step(
         # Reload plan to get updated step count
         current_plan = _get_current_plan(execution_id)
 
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": {
                     **_serialize_step(step),
                     "inserted_after": after_step_id,
@@ -497,32 +474,30 @@ def add_plan_step(
                 "error": "",
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {
                         "after_step_id": after_step_id,
                         "new_step": new_step,
                     },
-                    "operation": get_function_name(),
                     "success": True,
                 },
-            }
+            },
         )
     except Exception as exc:
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": "",
                 "error": str(exc),
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {
                         "after_step_id": after_step_id,
                         "new_step": new_step,
                     },
-                    "operation": get_function_name(),
                     "success": False,
                 },
-            }
+            },
         )
 
 
@@ -546,25 +521,27 @@ def remove_plan_step(reason: str, execution_id: str, step_id: str) -> str:
         removed_data = db.remove_step(execution_id, step_id)
 
         if removed_data is None:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Reload to get remaining step count
         current_plan = _get_current_plan(execution_id)
 
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": {
                     "removed_step_id": removed_data["id"],
                     "description": removed_data["description"],
@@ -573,26 +550,24 @@ def remove_plan_step(reason: str, execution_id: str, step_id: str) -> str:
                 "error": "",
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_id": step_id},
-                    "operation": get_function_name(),
                     "success": True,
                 },
-            }
+            },
         )
     except Exception as exc:
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": "",
                 "error": str(exc),
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_id": step_id},
-                    "operation": get_function_name(),
                     "success": False,
                 },
-            }
+            },
         )
 
 
@@ -624,18 +599,18 @@ def replace_plan_step(
                 break
 
         if old_description is None:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id, "new_step": new_step},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Update in database
@@ -643,18 +618,18 @@ def replace_plan_step(
         success = db.update_step(execution_id, step_id, description=new_step)
 
         if not success:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id, "new_step": new_step},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Reload to get updated step
@@ -662,22 +637,24 @@ def replace_plan_step(
         step = next((s for s in current_plan.steps if s.id == step_id), None)
 
         if step is None:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": f"Step '{step_id}' not found in plan.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_id": step_id, "new_step": new_step},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": {
                     **_serialize_step(step),
                     "old_description": old_description,
@@ -686,26 +663,24 @@ def replace_plan_step(
                 "error": "",
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_id": step_id, "new_step": new_step},
-                    "operation": get_function_name(),
                     "success": True,
                 },
-            }
+            },
         )
     except Exception as exc:
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": "",
                 "error": str(exc),
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_id": step_id, "new_step": new_step},
-                    "operation": get_function_name(),
                     "success": False,
                 },
-            }
+            },
         )
 
 
@@ -731,8 +706,10 @@ def reorder_plan_steps(
         current_step_count = len(current_plan.steps)
 
         if len(step_ids) != current_step_count:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": (
                         "step_ids must contain each current step exactly "
@@ -742,27 +719,25 @@ def reorder_plan_steps(
                     ),
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_ids": step_ids},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         if len(set(step_ids)) != len(step_ids):
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": "step_ids contains duplicate step IDs.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_ids": step_ids},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Validate all step IDs are present
@@ -777,18 +752,18 @@ def reorder_plan_steps(
                 error_parts.append(f"Missing steps: {missing}")
             if extra:
                 error_parts.append(f"Unknown steps: {extra}")
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": "; ".join(error_parts),
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_ids": step_ids},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
         # Reorder in database
@@ -796,22 +771,24 @@ def reorder_plan_steps(
         reordered_data = db.reorder_steps(execution_id, step_ids)
 
         if reordered_data is None:
-            return safe_json(
-                {
+            return tool_response(
+                tool=get_function_name(),
+                intent=reason,
+                data={
                     "result": "",
                     "error": "Failed to reorder steps.",
                     "metadata": {
                         "timestamp": timestamp,
-                        "reason": reason,
                         "params": {"step_ids": step_ids},
-                        "operation": get_function_name(),
                         "success": False,
                     },
-                }
+                },
             )
 
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": {
                     "reordered_steps": reordered_data,
                     "total_steps": len(reordered_data),
@@ -819,24 +796,22 @@ def reorder_plan_steps(
                 "error": "",
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_ids": step_ids},
-                    "operation": get_function_name(),
                     "success": True,
                 },
-            }
+            },
         )
     except Exception as exc:
-        return safe_json(
-            {
+        return tool_response(
+            tool=get_function_name(),
+            intent=reason,
+            data={
                 "result": "",
                 "error": str(exc),
                 "metadata": {
                     "timestamp": timestamp,
-                    "reason": reason,
                     "params": {"step_ids": step_ids},
-                    "operation": get_function_name(),
                     "success": False,
                 },
-            }
+            },
         )
