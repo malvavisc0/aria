@@ -38,9 +38,7 @@ class ChatterAgent(FunctionAgent):
         Returns:
             The combined system prompt as a string.
         """
-        return load_agent_instructions(
-            agent_name="aria", extras=extras, include_core=True
-        )
+        return load_agent_instructions(agent_name="aria", extras=extras)
 
 
 def get_agent(

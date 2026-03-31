@@ -6,30 +6,16 @@ from aria.agents.instructions import load_agent_instructions
 class TestLoadAgentInstructions:
     """Tests for the load_agent_instructions function."""
 
-    def test_loads_core_rules(self):
-        """Core rules should be included by default."""
-        result = load_agent_instructions("aria")
-        assert "Core Agent Rules" in result
-
-    def test_loads_agent_specific_instructions(self):
-        """Agent-specific instructions should be loaded."""
+    def test_loads_aria_instructions(self):
+        """Aria instructions should be loaded."""
         result = load_agent_instructions("aria")
         assert "Aria" in result
 
-    def test_core_and_agent_combined(self):
-        """Both core rules and agent instructions should appear."""
+    def test_loads_core_rules_within_aria(self):
+        """Core rules should be embedded in aria.md."""
         result = load_agent_instructions("aria")
-        assert "Core Agent Rules" in result
-        assert "Aria" in result
-
-    def test_exclude_core_rules(self):
-        """When include_core=False, core rules should be absent."""
-        result = load_agent_instructions(
-            "aria",
-            include_core=False,
-        )
-        assert "Core Agent Rules" not in result
-        assert "Aria" in result
+        assert "Core Rules" in result
+        assert "Response Style" in result
 
     def test_extras_appended(self):
         """Extras should appear in the output."""
@@ -40,10 +26,10 @@ class TestLoadAgentInstructions:
         assert "Custom extra note" in result
         assert "Additional Notes" in result
 
-    def test_unknown_agent_returns_core_only(self):
-        """Unknown agent name should still return core rules."""
+    def test_unknown_agent_returns_empty(self):
+        """Unknown agent name should return empty string (no file found)."""
         result = load_agent_instructions("nonexistent_agent")
-        assert "Core Agent Rules" in result
+        assert result == ""
 
     def test_all_agents_load_successfully(self):
         """Every known agent should load without error."""
@@ -59,7 +45,24 @@ class TestLoadAgentInstructions:
             )
 
     def test_result_is_nonempty_string(self):
-        """Result should always be a non-empty string."""
+        """Result should always be a non-empty string for known agents."""
         result = load_agent_instructions("aria")
         assert isinstance(result, str)
         assert len(result) > 0
+
+    def test_prompt_enhancer_no_core_rules(self):
+        """PromptEnhancer should NOT contain core rules."""
+        result = load_agent_instructions("prompt_enhancer")
+        assert "Core Rules" not in result
+        assert "Response Style" not in result
+        assert "Prompt Enhancer" in result
+
+    def test_variables_substituted(self):
+        """Template variables should be replaced when present."""
+        result = load_agent_instructions(
+            "aria",
+            extras="Value: {{TEST_KEY}}",
+            variables={"TEST_KEY": "replaced_value"},
+        )
+        assert "replaced_value" in result
+        assert "{{TEST_KEY}}" not in result
