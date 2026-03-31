@@ -1,6 +1,5 @@
 """Unified web search tool.
 
-Phase 6 consolidation: duckduckgo_web_search + searxng_web_search → web_search
 
 Auto-selects backend based on SEARXNG_URL environment variable.
 """

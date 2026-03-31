@@ -1,9 +1,4 @@
-"""File write and modification operations.
-
-Phase 5 consolidation: 6 tools → 2 tools.
-- write_file: Merges write_full_file + append_to_file + create_directory
-- edit_file: Merges insert_lines_at + replace_lines_range + delete_lines_range
-"""
+"""File write and modification operations."""
 
 from pathlib import Path
 from typing import List, Optional

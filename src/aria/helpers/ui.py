@@ -13,58 +13,30 @@ from llama_index.core.agent.workflow import ToolCall
 # This reduces font/width issues while keeping the UI playful.
 
 TOOL_EMOJI: Dict[str, str] = {
-    # Workflow
-    "handoff": "🤝",
-    # Reasoning tools
-    "start_reasoning": "🧠",
-    "add_reasoning_step": "🪜",
-    "add_reflection": "🪞",
-    "use_scratchpad": "🗒️",
-    "evaluate_reasoning": "⚖️",
-    "get_reasoning_summary": "📊",
-    "reset_reasoning": "🔁",
-    "end_reasoning": "🏁",
-    "list_reasoning_sessions": "🗂️",
-    # Files
-    "file_exists": "🔎",
-    "get_file_info": "🏷️",
-    "get_file_permissions": "🛡️",
-    "read_file_chunk": "📰",
-    "read_full_file": "📜",
-    "write_full_file": "💾",
-    "append_to_file": "✏️",
-    "insert_lines_at": "📌",
-    "replace_lines_range": "🔀",
-    "delete_lines_range": "🗑️",
-    "delete_file": "💣",
-    "create_directory": "🗄️",
-    "get_directory_tree": "🌳",
-    "list_files": "📋",
-    "search_files_by_name": "🔭",
-    "search_in_files": "🕵️",
-    "copy_file": "🗃️",
-    "move_file": "🚚",
-    "rename_file": "🏷️",
-    # Web/search
-    "duckduckgo_web_search": "🔍",
-    "grab_from_url": "⬇️",
-    "get_youtube_video_transcription": "📹",
+    # Core tools
+    "reasoning": "🧠",
+    "scratchpad": "🗒️",
+    "plan": "📋",
+    "knowledge": "💡",
+    "web_search": "🔍",
+    "download": "⬇️",
+    "shell": "🖥️",
     "get_current_weather": "🌦️",
+    # File tools
+    "read_file": "📜",
+    "write_file": "💾",
+    "edit_file": "✏️",
+    "file_info": "🏷️",
+    "list_files": "📂",
+    "search_files": "🔭",
+    "copy_file": "🗃️",
+    "delete_file": "💣",
+    "rename_file": "🏷️",
     # Development
-    "execute_python_code": "⚡",
-    "execute_python_file": "🐍",
-    "check_python_syntax": "🧪",
-    "check_python_file_syntax": "🔬",
-    "get_restricted_builtins": "🚧",
-    "get_timeout_limits": "⏳",
-    # Shell
-    "execute_command": "🖥️",
-    "execute_command_batch": "⚙️",
-    "get_platform_info": "💡",
-    # Vision / OCR
-    "parse_pdf": "🐾",
-    # Tool docs
-    "tool_help": "❓",
+    "python": "🐍",
+    # Browser
+    "open_url": "🌐",
+    "browser_click": "🖱️",
     # Finance
     "fetch_current_stock_price": "💹",
     "fetch_company_information": "🏦",
@@ -77,6 +49,13 @@ TOOL_EMOJI: Dict[str, str] = {
     "get_all_series_episodes": "📺",
     "get_movie_reviews": "🌟",
     "get_movie_trivia": "🎪",
+    # Entertainment
+    "get_youtube_video_transcription": "📹",
+    # System
+    "http_request": "🔗",
+    "process": "⚙️",
+    # Vision / OCR
+    "parse_pdf": "🐾",
 }
 
 

@@ -1,12 +1,10 @@
 """Chatter agent module.
 
-This module provides a conversational agent implementation for natural dialogue
-and general knowledge questions. The ChatterAgent class creates a friendly AI
-assistant that responds to user queries, making it suitable for casual
-conversation, support, and information sharing.
+This module provides the unified Aria agent — a single conversational agent
+that handles all tasks directly using the full tool registry.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
@@ -14,32 +12,17 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.config.api import Lightpanda
-from aria.tools.browser import browser_click, open_url
-from aria.tools.files import edit_file, file_info, read_file, write_file
-from aria.tools.planner import plan
-from aria.tools.reasoning import reasoning
-from aria.tools.scratchpad import scratchpad
-from aria.tools.search import (
-    download,
-    get_current_weather,
-    get_youtube_video_transcription,
-    web_search,
-)
-from aria.tools.shell import shell
+from aria.tools.registry import get_tools
 from aria.tools.vision.functions import make_parse_pdf
 
 
 class ChatterAgent(FunctionAgent):
     """
-    A conversational agent that provides friendly and helpful responses.
-    Handles natural dialogue, general knowledge questions, and supportive
-    interaction. Can call tools directly — including ``parse_pdf`` for
-    uploaded PDF files — without handing off to a specialist agent.
+    The unified Aria agent.
 
-    The agent loads its behavior instructions from the chatter.md file in the
-    instructions directory and can be customized with additional context
-    through the extras parameter.
+    Handles natural dialogue, general knowledge, web research, code
+    execution, financial analysis, entertainment queries, and more — all
+    through a single set of tools loaded from the centralized registry.
     """
 
     @staticmethod
@@ -65,15 +48,12 @@ def get_agent(
     vl_api_base: str,
     vl_model: str,
     extras: Optional[str] = None,
-    can_handoff_to: Optional[List[str]] = None,
 ) -> ChatterAgent:
     """Factory function to create and return a ChatterAgent instance.
 
-    This function initializes a ChatterAgent with the provided LLM and optional
-    extras, setting up a friendly conversational AI assistant for natural
-    dialogue and general knowledge questions. The agent also receives a
-    ``parse_pdf`` tool bound to the VL server so it can process uploaded PDF
-    files directly without a handoff.
+    Loads all tools from the centralized registry and appends the
+    ``parse_pdf`` tool (which requires VL server binding and cannot live
+    in the registry).
 
     Args:
         llm: The language model to use for generating responses.
@@ -83,8 +63,6 @@ def get_agent(
             ``"granite-docling-258M-Q8_0.gguf"``.
         extras: Optional additional context or instructions to customize the
             agent's behavior.
-        can_handoff_to: Optional list of agent names this agent may hand off
-            to.
 
     Returns:
         A configured ChatterAgent instance ready for conversation.
@@ -92,19 +70,10 @@ def get_agent(
 
     parse_pdf_fn = make_parse_pdf(api_base=vl_api_base, model=vl_model)
 
-    tools = [
-        FunctionTool.from_defaults(fn=get_youtube_video_transcription),
-        FunctionTool.from_defaults(fn=get_current_weather),
-        FunctionTool.from_defaults(fn=download),
-        FunctionTool.from_defaults(fn=read_file),
-        FunctionTool.from_defaults(fn=file_info),
-        FunctionTool.from_defaults(fn=write_file),
-        FunctionTool.from_defaults(fn=edit_file),
-        FunctionTool.from_defaults(fn=web_search),
-        FunctionTool.from_defaults(fn=shell),
-        FunctionTool.from_defaults(fn=reasoning),
-        FunctionTool.from_defaults(fn=scratchpad),
-        FunctionTool.from_defaults(fn=plan),
+    tools = get_tools(None)  # Load all categories from registry
+
+    # parse_pdf needs VL server binding — can't be in the registry
+    tools.append(
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",
@@ -116,15 +85,8 @@ def get_agent(
                 "optional extraction prompt. Returns markdown with "
                 "--- Page N --- separators."
             ),
-        ),
-    ]
-
-    if Lightpanda.is_available():
-        tools += [
-            FunctionTool.from_defaults(async_fn=open_url),
-            FunctionTool.from_defaults(async_fn=browser_click),
-        ]
-        logger.info("Browser tools enabled (Lightpanda available)")
+        )
+    )
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
 
@@ -139,7 +101,6 @@ def get_agent(
         system_prompt=ChatterAgent.get_system_prompt(extras=extras),
         streaming=True,
         verbose=True,
-        can_handoff_to=can_handoff_to,
     )
 
     return agent

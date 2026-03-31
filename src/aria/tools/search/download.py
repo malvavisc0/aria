@@ -1,7 +1,4 @@
-"""Download and convert content from a URL.
-
-Phase 6 consolidation: grab_from_url → download
-"""
+"""Download and convert content from a URL."""
 
 from typing import Dict, Optional
 
@@ -127,7 +124,3 @@ def download(
         return tool_error_response(get_function_name(), intent, exc)
     except Exception as exc:
         return tool_error_response(get_function_name(), intent, exc)
-
-
-# Backward-compatible alias
-grab_from_url = download

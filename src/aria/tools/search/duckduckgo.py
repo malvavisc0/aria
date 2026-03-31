@@ -25,7 +25,7 @@ def duckduckgo_web_search(
     Returns:
         JSON with results[{title, href}], error if failed.
         Use open_url to read web pages from the results.
-        Use grab_from_url to download files (PDFs, images, etc.).
+        Use download to download files (PDFs, images, etc.).
     """
     # Validate inputs
     validation_error = _validate_inputs(query, max_results)

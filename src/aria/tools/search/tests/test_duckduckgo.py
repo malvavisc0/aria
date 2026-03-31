@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aria.tools.search import duckduckgo_web_search
+from aria.tools.search.duckduckgo import duckduckgo_web_search
 
 
 def test_web_search_success():

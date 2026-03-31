@@ -18,9 +18,9 @@ class TestLoadAgentInstructions:
 
     def test_core_and_agent_combined(self):
         """Both core rules and agent instructions should appear."""
-        result = load_agent_instructions("guido")
+        result = load_agent_instructions("aria")
         assert "Core Agent Rules" in result
-        assert "Python Developer Agent" in result
+        assert "Aria" in result
 
     def test_exclude_core_rules(self):
         """When include_core=False, core rules should be absent."""
@@ -40,15 +40,6 @@ class TestLoadAgentInstructions:
         assert "Custom extra note" in result
         assert "Additional Notes" in result
 
-    def test_variable_substitution(self):
-        """Template variables should be replaced."""
-        result = load_agent_instructions(
-            "wanderer",
-            variables={"BROWSER_TOOLS_NOTE": "Tools are ready"},
-        )
-        assert "Tools are ready" in result
-        assert "{{BROWSER_TOOLS_NOTE}}" not in result
-
     def test_unknown_agent_returns_core_only(self):
         """Unknown agent name should still return core rules."""
         result = load_agent_instructions("nonexistent_agent")
@@ -58,10 +49,6 @@ class TestLoadAgentInstructions:
         """Every known agent should load without error."""
         agents = [
             "aria",
-            "guido",
-            "spielberg",
-            "wanderer",
-            "wizard",
             "prompt_enhancer",
         ]
         for agent in agents:

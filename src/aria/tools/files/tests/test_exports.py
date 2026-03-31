@@ -12,14 +12,14 @@ def test_all_exports_present_and_resolvable():
 
 def test_package_exports_point_to_expected_submodules():
     """Package re-exports should map to functions in owning submodule."""
-    # Unified read operations (Phase 4)
+    # Unified read operations
     read_names = {
         "read_file",
         "file_info",
         "list_files",
         "search_files",
     }
-    # Unified write operations (Phase 5)
+    # Unified write operations
     write_names = {
         "write_file",
         "edit_file",

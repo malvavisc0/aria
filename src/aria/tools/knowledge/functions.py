@@ -1,8 +1,4 @@
-"""Knowledge store tool for persistent key-value storage.
-
-Phase 7: Provides a simple key-value store for the agent to remember
-facts, preferences, and intermediate results across conversations.
-"""
+"""Knowledge store tool for persistent key-value storage."""
 
 import uuid
 from typing import List, Optional

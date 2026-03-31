@@ -3,7 +3,6 @@
 This module provides functions for executing shell commands safely with
 proper timeout handling, output capture, and security constraints.
 
-Phase 6 consolidation: execute_command + execute_command_batch → shell
 """
 
 import json
@@ -216,8 +215,3 @@ def shell(
         intent=intent,
         data=data,
     )
-
-
-# Backward-compatible aliases (used by tests during transition)
-execute_command = _execute_single_command
-execute_command_batch = shell

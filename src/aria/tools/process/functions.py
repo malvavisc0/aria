@@ -1,8 +1,4 @@
-"""Process manager tool for background process management.
-
-Phase 8: Provides the ability to start, stop, and monitor background
-processes from within the agent.
-"""
+"""Process manager tool for background process management."""
 
 import subprocess
 import threading

@@ -1,7 +1,4 @@
-"""File operations tools.
-
-Phase 4+5 consolidation: Unified tools replace legacy tools.
-"""
+"""File operations tools."""
 
 # File management operations
 from aria.tools.files.file_management import (
@@ -10,7 +7,7 @@ from aria.tools.files.file_management import (
     rename_file,
 )
 
-# Unified read operations (Phase 4)
+# Unified read operations
 from aria.tools.files.unified_read import (
     file_info,
     list_files,
@@ -18,16 +15,16 @@ from aria.tools.files.unified_read import (
     search_files,
 )
 
-# Unified write operations (Phase 5)
+# Unified write operations
 from aria.tools.files.write_operations import edit_file, write_file
 
 __all__ = [
-    # Unified read operations (Phase 4)
+    # Unified read operations
     "read_file",
     "file_info",
     "list_files",
     "search_files",
-    # Unified write operations (Phase 5)
+    # Unified write operations
     "write_file",
     "edit_file",
     # File management

@@ -62,15 +62,6 @@ def _make_tool_call_result(
     )
 
 
-def _make_handoff_selection(to_agent: str) -> ToolSelection:
-    """Build a ``handoff`` :class:`ToolSelection` for testing."""
-    return ToolSelection(
-        tool_id="handoff-id",
-        tool_name="handoff",
-        tool_kwargs={"to_agent": to_agent, "reason": "test"},
-    )
-
-
 # ---------------------------------------------------------------------------
 # initial_workflow_state
 # ---------------------------------------------------------------------------
@@ -87,16 +78,12 @@ class TestInitialWorkflowState:
         state = initial_workflow_state("Aria")
         assert state["tool_calls"] == []
 
-    def test_handoffs_empty(self):
-        state = initial_workflow_state("Aria")
-        assert state["handoffs"] == []
-
     def test_last_error_is_none(self):
         state = initial_workflow_state("Aria")
         assert state["last_error"] is None
 
     def test_different_root_agents(self):
-        for name in ["Aria", "Wanderer", "Wizard"]:
+        for name in ["Aria", "Other"]:
             state = initial_workflow_state(name)
             assert state["current_agent"] == name
 
@@ -126,59 +113,9 @@ class TestStateReducerAgentOutput:
 
     def test_updates_current_agent(self):
         state = initial_workflow_state("Aria")
-        ev = _make_agent_output("Wanderer")
-        result = state_reducer(state, ev)
-        assert result["current_agent"] == "Wanderer"
-
-    def test_no_handoff_tool_call_leaves_handoffs_empty(self):
-        state = initial_workflow_state("Aria")
         ev = _make_agent_output("Aria")
-        state_reducer(state, ev)
-        assert state["handoffs"] == []
-
-    def test_handoff_tool_call_appends_to_handoffs(self):
-        state = initial_workflow_state("Aria")
-        ev = _make_agent_output(
-            "Aria",
-            tool_calls=[_make_handoff_selection("Wanderer")],
-        )
-        state_reducer(state, ev)
-        assert state["handoffs"] == ["Wanderer"]
-
-    def test_multiple_handoffs_accumulate(self):
-        state = initial_workflow_state("Aria")
-        state_reducer(
-            state,
-            _make_agent_output("Aria", [_make_handoff_selection("Wanderer")]),
-        )
-        state_reducer(
-            state,
-            _make_agent_output("Wanderer", [_make_handoff_selection("Guido")]),
-        )
-        assert state["handoffs"] == ["Wanderer", "Guido"]
-
-    def test_handoff_with_empty_to_agent_is_ignored(self):
-        """A handoff tool call with empty ``to_agent`` must not be recorded."""
-        state = initial_workflow_state("Aria")
-        bad_ts = ToolSelection(
-            tool_id="h",
-            tool_name="handoff",
-            tool_kwargs={"to_agent": "", "reason": "oops"},
-        )
-        ev = _make_agent_output("Aria", tool_calls=[bad_ts])
-        state_reducer(state, ev)
-        assert state["handoffs"] == []
-
-    def test_non_handoff_tool_calls_do_not_affect_handoffs(self):
-        state = initial_workflow_state("Aria")
-        ts = ToolSelection(
-            tool_id="t",
-            tool_name="duckduckgo_web_search",
-            tool_kwargs={"query": "test"},
-        )
-        ev = _make_agent_output("Aria", tool_calls=[ts])
-        state_reducer(state, ev)
-        assert state["handoffs"] == []
+        result = state_reducer(state, ev)
+        assert result["current_agent"] == "Aria"
 
     def test_agent_output_does_not_modify_tool_calls(self):
         state = initial_workflow_state("Aria")
@@ -194,7 +131,7 @@ class TestStateReducerAgentOutput:
 
     def test_returns_same_state_object(self):
         state = initial_workflow_state("Aria")
-        ev = _make_agent_output("Wanderer")
+        ev = _make_agent_output("Aria")
         result = state_reducer(state, ev)
         assert result is state
 
@@ -209,21 +146,17 @@ class TestStateReducerToolCallResult:
 
     def test_appends_tool_call_record(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result(
-            "duckduckgo_web_search", {"query": "test"}, "results"
-        )
+        ev = _make_tool_call_result("web_search", {"query": "test"}, "results")
         state_reducer(state, ev)
         assert len(state["tool_calls"]) == 1
 
     def test_tool_call_record_fields_success(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result(
-            "duckduckgo_web_search", {"query": "test"}, "results"
-        )
+        ev = _make_tool_call_result("web_search", {"query": "test"}, "results")
         state_reducer(state, ev)
         record = state["tool_calls"][0]
         assert record["agent"] == "Aria"
-        assert record["tool"] == "duckduckgo_web_search"
+        assert record["tool"] == "web_search"
         assert record["args"] == {"query": "test"}
         assert record["result"] == "results"
         assert record["error"] is None
@@ -238,7 +171,7 @@ class TestStateReducerToolCallResult:
 
     def test_last_error_none_on_success(self):
         state = initial_workflow_state("Aria")
-        ev = _make_tool_call_result("duckduckgo_web_search", {}, "ok")
+        ev = _make_tool_call_result("web_search", {}, "ok")
         state_reducer(state, ev)
         assert state["last_error"] is None
 
@@ -269,12 +202,11 @@ class TestStateReducerToolCallResult:
     def test_agent_name_in_record_reflects_current_agent(self):
         """Record ``agent`` field must use the agent active at call time."""
         state = initial_workflow_state("Aria")
-        # Simulate a handoff to Wanderer before the tool call
-        state_reducer(state, _make_agent_output("Wanderer"))
+        state_reducer(state, _make_agent_output("Aria"))
         state_reducer(
-            state, _make_tool_call_result("reason", {}, "deep thought")
+            state, _make_tool_call_result("reasoning", {}, "deep thought")
         )
-        assert state["tool_calls"][0]["agent"] == "Wanderer"
+        assert state["tool_calls"][0]["agent"] == "Aria"
 
     def test_returns_same_state_object(self):
         state = initial_workflow_state("Aria")
@@ -307,7 +239,6 @@ class TestStateReducerUnknownEvents:
         state_reducer(state, event)
         assert state["current_agent"] == original_agent
         assert state["tool_calls"] == []
-        assert state["handoffs"] == []
         assert state["last_error"] is None
 
 
@@ -336,13 +267,10 @@ class TestStatefulAgentWorkflowReduceState:
         workflow = self._make_workflow()
         ctx = SimpleNamespace(store=_FakeStore())
 
-        result = await workflow.reduce_state(
-            ctx, _make_agent_output("Wanderer")
-        )
+        result = await workflow.reduce_state(ctx, _make_agent_output("Aria"))
 
-        assert result["current_agent"] == "Wanderer"
+        assert result["current_agent"] == "Aria"
         assert result["tool_calls"] == []
-        assert result["handoffs"] == []
         assert result["last_error"] is None
 
         stored_state = await ctx.store.get("state")
@@ -356,12 +284,10 @@ class TestStatefulAgentWorkflowReduceState:
 
         result = await workflow.reduce_state(
             ctx,
-            _make_tool_call_result(
-                "duckduckgo_web_search", {"query": "test"}, "results"
-            ),
+            _make_tool_call_result("web_search", {"query": "test"}, "results"),
         )
 
-        assert result["tool_calls"][0]["tool"] == "duckduckgo_web_search"
+        assert result["tool_calls"][0]["tool"] == "web_search"
         assert result["tool_calls"][0]["agent"] == "Aria"
         assert result["last_error"] is None
 

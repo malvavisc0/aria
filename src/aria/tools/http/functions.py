@@ -1,8 +1,4 @@
-"""HTTP request tool for making API calls.
-
-Phase 8: Provides a safe HTTP client for the agent to interact with
-web APIs, with blocked host lists and response size limits.
-"""
+"""HTTP request tool for making API calls."""
 
 from typing import Dict, Optional
 

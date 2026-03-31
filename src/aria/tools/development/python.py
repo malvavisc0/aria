@@ -1,9 +1,4 @@
-"""Python execution and syntax-check tools.
-
-Phase 6 consolidation: 4 tools → 1 tool (python).
-- check_python_syntax + check_python_file_syntax → python(check_only=True)
-- execute_python_code + execute_python_file → python(check_only=False)
-"""
+"""Python execution and syntax-check tools."""
 
 import ast
 import os

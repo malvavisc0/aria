@@ -1,24 +1,12 @@
 # 🧠 Welcome to Aria
 
-**Your Local AI Assistant with Multi-Agent Intelligence**
+**Your Local AI Assistant with Unified Agent Intelligence**
 
-Aria is a powerful AI assistant that runs entirely on your machine. It features a team of specialized agents that collaborate to help you with coding, research, system tasks, and more.
-
----
-
-## 🤖 Meet the Agents
-
-| Agent | Specialty |
-|:------|:----------|
-| 🎯 **Aria** | Your main assistant — handles conversations, routes tasks, and orchestrates other agents |
-| 🐍 **Guido** | Python development — code execution, debugging, and file operations |
-| 🌐 **Wanderer** | Web research — search the web, download content, extract data |
-| 📊 **Wizard** | Market analysis — stock prices, financial data, and market insights |
-| 🎬 **Spielberg** | Entertainment — IMDb searches, movie/TV info, cast details |
+Aria is a powerful AI assistant that runs entirely on your machine. It uses a single unified agent with a comprehensive toolkit to help you with coding, research, system tasks, finance, entertainment, and more.
 
 ---
 
-## ✨ What Can You Do?
+## 🛠️ What Can Aria Do?
 
 ### 💬 Have a Conversation
 Just start typing! Aria will respond naturally and help with general questions.
@@ -56,6 +44,20 @@ Compare AMD and NVIDIA stock performance
 Find movies starring Leonardo DiCaprio
 What's the rating of The Matrix?
 Show me the cast of Breaking Bad
+```
+
+### 📁 File Operations
+```
+Read the contents of config.yaml
+Search for all TODO comments in my project
+Create a new directory structure
+```
+
+### 🧠 Structured Reasoning & Planning
+```
+Compare the tradeoffs between microservices and monoliths
+Help me plan a database migration strategy
+Analyze this decision step by step
 ```
 
 ---

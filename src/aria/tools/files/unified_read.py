@@ -1,4 +1,4 @@
-"""Unified file read operations - Phase 4 consolidation.
+"""Unified file read operations.
 
 This module provides 4 unified read tools:
 - read_file: Merges read_full_file + read_file_chunk

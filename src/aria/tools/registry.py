@@ -1,6 +1,6 @@
 """Tool registry for categorized tool loading.
 
-Phase 9: Provides a centralized registry that maps tool categories
+Provides a centralized registry that maps tool categories
 to their implementations, enabling agents to load tools by category
 rather than importing individual modules.
 
@@ -63,6 +63,7 @@ def _get_core_tools() -> List[FunctionTool]:
         ("aria.tools.scratchpad", "scratchpad"),
         ("aria.tools.search", "web_search"),
         ("aria.tools.search", "download"),
+        ("aria.tools.search", "get_current_weather"),
         ("aria.tools.shell", "shell"),
     ]
     return [
@@ -145,6 +146,12 @@ def _get_entertainment_tools() -> List[FunctionTool]:
     tool_specs = [
         ("aria.tools.imdb", "search_imdb_titles"),
         ("aria.tools.imdb", "get_movie_details"),
+        ("aria.tools.imdb", "get_person_details"),
+        ("aria.tools.imdb", "get_person_filmography"),
+        ("aria.tools.imdb", "get_all_series_episodes"),
+        ("aria.tools.imdb", "get_movie_reviews"),
+        ("aria.tools.imdb", "get_movie_trivia"),
+        ("aria.tools.search", "get_youtube_video_transcription"),
     ]
     tools = []
     for mod, fn in tool_specs:

@@ -2,7 +2,7 @@
 
 # 🧠 Aria
 
-**Your Local AI Assistant with Multi-Agent Intelligence**
+**Your Local AI Assistant with Unified Agent Intelligence**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-| 🎯 | **Multi-Agent Architecture** - Specialized agents that collaborate to solve complex tasks |
+| 🎯 | **Unified Agent Architecture** - Single agent with 33+ tools for any task |
 |:--:|:--|
 | 🖥️ | **Multiple Interfaces** - Web UI, CLI, and native GUI application |
 | 🤖 | **Local LLM Support** - Run models locally with llama.cpp integration |
@@ -60,25 +60,26 @@ aria-gui  # Launch desktop application
 
 ## 🤖 Agent System
 
-Aria uses a team of specialized agents that work together:
+Aria uses a single unified agent with a comprehensive toolset:
 
-| Agent | Role | Capabilities |
-|:------|:-----|:-------------|
-| 🎯 **Aria** | Orchestrator | Conversation, task routing, PDF parsing |
-| 🐍 **Guido** | Python Developer | Code execution, syntax validation, debugging |
-| 🌐 **Wanderer** | Web Researcher | Web search, content download, data extraction |
-| 📊 **Wizard** | Market Analyst | Stock data, financial research, market insights |
-| 🎬 **Spielberg** | IMDb Expert | Movie/TV search, cast info, ratings, trivia |
+| Category | Tools | Capabilities |
+|:---------|:------|:-------------|
+| 🧠 **Core** | reasoning, scratchpad, plan, knowledge | Structured thinking, planning, memory |
+| 📁 **Files** | read_file, write_file, edit_file, + 6 more | Full file management |
+| 🌐 **Search** | web_search, download | Web research, content download |
+| 🐍 **Development** | python | Code execution and validation |
+| 📊 **Finance** | stock_price, company_info, ticker_news | Market data and analysis |
+| 🎬 **Entertainment** | 7 IMDb tools, YouTube | Movie/TV data, transcripts |
+| 🖥️ **System** | shell, http_request, process | Shell commands, HTTP, process management |
+| 🌤️ **Utility** | weather, parse_pdf, browser | Weather, PDF parsing, web browsing |
 
 ### How It Works
 
 ```
-User Request → Aria (Orchestrator) → Specialist Agent → Response
-                     ↓
-         [Routes to best agent for the task]
+User Request → Aria (Unified Agent) → Tool Call → Response
 ```
 
-Aria evaluates each request and either handles it directly or delegates to the most capable specialist.
+Aria evaluates each request and selects the most appropriate tool to handle it directly.
 
 ---
 

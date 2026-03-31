@@ -1,7 +1,4 @@
-"""Shell execution tools.
-
-Phase 6 consolidation: execute_command + execute_command_batch → shell
-"""
+"""Shell execution tools."""
 
 from aria.tools.shell.functions import shell
 

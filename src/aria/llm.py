@@ -23,13 +23,7 @@ from llama_index.llms.openai_like import OpenAILike
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from typing_extensions import TypedDict
 
-from aria.agents import (
-    get_chatter_agent,
-    get_imdb_exper_agent,
-    get_market_analyst_agent,
-    get_python_developer_agent,
-    get_web_researcher_agent,
-)
+from aria.agents import get_chatter_agent
 from aria.config.models import Vision as VisionConfig
 
 
@@ -114,7 +108,7 @@ class ToolCallRecord(TypedDict):
 
 
 class WorkflowState(TypedDict):
-    """Minimal shared state threaded through the multi-agent workflow.
+    """Minimal shared state threaded through the agent workflow.
 
     This dict is seeded into ``ctx.store`` by :func:`get_agent_workflow` via
     ``AgentWorkflow(initial_state=...)``. In this project, live updates are
@@ -126,14 +120,12 @@ class WorkflowState(TypedDict):
     Attributes:
         current_agent: Name of the agent that is currently active.
         tool_calls: Append-only log of every tool invocation during the run.
-        handoffs: Ordered list of agent names visited (breadcrumb trail).
         last_error: Most recent tool error message, or ``None`` if the last
             tool call succeeded.
     """
 
     current_agent: str
     tool_calls: list[ToolCallRecord]
-    handoffs: list[str]
     last_error: str | None
 
 
@@ -150,13 +142,12 @@ def initial_workflow_state(root_agent: str) -> WorkflowState:
 
         state = initial_workflow_state("Aria")
         # WorkflowState(
-        #     current_agent="Aria", tool_calls=[], handoffs=[], last_error=None
+        #     current_agent="Aria", tool_calls=[], last_error=None
         # )
     """
     return WorkflowState(
         current_agent=root_agent,
         tool_calls=[],
-        handoffs=[],
         last_error=None,
     )
 
@@ -169,8 +160,7 @@ def state_reducer(state: WorkflowState, ev: Any) -> WorkflowState:
     :class:`StatefulAgentWorkflow` after agent-output and tool-result steps. It
     handles two event types:
 
-    * :class:`AgentOutput` — updates ``current_agent`` and appends to
-      ``handoffs`` when a ``handoff`` tool call is detected.
+    * :class:`AgentOutput` — updates ``current_agent``.
     * :class:`ToolCallResult` — appends a :class:`ToolCallRecord` to
       ``tool_calls`` and updates ``last_error``.
 
@@ -189,18 +179,13 @@ def state_reducer(state: WorkflowState, ev: Any) -> WorkflowState:
 
         state = initial_workflow_state("Aria")
         fake_output = AgentOutput(
-            response=..., current_agent_name="Wanderer", tool_calls=[]
+            response=..., current_agent_name="Aria", tool_calls=[]
         )
         state = state_reducer(state, fake_output)
-        assert state["current_agent"] == "Wanderer"
+        assert state["current_agent"] == "Aria"
     """
     if isinstance(ev, AgentOutput):
         state["current_agent"] = ev.current_agent_name
-        for tc in ev.tool_calls:
-            if tc.tool_name == "handoff":
-                to_agent: str = tc.tool_kwargs.get("to_agent", "")
-                if to_agent:
-                    state["handoffs"].append(to_agent)
 
     elif isinstance(ev, ToolCallResult):
         output = ev.tool_output
@@ -285,6 +270,9 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
         else "/bin/bash (likely)"
     )
 
+    from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
+    from aria.tools.development.constants import RESTRICTED_BUILTINS
+
     lines: list[str] = [
         f"- **Current date**: {date_str}",
         f"- **Current time**: {timestamp.strftime('%H:%M')}",
@@ -292,6 +280,11 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
         f"- **OS**: {host}",
         f"- **Architecture**: {platform.machine()}",
         f"- **Shell**: {shell_hint}",
+        (
+            f"- **Python timeout**: default {DEFAULT_TIMEOUT}s, "
+            f"max {MAX_TIMEOUT}s"
+        ),
+        f"- **Restricted builtins**: {', '.join(sorted(RESTRICTED_BUILTINS))}",
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")
@@ -323,65 +316,28 @@ def get_chat_llm(api_base: str) -> OpenAILike:
 
 
 def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
-    """Build the multi-agent workflow used by the UI.
+    """Build the single-agent workflow used by the UI.
 
-    This wires together the project's agent factory functions and returns a
-    single :class:`AgentWorkflow` with Chatter as the root agent. Chatter
-    routes requests to specialist agents through handoffs. PDF parsing is
-    handled directly by Chatter via the ``parse_pdf`` tool — no VL agent
-    handoff is needed.
+    Returns a :class:`StatefulAgentWorkflow` with the unified Aria agent
+    as the sole agent. All tools are loaded from the centralized registry
+    inside the agent factory — no specialist agents or handoffs.
 
     Args:
-        llm: LLM instance shared across all chat/reasoning agents.
+        llm: LLM instance used by the agent.
 
     Returns:
         A fully constructed :class:`AgentWorkflow`.
     """
 
-    # Specialist agents
-    imdb_expert = get_imdb_exper_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="Spielberg"),
-        can_handoff_to=["Wanderer"],
-    )
-    market_analyst = get_market_analyst_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="Wizard"),
-        can_handoff_to=["Wanderer", "Guido"],
-    )
-    python_developer = get_python_developer_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="Guido"),
-        can_handoff_to=["Wanderer"],
-    )
-    web_researcher = get_web_researcher_agent(
-        llm=llm,
-        extras=get_instructions_extras(agent_name="Wanderer"),
-        can_handoff_to=["Wizard", "Guido", "Spielberg"],
-    )
-    # Create Chatter as root agent
     chatter = get_chatter_agent(
         llm=llm,
         vl_api_base=VisionConfig.api_url,
         vl_model=VisionConfig.model,
         extras=get_instructions_extras(agent_name="aria"),
-        can_handoff_to=[
-            "Guido",
-            "Wanderer",
-            "Wizard",
-            "Spielberg",
-        ],
     )
 
-    # Initialize Workflow (Chatter is the root agent)
     workflow = StatefulAgentWorkflow(
-        agents=[
-            chatter,
-            market_analyst,
-            python_developer,
-            web_researcher,
-            imdb_expert,
-        ],
+        agents=[chatter],
         root_agent=chatter.name,
         # Cast to plain dict: AgentWorkflow expects Dict, WorkflowState is
         # a TypedDict (structurally compatible at runtime).

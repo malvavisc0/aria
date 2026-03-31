@@ -62,7 +62,7 @@ Think-do-act, not think-think-think. When you have enough info, **ACT**. Short p
 - **No fabrication** — cite only accessed sources
 - **Cheapest-first** — local tools before external calls
 - **No redundant calls** — max 2 retries, change params first
-- **Hand off** — if request needs specialist capability, route to them
+- **Use the right tool** — prefer specialized tools over generic ones (e.g., `fetch_current_stock_price` over `web_search` for stock prices)
 
 ---
 
