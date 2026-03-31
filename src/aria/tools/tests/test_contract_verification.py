@@ -22,10 +22,10 @@ class TestFilesPackageContract:
 
     def test_files_read_operations_have_expected_signatures(self):
         """Verify read operation functions have documented parameter names."""
-        from aria.tools.files import read_operations
+        from aria.tools.files.unified_read import list_files, read_file
 
         # list_files: should have pattern, recursive, max_results
-        sig = inspect.signature(read_operations.list_files)
+        sig = inspect.signature(list_files)
         params = list(sig.parameters.keys())
         assert (
             "pattern" in params
@@ -37,34 +37,31 @@ class TestFilesPackageContract:
             "max_results" in params
         ), "list_files should have 'max_results' parameter"
 
-        # read_file_chunk: should have file_name, offset, chunk_size
-        sig = inspect.signature(read_operations.read_file_chunk)
+        # read_file: should have file_name, offset, length
+        sig = inspect.signature(read_file)
         params = list(sig.parameters.keys())
-        assert "file_name" in params, "read_file_chunk should have 'file_name'"
-        assert (
-            "chunk_size" in params
-        ), "read_file_chunk should use 'chunk_size' not 'length'"
+        assert "file_name" in params, "read_file should have 'file_name'"
 
     def test_files_write_operations_have_expected_signatures(self):
         """Verify write operation functions have documented parameter names."""
-        from aria.tools.files import write_operations
+        from aria.tools.files.write_operations import edit_file, write_file
 
-        # write_full_file: intent, file_name, contents
-        sig = inspect.signature(write_operations.write_full_file)
-        params = list(sig.parameters.keys())
-        assert params == ["intent", "file_name", "contents"], (
-            f"write_full_file should have (intent, file_name, contents), "
-            f"got {params}"
-        )
-
-        # append_to_file: intent, file_name, contents
-        sig = inspect.signature(write_operations.append_to_file)
+        # write_file: intent, file_name, contents, mode
+        sig = inspect.signature(write_file)
         params = list(sig.parameters.keys())
         assert "intent" in params
         assert "file_name" in params
         assert (
             "contents" in params
-        ), "append_to_file should have 'contents' parameter"
+        ), "write_file should have 'contents' parameter"
+        assert "mode" in params, "write_file should have 'mode' parameter"
+
+        # edit_file: intent, file_name, offset, length, new_lines
+        sig = inspect.signature(edit_file)
+        params = list(sig.parameters.keys())
+        assert "intent" in params
+        assert "file_name" in params
+        assert "offset" in params, "edit_file should have 'offset' parameter"
 
     def test_files_management_operations_have_expected_signatures(self):
         """Verify file management functions have documented parameter names."""
@@ -100,17 +97,17 @@ class TestReasoningPackageContract:
             obj = getattr(reasoning_pkg, name)
             assert callable(obj), f"{name} is not callable"
 
-    def test_end_reasoning_has_no_conclusion_parameter(self):
-        """Issue #12: end_reasoning should NOT have a 'conclusion' parameter.
+    def test_reasoning_has_no_conclusion_parameter(self):
+        """Issue #12: reasoning should NOT have a 'conclusion' parameter.
 
         Previous docs incorrectly documented a 'conclusion' argument.
         """
-        from aria.tools.reasoning import end_reasoning
+        from aria.tools.reasoning import reasoning
 
-        sig = inspect.signature(end_reasoning)
+        sig = inspect.signature(reasoning)
         params = list(sig.parameters.keys())
         assert "conclusion" not in params, (
-            "end_reasoning should not have a 'conclusion' parameter. "
+            "reasoning should not have a 'conclusion' parameter. "
             "This was a documentation bug."
         )
 

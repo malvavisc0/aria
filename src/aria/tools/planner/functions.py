@@ -7,14 +7,13 @@ plan executions without interference.
 All plans are persisted to the database - no in-memory caching.
 """
 
-import functools
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Callable, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from aria.tools import get_function_name, tool_response
+from aria.tools import tool_response
 
 from . import registry
 
@@ -95,31 +94,6 @@ def _step_to_dict(step: PlanStep) -> Dict:
     }
 
 
-def _update_timestamp(obj: Plan | PlanStep) -> None:
-    """Update the updated_at timestamp of a plan or step."""
-    obj.updated_at = datetime.now(timezone.utc).isoformat()
-
-
-def _no_active_plan_error(
-    reason: str,
-    operation: str,
-    execution_id: Optional[str] = None,
-    **params: object,
-) -> str:
-    """Return a standardized no-active-plan error payload."""
-    error_msg = (
-        f"No active plan for execution_id '{execution_id}'. "
-        "Use create_execution_plan first."
-        if execution_id
-        else "No active plan. Use create_execution_plan first."
-    )
-    return tool_response(
-        tool=operation,
-        intent="",
-        data={"error": error_msg},
-    )
-
-
 def _serialize_step(step: PlanStep) -> dict[str, object]:
     """Serialize a plan step for tool responses."""
     return {
@@ -165,45 +139,54 @@ def _get_current_plan(execution_id: str) -> Plan:
     if plan_data is None:
         raise RuntimeError(
             f"No active plan for execution_id '{execution_id}'. "
-            "Use create_execution_plan first."
+            "Use plan(action='create') first."
         )
-    # Reconstruct Plan from database data
     return _dict_to_plan(plan_data)
 
 
-def _requires_plan(func: Callable) -> Callable:
-    """Decorator that checks if a plan exists in the database.
-
-    Returns an error JSON if no plan exists for the execution_id.
-    The execution_id is expected as the second argument (after 'reason').
-    """
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> str:
-        # execution_id is expected as the second positional arg or in kwargs
-        execution_id = args[1] if len(args) > 1 else kwargs.get("execution_id")
-        if not execution_id or not registry.plan_exists(execution_id):
-            reason = args[0] if args else kwargs.get("reason", "unknown")
-            return _no_active_plan_error(reason, func.__name__, execution_id)
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def create_execution_plan(
-    reason: str, task: str, steps: list[str], agent_id: str = "default"
+def _ok(
+    tool: str,
+    intent: str,
+    result: Dict[str, Any],
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Create a new execution plan with the given task and steps.
+    """Build a success response."""
+    return tool_response(
+        tool=tool,
+        intent=intent or "",
+        data={
+            "result": result,
+            "error": "",
+            "metadata": metadata or {},
+        },
+    )
 
-    Args:
-        reason: Natural-language explanation of why the agent needs planning.
-        task: The overall task description.
-        steps: List of step descriptions in execution order.
-        agent_id: Agent identifier for multi-agent isolation.
 
-    Returns:
-        A JSON string containing the created plan or error.
-    """
+def _err(
+    tool: str,
+    intent: str,
+    message: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Build an error response."""
+    return tool_response(
+        tool=tool,
+        intent=intent or "",
+        data={
+            "result": "",
+            "error": message,
+            "metadata": metadata or {},
+        },
+    )
+
+
+def _action_create(
+    intent: str,
+    task: str,
+    steps: List[str],
+    agent_id: str,
+) -> str:
+    """Create a new execution plan with the given task and steps."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -231,111 +214,106 @@ def create_execution_plan(
             created_at=created_at,
         )
 
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason or "",
-            data={
-                "result": _serialize_plan(plan),
-                "error": "",
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {
-                        "task": task,
-                        "steps": steps,
-                        "agent_id": agent_id,
-                    },
-                    "execution_id": execution_id,
-                    "success": True,
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result=_serialize_plan(plan),
+            metadata={
+                "timestamp": timestamp,
+                "action": "create",
+                "params": {
+                    "task": task,
+                    "steps": steps,
+                    "agent_id": agent_id,
                 },
+                "execution_id": execution_id,
+                "success": True,
             },
         )
     except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason or "",
-            data={
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {"task": task, "steps": steps},
-                    "success": False,
-                },
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "create",
+                "params": {"task": task, "steps": steps},
+                "success": False,
             },
         )
 
 
-@_requires_plan
-def get_execution_plan(reason: str, execution_id: str) -> str:
-    """Get the current plan status.
-
-    Args:
-        reason: Natural-language explanation of why the agent needs the plan.
-        execution_id: The execution ID of the plan to retrieve.
-
-    Returns:
-        A JSON string containing the current plan or error.
-    """
+def _action_get(intent: str, execution_id: str) -> str:
+    """Get the current plan status."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
         current_plan = _get_current_plan(execution_id)
-
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data=_serialize_plan(current_plan),
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result=_serialize_plan(current_plan),
+            metadata={
+                "timestamp": timestamp,
+                "action": "get",
+                "execution_id": execution_id,
+            },
         )
     except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            exc=Exception(str(exc)),
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "get",
+                "execution_id": execution_id,
+            },
         )
 
 
-@_requires_plan
-def update_plan_step(
-    reason: str,
+def _action_update(
+    intent: str,
     execution_id: str,
     step_id: str,
-    status: str,
-    result: Optional[str] = None,
+    status: Optional[str],
+    result: Optional[str],
 ) -> str:
-    """Update a step's status and optionally its result.
-
-    Args:
-        reason: Natural-language explanation of why the agent needs to update.
-        execution_id: The execution ID of the plan to update.
-        step_id: The ID of the step to update.
-        status: New status - one of: pending, in_progress, completed, failed.
-        result: Optional result message to store with the step.
-
-    Returns:
-        A JSON string containing the updated step or error.
-    """
+    """Update a step's status and optionally its result."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
         # Validate status
+        if status is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="status is required for update action",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "update",
+                    "params": {"step_id": step_id},
+                    "success": False,
+                },
+            )
+
         try:
             new_status = StepStatus(status.lower())
         except ValueError:
             valid_statuses = [s.value for s in StepStatus]
-            error = (
-                f"Invalid status '{status}'. Valid values: {valid_statuses}"
-            )
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": error,
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id, "status": status},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=(
+                    f"Invalid status '{status}'. "
+                    f"Valid values: {valid_statuses}"
+                ),
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "update",
+                    "params": {"step_id": step_id, "status": status},
+                    "success": False,
                 },
             )
 
@@ -346,17 +324,15 @@ def update_plan_step(
         )
 
         if not success:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id, "status": status},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{step_id}' not found in plan.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "update",
+                    "params": {"step_id": step_id, "status": status},
+                    "success": False,
                 },
             )
 
@@ -365,69 +341,55 @@ def update_plan_step(
         step = next((s for s in current_plan.steps if s.id == step_id), None)
 
         if step is None:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id, "status": status},
-                        "success": False,
-                    },
-                },
-            )
-
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": _serialize_step(step),
-                "error": "",
-                "metadata": {
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{step_id}' not found in plan.",
+                metadata={
                     "timestamp": timestamp,
-                    "params": {
-                        "step_id": step_id,
-                        "status": status,
-                        "result": result,
-                    },
-                    "success": True,
-                },
-            },
-        )
-    except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
+                    "action": "update",
                     "params": {"step_id": step_id, "status": status},
                     "success": False,
                 },
+            )
+
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result=_serialize_step(step),
+            metadata={
+                "timestamp": timestamp,
+                "action": "update",
+                "params": {
+                    "step_id": step_id,
+                    "status": status,
+                    "result": result,
+                },
+                "execution_id": execution_id,
+                "success": True,
+            },
+        )
+    except Exception as exc:
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "update",
+                "params": {"step_id": step_id, "status": status},
+                "success": False,
             },
         )
 
 
-@_requires_plan
-def add_plan_step(
-    reason: str, execution_id: str, after_step_id: Optional[str], new_step: str
+def _action_add(
+    intent: str,
+    execution_id: str,
+    after_step_id: Optional[str],
+    description: str,
 ) -> str:
-    """Add a new step after a specified step or at the end.
-
-    Args:
-        reason: Natural-language explanation of why the agent needs to add a
-            step.
-        execution_id: The execution ID of the plan to add a step to.
-        after_step_id: ID of the step to insert after. None for end of plan.
-        new_step: Description of the new step.
-
-    Returns:
-        A JSON string containing the inserted step or error.
-    """
+    """Add a new step after a specified step or at the end."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -435,23 +397,23 @@ def add_plan_step(
         step_id = str(uuid.uuid4())
 
         db = registry.get_db()
-        step_data = db.add_step(execution_id, step_id, new_step, after_step_id)
+        step_data = db.add_step(
+            execution_id, step_id, description, after_step_id
+        )
 
         if step_data is None:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{after_step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {
-                            "after_step_id": after_step_id,
-                            "new_step": new_step,
-                        },
-                        "success": False,
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{after_step_id}' not found in plan.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "add",
+                    "params": {
+                        "after_step_id": after_step_id,
+                        "description": description,
                     },
+                    "success": False,
                 },
             )
 
@@ -462,58 +424,48 @@ def add_plan_step(
         # Reload plan to get updated step count
         current_plan = _get_current_plan(execution_id)
 
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": {
-                    **_serialize_step(step),
-                    "inserted_after": after_step_id,
-                    "total_steps": len(current_plan.steps),
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result={
+                **_serialize_step(step),
+                "inserted_after": after_step_id,
+                "total_steps": len(current_plan.steps),
+            },
+            metadata={
+                "timestamp": timestamp,
+                "action": "add",
+                "params": {
+                    "after_step_id": after_step_id,
+                    "description": description,
                 },
-                "error": "",
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {
-                        "after_step_id": after_step_id,
-                        "new_step": new_step,
-                    },
-                    "success": True,
-                },
+                "execution_id": execution_id,
+                "success": True,
             },
         )
     except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {
-                        "after_step_id": after_step_id,
-                        "new_step": new_step,
-                    },
-                    "success": False,
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "add",
+                "params": {
+                    "after_step_id": after_step_id,
+                    "description": description,
                 },
+                "success": False,
             },
         )
 
 
-@_requires_plan
-def remove_plan_step(reason: str, execution_id: str, step_id: str) -> str:
-    """Remove a step from the plan.
-
-    Args:
-        reason: Natural-language explanation of why the agent needs to remove
-            a step.
-        execution_id: The execution ID of the plan to remove a step from.
-        step_id: ID of the step to remove.
-
-    Returns:
-        A JSON string confirming removal or error.
-    """
+def _action_remove(
+    intent: str,
+    execution_id: str,
+    step_id: str,
+) -> str:
+    """Remove a step from the plan."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -521,72 +473,58 @@ def remove_plan_step(reason: str, execution_id: str, step_id: str) -> str:
         removed_data = db.remove_step(execution_id, step_id)
 
         if removed_data is None:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{step_id}' not found in plan.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "remove",
+                    "params": {"step_id": step_id},
+                    "success": False,
                 },
             )
 
         # Reload to get remaining step count
         current_plan = _get_current_plan(execution_id)
 
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": {
-                    "removed_step_id": removed_data["id"],
-                    "description": removed_data["description"],
-                    "remaining_steps": len(current_plan.steps),
-                },
-                "error": "",
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {"step_id": step_id},
-                    "success": True,
-                },
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result={
+                "removed_step_id": removed_data["id"],
+                "description": removed_data["description"],
+                "remaining_steps": len(current_plan.steps),
+            },
+            metadata={
+                "timestamp": timestamp,
+                "action": "remove",
+                "params": {"step_id": step_id},
+                "execution_id": execution_id,
+                "success": True,
             },
         )
     except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {"step_id": step_id},
-                    "success": False,
-                },
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "remove",
+                "params": {"step_id": step_id},
+                "success": False,
             },
         )
 
 
-@_requires_plan
-def replace_plan_step(
-    reason: str, execution_id: str, step_id: str, new_step: str
+def _action_replace(
+    intent: str,
+    execution_id: str,
+    step_id: str,
+    description: str,
 ) -> str:
-    """Replace a step's description.
-
-    Args:
-        reason: Natural-language explanation of why the agent needs to replace
-            a step.
-        execution_id: The execution ID of the plan to replace a step in.
-        step_id: ID of the step to replace.
-        new_step: New description for the step.
-
-    Returns:
-        A JSON string containing the updated step or error.
-    """
+    """Replace a step's description."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -599,36 +537,34 @@ def replace_plan_step(
                 break
 
         if old_description is None:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id, "new_step": new_step},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{step_id}' not found in plan.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "replace",
+                    "params": {"step_id": step_id, "description": description},
+                    "success": False,
                 },
             )
 
         # Update in database
         db = registry.get_db()
-        success = db.update_step(execution_id, step_id, description=new_step)
+        success = db.update_step(
+            execution_id, step_id, description=description
+        )
 
         if not success:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id, "new_step": new_step},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{step_id}' not found in plan.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "replace",
+                    "params": {"step_id": step_id, "description": description},
+                    "success": False,
                 },
             )
 
@@ -637,67 +573,54 @@ def replace_plan_step(
         step = next((s for s in current_plan.steps if s.id == step_id), None)
 
         if step is None:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": f"Step '{step_id}' not found in plan.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_id": step_id, "new_step": new_step},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=f"Step '{step_id}' not found in plan.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "replace",
+                    "params": {"step_id": step_id, "description": description},
+                    "success": False,
                 },
             )
 
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": {
-                    **_serialize_step(step),
-                    "old_description": old_description,
-                    "new_description": step.description,
-                },
-                "error": "",
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {"step_id": step_id, "new_step": new_step},
-                    "success": True,
-                },
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result={
+                **_serialize_step(step),
+                "old_description": old_description,
+                "new_description": step.description,
+            },
+            metadata={
+                "timestamp": timestamp,
+                "action": "replace",
+                "params": {"step_id": step_id, "description": description},
+                "execution_id": execution_id,
+                "success": True,
             },
         )
     except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
-                    "params": {"step_id": step_id, "new_step": new_step},
-                    "success": False,
-                },
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "replace",
+                "params": {"step_id": step_id, "description": description},
+                "success": False,
             },
         )
 
 
-@_requires_plan
-def reorder_plan_steps(
-    reason: str, execution_id: str, step_ids: list[str]
+def _action_reorder(
+    intent: str,
+    execution_id: str,
+    step_ids: List[str],
 ) -> str:
-    """Reorder steps in the plan.
-
-    Args:
-        reason: Natural-language explanation of why the agent needs to reorder.
-        execution_id: The execution ID of the plan to reorder.
-        step_ids: New order of step IDs as a list.
-
-    Returns:
-        A JSON string containing the reordered steps or error.
-    """
+    """Reorder steps in the plan."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -706,37 +629,33 @@ def reorder_plan_steps(
         current_step_count = len(current_plan.steps)
 
         if len(step_ids) != current_step_count:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": (
-                        "step_ids must contain each current step exactly "
-                        "once. "
-                        f"Expected {current_step_count} IDs, got "
-                        f"{len(step_ids)}."
-                    ),
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_ids": step_ids},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message=(
+                    "step_ids must contain each current step exactly "
+                    "once. "
+                    f"Expected {current_step_count} IDs, got "
+                    f"{len(step_ids)}."
+                ),
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "reorder",
+                    "params": {"step_ids": step_ids},
+                    "success": False,
                 },
             )
 
         if len(set(step_ids)) != len(step_ids):
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": "step_ids contains duplicate step IDs.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_ids": step_ids},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="step_ids contains duplicate step IDs.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "reorder",
+                    "params": {"step_ids": step_ids},
+                    "success": False,
                 },
             )
 
@@ -752,17 +671,15 @@ def reorder_plan_steps(
                 error_parts.append(f"Missing steps: {missing}")
             if extra:
                 error_parts.append(f"Unknown steps: {extra}")
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": "; ".join(error_parts),
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_ids": step_ids},
-                        "success": False,
-                    },
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="; ".join(error_parts),
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "reorder",
+                    "params": {"step_ids": step_ids},
+                    "success": False,
                 },
             )
 
@@ -771,47 +688,239 @@ def reorder_plan_steps(
         reordered_data = db.reorder_steps(execution_id, step_ids)
 
         if reordered_data is None:
-            return tool_response(
-                tool=get_function_name(),
-                intent=reason,
-                data={
-                    "result": "",
-                    "error": "Failed to reorder steps.",
-                    "metadata": {
-                        "timestamp": timestamp,
-                        "params": {"step_ids": step_ids},
-                        "success": False,
-                    },
-                },
-            )
-
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": {
-                    "reordered_steps": reordered_data,
-                    "total_steps": len(reordered_data),
-                },
-                "error": "",
-                "metadata": {
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="Failed to reorder steps.",
+                metadata={
                     "timestamp": timestamp,
-                    "params": {"step_ids": step_ids},
-                    "success": True,
-                },
-            },
-        )
-    except Exception as exc:
-        return tool_response(
-            tool=get_function_name(),
-            intent=reason,
-            data={
-                "result": "",
-                "error": str(exc),
-                "metadata": {
-                    "timestamp": timestamp,
+                    "action": "reorder",
                     "params": {"step_ids": step_ids},
                     "success": False,
                 },
+            )
+
+        return _ok(
+            tool="plan",
+            intent=intent,
+            result={
+                "reordered_steps": reordered_data,
+                "total_steps": len(reordered_data),
+            },
+            metadata={
+                "timestamp": timestamp,
+                "action": "reorder",
+                "params": {"step_ids": step_ids},
+                "execution_id": execution_id,
+                "success": True,
+            },
+        )
+    except Exception as exc:
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "reorder",
+                "params": {"step_ids": step_ids},
+                "success": False,
+            },
+        )
+
+
+def plan(
+    intent: str,
+    action: str,
+    task: Optional[str] = None,
+    steps: Optional[List[str]] = None,
+    step_id: Optional[str] = None,
+    status: Optional[str] = None,
+    result: Optional[str] = None,
+    description: Optional[str] = None,
+    after_step_id: Optional[str] = None,
+    step_ids: Optional[List[str]] = None,
+    execution_id: Optional[str] = None,
+    agent_id: str = "default",
+) -> str:
+    """
+    Unified planning tool for structured execution plans.
+
+    Use this tool to create and manage execution plans with ordered steps.
+    Each action corresponds to a planning operation:
+
+    Actions:
+    - "create": Create a new execution plan (returns execution_id)
+    - "get": Retrieve the current plan status
+    - "update": Update a step's status
+        (pending, in_progress, completed, failed)
+    - "add": Add a new step after a specified step or at the end
+    - "remove": Remove a step from the plan
+    - "replace": Replace a step's description
+    - "reorder": Reorder steps by providing a new order of step IDs
+
+    Typical workflow:
+    1. create → 2. update (mark in_progress)
+       → 3. update (mark completed/failed)
+       → repeat for each step
+
+    Args:
+        intent: What you're doing and why.
+        action: One of: create, get, update, add, remove, replace, reorder.
+        task: The overall task description (required for "create").
+        steps: List of step descriptions in execution order
+            (required for "create").
+        step_id: ID of the step to update/remove/replace (required for update,
+            remove, replace).
+        status: New status for "update":
+            pending, in_progress, completed, failed.
+        result: Optional result message for "update".
+        description: Step description for "add" or "replace".
+        after_step_id: ID of step to insert after for "add" (None for end).
+        step_ids: New order of step IDs for "reorder".
+        execution_id: The plan ID (returned by create, required for all other
+            actions).
+        agent_id: Agent identifier for multi-agent isolation
+            (default: "default").
+
+    Returns:
+        JSON string with plan data, step info, or error message.
+    """
+    action = action.lower().strip()
+
+    if action == "create":
+        if task is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="task is required for create action",
+                metadata={"action": "create", "success": False},
+            )
+        if steps is None or len(steps) == 0:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="steps is required for create action",
+                metadata={"action": "create", "success": False},
+            )
+        return _action_create(intent, task, steps, agent_id)
+
+    elif action == "get":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="execution_id is required for get action",
+                metadata={"action": "get", "success": False},
+            )
+        return _action_get(intent, execution_id)
+
+    elif action == "update":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="execution_id is required for update action",
+                metadata={"action": "update", "success": False},
+            )
+        if step_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="step_id is required for update action",
+                metadata={"action": "update", "success": False},
+            )
+        return _action_update(intent, execution_id, step_id, status, result)
+
+    elif action == "add":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="execution_id is required for add action",
+                metadata={"action": "add", "success": False},
+            )
+        if description is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="description is required for add action",
+                metadata={"action": "add", "success": False},
+            )
+        return _action_add(intent, execution_id, after_step_id, description)
+
+    elif action == "remove":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="execution_id is required for remove action",
+                metadata={"action": "remove", "success": False},
+            )
+        if step_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="step_id is required for remove action",
+                metadata={"action": "remove", "success": False},
+            )
+        return _action_remove(intent, execution_id, step_id)
+
+    elif action == "replace":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="execution_id is required for replace action",
+                metadata={"action": "replace", "success": False},
+            )
+        if step_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="step_id is required for replace action",
+                metadata={"action": "replace", "success": False},
+            )
+        if description is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="description is required for replace action",
+                metadata={"action": "replace", "success": False},
+            )
+        return _action_replace(intent, execution_id, step_id, description)
+
+    elif action == "reorder":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="execution_id is required for reorder action",
+                metadata={"action": "reorder", "success": False},
+            )
+        if step_ids is None:
+            return _err(
+                tool="plan",
+                intent=intent,
+                message="step_ids is required for reorder action",
+                metadata={"action": "reorder", "success": False},
+            )
+        return _action_reorder(intent, execution_id, step_ids)
+
+    else:
+        return _err(
+            tool="plan",
+            intent=intent,
+            message=(
+                f"Unknown action '{action}'. Valid actions: "
+                "create, get, update, add, remove, replace, reorder"
+            ),
+            metadata={
+                "action": action,
+                "success": False,
+                "how_to_fix": (
+                    "Use one of the valid actions: "
+                    "create, get, update, add, remove, replace, reorder"
+                ),
             },
         )

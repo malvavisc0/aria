@@ -2,20 +2,20 @@
 
 This module provides functions for executing shell commands safely with
 proper timeout handling, output capture, and security constraints.
+
+Phase 6 consolidation: execute_command + execute_command_batch → shell
 """
 
 import json
 import shlex
 import shutil
-import tempfile
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
 
 from aria.tools import get_function_name, tool_response
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
-from aria.tools.shell.constants import CURRENT_OS, SHELL
+from aria.tools.shell.constants import CURRENT_OS
 from aria.tools.shell.execution import _execute_command_internal
 from aria.tools.shell.validation import (
     _validate_command,
@@ -23,32 +23,31 @@ from aria.tools.shell.validation import (
 )
 
 
-def execute_command(
+def _execute_single_command(
     intent: str,
     command_name: str,
     args: List[str],
     timeout: Optional[int] = None,
     working_dir: Optional[str] = None,
+    tool_name: str = "shell",
 ) -> str:
-    """Execute a whitelisted command without shell interpretation.
+    """Execute a single whitelisted command without shell interpretation.
 
     Args:
-        intent: Why you're executing (e.g., "Listing directory")
+        intent: Why you're executing
         command_name: Name of the command from the safe list
-            (ls, cat, git, python, etc.)
         args: List of arguments for the command
         timeout: Timeout in seconds (default: 30, max: 300)
         working_dir: Working directory (default: BASE_DIR)
+        tool_name: Tool name for response (default: "shell")
 
     Returns:
         JSON with stdout, stderr, return_code, execution_time.
-        Runs with shell=False for safety.
     """
     logger.info(f"Executing safe command: {command_name} {args}")
     logger.debug(f"Safe command to achieve: {intent}")
 
     # Validate against blocked commands before execution
-    # _validate_command raises on blocked, returns None otherwise
     _validate_command(command_name)
 
     actual_timeout = min(
@@ -61,7 +60,7 @@ def execute_command(
     cmd_path = shutil.which(command_name)
     if cmd_path is None:
         return tool_response(
-            tool=get_function_name(),
+            tool=tool_name,
             intent=intent,
             data={
                 "stdout": "",
@@ -78,7 +77,7 @@ def execute_command(
     cmd_list = [cmd_path, *args]
     display_command = f"{command_name} {' '.join(args)}"
     response = _execute_command_internal(
-        get_function_name(),
+        tool_name,
         display_command,
         cmd_list,
         resolved_working_dir,
@@ -86,36 +85,60 @@ def execute_command(
         shell=False,
     )
     return tool_response(
-        tool=get_function_name(),
+        tool=tool_name,
         intent=intent,
         data=response["data"],
     )
 
 
-def execute_command_batch(
+def shell(
     intent: str,
-    commands: List[Dict[str, Any]],
+    commands: Union[Dict[str, Any], List[Dict[str, Any]]],
     stop_on_error: bool = True,
+    timeout: Optional[int] = None,
+    working_dir: Optional[str] = None,
 ) -> str:
-    """Execute multiple commands in sequence.
+    """Execute shell commands safely.
+
+    Merges execute_command + execute_command_batch into one tool.
+    Accepts a single command dict or a list of command dicts.
 
     Args:
-        intent: Why you're batching (e.g., "Git status check")
-        commands: List of command dicts, each with:
+        intent: Why you're executing (e.g., "Git status check")
+        commands: Single dict or list of dicts, each with:
             - command_name: The command to execute
             - args: Optional list of command arguments
             - timeout: Optional timeout in seconds
             - working_dir: Optional working directory
             - continue_on_error: Optional, continue if this fails
+            - command: (legacy) Full command string parsed via shlex
         stop_on_error: Stop execution if a command fails (default: True)
+        timeout: Default timeout in seconds for all commands
+        working_dir: Default working directory for all commands
 
     Returns:
-        JSON with results[], total_execution_time, success_count,
-        failure_count, stopped_early. Reduces token usage vs multiple
-        individual calls.
+        JSON with stdout, stderr, return_code for single command,
+        or results[], total_execution_time, success_count for batch.
     """
-    logger.info(f"Executing {len(commands)} commands in batch")
+    # Normalize single command to list
+    if isinstance(commands, dict):
+        commands = [commands]
 
+    if not commands:
+        return tool_response(
+            tool=get_function_name(),
+            intent=intent,
+            data={
+                "results": [],
+                "total_execution_time": 0,
+                "success_count": 0,
+                "failure_count": 0,
+                "stopped_early": False,
+            },
+        )
+
+    # All commands go through batch execution for consistent format
+    # (single dict was normalized to list above)
     results = []
     success_count = 0
     failure_count = 0
@@ -125,8 +148,8 @@ def execute_command_batch(
     for i, cmd_dict in enumerate(commands):
         command_name = cmd_dict.get("command_name", "")
         args = cmd_dict.get("args", [])
-        timeout = cmd_dict.get("timeout")
-        working_dir = cmd_dict.get("working_dir")
+        cmd_timeout = cmd_dict.get("timeout", timeout)
+        cmd_working_dir = cmd_dict.get("working_dir", working_dir)
         continue_on_error = cmd_dict.get("continue_on_error", False)
 
         # Legacy fallback for old batch payloads using a single command string.
@@ -138,15 +161,15 @@ def execute_command_batch(
         display_command = f"{command_name} {' '.join(args)}".strip()
 
         try:
-            result_str = execute_command(
+            result_str = _execute_single_command(
                 intent=(
                     f"Batch command {i+1}/{len(commands)}: "
                     f"{display_command}"
                 ),
                 command_name=command_name,
                 args=args,
-                timeout=timeout,
-                working_dir=working_dir,
+                timeout=cmd_timeout,
+                working_dir=cmd_working_dir,
             )
             result = json.loads(result_str)
             results.append(result)
@@ -195,32 +218,6 @@ def execute_command_batch(
     )
 
 
-def get_platform_info(intent: str) -> str:
-    """Get information about the current platform.
-
-    Args:
-        intent: Why you're checking (e.g., "Determining shell syntax")
-
-    Returns:
-        JSON with os (windows/linux/darwin), shell (bash/powershell/cmd),
-        home, path_separator, temp_dir, python_path.
-    """
-    import sys
-
-    logger.info("Getting platform information")
-
-    data = {
-        "os": CURRENT_OS,
-        "shell": SHELL,
-        "home": str(Path.home()),
-        "path_separator": "\\" if CURRENT_OS == "windows" else "/",
-        "temp_dir": tempfile.gettempdir(),
-        "python_path": sys.executable,
-    }
-
-    logger.debug(f"Platform info: {CURRENT_OS}, shell: {SHELL}")
-    return tool_response(
-        tool=get_function_name(),
-        intent=intent,
-        data=data,
-    )
+# Backward-compatible aliases (used by tests during transition)
+execute_command = _execute_single_command
+execute_command_batch = shell

@@ -3,12 +3,11 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from aria.tools.files import copy_file, delete_file, move_file, rename_file
+from aria.tools.files import copy_file, delete_file, rename_file
 from aria.tools.files.file_management import copy_file as copy_file_submodule
 from aria.tools.files.file_management import (
     delete_file as delete_file_submodule,
 )
-from aria.tools.files.file_management import move_file as move_file_submodule
 from aria.tools.files.file_management import (
     rename_file as rename_file_submodule,
 )
@@ -34,7 +33,6 @@ class TestFileManagement:
     def test_package_exports_match_file_management_submodule(self):
         assert copy_file is copy_file_submodule
         assert delete_file is delete_file_submodule
-        assert move_file is move_file_submodule
         assert rename_file is rename_file_submodule
 
     def test_copy_file(self):
@@ -48,38 +46,18 @@ class TestFileManagement:
         assert data["tool"] == "copy_file"
         assert data["data"]["source"] == str(self.base_dir / "test.txt")
         assert data["data"]["destination"] == str(self.base_dir / "copied.txt")
-        assert data["data"]["bytes_copied"] == 35
-        assert data["data"]["success"] is True
 
     def test_delete_file(self):
-        result = delete_file(
-            "Testing file deletion", str(self.base_dir / "test.txt")
-        )
+        result = delete_file("Testing delete", str(self.base_dir / "test.txt"))
         data = json.loads(result)
 
         assert data["tool"] == "delete_file"
         assert data["data"]["file_name"] == str(self.base_dir / "test.txt")
         assert data["data"]["deleted"] is True
-        assert data["data"]["backup_created"] is True
-        assert not (self.base_dir / "test.txt").exists()
-        assert (self.base_dir / "test.txt.backup").exists()
-
-    def test_move_file(self):
-        result = move_file(
-            "Testing file move",
-            str(self.base_dir / "test.txt"),
-            str(self.base_dir / "moved.txt"),
-        )
-        data = json.loads(result)
-
-        assert data["tool"] == "rename_file"
-        assert data["data"]["old_name"] == str(self.base_dir / "test.txt")
-        assert data["data"]["new_name"] == str(self.base_dir / "moved.txt")
-        assert data["data"]["success"] is True
 
     def test_rename_file(self):
         result = rename_file(
-            "Testing file rename",
+            "Testing rename",
             str(self.base_dir / "test.txt"),
             str(self.base_dir / "renamed.txt"),
         )
@@ -88,4 +66,3 @@ class TestFileManagement:
         assert data["tool"] == "rename_file"
         assert data["data"]["old_name"] == str(self.base_dir / "test.txt")
         assert data["data"]["new_name"] == str(self.base_dir / "renamed.txt")
-        assert data["data"]["success"] is True

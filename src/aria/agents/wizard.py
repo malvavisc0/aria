@@ -76,14 +76,13 @@ def get_agent(
             "fetch_current_stock_price",
             "fetch_company_information",
             "fetch_ticker_news",
-            "duckduckgo_web_search",
-            "grab_from_url",
+            "web_search",
+            "download",
         ],
         FILESYSTEM_TOOLS: [
-            "read_full_file",
-            "read_file_chunk",
-            "write_full_file",
-            "file_exists",
+            "read_file",
+            "write_file",
+            "file_info",
         ],
     }
 

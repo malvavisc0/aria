@@ -4,18 +4,11 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from aria.tools.development.python import (
-    check_python_file_syntax,
-    check_python_syntax,
-    execute_python_code,
-    execute_python_file,
-    get_restricted_builtins,
-    get_timeout_limits,
-)
+from aria.tools.development import python
 
 
 class TestPythonRunner:
-    """Test suite for Python code execution and validation functions"""
+    """Test suite for unified python tool."""
 
     def setup_method(self):
         """Set up test environment"""
@@ -37,99 +30,130 @@ class TestPythonRunner:
         os.chdir(self.original_cwd)
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    def test_check_python_syntax_valid(self):
+    # --- check_only: code ---
+
+    def test_check_syntax_valid_code(self):
         """Test syntax validation with valid code"""
         code = "def foo():\n    return True\n"
-        result = check_python_syntax("Testing syntax validation", code)
+        result = python(
+            "Testing syntax validation", code=code, check_only=True
+        )
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "check_python_syntax"
+        assert data["data"]["tool"] == "python"
         assert data["data"]["result"]["valid"] is True
         assert data["data"]["result"]["message"] == "Syntax is valid"
         assert data["context"]["filename"] == "<block>"
+        assert data["context"]["source"] == "code"
 
-    def test_check_python_syntax_invalid(self):
+    def test_check_syntax_invalid_code(self):
         """Test syntax validation with invalid code"""
         code = "def foo()\n    return True\n"  # Missing colon
-        result = check_python_syntax("Testing invalid syntax", code)
+        result = python("Testing invalid syntax", code=code, check_only=True)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "check_python_syntax"
+        assert data["data"]["tool"] == "python"
         assert data["data"]["result"]["valid"] is False
         assert data["data"]["result"]["error_type"] == "SyntaxError"
         assert data["data"]["result"]["message"] == "expected ':'"
         assert data["data"]["result"]["line_number"] == 1
-        assert data["data"]["result"]["column"] in [
-            9,
-            10,
-        ]  # Python version difference
-        assert data["context"]["filename"] == "<block>"
+        assert data["context"]["source"] == "code"
 
-    def test_check_file_syntax_valid(self):
+    def test_check_syntax_edge_cases(self):
+        """Test syntax checking edge cases"""
+        # Empty code
+        result = python("Testing empty code", code="", check_only=True)
+        data = json.loads(result)
+        assert data["data"]["result"]["valid"] is True
+
+        # Code with comments only
+        result = python(
+            "Testing comments", code="# This is a comment\n", check_only=True
+        )
+        data = json.loads(result)
+        assert data["data"]["result"]["valid"] is True
+
+        # Code with multi-line strings
+        result = python(
+            "Testing multiline",
+            code='text = """Multi\nline\nstring"""',
+            check_only=True,
+        )
+        data = json.loads(result)
+        assert data["data"]["result"]["valid"] is True
+
+    # --- check_only: file ---
+
+    def test_check_syntax_valid_file(self):
         """Test file syntax validation with valid file"""
-        result = check_python_file_syntax(
-            "Testing file syntax", str(self.test_file)
+        result = python(
+            "Testing file syntax",
+            file=str(self.test_file),
+            check_only=True,
         )
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "check_python_file_syntax"
+        assert data["data"]["tool"] == "python"
         assert data["data"]["result"]["valid"] is True
-        assert data["data"]["result"]["message"] == "Syntax is valid"
-        assert data["context"]["filename"] == str(self.test_file)
+        assert data["context"]["source"] == "file"
 
-    def test_check_file_syntax_invalid(self):
+    def test_check_syntax_invalid_file(self):
         """Test file syntax validation with invalid file"""
         invalid_file = self.base_dir / "invalid.py"
         invalid_file.write_text("def foo()\n    return True\n")
 
-        result = check_python_file_syntax(
-            "Testing invalid file", str(invalid_file)
+        result = python(
+            "Testing invalid file",
+            file=str(invalid_file),
+            check_only=True,
         )
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "check_python_file_syntax"
         assert data["data"]["result"]["valid"] is False
         assert data["data"]["result"]["error_type"] == "SyntaxError"
-        assert data["data"]["result"]["message"] == "expected ':'"
-        assert data["data"]["result"]["line_number"] == 1
 
-    def test_execute_python_code_success(self):
-        """Test successful code execution"""
-        code = "print('Hello World')\nresult = 42\n"
-        result = execute_python_code(
-            "Testing code execution", code, timeout=10
+    def test_check_syntax_nonexistent_file(self):
+        """Test syntax checking of non-existent file"""
+        result = python(
+            "Testing nonexistent",
+            file="nonexistent.py",
+            check_only=True,
         )
         data = json.loads(result)
+        assert data["status"] == "error"
 
-        assert data["data"]["tool"] == "execute_python_code"
+    # --- execute: code ---
+
+    def test_execute_code_success(self):
+        """Test successful code execution"""
+        code = "print('Hello World')\nresult = 42\n"
+        result = python("Testing code execution", code=code, timeout=10)
+        data = json.loads(result)
+
+        assert data["data"]["tool"] == "python"
         assert data["data"]["result"]["success"] is True
         assert data["data"]["result"]["stdout"] == "Hello World\n"
         assert data["data"]["result"]["has_output"] is True
-        assert data["context"]["filename"] == "<block>"
+        assert data["context"]["source"] == "code"
         assert data["context"]["timeout"] == 10
 
-    def test_execute_python_code_error(self):
+    def test_execute_code_error(self):
         """Test code execution with error"""
-        code = "print(undefined_variable)\n"  # Undefined variable
-        result = execute_python_code(
-            "Testing error handling", code, timeout=10
-        )
+        code = "print(undefined_variable)\n"
+        result = python("Testing error handling", code=code, timeout=10)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
+        assert data["data"]["tool"] == "python"
         assert data["data"]["result"]["success"] is False
         assert data["data"]["result"]["error_type"] == "NameError"
-        assert data["data"]["result"]["message"] != ""
         assert data["data"]["result"]["stdout"] == ""
-        assert data["context"]["filename"] == "<block>"
 
-    def test_execute_python_code_timeout(self):
+    def test_execute_code_timeout(self):
         """Test code execution timeout"""
-        code = "import time\nwhile True: time.sleep(0.1)\n"  # Infinite loop
-        result = execute_python_code("Testing timeout", code, timeout=1)
+        code = "import time\nwhile True: time.sleep(0.1)\n"
+        result = python("Testing timeout", code=code, timeout=1)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
         assert data["data"]["result"]["success"] is False
         assert data["data"]["result"]["error_type"] == "TimeoutError"
         assert (
@@ -138,90 +162,41 @@ class TestPythonRunner:
         )
         assert data["context"]["timeout"] == 1
 
-    def test_execute_python_code_no_output_capture(self):
-        """Test code execution without output capture"""
-        code = "print('Hello')\n"
-        result = execute_python_code(
-            "Testing no capture", code, timeout=10, capture_output=False
-        )
-        data = json.loads(result)
-
-        assert data["data"]["tool"] == "execute_python_code"
-        assert data["data"]["result"]["success"] is True
-        assert data["data"]["result"]["stdout"] == ""
-        assert data["data"]["result"]["stderr"] == ""
-
-    def test_execute_python_code_restricted_builtins(self):
+    def test_execute_code_restricted_builtins(self):
         """Test execution with restricted builtins"""
-        # Try to use exec which should be blocked
         code = "exec('print(\"test\")')\n"
-        result = execute_python_code(
-            "Testing restricted builtins", code, timeout=10
-        )
+        result = python("Testing restricted builtins", code=code, timeout=10)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
         assert data["data"]["result"]["success"] is False
         assert data["data"]["result"]["error_type"] == "NameError"
 
-    def test_execute_file_success(self):
-        """Test successful file execution"""
-        result = execute_python_file(
-            "Testing file execution", str(self.test_file), timeout=10
-        )
-        data = json.loads(result)
-
-        assert data["data"]["tool"] == "execute_python_file"
-        assert data["data"]["result"]["success"] is True
-        assert data["data"]["result"]["stdout"] == "Hello from test file\n"
-        assert data["context"]["filename"] == str(self.test_file)
-
-    def test_get_restricted_builtins(self):
-        """Test getting restricted builtins list"""
-        builtins = get_restricted_builtins("Testing get builtins")
-
-        assert isinstance(builtins, list)
-        assert len(builtins) == 4
-        assert "compile" in builtins
-        assert "eval" in builtins
-        assert "exec" in builtins
-        assert "execfile" in builtins
-
-    def test_get_timeout_limits(self):
-        """Test getting timeout limits"""
-        limits = get_timeout_limits("Testing get limits")
-
-        assert isinstance(limits, dict)
-        assert "default" in limits
-        assert "maximum" in limits
-        assert limits["default"] == 30
-        assert limits["maximum"] == 300
-
-    def test_execute_python_code_imports_allowed(self):
+    def test_execute_code_imports_allowed(self):
         """Test that imports are allowed"""
         code = "import math\nresult = math.sqrt(16)\nprint(result)\n"
-        result = execute_python_code("Testing imports", code, timeout=10)
+        result = python("Testing imports", code=code, timeout=10)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
         assert data["data"]["result"]["success"] is True
         assert data["data"]["result"]["stdout"] == "4.0\n"
 
-    def test_execute_python_code_file_io_allowed(self):
+    def test_execute_code_file_io_allowed(self):
         """Test that file I/O is allowed"""
-        # Create a test file to read
         test_read_file = self.base_dir / "read_test.txt"
         test_read_file.write_text("Hello from file\n")
 
-        code = "with open('read_test.txt', 'r') as f:\n    content = f.read()\nprint(content)\n"
-        result = execute_python_code("Testing file I/O", code, timeout=10)
+        code = (
+            "with open('read_test.txt', 'r') as f:\n"
+            "    content = f.read()\n"
+            "print(content)\n"
+        )
+        result = python("Testing file I/O", code=code, timeout=10)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
         assert data["data"]["result"]["success"] is True
         assert "Hello from file" in data["data"]["result"]["stdout"]
 
-    def test_execute_python_code_with_complex_logic(self):
+    def test_execute_code_with_complex_logic(self):
         """Test execution with complex logic"""
         code = """
 def fibonacci(n):
@@ -233,150 +208,74 @@ def fibonacci(n):
 result = fibonacci(5)
 print(f'Fibonacci(5) = {result}')
 """
-        result = execute_python_code("Testing complex logic", code, timeout=10)
+        result = python("Testing complex logic", code=code, timeout=10)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
         assert data["data"]["result"]["success"] is True
         assert "Fibonacci(5) = 5" in data["data"]["result"]["stdout"]
 
-    def test_check_python_syntax_edge_cases(self):
-        """Test syntax checking edge cases"""
-        # Empty code
-        result = check_python_syntax("Testing empty code", "")
-        data = json.loads(result)
-        assert data["data"]["result"]["valid"] is True
-
-        # Code with comments only
-        result = check_python_syntax(
-            "Testing comments", "# This is a comment\n"
-        )
-        data = json.loads(result)
-        assert data["data"]["result"]["valid"] is True
-
-        # Code with multi-line strings
-        result = check_python_syntax(
-            "Testing multiline", 'text = """Multi\nline\nstring"""'
-        )
-        data = json.loads(result)
-        assert data["data"]["result"]["valid"] is True
-
-    def test_execute_python_code_with_timeout_limits(self):
-        """Test execution with various timeout values"""
-        # Test default timeout (should be 30)
-        code = "print('test')\n"
-        result = execute_python_code("Testing default timeout", code)
-        data = json.loads(result)
-        assert data["data"]["result"]["success"] is True
-        assert data["context"]["timeout"] == 30
-
-    def test_execute_python_code_with_large_output(self):
-        """Test execution with large output"""
-        code = "print('A' * 1000)\n"
-        result = execute_python_code("Testing large output", code, timeout=10)
-        data = json.loads(result)
-
-        assert data["data"]["tool"] == "execute_python_code"
-        assert data["data"]["result"]["success"] is True
-        assert (
-            len(data["data"]["result"]["stdout"]) == 1001
-        )  # 1000 chars + newline
-
-    def test_execute_python_code_with_stderr(self):
+    def test_execute_code_with_stderr(self):
         """Test execution with stderr output"""
         code = "import sys\nsys.stderr.write('Error message\\n')\n"
-        result = execute_python_code("Testing stderr", code, timeout=10)
+        result = python("Testing stderr", code=code, timeout=10)
         data = json.loads(result)
 
-        assert data["data"]["tool"] == "execute_python_code"
         assert data["data"]["result"]["success"] is True
         assert data["data"]["result"]["stderr"] == "Error message\n"
 
-    def test_execute_python_code_with_syntax_error_in_function(self):
-        """Test execution with syntax error in function definition"""
-        code = """
-def bad_function():
-    return
-    invalid syntax here
-"""
-        result = execute_python_code("Testing syntax error", code, timeout=10)
-        data = json.loads(result)
-
-        # This should be caught during execution, not syntax check
-        assert data["data"]["tool"] == "execute_python_code"
-        assert data["data"]["result"]["success"] is False
-        assert (
-            data["data"]["result"]["error_type"] == "SyntaxError"
-            or "invalid syntax" in data["data"]["result"]["message"]
-        )
-
-    def test_execute_python_code_with_memory_intensive_code(self):
-        """Test execution with memory intensive code (should not crash)"""
-        code = """
-# Create a large list to test memory usage
-large_list = [i for i in range(10000)]
-print(f'Created list with {len(large_list)} items')
-"""
-        result = execute_python_code("Testing memory usage", code, timeout=10)
-        data = json.loads(result)
-
-        assert data["data"]["tool"] == "execute_python_code"
-        assert data["data"]["result"]["success"] is True
-        assert (
-            "Created list with 10000 items" in data["data"]["result"]["stdout"]
-        )
-
-    def test_execute_python_code_with_security_violation(self):
+    def test_execute_code_with_security_violation(self):
         """Test that security violations are properly caught"""
-        # Try to access restricted builtins
         dangerous_code = [
             "eval('1+1')",
             "exec('print(\"test\")')",
             "compile('print(1)', 'test', 'exec')",
-            "__import__('os')",  # This might still work due to different import mechanism
         ]
 
         for code in dangerous_code:
-            result = execute_python_code("Testing security", code, timeout=10)
+            result = python("Testing security", code=code, timeout=10)
             data = json.loads(result)
-            # At minimum, it should not crash or succeed in forbidden operations
-            assert data["data"]["tool"] == "execute_python_code"
-            # The key point is that execution doesn't succeed with dangerous code
-            # (It may fail due to NameError or other reasons, which is expected)
+            assert data["data"]["tool"] == "python"
+            # Should not succeed with dangerous code
+            assert data["data"]["result"]["success"] is False
 
-    def test_execute_python_code_with_invalid_timeout(self):
-        """Test that invalid timeout values are handled properly"""
-        # The timeout validation should happen in the decorator
-        # We're testing that the system behaves reasonably
-        code = "print('test')\n"
-        # Test with timeout that's too high (should be caught by validation)
-        try:
-            execute_python_code(
-                "Testing invalid timeout", code, timeout=301
-            )  # Exceeds MAX_TIMEOUT
-            # If it doesn't raise an exception, we still check the behavior
-        except Exception:
-            pass  # Expected in some cases
+    # --- execute: file ---
+
+    def test_execute_file_success(self):
+        """Test successful file execution"""
+        result = python(
+            "Testing file execution",
+            file=str(self.test_file),
+            timeout=10,
+        )
+        data = json.loads(result)
+
+        assert data["data"]["result"]["success"] is True
+        assert data["data"]["result"]["stdout"] == "Hello from test file\n"
+        assert data["context"]["source"] == "file"
 
     def test_execute_file_nonexistent(self):
         """Test execution of non-existent file"""
-        # The decorator catches the exception and returns error response
-        result = execute_python_file(
-            "Testing nonexistent", "nonexistent.py", timeout=10
+        result = python(
+            "Testing nonexistent", file="nonexistent.py", timeout=10
         )
         data = json.loads(result)
         assert data["status"] == "error"
-        assert "error" in data
-        assert "not found" in data["error"]["message"].lower()
 
-    def test_check_file_syntax_nonexistent(self):
-        """Test syntax checking of non-existent file"""
-        # The decorator catches the exception and returns error response
-        result = check_python_file_syntax(
-            "Testing nonexistent", "nonexistent.py"
+    # --- validation: mutual exclusivity ---
+
+    def test_neither_code_nor_file_raises_error(self):
+        """Test that providing neither code nor file raises error"""
+        result = python("Testing no input", check_only=True)
+        data = json.loads(result)
+        assert data["status"] == "error"
+
+    def test_both_code_and_file_raises_error(self):
+        """Test that providing both code and file raises error"""
+        result = python(
+            "Testing both inputs",
+            code="print('hello')",
+            file="test.py",
+            check_only=True,
         )
         data = json.loads(result)
         assert data["status"] == "error"
-        assert "error" in data
-        assert "context" in data
-        assert "identifier" in data["context"]

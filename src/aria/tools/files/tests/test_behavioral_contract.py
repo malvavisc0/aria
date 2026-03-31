@@ -15,12 +15,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from aria.tools.files import (
-    append_to_file,
-    read_full_file,
-    read_operations,
-    write_full_file,
-)
+from aria.tools.files import edit_file, read_file, unified_read, write_file
 
 
 class TestFilesReturnJsonContract:
@@ -36,9 +31,9 @@ class TestFilesReturnJsonContract:
     def teardown_method(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    def test_write_full_file_returns_json(self):
-        """write_full_file should return valid JSON with documented fields."""
-        result = write_full_file(
+    def test_write_file_returns_json(self):
+        """write_file should return valid JSON with documented fields."""
+        result = write_file(
             "Testing",
             str(self.base_dir / "test.txt"),
             "content",
@@ -49,32 +44,53 @@ class TestFilesReturnJsonContract:
         assert "data" in data
         assert data["status"] == "success"
 
-    def test_read_full_file_returns_json(self):
-        """read_full_file should return valid JSON response."""
+    def test_write_file_append_returns_json(self):
+        """write_file append should return valid JSON response."""
+        test_file = self.base_dir / "append_test.txt"
+        test_file.write_text("initial\n")
+
+        result = write_file(
+            "Testing",
+            str(self.base_dir / "append_test.txt"),
+            "added\n",
+            mode="append",
+        )
+        data = json.loads(result)
+        assert "status" in data
+        assert "data" in data
+        assert data["data"]["mode"] == "append"
+
+    def test_read_file_returns_json(self):
+        """read_file should return valid JSON response."""
         test_file = self.base_dir / "read_test.txt"
         test_file.write_text("test content\n")
 
-        result = read_full_file(
+        result = read_file(
             "Testing",
             str(self.base_dir / "read_test.txt"),
         )
         data = json.loads(result)
-        assert "status" in data
+        # unified_read uses _ok() format: {tool, intent, data}
+        assert "tool" in data
         assert "data" in data
+        assert data["data"]["metadata"]["success"] is True
 
-    def test_append_to_file_returns_json(self):
-        """append_to_file should return valid JSON response."""
-        test_file = self.base_dir / "append_test.txt"
-        test_file.write_text("initial\n")
+    def test_edit_file_returns_json(self):
+        """edit_file should return valid JSON response."""
+        test_file = self.base_dir / "edit_test.txt"
+        test_file.write_text("line1\nline2\nline3\n")
 
-        result = append_to_file(
+        result = edit_file(
             "Testing",
-            str(self.base_dir / "append_test.txt"),
-            "added\n",
+            str(self.base_dir / "edit_test.txt"),
+            offset=1,
+            length=1,
+            new_lines=["replaced"],
         )
         data = json.loads(result)
         assert "status" in data
         assert "data" in data
+        assert data["data"]["operation"] == "replace"
 
 
 class TestFilesErrorResponseContract:
@@ -92,7 +108,7 @@ class TestFilesErrorResponseContract:
 
     def test_invalid_path_returns_error_status(self):
         """Invalid paths should return error status."""
-        result = write_full_file(
+        result = write_file(
             "Testing",
             "/etc/passwd",
             "malicious",
@@ -104,12 +120,13 @@ class TestFilesErrorResponseContract:
 
     def test_nonexistent_file_read_returns_error(self):
         """Reading nonexistent file should return error status."""
-        result = read_full_file(
+        result = read_file(
             "Testing",
             str(self.base_dir / "nonexistent.txt"),
         )
         data = json.loads(result)
-        assert data["status"] == "error"
+        # unified_read uses _err() format: {tool, intent, data: {error}}
+        assert data["data"]["error"] != ""
 
 
 class TestListFilesParameterNaming:
@@ -121,7 +138,7 @@ class TestListFilesParameterNaming:
 
     def test_list_files_has_pattern_parameter(self):
         """list_files should have 'pattern' parameter."""
-        sig = inspect.signature(read_operations.list_files)
+        sig = inspect.signature(unified_read.list_files)
         params = list(sig.parameters.keys())
         assert (
             "pattern" in params
@@ -129,42 +146,46 @@ class TestListFilesParameterNaming:
 
     def test_list_files_has_recursive_parameter(self):
         """list_files should have 'recursive' parameter."""
-        sig = inspect.signature(read_operations.list_files)
+        sig = inspect.signature(unified_read.list_files)
         params = list(sig.parameters.keys())
         assert "recursive" in params
 
     def test_list_files_has_max_results_parameter(self):
         """list_files should have 'max_results' parameter."""
-        sig = inspect.signature(read_operations.list_files)
+        sig = inspect.signature(unified_read.list_files)
         params = list(sig.parameters.keys())
         assert "max_results" in params
 
 
-class TestReadFileChunkParameterNaming:
-    """Issue #2: Verify read_file_chunk uses correct parameter names."""
+class TestReadFileParameterNaming:
+    """Verify read_file uses correct parameter names."""
 
-    def test_read_file_chunk_has_chunk_size_parameter(self):
-        """read_file_chunk should have 'chunk_size' not 'length' param."""
-        sig = inspect.signature(read_operations.read_file_chunk)
+    def test_read_file_has_intent_parameter(self):
+        """read_file should have 'intent' parameter."""
+        sig = inspect.signature(unified_read.read_file)
+        params = list(sig.parameters.keys())
+        assert "intent" in params
+
+    def test_read_file_has_file_name_parameter(self):
+        """read_file should have 'file_name' parameter."""
+        sig = inspect.signature(unified_read.read_file)
+        params = list(sig.parameters.keys())
+        assert "file_name" in params
+
+
+class TestSearchFilesContract:
+    """Verify search_files parameter naming."""
+
+    def test_search_files_has_pattern_parameter(self):
+        """search_files should have 'pattern' parameter."""
+        sig = inspect.signature(unified_read.search_files)
         params = list(sig.parameters.keys())
         assert (
-            "chunk_size" in params
-        ), f"read_file_chunk should have 'chunk_size' parameter, got {params}"
-        assert (
-            "length" not in params
-        ), "read_file_chunk should NOT have 'length' parameter"
+            "pattern" in params
+        ), f"search_files should have 'pattern', got {params}"
 
-
-class TestSearchFilesByNameContract:
-    """Issue #9: Verify search_files_by_name parameter naming.
-
-    The audit found docs described glob but implementation uses regex.
-    """
-
-    def test_search_files_by_name_has_regex_pattern(self):
-        """search_files_by_name should have 'regex_pattern' parameter."""
-        sig = inspect.signature(read_operations.search_files_by_name)
+    def test_search_files_has_mode_parameter(self):
+        """search_files should have 'mode' parameter."""
+        sig = inspect.signature(unified_read.search_files)
         params = list(sig.parameters.keys())
-        assert (
-            "regex_pattern" in params
-        ), f"search_files_by_name should have 'regex_pattern', got {params}"
+        assert "mode" in params

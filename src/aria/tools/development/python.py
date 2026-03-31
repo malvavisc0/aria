@@ -1,9 +1,14 @@
-"""Python execution and syntax-check tools."""
+"""Python execution and syntax-check tools.
+
+Phase 6 consolidation: 4 tools → 1 tool (python).
+- check_python_syntax + check_python_file_syntax → python(check_only=True)
+- execute_python_code + execute_python_file → python(check_only=False)
+"""
 
 import ast
+import os
 import traceback
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from loguru import logger
 
@@ -13,48 +18,86 @@ from aria.tools.development._internals import (
     _build_response,
     _capture_execution_output,
     _create_safe_globals,
-    _execute_without_capture,
     _read_file_safely,
     _validate_timeout,
 )
-from aria.tools.development.constants import RESTRICTED_BUILTINS
 from aria.tools.development.decorators import (
     with_input_validation,
     with_runner_error_handling,
 )
+from aria.tools.development.exceptions import PythonSecurityError
 
 
 @tool_function(
-    "check_python_syntax",
-    validate={"code": True},
+    "python",
+    validate={},
     error_handler=with_runner_error_handling,
     validation_decorator=with_input_validation,
 )
-def check_python_syntax(intent: str, code: str) -> str:
-    """
-    Check Python syntax of a code string.
+def python(
+    intent: str,
+    code: Optional[str] = None,
+    file: Optional[str] = None,
+    args: Optional[List[str]] = None,
+    timeout: Optional[int] = DEFAULT_TIMEOUT,
+    check_only: bool = False,
+) -> str:
+    """Execute or validate Python code.
+
+    Merges check_python_syntax + check_python_file_syntax +
+    execute_python_code + execute_python_file into one tool.
+
+    Provide exactly one of ``code`` or ``file``.
 
     Args:
-        intent: Why you're checking (e.g., "Validating before execution")
-        code: Python code string to validate
+        intent: Why you're running this (e.g., "Testing algorithm")
+        code: Python code string to execute or validate
+        file: Path to a Python file to execute or validate
+        args: CLI arguments for sys.argv (execution only)
+        timeout: Max seconds (default: 30, max: 300)
+        check_only: If True, validate syntax without executing
 
     Returns:
-        JSON with valid (bool), error_type, message, line_number, column
+        JSON with result data. For check_only: valid, error_type, message.
+        For execution: success, stdout, stderr, error_type, traceback.
     """
-    # Logging handled by @log_tool_call decorator
+    # Validate mutual exclusivity
+    if code is None and file is None:
+        raise PythonSecurityError("Provide exactly one of 'code' or 'file'.")
+    if code is not None and file is not None:
+        raise PythonSecurityError(
+            "Provide exactly one of 'code' or 'file', not both."
+        )
 
-    filename = "<block>"
+    if check_only:
+        return _python_check(intent, code, file)
+    else:
+        return _python_execute(intent, code, file, args, timeout)
+
+
+def _python_check(
+    intent: str,
+    code: Optional[str],
+    file: Optional[str],
+) -> str:
+    """Validate Python syntax without executing."""
+    if code is not None:
+        filename: str = "<block>"
+        source: str = code
+    else:
+        filename = file  # type: ignore[assignment]
+        source = _read_file_safely(file)  # type: ignore[arg-type]
+
     logger.info(f"Checking Python syntax for: {filename}")
 
     try:
-        # Parse code with AST
-        ast.parse(code)
-
+        ast.parse(source, filename=filename)
         logger.info(f"Syntax validation passed for: {filename}")
         return _build_response(
-            operation="check_python_syntax",
+            operation="python",
             result={"valid": True, "message": "Syntax is valid"},
             filename=filename,
+            source="code" if code is not None else "file",
         )
 
     except SyntaxError as e:
@@ -62,7 +105,7 @@ def check_python_syntax(intent: str, code: str) -> str:
             f"Syntax error in {filename} at line {e.lineno or 0}: {e.msg}"
         )
         return _build_response(
-            operation="check_python_syntax",
+            operation="python",
             result={
                 "valid": False,
                 "error_type": "SyntaxError",
@@ -72,306 +115,73 @@ def check_python_syntax(intent: str, code: str) -> str:
                 "text": e.text.rstrip() if e.text else None,
             },
             filename=filename,
+            source="code" if code is not None else "file",
         )
 
 
-@tool_function(
-    "check_python_file_syntax",
-    validate={"file_path": True},
-    error_handler=with_runner_error_handling,
-    validation_decorator=with_input_validation,
-)
-def check_python_file_syntax(intent: str, file_path: str) -> str:
-    """
-    Check Python syntax of a file.
-
-    Args:
-        intent: Why you're checking (e.g., "Validating saved file")
-        file_path: Path to Python file relative to BASE_DIR
-
-    Returns:
-        JSON with valid (bool), error_type, message, line_number, column
-    """
-
-    # Logging handled by @log_tool_call decorator
-    logger.info(f"Checking syntax of file: {file_path}")
-
-    code = _read_file_safely(file_path)
-
-    try:
-        # Parse code with AST
-        ast.parse(source=code, filename=Path(file_path))
-
-        logger.info(f"Syntax validation passed for: {file_path}")
-        return _build_response(
-            operation="check_python_file_syntax",
-            result={"valid": True, "message": "Syntax is valid"},
-            filename=file_path,
-        )
-
-    except SyntaxError as e:
-        logger.error(
-            f"Syntax error in {file_path} at line {e.lineno or 0}: {e.msg}"
-        )
-        return _build_response(
-            operation="check_python_file_syntax",
-            result={
-                "valid": False,
-                "error_type": "SyntaxError",
-                "message": e.msg or "Syntax error",
-                "line_number": e.lineno,
-                "column": e.offset,
-                "text": e.text.rstrip() if e.text else None,
-            },
-            filename=file_path,
-        )
-
-
-@tool_function(
-    "execute_python_code",
-    validate={"code": True, "timeout": True},
-    error_handler=with_runner_error_handling,
-    validation_decorator=with_input_validation,
-)
-def execute_python_code(
+def _python_execute(
     intent: str,
-    code: str,
-    timeout: Optional[int] = DEFAULT_TIMEOUT,
-    capture_output: Optional[bool] = True,
-    argv: Optional[List[str]] = None,
+    code: Optional[str],
+    file: Optional[str],
+    args: Optional[List[str]],
+    timeout: Optional[int],
 ) -> str:
-    """
-    Execute a Python code string with optional timeout/output capture.
+    """Execute Python code or file."""
+    is_file = file is not None
 
-    Args:
-        intent: Why you're executing (e.g., "Testing algorithm")
-        code: Python code to execute
-        timeout: Max seconds (default: 30, max: 300)
-        capture_output: Capture stdout/stderr (default: True)
-        argv: CLI arguments for sys.argv
+    if is_file:
+        filename = file
+        source = _read_file_safely(file)
+    else:
+        filename = "<block>"
+        source = code
 
-    Returns:
-        JSON with success, stdout, stderr, error_type, traceback
-    """
-    filename = "<block>"
-    logger.info(f"Executing Python code from: {filename} (timeout={timeout}s)")
-
-    # Validate timeout
-    if not timeout:
-        raise ValueError(
-            f"Invalid timeout: {timeout} (must be 1-{MAX_TIMEOUT} seconds)"
-        )
-    _validate_timeout(timeout)
-
-    # Log reason
-    # Logging handled by @log_tool_call decorator
-
-    try:
-        # Create safe execution environment
-        safe_globals = _create_safe_globals()
-
-        # Execute with or without output capture
-        if capture_output:
-            stdout_text, stderr_text = _capture_execution_output(
-                code, safe_globals, timeout, filename, argv
-            )
-        else:
-            _execute_without_capture(
-                code, safe_globals, timeout, filename, argv
-            )
-            stdout_text, stderr_text = "", ""
-
-        logger.info(
-            f"Code executed successfully from: {filename} "
-            f"(stdout: {len(stdout_text)} bytes, "
-            f"stderr: {len(stderr_text)} bytes)"
-        )
-
-        return _build_response(
-            operation="execute_python_code",
-            result={
-                "success": True,
-                "stdout": stdout_text,
-                "stderr": stderr_text,
-                "has_output": bool(stdout_text or stderr_text),
-            },
-            filename=filename,
-            timeout=timeout,
-        )
-
-    except SystemExit as e:
-        # Handle sys.exit() calls (e.g., from argparse --help)
-        exit_code = e.code if e.code is not None else 0
-        logger.info(f"Script exited with code {exit_code} in {filename}")
-        return _build_response(
-            operation="execute_python_code",
-            result={
-                "success": exit_code == 0,
-                "exit_code": exit_code,
-                "message": (
-                    f"Script exited with code {exit_code}"
-                    if exit_code != 0
-                    else "Script completed successfully"
-                ),
-                "stdout": "",
-                "stderr": "",
-            },
-            filename=filename,
-            timeout=timeout,
-        )
-
-    except TimeoutError as e:
-        logger.error(f"Execution timeout for {filename}: {e}")
-        return _build_response(
-            operation="execute_python_code",
-            result={
-                "success": False,
-                "error_type": "TimeoutError",
-                "message": str(e),
-                "stdout": "",
-                "stderr": "",
-            },
-            filename=filename,
-            timeout=timeout,
-        )
-
-    except NameError as e:
-        # Likely trying to use restricted builtin
-        logger.error(
-            f"NameError in {filename} (possible security violation): {e}"
-        )
-        tb = traceback.format_exc()
-        return _build_response(
-            operation="execute_python_code",
-            result={
-                "success": False,
-                "error_type": "NameError",
-                "message": str(e),
-                "traceback": tb,
-                "stdout": "",
-                "stderr": "",
-                "security_note": "This may be due to restricted builtins",
-            },
-            filename=filename,
-            timeout=timeout,
-        )
-
-    except ImportError as e:
-        # Import blocked by security restrictions
-        logger.error(f"ImportError in {filename} (security restriction): {e}")
-        tb = traceback.format_exc()
-        return _build_response(
-            operation="execute_python_code",
-            result={
-                "success": False,
-                "error_type": "ImportError",
-                "message": str(e),
-                "traceback": tb,
-                "stdout": "",
-                "stderr": "",
-                "security_note": "Imports are restricted for security",
-            },
-            filename=filename,
-            timeout=timeout,
-        )
-
-    except Exception as e:
-        logger.error(f"Execution error in {filename}: {e}")
-        tb = traceback.format_exc()
-
-        return _build_response(
-            operation="execute_python_code",
-            result={
-                "success": False,
-                "error_type": type(e).__name__,
-                "message": str(e),
-                "traceback": tb,
-                "stdout": "",
-                "stderr": "",
-            },
-            filename=filename,
-            timeout=timeout,
-        )
-
-
-@tool_function(
-    "execute_file",
-    validate={"file_path": True, "timeout": True},
-    error_handler=with_runner_error_handling,
-    validation_decorator=with_input_validation,
-)
-def execute_python_file(
-    intent: str,
-    file_path: str,
-    timeout: Optional[int] = DEFAULT_TIMEOUT,
-    capture_output: Optional[bool] = True,
-    argv: Optional[List[str]] = None,
-) -> str:
-    """
-    Execute a Python file with optional timeout/output capture.
-
-    Args:
-        intent: Why you're executing (e.g., "Running test suite")
-        file_path: Path to Python file relative to BASE_DIR
-        timeout: Max seconds (default: 30, max: 300)
-        capture_output: Capture stdout/stderr (default: True)
-        argv: CLI arguments for sys.argv
-
-    Returns:
-        JSON with success, stdout, stderr, error_type, traceback.
-        Sets __file__ and __dir__ in execution context.
-    """
-    import os
-
-    logger.info(f"Executing Python file: {file_path} (timeout={timeout}s)")
-
-    # Log reason
-    # Logging handled by @log_tool_call decorator
-
-    # Validate timeout
-    if not timeout:
-        raise ValueError(
-            f"Invalid timeout: {timeout} (must be 1-{MAX_TIMEOUT} seconds)"
-        )
-    _validate_timeout(timeout)
-
-    # Read the file (handles BASE_DIR resolution)
-    code = _read_file_safely(file_path)
-
-    # Use absolute path if file exists, otherwise use as-is
-    filename = (
-        os.path.abspath(file_path) if os.path.exists(file_path) else file_path
+    logger.info(
+        f"Executing Python {'file' if is_file else 'code'}: "
+        f"{filename} (timeout={timeout}s)"
     )
 
+    # Validate timeout
+    if not timeout:
+        raise ValueError(
+            f"Invalid timeout: {timeout} (must be 1-{MAX_TIMEOUT} seconds)"
+        )
+    _validate_timeout(timeout)
+
+    # Use absolute path if file exists
+    if is_file:
+        filename = os.path.abspath(file) if os.path.exists(file) else file
+
     try:
         # Create safe execution environment
         safe_globals = _create_safe_globals()
 
-        # Add __file__ and __dir__ to globals for file context
-        safe_globals["__file__"] = os.path.abspath(filename)
-        safe_globals["__dir__"] = os.path.dirname(os.path.abspath(filename))
-        logger.debug(f"Set __file__ to: {safe_globals['__file__']}")
-        logger.debug(f"Set __dir__ to: {safe_globals['__dir__']}")
+        # Add __file__ and __dir__ for file context
+        if is_file:
+            safe_globals["__file__"] = os.path.abspath(filename)
+            safe_globals["__dir__"] = os.path.dirname(
+                os.path.abspath(filename)
+            )
+            logger.debug(f"Set __file__ to: {safe_globals['__file__']}")
 
-        # Execute with or without output capture
-        if capture_output:
-            stdout_text, stderr_text = _capture_execution_output(
-                code, safe_globals, timeout, filename, argv
-            )
-        else:
-            _execute_without_capture(
-                code, safe_globals, timeout, filename, argv
-            )
-            stdout_text, stderr_text = "", ""
+        # Execute with output capture
+        stdout_text, stderr_text = _capture_execution_output(
+            source,  # type: ignore[arg-type]
+            safe_globals,
+            timeout,
+            filename,  # type: ignore[arg-type]
+            args,
+        )
 
         logger.info(
-            f"File executed successfully: {filename} "
+            f"{'File' if is_file else 'Code'} executed successfully: "
+            f"{filename} "
             f"(stdout: {len(stdout_text)} bytes, "
             f"stderr: {len(stderr_text)} bytes)"
         )
 
         return _build_response(
-            operation="execute_python_file",
+            operation="python",
             result={
                 "success": True,
                 "stdout": stdout_text,
@@ -380,14 +190,14 @@ def execute_python_file(
             },
             filename=filename,
             timeout=timeout,
+            source="file" if is_file else "code",
         )
 
     except SystemExit as e:
-        # Handle sys.exit() calls
         exit_code = e.code if e.code is not None else 0
         logger.info(f"Script exited with code {exit_code} in {filename}")
         return _build_response(
-            operation="execute_python_file",
+            operation="python",
             result={
                 "success": exit_code == 0,
                 "exit_code": exit_code,
@@ -401,12 +211,13 @@ def execute_python_file(
             },
             filename=filename,
             timeout=timeout,
+            source="file" if is_file else "code",
         )
 
     except TimeoutError as e:
         logger.error(f"Execution timeout for {filename}: {e}")
         return _build_response(
-            operation="execute_python_file",
+            operation="python",
             result={
                 "success": False,
                 "error_type": "TimeoutError",
@@ -416,16 +227,16 @@ def execute_python_file(
             },
             filename=filename,
             timeout=timeout,
+            source="file" if is_file else "code",
         )
 
     except NameError as e:
-        # Likely trying to use restricted builtin
         logger.error(
             f"NameError in {filename} (possible security violation): {e}"
         )
         tb = traceback.format_exc()
         return _build_response(
-            operation="execute_python_file",
+            operation="python",
             result={
                 "success": False,
                 "error_type": "NameError",
@@ -433,18 +244,18 @@ def execute_python_file(
                 "traceback": tb,
                 "stdout": "",
                 "stderr": "",
-                "security_note": "This may be due to restricted builtins",
+                "security_note": ("This may be due to restricted builtins"),
             },
             filename=filename,
             timeout=timeout,
+            source="file" if is_file else "code",
         )
 
     except ImportError as e:
-        # Import blocked by security restrictions
         logger.error(f"ImportError in {filename} (security restriction): {e}")
         tb = traceback.format_exc()
         return _build_response(
-            operation="execute_python_file",
+            operation="python",
             result={
                 "success": False,
                 "error_type": "ImportError",
@@ -456,6 +267,7 @@ def execute_python_file(
             },
             filename=filename,
             timeout=timeout,
+            source="file" if is_file else "code",
         )
 
     except Exception as e:
@@ -463,7 +275,7 @@ def execute_python_file(
         tb = traceback.format_exc()
 
         return _build_response(
-            operation="execute_python_file",
+            operation="python",
             result={
                 "success": False,
                 "error_type": type(e).__name__,
@@ -474,38 +286,14 @@ def execute_python_file(
             },
             filename=filename,
             timeout=timeout,
+            source="file" if is_file else "code",
         )
 
 
-@tool_function("get_restricted_builtins")
-def get_restricted_builtins(intent: str) -> List[str]:
-    """
-    Return restricted builtins (security policy).
-
-    Args:
-        intent: Why you're checking (e.g., "Understanding security limits")
-
-    Returns:
-        List of blocked builtin names (e.g., eval, exec, open)
-    """
-    # Log reason
-    # Logging handled by @log_tool_call decorator
-
-    return sorted(RESTRICTED_BUILTINS)
-
-
-@tool_function("get_timeout_limits")
-def get_timeout_limits(intent: str) -> Dict[str, int]:
-    """
-    Return timeout configuration limits.
-
-    Args:
-        intent: Why you're checking (e.g., "Planning long-running task")
-
-    Returns:
-        Dict with default (30) and maximum (300) timeout in seconds
-    """
-    # Log reason
-    # Logging handled by @log_tool_call decorator
-
-    return {"default": DEFAULT_TIMEOUT, "maximum": MAX_TIMEOUT}
+# Backward-compatible aliases (used by tests during transition)
+check_python_syntax = None  # Removed — use python(check_only=True)
+check_python_file_syntax = (
+    None  # Removed — use python(check_only=True, file=...)
+)
+execute_python_code = None  # Removed — use python(code=...)
+execute_python_file = None  # Removed — use python(file=...)

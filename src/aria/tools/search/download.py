@@ -1,4 +1,7 @@
-"""Download and convert content from a URL."""
+"""Download and convert content from a URL.
+
+Phase 6 consolidation: grab_from_url → download
+"""
 
 from typing import Dict, Optional
 
@@ -45,7 +48,7 @@ class ContentParsingError(Exception):
 
 
 @log_tool_call
-def grab_from_url(
+def download(
     intent: str,
     url: str,
     output: Optional[str] = "auto",
@@ -124,3 +127,7 @@ def grab_from_url(
         return tool_error_response(get_function_name(), intent, exc)
     except Exception as exc:
         return tool_error_response(get_function_name(), intent, exc)
+
+
+# Backward-compatible alias
+grab_from_url = download

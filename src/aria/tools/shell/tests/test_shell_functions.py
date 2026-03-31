@@ -6,11 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from aria.tools.shell import (
-    execute_command,
-    execute_command_batch,
-    get_platform_info,
-)
+from aria.tools.shell import shell
 from aria.tools.shell.constants import IS_WINDOWS
 from aria.tools.shell.exceptions import CommandBlockedError
 from aria.tools.shell.validation import _is_blocked_command, _validate_command
@@ -57,122 +53,143 @@ class TestValidateCommand:
         assert _is_blocked_command("echo hello") is False
 
 
-class TestExecuteCommand:
-    """Tests for execute_command function."""
+class TestShellSingleCommand:
+    """Tests for shell function with a single command (batch format)."""
+
+    def _get_result_data(self, result: str) -> dict:
+        """Parse result and return the first command's data dict."""
+        data = json.loads(result)
+        # shell() always returns batch format: data["results"][0]["data"]
+        return data["data"]["results"][0]["data"]
+
+    def _get_result_envelope(self, result: str) -> dict:
+        """Parse result and return the top-level envelope."""
+        return json.loads(result)
 
     def test_execute_simple_command(self):
         """Test executing a simple echo command."""
-        result = execute_command(
+        result = shell(
             intent="Test echo command",
-            command_name="echo",
-            args=["hello"],
+            commands={"command_name": "echo", "args": ["hello"]},
             timeout=5,
         )
-        data = json.loads(result)
+        envelope = self._get_result_envelope(result)
+        cmd_data = self._get_result_data(result)
 
-        assert data["tool"] == "execute_command"
-        assert data["data"]["return_code"] == 0
-        assert "hello" in data["data"]["stdout"]
-        assert data["data"]["timed_out"] is False
+        assert envelope["tool"] == "shell"
+        assert cmd_data["return_code"] == 0
+        assert "hello" in cmd_data["stdout"]
+        assert cmd_data["timed_out"] is False
 
     def test_execute_command_with_timeout(self):
         """Test command execution with custom timeout."""
-        result = execute_command(
+        result = shell(
             intent="Test sleep command",
-            command_name="python",
-            args=["-c", "import time; time.sleep(0.1)"],
+            commands={
+                "command_name": "python",
+                "args": ["-c", "import time; time.sleep(0.1)"],
+            },
             timeout=5,
         )
-        data = json.loads(result)
+        cmd_data = self._get_result_data(result)
 
-        assert data["data"]["return_code"] == 0
+        assert cmd_data["return_code"] == 0
 
     def test_execute_command_with_working_dir(self):
         """Test command execution with custom working directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = execute_command(
+            result = shell(
                 intent="Test ls in temp dir",
-                command_name="ls" if not IS_WINDOWS else "dir",
-                args=[],
+                commands={
+                    "command_name": "ls" if not IS_WINDOWS else "dir",
+                    "args": [],
+                },
                 timeout=5,
                 working_dir=tmpdir,
             )
-            data = json.loads(result)
+            cmd_data = self._get_result_data(result)
 
-            assert data["data"]["return_code"] == 0
-            assert tmpdir in data["data"]["working_dir"]
+            assert cmd_data["return_code"] == 0
+            assert tmpdir in cmd_data["working_dir"]
 
     def test_execute_command_treats_shell_operators_as_literal_args(self):
         """Test that shell operators in args are treated as literal text."""
-        result = execute_command(
+        result = shell(
             intent="Test literal args",
-            command_name="echo",
-            args=["hello | world"],
+            commands={
+                "command_name": "echo",
+                "args": ["hello | world"],
+            },
             timeout=5,
         )
-        data = json.loads(result)
+        cmd_data = self._get_result_data(result)
 
-        assert data["data"]["return_code"] == 0
-        assert "hello | world" in data["data"]["stdout"]
+        assert cmd_data["return_code"] == 0
+        assert "hello | world" in cmd_data["stdout"]
 
     def test_execute_command_timeout(self):
         """Test command execution timeout."""
-        result = execute_command(
+        result = shell(
             intent="Test timeout",
-            command_name="python",
-            args=["-c", "import time; time.sleep(10)"],
+            commands={
+                "command_name": "python",
+                "args": ["-c", "import time; time.sleep(10)"],
+            },
             timeout=1,
         )
-        data = json.loads(result)
+        cmd_data = self._get_result_data(result)
 
-        assert data["data"]["timed_out"] is True
+        assert cmd_data["timed_out"] is True
 
     def test_execute_command_error_handling(self):
         """Test command execution with non-zero exit code."""
-        result = execute_command(
+        result = shell(
             intent="Test error handling",
-            command_name="python",
-            args=["-c", "import sys; sys.exit(1)"],
+            commands={
+                "command_name": "python",
+                "args": ["-c", "import sys; sys.exit(1)"],
+            },
+            timeout=5,
+        )
+        cmd_data = self._get_result_data(result)
+
+        assert cmd_data["return_code"] == 1
+
+    def test_execute_blocked_command_returns_error(self):
+        """Test that executing a blocked command returns an error result."""
+        result = shell(
+            intent="Test blocked command",
+            commands={"command_name": "shutdown", "args": []},
             timeout=5,
         )
         data = json.loads(result)
 
-        assert data["data"]["return_code"] == 1
-
-    def test_execute_blocked_command_raises_error(self):
-        """Test that executing a blocked command raises CommandBlockedError."""
-        with pytest.raises(CommandBlockedError):
-            execute_command(
-                intent="Test blocked command",
-                command_name="shutdown",
-                args=[],
-                timeout=5,
-            )
+        assert data["data"]["failure_count"] == 1
+        assert data["data"]["success_count"] == 0
+        assert "blocked" in data["data"]["results"][0]["error"].lower()
 
     def test_response_has_timestamp(self):
         """Test that response includes timestamp at top level."""
-        result = execute_command(
+        result = shell(
             intent="Test metadata",
-            command_name="echo",
-            args=["test"],
+            commands={"command_name": "echo", "args": ["test"]},
             timeout=5,
         )
-        data = json.loads(result)
+        envelope = self._get_result_envelope(result)
 
-        assert "timestamp" in data
+        assert "timestamp" in envelope
 
     def test_response_has_platform(self):
         """Test that response includes platform info."""
-        result = execute_command(
+        result = shell(
             intent="Test platform in response",
-            command_name="echo",
-            args=["test"],
+            commands={"command_name": "echo", "args": ["test"]},
             timeout=5,
         )
-        data = json.loads(result)
+        cmd_data = self._get_result_data(result)
 
-        assert "platform" in data["data"]
-        assert data["data"]["platform"] in ["windows", "linux", "darwin"]
+        assert "platform" in cmd_data
+        assert cmd_data["platform"] in ["windows", "linux", "darwin"]
 
     def test_execute_command_with_args(self):
         """Test executing command with arguments."""
@@ -180,35 +197,62 @@ class TestExecuteCommand:
             test_file = Path(tmpdir) / "test.txt"
             test_file.write_text("test content")
 
-            result = execute_command(
+            result = shell(
                 intent="Test cat command",
-                command_name="cat" if not IS_WINDOWS else "type",
-                args=[str(test_file)],
+                commands={
+                    "command_name": "cat" if not IS_WINDOWS else "type",
+                    "args": [str(test_file)],
+                },
                 timeout=5,
             )
-            data = json.loads(result)
+            cmd_data = self._get_result_data(result)
 
-            assert data["data"]["return_code"] == 0
-            assert "test content" in data["data"]["stdout"]
+            assert cmd_data["return_code"] == 0
+            assert "test content" in cmd_data["stdout"]
 
     def test_execute_command_not_found_returns_127(self):
         """Test that a whitelisted but missing command returns 127."""
         # vm_stat is in the safe list but only exists on macOS
         if not IS_WINDOWS:
-            result = execute_command(
+            result = shell(
                 intent="Test command not found",
-                command_name="vm_stat",
-                args=[],
+                commands={"command_name": "vm_stat", "args": []},
                 timeout=5,
             )
-            data = json.loads(result)
+            cmd_data = self._get_result_data(result)
             # On Linux, vm_stat won't be found
             # On macOS, it will succeed — both are valid outcomes
-            assert data["data"]["return_code"] in [0, 127]
+            assert cmd_data["return_code"] in [0, 127]
+
+    def test_legacy_command_string_format(self):
+        """Test legacy command string format (shlex split)."""
+        result = shell(
+            intent="Test legacy format",
+            commands={"command": "echo hello world"},
+            timeout=5,
+        )
+        cmd_data = self._get_result_data(result)
+
+        assert cmd_data["return_code"] == 0
+        assert "hello world" in cmd_data["stdout"]
+
+    def test_single_command_has_batch_metadata(self):
+        """Test that single dict input returns batch metadata."""
+        result = shell(
+            intent="Test batch metadata for single",
+            commands={"command_name": "echo", "args": ["test"]},
+            timeout=5,
+        )
+        data = json.loads(result)
+
+        assert data["data"]["success_count"] == 1
+        assert data["data"]["failure_count"] == 0
+        assert data["data"]["stopped_early"] is False
+        assert len(data["data"]["results"]) == 1
 
 
-class TestExecuteCommandBatch:
-    """Tests for execute_command_batch function."""
+class TestShellBatch:
+    """Tests for shell function with multiple commands."""
 
     def test_execute_batch_success(self):
         """Test executing a batch of successful commands."""
@@ -216,14 +260,14 @@ class TestExecuteCommandBatch:
             {"command": "echo hello"},
             {"command": "echo world"},
         ]
-        result = execute_command_batch(
+        result = shell(
             intent="Test batch execution",
             commands=commands,
             stop_on_error=True,
         )
         data = json.loads(result)
 
-        assert data["tool"] == "execute_command_batch"
+        assert data["tool"] == "shell"
         assert data["data"]["success_count"] == 2
         assert data["data"]["failure_count"] == 0
         assert data["data"]["stopped_early"] is False
@@ -235,7 +279,7 @@ class TestExecuteCommandBatch:
             {"command": "exit 1"},
             {"command": "echo world"},
         ]
-        result = execute_command_batch(
+        result = shell(
             intent="Test batch with error",
             commands=commands,
             stop_on_error=True,
@@ -253,7 +297,7 @@ class TestExecuteCommandBatch:
             {"command": "exit 1", "continue_on_error": True},
             {"command": "echo world"},
         ]
-        result = execute_command_batch(
+        result = shell(
             intent="Test batch continue on error",
             commands=commands,
             stop_on_error=True,
@@ -266,7 +310,7 @@ class TestExecuteCommandBatch:
     def test_execute_batch_has_timestamp(self):
         """Test that batch response includes timestamp."""
         commands = [{"command": "echo test"}]
-        result = execute_command_batch(
+        result = shell(
             intent="Test batch metadata",
             commands=commands,
         )
@@ -275,37 +319,13 @@ class TestExecuteCommandBatch:
         assert "timestamp" in data
         assert data["data"]["success_count"] == 1
 
-
-class TestGetPlatformInfo:
-    """Tests for get_platform_info function."""
-
-    def test_get_platform_info(self):
-        """Test getting platform information."""
-        result = get_platform_info(intent="Test platform info")
+    def test_execute_empty_commands(self):
+        """Test that empty commands list returns valid response."""
+        result = shell(
+            intent="Test empty commands",
+            commands=[],
+        )
         data = json.loads(result)
 
-        assert data["tool"] == "get_platform_info"
-        assert "os" in data["data"]
-        assert "shell" in data["data"]
-        assert "home" in data["data"]
-        assert "path_separator" in data["data"]
-        assert "temp_dir" in data["data"]
-        assert "python_path" in data["data"]
-
-    def test_platform_info_contains_valid_os(self):
-        """Test that platform info contains a valid OS value."""
-        result = get_platform_info(intent="Test platform info fields")
-        data = json.loads(result)
-
-        # CURRENT_OS returns "darwin" for macOS, not "macos"
-        assert data["data"]["os"] in ["windows", "linux", "darwin"]
-
-    def test_platform_info_path_separator(self):
-        """Test that path separator matches the OS."""
-        result = get_platform_info(intent="Test path separator")
-        data = json.loads(result)
-
-        if data["data"]["os"] == "windows":
-            assert data["data"]["path_separator"] == "\\"
-        else:
-            assert data["data"]["path_separator"] == "/"
+        assert data["data"]["success_count"] == 0
+        assert data["data"]["failure_count"] == 0

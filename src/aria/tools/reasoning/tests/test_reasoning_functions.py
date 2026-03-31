@@ -6,19 +6,10 @@ import tempfile
 import pytest
 
 from aria.tools.database import ToolsDatabase
-from aria.tools.reasoning import (
-    add_reasoning_step,
-    add_reflection,
-    end_reasoning,
-    evaluate_reasoning,
-    get_reasoning_summary,
-    list_reasoning_sessions,
-    registry,
-    reset_reasoning,
-    start_reasoning,
-    use_scratchpad,
-)
+from aria.tools.reasoning import reasoning, registry
 from aria.tools.reasoning.database import ReasoningDatabase
+from aria.tools.scratchpad import scratchpad
+from aria.tools.scratchpad.database import ScratchpadDatabase
 
 
 @pytest.fixture
@@ -38,6 +29,7 @@ def test_db():
         # Reset singletons to force new instance
         ToolsDatabase._instance = None
         ReasoningDatabase._instance = None
+        ScratchpadDatabase._instance = None
 
         # Reset the module-level _db_instance in get_tools_database
         import aria.tools.database as db_module
@@ -53,6 +45,9 @@ def test_db():
 
         reg_module._db = test_reasoning_db
 
+        # Reset scratchpad singleton so it picks up the test DB
+        ScratchpadDatabase._instance = None
+
         yield test_reasoning_db
 
         # Clean up after test
@@ -61,6 +56,7 @@ def test_db():
         # Reset singletons again
         ToolsDatabase._instance = None
         ReasoningDatabase._instance = None
+        ScratchpadDatabase._instance = None
         db_module._db_instance = None
         # Restore original
         reg_module._db = original_db
@@ -68,44 +64,53 @@ def test_db():
 
 def test_start_reasoning(test_agent_id, test_db):
     """Test starting a new reasoning session."""
-    result = start_reasoning("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="start", agent_id=test_agent_id
+    )
     assert result["status"] == "success"
-    assert result["tool"] == "start_reasoning"
+    assert result["tool"] == "reasoning"
     assert result["intent"] == "Testing intent"
     assert result["agent_id"] == test_agent_id
     assert result["session_id"].startswith(f"{test_agent_id}_session_")
+    assert result["data"]["action"] == "start"
 
     # Verify active session was created
     assert test_agent_id in registry.get_active_session_id(test_agent_id)
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_start_reasoning_replaces_previous(test_agent_id, test_db):
     """Test that starting new session replaces previous one."""
     # Start first session
-    start_reasoning("First analysis", test_agent_id)
-    add_reasoning_step("Step 1", "First step", test_agent_id)
+    reasoning("First analysis", action="start", agent_id=test_agent_id)
+    reasoning(
+        "First analysis",
+        action="step",
+        content="Step 1",
+        agent_id=test_agent_id,
+    )
 
     # Start second session (should replace first)
-    start_reasoning("Second analysis", test_agent_id)
+    reasoning("Second analysis", action="start", agent_id=test_agent_id)
 
     # Summary should show empty session (new one)
-    summary = get_reasoning_summary("Check", test_agent_id)
+    summary = reasoning("Check", action="summary", agent_id=test_agent_id)
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 0
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_add_step_without_session(test_agent_id, test_db):
     """Test that adding a step without starting session raises error."""
-    result = add_reasoning_step(
+    result = reasoning(
         "Testing intent",
-        "Test step",
-        test_agent_id,
+        action="step",
+        content="Test step",
+        agent_id=test_agent_id,
     )
 
     assert result["status"] == "error"
@@ -114,29 +119,32 @@ def test_add_step_without_session(test_agent_id, test_db):
 
 def test_add_step_with_session(test_agent_id, test_db):
     """Test adding a step after starting session."""
-    start_reasoning("Testing intent", test_agent_id)
-    result = add_reasoning_step(
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
+    result = reasoning(
         "Testing intent",
-        "Analyzing the problem",
-        test_agent_id,
+        action="step",
+        content="Analyzing the problem",
+        agent_id=test_agent_id,
         cognitive_mode="analysis",
     )
 
     assert result["status"] == "success"
-    assert result["tool"] == "add_reasoning_step"
+    assert result["tool"] == "reasoning"
     assert result["data"]["step_id"] == 1
     assert result["data"]["content"] == "Analyzing the problem"
+    assert result["data"]["action"] == "step"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_add_reflection_without_session(test_agent_id, test_db):
     """Test that adding reflection without session raises error."""
-    result = add_reflection(
+    result = reasoning(
         "Testing intent",
-        "Test reflection",
-        test_agent_id,
+        action="reflect",
+        content="Test reflection",
+        agent_id=test_agent_id,
     )
 
     assert result["status"] == "error"
@@ -145,44 +153,46 @@ def test_add_reflection_without_session(test_agent_id, test_db):
 
 def test_add_reflection_with_session(test_agent_id, test_db):
     """Test adding reflection after starting session."""
-    start_reasoning("Testing intent", test_agent_id)
-    result = add_reflection(
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
+    result = reasoning(
         "Testing intent",
-        "Need to verify assumptions",
-        test_agent_id,
+        action="reflect",
+        content="Need to verify assumptions",
+        agent_id=test_agent_id,
     )
 
     assert result["status"] == "success"
-    assert result["tool"] == "add_reflection"
+    assert result["tool"] == "reasoning"
     assert result["data"]["reflection_id"] == 1
+    assert result["data"]["action"] == "reflect"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_scratchpad_without_session(test_agent_id, test_db):
-    """Test that using scratchpad without session raises error."""
-    result = use_scratchpad(
+    """Test that using scratchpad without session still works (standalone)."""
+    # scratchpad works independently of reasoning sessions
+    result = scratchpad(
         "Testing intent",
         "key1",
-        test_agent_id,
+        agent_id=test_agent_id,
         value="value1",
         operation="set",
     )
 
-    assert result["status"] == "error"
-    assert result["error"]["code"] == "NO_ACTIVE_SESSION"
+    assert result["status"] == "success"
 
 
 def test_scratchpad_with_session(test_agent_id, test_db):
     """Test using scratchpad after starting session."""
-    start_reasoning("Testing reasoning", test_agent_id)
+    reasoning("Testing reasoning", action="start", agent_id=test_agent_id)
 
     # Set a value
-    result = use_scratchpad(
+    result = scratchpad(
         "Testing intent",
         "key1",
-        test_agent_id,
+        agent_id=test_agent_id,
         value="value1",
         operation="set",
     )
@@ -192,10 +202,10 @@ def test_scratchpad_with_session(test_agent_id, test_db):
     assert result["data"]["value"] == "value1"
 
     # Get the value
-    result = use_scratchpad(
+    result = scratchpad(
         "Testing intent",
         "key1",
-        test_agent_id,
+        agent_id=test_agent_id,
         operation="get",
     )
     assert result["status"] == "success"
@@ -203,162 +213,152 @@ def test_scratchpad_with_session(test_agent_id, test_db):
     assert result["data"]["value"] == "value1"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_evaluate_without_session(test_agent_id, test_db):
     """Test that evaluating without session raises error."""
-    result = evaluate_reasoning("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="evaluate", agent_id=test_agent_id
+    )
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
 
 def test_evaluate_with_session(test_agent_id, test_db):
     """Test evaluating after starting session."""
-    start_reasoning("Testing intent", test_agent_id)
-    add_reasoning_step("Testing intent", "Step 1", test_agent_id)
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
+    reasoning(
+        "Testing intent",
+        action="step",
+        content="Step 1",
+        agent_id=test_agent_id,
+    )
 
-    result = evaluate_reasoning("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="evaluate", agent_id=test_agent_id
+    )
     assert result["status"] == "success"
-    assert result["tool"] == "evaluate_reasoning"
+    assert result["tool"] == "reasoning"
     assert result["data"]["steps_count"] == 1
+    assert result["data"]["action"] == "evaluate"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_summary_without_session(test_agent_id, test_db):
     """Test that getting summary without session raises error."""
-    result = get_reasoning_summary("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="summary", agent_id=test_agent_id
+    )
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
 
 def test_summary_with_session(test_agent_id, test_db):
     """Test getting summary after starting session."""
-    start_reasoning("Testing intent", test_agent_id)
-    add_reasoning_step("Testing intent", "Step 1", test_agent_id)
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
+    reasoning(
+        "Testing intent",
+        action="step",
+        content="Step 1",
+        agent_id=test_agent_id,
+    )
 
-    result = get_reasoning_summary("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="summary", agent_id=test_agent_id
+    )
     assert result["status"] == "success"
     assert result["data"]["steps_count"] == 1
+    assert result["data"]["action"] == "summary"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
-
-
-def test_reset_without_session(test_agent_id, test_db):
-    """Test that resetting without session raises error."""
-    result = reset_reasoning("Testing intent", test_agent_id)
-    assert result["status"] == "error"
-    assert result["error"]["code"] == "NO_ACTIVE_SESSION"
-
-
-def test_reset_with_session(test_agent_id, test_db):
-    """Test resetting after starting session."""
-    start_reasoning("Testing intent", test_agent_id)
-    add_reasoning_step("Testing intent", "Step 1", test_agent_id)
-
-    result = reset_reasoning("Testing intent", test_agent_id)
-    assert result["status"] == "success"
-    assert "reset" in result["data"]["message"].lower()
-
-    # Verify it's empty
-    summary = get_reasoning_summary("Testing intent", test_agent_id)
-    assert summary["status"] == "success"
-    assert summary["data"]["steps_count"] == 0
-
-    # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_end_reasoning(test_agent_id, test_db):
     """Test ending a session."""
-    start_reasoning("Testing intent", test_agent_id)
-    result = end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
+    result = reasoning("Testing intent", action="end", agent_id=test_agent_id)
     assert result["status"] == "success"
-    assert result["tool"] == "end_reasoning"
+    assert result["tool"] == "reasoning"
+    assert result["data"]["action"] == "end"
 
     # Verify it's gone from active sessions
     assert registry.get_active_session_id(test_agent_id) is None
 
     # Verify tools fail now
-    result = get_reasoning_summary("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="summary", agent_id=test_agent_id
+    )
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
 
 def test_end_nonexistent_session(test_agent_id, test_db):
     """Test ending when no active session exists."""
-    result = end_reasoning("Testing intent", test_agent_id)
+    result = reasoning("Testing intent", action="end", agent_id=test_agent_id)
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
-
-
-def test_list_sessions(test_agent_id, test_db):
-    """Test listing all sessions for an agent."""
-    # Start session (creates one in database)
-    start_reasoning("Testing intent", test_agent_id)
-
-    result = list_reasoning_sessions("Testing intent", test_agent_id)
-    assert result["status"] == "success"
-    assert result["tool"] == "list_reasoning_sessions"
-    assert result["agent_id"] == test_agent_id
-    assert isinstance(result["data"]["sessions"], list)
-
-    # Clean up
-    end_reasoning("Testing intent", test_agent_id)
 
 
 def test_full_workflow(test_agent_id, test_db):
     """Test a complete reasoning workflow."""
     # Start session
-    start_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
 
     # Add steps
-    add_reasoning_step(
+    reasoning(
         "Testing intent",
-        "Identified the problem",
-        test_agent_id,
+        action="step",
+        content="Identified the problem",
+        agent_id=test_agent_id,
         cognitive_mode="analysis",
     )
-    add_reasoning_step(
+    reasoning(
         "Testing intent",
-        "Formulated hypothesis",
-        test_agent_id,
+        action="step",
+        content="Formulated hypothesis",
+        agent_id=test_agent_id,
         cognitive_mode="synthesis",
     )
 
     # Add reflection
-    add_reflection(
+    reasoning(
         "Testing intent",
-        "Should verify assumptions",
-        test_agent_id,
+        action="reflect",
+        content="Should verify assumptions",
+        agent_id=test_agent_id,
     )
 
     # Use scratchpad
-    use_scratchpad(
+    scratchpad(
         "Testing intent",
         "hypothesis",
-        test_agent_id,
+        agent_id=test_agent_id,
         value="Auth token issue",
         operation="set",
     )
 
     # Evaluate
-    result = evaluate_reasoning("Testing intent", test_agent_id)
+    result = reasoning(
+        "Testing intent", action="evaluate", agent_id=test_agent_id
+    )
     assert result["status"] == "success"
     assert result["data"]["steps_count"] == 2
     assert result["data"]["reflections_count"] == 1
 
     # Get summary
-    summary = get_reasoning_summary("Testing intent", test_agent_id)
+    summary = reasoning(
+        "Testing intent", action="summary", agent_id=test_agent_id
+    )
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 2
     assert summary["data"]["reflections_count"] == 1
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_multi_agent_isolation(test_db):
@@ -367,47 +367,69 @@ def test_multi_agent_isolation(test_db):
     agent_2 = "agent_2"
 
     # Both agents start sessions
-    start_reasoning("Testing intent", agent_1)
-    start_reasoning("Testing intent", agent_2)
+    reasoning("Testing intent", action="start", agent_id=agent_1)
+    reasoning("Testing intent", action="start", agent_id=agent_2)
 
     # Add different steps
-    add_reasoning_step("Testing intent", "Agent 1 step", agent_1)
-    add_reasoning_step("Testing intent", "Agent 2 step", agent_2)
+    reasoning(
+        "Testing intent",
+        action="step",
+        content="Agent 1 step",
+        agent_id=agent_1,
+    )
+    reasoning(
+        "Testing intent",
+        action="step",
+        content="Agent 2 step",
+        agent_id=agent_2,
+    )
 
     # Verify isolation
-    summary_1 = get_reasoning_summary("Testing intent", agent_1)
-    summary_2 = get_reasoning_summary("Testing intent", agent_2)
+    summary_1 = reasoning("Testing intent", action="summary", agent_id=agent_1)
+    summary_2 = reasoning("Testing intent", action="summary", agent_id=agent_2)
 
     # Both should have 1 step
     assert summary_1["data"]["steps_count"] == 1
     assert summary_2["data"]["steps_count"] == 1
 
     # End one session
-    end_reasoning("Testing intent", agent_1)
+    reasoning("Testing intent", action="end", agent_id=agent_1)
 
     # Agent 2's session should still exist
-    summary_2_after = get_reasoning_summary("Testing intent", agent_2)
+    summary_2_after = reasoning(
+        "Testing intent", action="summary", agent_id=agent_2
+    )
     assert summary_2_after["data"]["steps_count"] == 1
 
     # Agent 1's session should be gone
-    result = get_reasoning_summary("Testing intent", agent_1)
+    result = reasoning("Testing intent", action="summary", agent_id=agent_1)
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
     # Clean up remaining session
-    end_reasoning("Testing intent", agent_2)
+    reasoning("Testing intent", action="end", agent_id=agent_2)
 
 
 def test_persistence_across_restart(test_agent_id, test_db):
     """Test that sessions survive cache clearing."""
     # Create and populate session
-    start_reasoning("Testing intent", test_agent_id)
-    add_reasoning_step("Testing intent", "Step 1", test_agent_id)
-    add_reflection("Testing intent", "Reflection 1", test_agent_id)
-    use_scratchpad(
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
+    reasoning(
+        "Testing intent",
+        action="step",
+        content="Step 1",
+        agent_id=test_agent_id,
+    )
+    reasoning(
+        "Testing intent",
+        action="reflect",
+        content="Reflection 1",
+        agent_id=test_agent_id,
+    )
+    scratchpad(
         "Testing intent",
         "key1",
-        test_agent_id,
+        agent_id=test_agent_id,
         value="value1",
         operation="set",
     )
@@ -415,45 +437,49 @@ def test_persistence_across_restart(test_agent_id, test_db):
     # Simulate restart boundary: registry is DB-backed (no in-memory cache)
 
     # Verify data still accessible (loaded from database)
-    summary = get_reasoning_summary("Testing intent", test_agent_id)
+    summary = reasoning(
+        "Testing intent", action="summary", agent_id=test_agent_id
+    )
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 1
     assert summary["data"]["reflections_count"] == 1
 
     # Verify scratchpad persisted
-    result = use_scratchpad(
+    result = scratchpad(
         "Testing intent",
         "key1",
-        test_agent_id,
+        agent_id=test_agent_id,
         operation="get",
     )
     assert result["status"] == "success"
     assert result["data"]["value"] == "value1"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
 def test_session_data_integrity(test_agent_id, test_db):
     """Test that all session data is correctly persisted and loaded."""
     # Create session with comprehensive data
-    start_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="start", agent_id=test_agent_id)
 
     # Add multiple steps with evidence and biases
-    add_reasoning_step(
+    reasoning(
         "Testing intent",
-        "First analysis",
-        test_agent_id,
+        action="step",
+        content="First analysis",
+        agent_id=test_agent_id,
         cognitive_mode="analysis",
         reasoning_type="deductive",
         evidence=["Evidence 1", "Evidence 2"],
         confidence=0.8,
     )
 
-    add_reasoning_step(
+    reasoning(
         "Testing intent",
-        "Second synthesis",
-        test_agent_id,
+        action="step",
+        content="Second synthesis",
+        agent_id=test_agent_id,
         cognitive_mode="synthesis",
         reasoning_type="inductive",
         evidence=["Evidence 3"],
@@ -461,84 +487,53 @@ def test_session_data_integrity(test_agent_id, test_db):
     )
 
     # Add reflection
-    add_reflection(
+    reasoning(
         "Testing intent",
-        "Important reflection",
-        test_agent_id,
+        action="reflect",
+        content="Important reflection",
+        agent_id=test_agent_id,
         on_step=1,
     )
 
-    # Add scratchpad items
-    use_scratchpad(
+    # Add scratchpad items (now stored independently of reasoning sessions)
+    scratchpad(
         "Testing intent",
         "hypothesis",
-        test_agent_id,
+        agent_id=test_agent_id,
         value="Test hypothesis",
         operation="set",
     )
 
     # DB-backed lookup should still load persisted session data
 
-    # Verify all data is intact
-    summary = get_reasoning_summary("Testing intent", test_agent_id)
+    # Verify reasoning data is intact
+    summary = reasoning(
+        "Testing intent", action="summary", agent_id=test_agent_id
+    )
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 2
     assert summary["data"]["reflections_count"] == 1
-    assert summary["data"]["scratchpad_items_count"] == 1
+    # Scratchpad is now decoupled — not counted in reasoning summary
+    assert summary["data"]["scratchpad_items_count"] == 0
 
-    # Verify scratchpad
-    result = use_scratchpad(
+    # Verify scratchpad data is independently accessible
+    result = scratchpad(
         "Testing intent",
         "hypothesis",
-        test_agent_id,
+        agent_id=test_agent_id,
         operation="get",
     )
     assert result["status"] == "success"
     assert result["data"]["value"] == "Test hypothesis"
 
     # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+    reasoning("Testing intent", action="end", agent_id=test_agent_id)
 
 
-def test_list_sessions_multi_agent(test_db):
-    """Test listing sessions filters by agent correctly."""
-    agent_1 = "agent_1"
-    agent_2 = "agent_2"
-
-    # Create sessions for both agents
-    start_reasoning("Testing intent", agent_1)
-    start_reasoning("Testing intent", agent_2)
-
-    # List sessions for agent_1
-    result_1 = list_reasoning_sessions("Testing intent", agent_1)
-    assert result_1["status"] == "success"
-    assert result_1["agent_id"] == agent_1
-
-    # List sessions for agent_2
-    result_2 = list_reasoning_sessions("Testing intent", agent_2)
-    assert result_2["status"] == "success"
-    assert result_2["agent_id"] == agent_2
-
-    # Clean up
-    end_reasoning("Testing intent", agent_1)
-    end_reasoning("Testing intent", agent_2)
-
-
-def test_reset_clears_database(test_agent_id, test_db):
-    """Test that reset clears data from database."""
-    # Create and populate session
-    start_reasoning("Testing intent", test_agent_id)
-    add_reasoning_step("Testing intent", "Step 1", test_agent_id)
-
-    # Reset session
-    reset_reasoning("Testing intent", test_agent_id)
-
-    # DB-backed lookup should still load persisted reset state
-
-    # Verify session is empty after reload
-    summary = get_reasoning_summary("Testing intent", test_agent_id)
-    assert summary["status"] == "success"
-    assert summary["data"]["steps_count"] == 0
-
-    # Clean up
-    end_reasoning("Testing intent", test_agent_id)
+def test_invalid_action(test_agent_id, test_db):
+    """Test that an invalid action returns an error."""
+    result = reasoning(
+        "Testing intent", action="invalid", agent_id=test_agent_id
+    )
+    assert result["status"] == "error"
+    assert result["error"]["code"] == "INVALID_ACTION"

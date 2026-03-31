@@ -81,18 +81,16 @@ def get_agent(
 
     tools_selection = {
         PYTHON_DEVELOPMENT_TOOLS: [
-            "execute_python_code",
+            "python",
         ],
         FILESYSTEM_TOOLS: [
-            "read_full_file",
-            "read_file_chunk",
-            "write_full_file",
-            "file_exists",
+            "read_file",
+            "write_file",
+            "file_info",
         ],
         WEB_SEARCH_TOOLS: [
-            "duckduckgo_web_search",
-            "searxng_web_search",
-            "grab_from_url",
+            "web_search",
+            "download",
             "get_youtube_video_transcription",
             "get_current_weather",
         ],

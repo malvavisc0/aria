@@ -5,10 +5,11 @@ import json
 
 def test_create_plan(test_db):
     """Test creating a plan and verifying it persists."""
-    from aria.tools.planner import create_execution_plan
+    from aria.tools.planner import plan
 
-    result = create_execution_plan(
-        reason="Testing",
+    result = plan(
+        intent="Testing",
+        action="create",
         task="Build a web scraper",
         steps=[
             "Install dependencies",
@@ -30,32 +31,30 @@ def test_create_plan(test_db):
 
 def test_get_plan(test_db):
     """Test retrieving a plan by execution_id."""
-    from aria.tools.planner import create_execution_plan, get_execution_plan
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step 1", "Step 2"],
     )
     plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
 
-    get_result = get_execution_plan(reason="Testing", execution_id=plan_id)
+    get_result = plan(intent="Testing", action="get", execution_id=plan_id)
     data = json.loads(get_result)
 
-    assert data["data"]["plan_id"] == plan_id
-    assert data["data"]["task"] == "Test task"
+    assert data["data"]["result"]["plan_id"] == plan_id
+    assert data["data"]["result"]["task"] == "Test task"
 
 
 def test_update_step_status(test_db):
     """Test updating step status and verifying in DB."""
-    from aria.tools.planner import (
-        create_execution_plan,
-        get_execution_plan,
-        update_plan_step,
-    )
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step 1", "Step 2"],
     )
@@ -63,8 +62,9 @@ def test_update_step_status(test_db):
     step_id = json.loads(create_result)["data"]["result"]["steps"][0]["id"]
 
     # Update step status
-    update_result = update_plan_step(
-        reason="Testing",
+    update_result = plan(
+        intent="Testing",
+        action="update",
         execution_id=plan_id,
         step_id=step_id,
         status="completed",
@@ -76,8 +76,8 @@ def test_update_step_status(test_db):
     assert data["data"]["result"]["result"] == "Worked!"
 
     # Verify in DB
-    get_result = get_execution_plan(reason="Testing", execution_id=plan_id)
-    plan_data = json.loads(get_result)["data"]
+    get_result = plan(intent="Testing", action="get", execution_id=plan_id)
+    plan_data = json.loads(get_result)["data"]["result"]
     updated_step = next(s for s in plan_data["steps"] if s["id"] == step_id)
     assert updated_step["status"] == "completed"
     assert updated_step["result"] == "Worked!"
@@ -85,10 +85,11 @@ def test_update_step_status(test_db):
 
 def test_add_step(test_db):
     """Test adding a step and verifying ordering."""
-    from aria.tools.planner import add_plan_step, create_execution_plan
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step 1", "Step 3"],
     )
@@ -96,11 +97,12 @@ def test_add_step(test_db):
     step1_id = json.loads(create_result)["data"]["result"]["steps"][0]["id"]
 
     # Add step after step 1
-    add_result = add_plan_step(
-        reason="Testing",
+    add_result = plan(
+        intent="Testing",
+        action="add",
         execution_id=plan_id,
         after_step_id=step1_id,
-        new_step="Step 2",
+        description="Step 2",
     )
     data = json.loads(add_result)
     assert data["data"]["metadata"]["success"] is True
@@ -110,18 +112,20 @@ def test_add_step(test_db):
 
 def test_remove_step(test_db):
     """Test removing a step and verifying re-numbering."""
-    from aria.tools.planner import create_execution_plan, remove_plan_step
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step 1", "Step 2", "Step 3"],
     )
     plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
     step2_id = json.loads(create_result)["data"]["result"]["steps"][1]["id"]
 
-    remove_result = remove_plan_step(
-        reason="Testing",
+    remove_result = plan(
+        intent="Testing",
+        action="remove",
         execution_id=plan_id,
         step_id=step2_id,
     )
@@ -132,21 +136,23 @@ def test_remove_step(test_db):
 
 def test_replace_step(test_db):
     """Test replacing step description."""
-    from aria.tools.planner import create_execution_plan, replace_plan_step
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Old description"],
     )
     plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
     step_id = json.loads(create_result)["data"]["result"]["steps"][0]["id"]
 
-    replace_result = replace_plan_step(
-        reason="Testing",
+    replace_result = plan(
+        intent="Testing",
+        action="replace",
         execution_id=plan_id,
         step_id=step_id,
-        new_step="New description",
+        description="New description",
     )
     data = json.loads(replace_result)
     assert data["data"]["metadata"]["success"] is True
@@ -156,10 +162,11 @@ def test_replace_step(test_db):
 
 def test_reorder_steps(test_db):
     """Test reordering and verifying new positions."""
-    from aria.tools.planner import create_execution_plan, reorder_plan_steps
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step A", "Step B", "Step C"],
     )
@@ -169,8 +176,9 @@ def test_reorder_steps(test_db):
     ]
 
     # Reverse the order
-    reorder_result = reorder_plan_steps(
-        reason="Testing",
+    reorder_result = plan(
+        intent="Testing",
+        action="reorder",
         execution_id=plan_id,
         step_ids=list(reversed(step_ids)),
     )
@@ -186,11 +194,12 @@ def test_reorder_steps(test_db):
 
 def test_plan_survives_reload(test_db):
     """Test that plan persists and can be reloaded from DB."""
-    from aria.tools.planner import create_execution_plan, get_execution_plan
+    from aria.tools.planner import plan
 
     # Create plan
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Persistent task",
         steps=["Step 1", "Step 2"],
     )
@@ -207,37 +216,40 @@ def test_plan_survives_reload(test_db):
     PlannerDatabase._instance = None
     reg_module._db = PlannerDatabase()
 
-    get_result = get_execution_plan(reason="Testing", execution_id=plan_id)
+    get_result = plan(intent="Testing", action="get", execution_id=plan_id)
     data = json.loads(get_result)
-    assert data["data"]["task"] == "Persistent task"
+    assert data["data"]["result"]["task"] == "Persistent task"
 
 
 def test_invalid_execution_id(test_db):
     """Test error for non-existent plan."""
-    from aria.tools.planner import get_execution_plan
+    from aria.tools.planner import plan
 
-    result = get_execution_plan(
-        reason="Testing",
+    result = plan(
+        intent="Testing",
+        action="get",
         execution_id="nonexistent-id",
     )
     data = json.loads(result)
-    # _no_active_plan_error returns data with an "error" key
+    # Error returns data with an "error" key
     assert "error" in data["data"]
 
 
 def test_multi_agent_isolation(test_db):
     """Test that two agents have isolated plans."""
-    from aria.tools.planner import create_execution_plan, get_execution_plan
+    from aria.tools.planner import plan
 
     # Create plans for two agents
-    result1 = create_execution_plan(
-        reason="Testing",
+    result1 = plan(
+        intent="Testing",
+        action="create",
         task="Agent 1 task",
         steps=["Agent 1 Step"],
         agent_id="agent_1",
     )
-    result2 = create_execution_plan(
-        reason="Testing",
+    result2 = plan(
+        intent="Testing",
+        action="create",
         task="Agent 2 task",
         steps=["Agent 2 Step"],
         agent_id="agent_2",
@@ -247,26 +259,28 @@ def test_multi_agent_isolation(test_db):
     plan2_id = json.loads(result2)["data"]["result"]["plan_id"]
 
     # Each agent sees only their plan
-    get1 = get_execution_plan(reason="Test", execution_id=plan1_id)
-    get2 = get_execution_plan(reason="Test", execution_id=plan2_id)
+    get1 = plan(intent="Test", action="get", execution_id=plan1_id)
+    get2 = plan(intent="Test", action="get", execution_id=plan2_id)
 
-    assert json.loads(get1)["data"]["task"] == "Agent 1 task"
-    assert json.loads(get2)["data"]["task"] == "Agent 2 task"
+    assert json.loads(get1)["data"]["result"]["task"] == "Agent 1 task"
+    assert json.loads(get2)["data"]["result"]["task"] == "Agent 2 task"
 
 
 def test_invalid_step_id(test_db):
     """Test error when updating non-existent step."""
-    from aria.tools.planner import create_execution_plan, update_plan_step
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step 1"],
     )
     plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
 
-    result = update_plan_step(
-        reason="Testing",
+    result = plan(
+        intent="Testing",
+        action="update",
         execution_id=plan_id,
         step_id="nonexistent-step",
         status="completed",
@@ -277,18 +291,20 @@ def test_invalid_step_id(test_db):
 
 def test_invalid_status(test_db):
     """Test error when using invalid status."""
-    from aria.tools.planner import create_execution_plan, update_plan_step
+    from aria.tools.planner import plan
 
-    create_result = create_execution_plan(
-        reason="Testing",
+    create_result = plan(
+        intent="Testing",
+        action="create",
         task="Test task",
         steps=["Step 1"],
     )
     plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
     step_id = json.loads(create_result)["data"]["result"]["steps"][0]["id"]
 
-    result = update_plan_step(
-        reason="Testing",
+    result = plan(
+        intent="Testing",
+        action="update",
         execution_id=plan_id,
         step_id=step_id,
         status="invalid_status",
@@ -296,3 +312,84 @@ def test_invalid_status(test_db):
     data = json.loads(result)
     assert data["data"]["metadata"]["success"] is False
     assert "Invalid status" in data["data"]["error"]
+
+
+def test_invalid_action(test_db):
+    """Test error when using invalid action."""
+    from aria.tools.planner import plan
+
+    result = plan(
+        intent="Testing",
+        action="invalid_action",
+    )
+    data = json.loads(result)
+    assert data["data"]["metadata"]["success"] is False
+    assert "Unknown action" in data["data"]["error"]
+
+
+def test_create_missing_task(test_db):
+    """Test error when task is missing for create."""
+    from aria.tools.planner import plan
+
+    result = plan(
+        intent="Testing",
+        action="create",
+        steps=["Step 1"],
+    )
+    data = json.loads(result)
+    assert data["data"]["metadata"]["success"] is False
+    assert "task is required" in data["data"]["error"]
+
+
+def test_create_missing_steps(test_db):
+    """Test error when steps is missing for create."""
+    from aria.tools.planner import plan
+
+    result = plan(
+        intent="Testing",
+        action="create",
+        task="Test task",
+    )
+    data = json.loads(result)
+    assert data["data"]["metadata"]["success"] is False
+    assert "steps is required" in data["data"]["error"]
+
+
+def test_update_missing_execution_id(test_db):
+    """Test error when execution_id is missing for update."""
+    from aria.tools.planner import plan
+
+    result = plan(
+        intent="Testing",
+        action="update",
+        step_id="some-step",
+        status="completed",
+    )
+    data = json.loads(result)
+    assert data["data"]["metadata"]["success"] is False
+    assert "execution_id is required" in data["data"]["error"]
+
+
+def test_add_at_end(test_db):
+    """Test adding a step at the end (after_step_id=None)."""
+    from aria.tools.planner import plan
+
+    create_result = plan(
+        intent="Testing",
+        action="create",
+        task="Test task",
+        steps=["Step 1"],
+    )
+    plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
+
+    # Add step at end
+    add_result = plan(
+        intent="Testing",
+        action="add",
+        execution_id=plan_id,
+        after_step_id=None,
+        description="Step 2",
+    )
+    data = json.loads(add_result)
+    assert data["data"]["metadata"]["success"] is True
+    assert data["data"]["result"]["total_steps"] == 2

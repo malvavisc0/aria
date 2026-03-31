@@ -1,18 +1,10 @@
 """Shell execution tools.
 
-This module provides tools for executing shell commands safely across
-Windows, Linux, and macOS platforms with proper security constraints,
-timeout handling, and output capture.
+Phase 6 consolidation: execute_command + execute_command_batch → shell
 """
 
-from aria.tools.shell.functions import (
-    execute_command,
-    execute_command_batch,
-    get_platform_info,
-)
+from aria.tools.shell.functions import shell
 
 __all__ = [
-    "execute_command",
-    "execute_command_batch",
-    "get_platform_info",
+    "shell",
 ]

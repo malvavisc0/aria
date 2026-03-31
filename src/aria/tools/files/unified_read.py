@@ -1,0 +1,775 @@
+"""Unified file read operations - Phase 4 consolidation.
+
+This module provides 4 unified read tools:
+- read_file: Merges read_full_file + read_file_chunk
+- file_info: Merges file_exists + get_file_info
+- list_files: Merges list_files + get_directory_tree
+- search_files: Merges search_files_by_name + search_in_files
+"""
+
+import mimetypes
+import re
+import stat
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from loguru import logger
+
+from aria.tools.constants import BASE_DIR
+from aria.tools.decorators import tool_function
+from aria.tools.files._internals import (
+    _secure_resolve_dir,
+    _secure_resolve_path,
+)
+from aria.tools.files.decorators import with_file_operation_error_handling
+from aria.tools.files.exceptions import FileOperationError
+
+
+def _read_lines_streaming(
+    file_path: Path, offset: int, length: int
+) -> List[str]:
+    """Read lines from file using streaming.
+
+    Args:
+        file_path: Path to the file
+        offset: Starting line number (0-indexed)
+        length: Number of lines to read (0 = read all remaining)
+
+    Returns:
+        List[str]: Lines read from file (without newline characters)
+    """
+    lines = []
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            for i, line in enumerate(f):
+                if i < offset:
+                    continue
+                if length > 0 and i >= offset + length:
+                    break
+                lines.append(line.rstrip("\n\r"))
+        return lines
+    except OSError as exc:
+        raise FileOperationError(f"Failed to read file: {exc}") from exc
+
+
+def _count_lines_efficiently(file_path: Path) -> int:
+    """Memory-efficient line counting for large files.
+
+    Reads file in chunks to avoid loading entire file into memory.
+
+    Args:
+        file_path: Path to the file to count lines for
+
+    Returns:
+        int: Number of lines in the file
+
+    Raises:
+        FileOperationError: If path is a directory or file cannot be read
+    """
+    if file_path.is_dir():
+        raise FileOperationError(
+            f"Path is a directory, not a file: {file_path}"
+        )
+
+    count = 0
+    try:
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                count += chunk.count(b"\n")
+        return count
+    except OSError as exc:
+        raise FileOperationError(
+            f"Failed to read file for line counting: {exc}"
+        ) from exc
+
+
+def _build_directory_tree(
+    path: Path, current_depth: int, max_depth: int
+) -> Dict[str, Any]:
+    """Build directory tree structure recursively.
+
+    Args:
+        path: Path to build tree from
+        current_depth: Current recursion depth
+        max_depth: Maximum depth to recurse
+
+    Returns:
+        Dict representing directory tree
+    """
+    try:
+        result = {"name": path.name, "type": "directory", "children": []}
+
+        if current_depth >= max_depth:
+            result["truncated"] = True
+            return result
+
+        for child in sorted(path.iterdir()):
+            if child.is_dir():
+                result["children"].append(
+                    _build_directory_tree(child, current_depth + 1, max_depth)
+                )
+            else:
+                result["children"].append({"name": child.name, "type": "file"})
+
+        return result
+    except PermissionError:
+        return {
+            "name": path.name,
+            "type": "directory",
+            "error": "Permission denied",
+        }
+
+
+def _count_tree_items(tree: Dict[str, Any]) -> tuple[int, int]:
+    """Count files and directories in a tree.
+
+    Args:
+        tree: Tree structure from _build_directory_tree
+
+    Returns:
+        Tuple of (total_files, total_directories)
+    """
+    files = 0
+    directories = 0
+
+    if tree.get("type") == "file":
+        return 1, 0
+
+    directories = 1  # Count the directory itself
+    for child in tree.get("children", []):
+        if child.get("type") == "file":
+            files += 1
+        else:
+            child_files, child_dirs = _count_tree_items(child)
+            files += child_files
+            directories += child_dirs
+
+    return files, directories
+
+
+def _format_permissions_symbolic(mode: int) -> str:
+    """Convert mode bits to symbolic permissions string.
+
+    Args:
+        mode: File mode bits from stat
+
+    Returns:
+        String like 'rwxr-xr-x'
+    """
+    perms = []
+    for who in ["USR", "GRP", "OTH"]:
+        for what in ["R", "W", "X"]:
+            bit = getattr(stat, f"S_I{what}{who}")
+            perms.append(what.lower() if mode & bit else "-")
+    return "".join(perms)
+
+
+def _ok(tool: str, intent: str, result: Dict[str, Any], **metadata) -> str:
+    """Build a success response."""
+    import json
+
+    response = {
+        "tool": tool,
+        "intent": intent,
+        "data": {
+            "result": result,
+            "error": "",
+            "metadata": {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "success": True,
+                **metadata,
+            },
+        },
+    }
+    return json.dumps(response)
+
+
+def _err(tool: str, intent: str, message: str, **metadata) -> str:
+    """Build an error response."""
+    import json
+
+    response = {
+        "tool": tool,
+        "intent": intent,
+        "data": {
+            "result": {},
+            "error": message,
+            "metadata": {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "success": False,
+                **metadata,
+            },
+        },
+    }
+    return json.dumps(response)
+
+
+@tool_function(
+    "read_file",
+    error_handler=with_file_operation_error_handling,
+)
+def read_file(
+    intent: str,
+    file_name: str,
+    offset: Optional[int] = 0,
+    length: Optional[int] = 0,
+    max_lines: Optional[int] = 500,
+) -> str:
+    """Read file contents with optional chunking.
+
+    Merges read_full_file + read_file_chunk functionality.
+    - offset=0, length=0: Read entire file (subject to max_lines)
+    - offset>0 or length>0: Read specific chunk
+
+    Args:
+        intent: Why you're reading (e.g., "Inspecting config file")
+        file_name: Path relative to BASE_DIR
+        offset: 0-indexed starting line (default: 0)
+        length: Number of lines to read (0 = read all, subject to max_lines)
+        max_lines: Maximum lines for full read (default: 500)
+
+    Returns:
+        JSON with lines/content, offset, total_lines, has_more, next_offset
+    """
+    offset_value = 0 if offset is None else offset
+    length_value = 0 if length is None else length
+    max_lines_value = 500 if max_lines is None else max_lines
+
+    logger.info(
+        f"Reading file: {file_name} "
+        f"(offset={offset_value}, length={length_value})"
+    )
+
+    try:
+        # Resolve path
+        resolved_path = _secure_resolve_path(file_name)
+
+        # Get total lines
+        total_lines = _count_lines_efficiently(resolved_path)
+
+        # Determine if chunked or full read
+        if offset_value == 0 and length_value == 0:
+            # Full file read
+            if total_lines > max_lines_value:
+                return _err(
+                    tool="read_file",
+                    intent=intent,
+                    message=(
+                        f"File has {total_lines} lines, exceeds limit of "
+                        f"{max_lines_value}. Use offset/length for chunked."
+                    ),
+                    file_name=file_name,
+                    total_lines=total_lines,
+                    max_lines=max_lines_value,
+                )
+
+            # Read full content
+            lines = _read_lines_streaming(resolved_path, 0, 0)
+            content = "\n".join(lines)
+
+            return _ok(
+                tool="read_file",
+                intent=intent,
+                result={
+                    "file_name": file_name,
+                    "content": content,
+                    "lines": lines,
+                    "total_lines": total_lines,
+                    "mode": "full",
+                },
+                file_name=file_name,
+            )
+        else:
+            # Chunked read
+            lines_to_read = length_value if length_value > 0 else total_lines
+            lines = _read_lines_streaming(
+                resolved_path, offset_value, lines_to_read
+            )
+            lines_returned = len(lines)
+            next_offset = offset_value + lines_returned
+            has_more = next_offset < total_lines
+
+            return _ok(
+                tool="read_file",
+                intent=intent,
+                result={
+                    "file_name": file_name,
+                    "lines": lines,
+                    "offset": offset_value,
+                    "lines_returned": lines_returned,
+                    "total_lines": total_lines,
+                    "has_more": has_more,
+                    "next_offset": next_offset if has_more else None,
+                    "mode": "chunked",
+                },
+                file_name=file_name,
+            )
+
+    except Exception as exc:
+        return _err(
+            tool="read_file",
+            intent=intent,
+            message=str(exc),
+            file_name=file_name,
+        )
+
+
+@tool_function(
+    "file_info",
+    error_handler=with_file_operation_error_handling,
+)
+def file_info(intent: str, file_name: str) -> str:
+    """Get comprehensive file information.
+
+    Merges file_exists + get_file_info functionality.
+    Returns exists, is_file, is_directory, size, dates, permissions.
+
+    Args:
+        intent: Why you're checking (e.g., "Determining read strategy")
+        file_name: Absolute path to the file or directory
+
+    Returns:
+        JSON with file metadata including existence, type, size, timestamps,
+        and permissions
+    """
+    logger.info(f"Getting file info for: {file_name}")
+
+    try:
+        # Resolve path - use _secure_resolve_dir for directories
+        # First try as a file path
+        try:
+            resolved_path = _secure_resolve_path(file_name, check_exists=False)
+        except FileOperationError:
+            # If it fails (e.g., is a directory), try as a directory
+            resolved_path = _secure_resolve_dir(file_name, check_exists=False)
+
+        # Check existence and type
+        exists = resolved_path.exists()
+        is_file = resolved_path.is_file() if exists else False
+        is_directory = resolved_path.is_dir() if exists else False
+        is_symlink = resolved_path.is_symlink() if exists else False
+
+        result = {
+            "file_name": file_name,
+            "exists": exists,
+            "is_file": is_file,
+            "is_directory": is_directory,
+            "is_symlink": is_symlink,
+        }
+
+        if exists and (is_file or is_directory):
+            file_stats = resolved_path.stat()
+
+            result.update(
+                {
+                    "size_bytes": file_stats.st_size,
+                    "size_mb": round(file_stats.st_size / (1024 * 1024), 4),
+                    "modified": datetime.fromtimestamp(
+                        file_stats.st_mtime, tz=timezone.utc
+                    ).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "created": datetime.fromtimestamp(
+                        file_stats.st_ctime, tz=timezone.utc
+                    ).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "permissions": _format_permissions_symbolic(
+                        file_stats.st_mode
+                    ),
+                    "mode_octal": oct(file_stats.st_mode)[-3:],
+                }
+            )
+
+            if is_file:
+                result.update(
+                    {
+                        "total_lines": _count_lines_efficiently(resolved_path),
+                        "mime_type": mimetypes.guess_type(file_name)[0],
+                    }
+                )
+
+        return _ok(
+            tool="file_info",
+            intent=intent,
+            result=result,
+            file_name=file_name,
+        )
+
+    except Exception as exc:
+        return _err(
+            tool="file_info",
+            intent=intent,
+            message=str(exc),
+            file_name=file_name,
+        )
+
+
+@tool_function(
+    "list_files",
+    error_handler=with_file_operation_error_handling,
+)
+def list_files(
+    intent: str,
+    pattern: Optional[str] = "*",
+    recursive: Optional[bool] = False,
+    max_depth: Optional[int] = 3,
+    max_results: Optional[int] = 100,
+    path: Optional[str] = ".",
+) -> str:
+    """List files with optional tree view.
+
+    Merges list_files + get_directory_tree functionality.
+    - recursive=False: Simple flat list
+    - recursive=True with max_depth: Tree structure
+
+    Args:
+        intent: Why you're listing (e.g., "Finding all Python files")
+        pattern: Glob pattern relative to path (default: "*")
+        recursive: Search recursively (default: False)
+        max_depth: Maximum depth for tree view (default: 3)
+        max_results: Maximum results for flat list (default: 100)
+        path: Starting directory relative to BASE_DIR (default: ".")
+
+    Returns:
+        JSON with files/tree, count, and metadata
+    """
+    pattern_value = pattern or "*"
+    recursive_value = False if recursive is None else recursive
+    max_depth_value = 3 if max_depth is None else max_depth
+    max_results_value = 100 if max_results is None else max_results
+    path_value = path or "."
+
+    logger.info(
+        f"Listing files: path={path_value}, pattern={pattern_value}, "
+        f"recursive={recursive_value}"
+    )
+
+    try:
+        # Resolve the starting path
+        resolved_path = _secure_resolve_dir(path_value)
+        if not resolved_path.exists():
+            resolved_path = _secure_resolve_path(
+                path_value, check_exists=False
+            )
+
+        if not resolved_path.exists():
+            return _err(
+                tool="list_files",
+                intent=intent,
+                message=f"Path does not exist: {path_value}",
+                path=path_value,
+            )
+
+        if resolved_path.is_file():
+            # Single file - return info about it
+            return _ok(
+                tool="list_files",
+                intent=intent,
+                result={
+                    "path": path_value,
+                    "is_file": True,
+                    "files": [path_value],
+                    "count": 1,
+                    "truncated": False,
+                },
+                path=path_value,
+            )
+
+        # Directory listing
+        if recursive_value and pattern_value == "*":
+            # Tree view for recursive listing with default pattern
+            tree = _build_directory_tree(resolved_path, 0, max_depth_value)
+            total_files, total_directories = _count_tree_items(tree)
+
+            return _ok(
+                tool="list_files",
+                intent=intent,
+                result={
+                    "path": path_value,
+                    "tree": tree,
+                    "total_files": total_files,
+                    "total_directories": total_directories,
+                    "mode": "tree",
+                    "max_depth": max_depth_value,
+                },
+                path=path_value,
+            )
+        else:
+            # Flat list (with optional recursive glob)
+            matches = list(
+                resolved_path.rglob(pattern_value)
+                if recursive_value
+                else resolved_path.glob(pattern_value)
+            )
+
+            files = []
+            for match in matches:
+                if match.is_file():
+                    try:
+                        # Try relative to resolved_path first
+                        try:
+                            rel_path = match.relative_to(resolved_path)
+                        except ValueError:
+                            rel_path = match.relative_to(BASE_DIR)
+                        files.append(str(rel_path))
+                        if len(files) >= max_results_value:
+                            break
+                    except ValueError:
+                        # If neither works, use the absolute path
+                        files.append(str(match))
+                        if len(files) >= max_results_value:
+                            break
+
+            truncated = len(matches) > max_results_value
+
+            return _ok(
+                tool="list_files",
+                intent=intent,
+                result={
+                    "path": path_value,
+                    "pattern": pattern_value,
+                    "files": files,
+                    "count": len(files),
+                    "truncated": truncated,
+                    "mode": "flat",
+                },
+                path=path_value,
+            )
+
+    except Exception as exc:
+        return _err(
+            tool="list_files",
+            intent=intent,
+            message=str(exc),
+            path=path_value,
+        )
+
+
+@tool_function(
+    "search_files",
+    error_handler=with_file_operation_error_handling,
+)
+def search_files(
+    intent: str,
+    pattern: str,
+    mode: Optional[str] = "name",
+    file_pattern: Optional[str] = "**/*",
+    recursive: Optional[bool] = True,
+    max_results: Optional[int] = 500,
+    context_lines: Optional[int] = 2,
+    path: Optional[str] = ".",
+) -> str:
+    """Search files by name or content.
+
+    Merges search_files_by_name + search_in_files functionality.
+    - mode="name": Search file names using regex
+    - mode="content": Search file contents using regex
+
+    Args:
+        intent: Why you're searching (e.g., "Finding test files")
+        pattern: Regex pattern to match
+        mode: "name" for filename search, "content" for content search
+        file_pattern: Glob pattern for files (default: "**/*")
+        recursive: Search recursively (default: True)
+        max_results: Maximum results (default: 500)
+        context_lines: Context lines for content matches (default: 2)
+        path: Starting directory relative to BASE_DIR (default: ".")
+
+    Returns:
+        JSON with matches, count, and search metadata
+    """
+    # Maximum file size for content search (1MB) to prevent RAM exhaustion
+    MAX_CONTENT_FILE_SIZE = 1024 * 1024
+
+    mode_value = mode or "name"
+    file_pattern_value = file_pattern or "**/*"
+    recursive_value = True if recursive is None else recursive
+    max_results_value = 500 if max_results is None else max_results
+    context_lines_value = 2 if context_lines is None else context_lines
+    path_value = path or "."
+
+    logger.info(
+        f"Searching files: path={path_value}, pattern={pattern}, "
+        f"mode={mode_value}, file_pattern={file_pattern_value}"
+    )
+
+    try:
+        # Resolve the starting path
+        resolved_path = _secure_resolve_dir(path_value)
+        if not resolved_path.exists():
+            resolved_path = _secure_resolve_path(
+                path_value, check_exists=False
+            )
+
+        if not resolved_path.exists():
+            return _err(
+                tool="search_files",
+                intent=intent,
+                message=f"Path does not exist: {path_value}",
+                path=path_value,
+            )
+
+        # Compile regex pattern
+        try:
+            regex = re.compile(pattern)
+        except re.error as exc:
+            return _err(
+                tool="search_files",
+                intent=intent,
+                message=f"Invalid regex pattern: {exc}",
+                pattern=pattern,
+            )
+
+        if mode_value == "name":
+            # Search file names
+            matches = []
+            paths = (
+                resolved_path.rglob("*")
+                if recursive_value
+                else resolved_path.glob("*")
+            )
+
+            for file_path in paths:
+                if file_path.is_file() and regex.search(file_path.name):
+                    try:
+                        rel_path = file_path.relative_to(resolved_path)
+                        matches.append(str(rel_path))
+                        if len(matches) >= max_results_value:
+                            break
+                    except ValueError:
+                        continue
+
+            truncated = len(matches) >= max_results_value
+
+            return _ok(
+                tool="search_files",
+                intent=intent,
+                result={
+                    "pattern": pattern,
+                    "mode": "name",
+                    "matches": matches,
+                    "count": len(matches),
+                    "truncated": truncated,
+                },
+                path=path_value,
+                pattern=pattern,
+            )
+
+        elif mode_value == "content":
+            # Search file contents
+            matches = []
+            files_searched = 0
+            max_files = 100  # Limit files to search
+
+            paths = list(
+                resolved_path.rglob(file_pattern_value)
+                if recursive_value
+                else resolved_path.glob(file_pattern_value)
+            )
+
+            for file_path in paths:
+                if not file_path.is_file() or files_searched >= max_files:
+                    if files_searched >= max_files:
+                        break
+                    continue
+
+                # Skip files that are too large to prevent RAM exhaustion
+                try:
+                    file_size = file_path.stat().st_size
+                    if file_size > MAX_CONTENT_FILE_SIZE:
+                        logger.debug(
+                            f"Skipping {file_path}: size {file_size} exceeds "
+                            f"limit {MAX_CONTENT_FILE_SIZE}"
+                        )
+                        continue
+                except OSError:
+                    continue
+
+                files_searched += 1
+
+                try:
+                    rel_path = str(file_path.relative_to(resolved_path))
+
+                    # Read file line by line to avoid loading entire file
+                    # into memory at once
+                    lines = []
+                    with open(
+                        file_path, "r", encoding="utf-8", errors="ignore"
+                    ) as f:
+                        for line in f:
+                            lines.append(line)
+                            # Safety limit on lines per file
+                            if len(lines) > 10000:
+                                break
+
+                    for line_num, line in enumerate(lines):
+                        if len(matches) >= max_results_value:
+                            break
+
+                        if regex.search(line):
+                            # Get context
+                            start = max(0, line_num - context_lines_value)
+                            end = min(
+                                len(lines), line_num + context_lines_value + 1
+                            )
+
+                            context_before = [
+                                lines[i].rstrip("\n\r")
+                                for i in range(start, line_num)
+                            ]
+                            context_after = [
+                                lines[i].rstrip("\n\r")
+                                for i in range(line_num + 1, end)
+                            ]
+
+                            matches.append(
+                                {
+                                    "file": rel_path,
+                                    "line_number": line_num + 1,
+                                    "line_content": line.rstrip("\n\r"),
+                                    "context_before": context_before,
+                                    "context_after": context_after,
+                                }
+                            )
+
+                    if len(matches) >= max_results_value:
+                        break
+
+                except (OSError, UnicodeDecodeError):
+                    continue
+
+            truncated = (
+                len(matches) >= max_results_value
+                or files_searched >= max_files
+            )
+
+            return _ok(
+                tool="search_files",
+                intent=intent,
+                result={
+                    "pattern": pattern,
+                    "mode": "content",
+                    "matches": matches,
+                    "total_matches": len(matches),
+                    "files_searched": files_searched,
+                    "truncated": truncated,
+                },
+                path=path_value,
+                pattern=pattern,
+            )
+
+        else:
+            return _err(
+                tool="search_files",
+                intent=intent,
+                message=(
+                    f"Invalid mode '{mode_value}'. " "Use 'name' or 'content'."
+                ),
+                pattern=pattern,
+            )
+
+    except Exception as exc:
+        return _err(
+            tool="search_files",
+            intent=intent,
+            message=str(exc),
+            pattern=pattern,
+        )

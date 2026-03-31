@@ -1,52 +1,37 @@
-"""File operations tools."""
+"""File operations tools.
 
+Phase 4+5 consolidation: Unified tools replace legacy tools.
+"""
+
+# File management operations
 from aria.tools.files.file_management import (
     copy_file,
     delete_file,
-    move_file,
     rename_file,
 )
-from aria.tools.files.read_operations import (
-    file_exists,
-    get_directory_tree,
-    get_file_info,
-    get_file_permissions,
+
+# Unified read operations (Phase 4)
+from aria.tools.files.unified_read import (
+    file_info,
     list_files,
-    read_file_chunk,
-    read_full_file,
-    search_files_by_name,
-    search_in_files,
-)
-from aria.tools.files.write_operations import (
-    append_to_file,
-    create_directory,
-    delete_lines_range,
-    insert_lines_at,
-    replace_lines_range,
-    write_full_file,
+    read_file,
+    search_files,
 )
 
+# Unified write operations (Phase 5)
+from aria.tools.files.write_operations import edit_file, write_file
+
 __all__ = [
-    # Read operations
-    "file_exists",
-    "get_directory_tree",
-    "get_file_info",
-    "get_file_permissions",
+    # Unified read operations (Phase 4)
+    "read_file",
+    "file_info",
     "list_files",
-    "read_file_chunk",
-    "read_full_file",
-    "search_files_by_name",
-    "search_in_files",
-    # Write operations
-    "append_to_file",
-    "create_directory",
-    "delete_lines_range",
-    "insert_lines_at",
-    "replace_lines_range",
-    "write_full_file",
+    "search_files",
+    # Unified write operations (Phase 5)
+    "write_file",
+    "edit_file",
     # File management
     "copy_file",
     "delete_file",
-    "move_file",
     "rename_file",
 ]

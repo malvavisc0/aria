@@ -16,38 +16,17 @@ from loguru import logger
 from aria.agents.instructions import load_agent_instructions
 from aria.config.api import Lightpanda
 from aria.tools.browser import browser_click, open_url
-from aria.tools.files import file_exists, read_file_chunk, read_full_file
-from aria.tools.planner import (
-    add_plan_step,
-    create_execution_plan,
-    get_execution_plan,
-    remove_plan_step,
-    reorder_plan_steps,
-    replace_plan_step,
-    update_plan_step,
-)
-from aria.tools.reasoning import (
-    add_reasoning_step,
-    add_reflection,
-    end_reasoning,
-    evaluate_reasoning,
-    get_reasoning_summary,
-    list_reasoning_sessions,
-    reset_reasoning,
-    start_reasoning,
-    use_scratchpad,
-)
+from aria.tools.files import edit_file, file_info, read_file, write_file
+from aria.tools.planner import plan
+from aria.tools.reasoning import reasoning
+from aria.tools.scratchpad import scratchpad
 from aria.tools.search import (
-    duckduckgo_web_search,
+    download,
     get_current_weather,
     get_youtube_video_transcription,
-    grab_from_url,
+    web_search,
 )
-from aria.tools.shell import (
-    execute_command,
-    execute_command_batch,
-    get_platform_info,
-)
+from aria.tools.shell import shell
 from aria.tools.vision.functions import make_parse_pdf
 
 
@@ -116,30 +95,16 @@ def get_agent(
     tools = [
         FunctionTool.from_defaults(fn=get_youtube_video_transcription),
         FunctionTool.from_defaults(fn=get_current_weather),
-        FunctionTool.from_defaults(fn=grab_from_url),
-        FunctionTool.from_defaults(fn=read_full_file),
-        FunctionTool.from_defaults(fn=read_file_chunk),
-        FunctionTool.from_defaults(fn=file_exists),
-        FunctionTool.from_defaults(fn=duckduckgo_web_search),
-        FunctionTool.from_defaults(fn=get_platform_info),
-        FunctionTool.from_defaults(fn=execute_command),
-        FunctionTool.from_defaults(fn=execute_command_batch),
-        FunctionTool.from_defaults(fn=start_reasoning),
-        FunctionTool.from_defaults(fn=end_reasoning),
-        FunctionTool.from_defaults(fn=add_reasoning_step),
-        FunctionTool.from_defaults(fn=add_reflection),
-        FunctionTool.from_defaults(fn=evaluate_reasoning),
-        FunctionTool.from_defaults(fn=get_reasoning_summary),
-        FunctionTool.from_defaults(fn=use_scratchpad),
-        FunctionTool.from_defaults(fn=reset_reasoning),
-        FunctionTool.from_defaults(fn=list_reasoning_sessions),
-        FunctionTool.from_defaults(fn=add_plan_step),
-        FunctionTool.from_defaults(fn=create_execution_plan),
-        FunctionTool.from_defaults(fn=get_execution_plan),
-        FunctionTool.from_defaults(fn=remove_plan_step),
-        FunctionTool.from_defaults(fn=reorder_plan_steps),
-        FunctionTool.from_defaults(fn=replace_plan_step),
-        FunctionTool.from_defaults(fn=update_plan_step),
+        FunctionTool.from_defaults(fn=download),
+        FunctionTool.from_defaults(fn=read_file),
+        FunctionTool.from_defaults(fn=file_info),
+        FunctionTool.from_defaults(fn=write_file),
+        FunctionTool.from_defaults(fn=edit_file),
+        FunctionTool.from_defaults(fn=web_search),
+        FunctionTool.from_defaults(fn=shell),
+        FunctionTool.from_defaults(fn=reasoning),
+        FunctionTool.from_defaults(fn=scratchpad),
+        FunctionTool.from_defaults(fn=plan),
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",

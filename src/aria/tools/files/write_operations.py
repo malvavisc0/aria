@@ -1,4 +1,9 @@
-"""File write and modification operations."""
+"""File write and modification operations.
+
+Phase 5 consolidation: 6 tools → 2 tools.
+- write_file: Merges write_full_file + append_to_file + create_directory
+- edit_file: Merges insert_lines_at + replace_lines_range + delete_lines_range
+"""
 
 from pathlib import Path
 from typing import List, Optional
@@ -6,18 +11,14 @@ from typing import List, Optional
 from loguru import logger
 
 from aria.tools.decorators import tool_function
-from aria.tools.files._internals import (
-    _create_backup,
-    _secure_resolve_dir,
-    _secure_resolve_path,
-)
+from aria.tools.files._internals import _create_backup, _secure_resolve_path
 from aria.tools.files._responses import file_success_response
 from aria.tools.files.decorators import (
     with_file_operation_error_handling,
     with_input_validation,
 )
 from aria.tools.files.exceptions import FileOperationError
-from aria.tools.files.read_operations import _count_lines_efficiently
+from aria.tools.files.unified_read import _count_lines_efficiently
 
 
 def _atomic_write(file_path: Path, content: str) -> None:
@@ -122,251 +123,47 @@ def _modify_lines_streaming(
 
 
 @tool_function(
-    "append_to_file",
+    "write_file",
     validate={"contents": True},
     error_handler=with_file_operation_error_handling,
     validation_decorator=with_input_validation,
 )
-def append_to_file(intent: str, file_name: str, contents: str) -> str:
-    """
-    Append text to an existing file.
-
-    Args:
-        intent: Why you're appending (e.g., "Adding log entry")
-        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
-        contents: Text to append
-
-    Returns:
-        JSON with bytes_appended, new_total_lines, new_file_size
-    """
-    logger.info(f"Appending to file: {file_name}")
-
-    # Resolve path
-    resolved_path = _secure_resolve_path(file_name)
-
-    # Append content
-    with open(resolved_path, "a", encoding="utf-8") as f:
-        f.write(contents)
-
-    # Calculate metrics
-    bytes_appended = len(contents.encode("utf-8"))
-    new_total_lines = _count_lines_efficiently(resolved_path)
-    new_file_size = resolved_path.stat().st_size
-
-    # Build and return response
-    data = {
-        "file_name": file_name,
-        "bytes_appended": bytes_appended,
-        "new_total_lines": new_total_lines,
-        "new_file_size": new_file_size,
-    }
-    logger.info(f"Successfully appended {bytes_appended} bytes to {file_name}")
-    return file_success_response(intent, data)
-
-
-@tool_function(
-    "create_directory",
-    validate={},
-    error_handler=with_file_operation_error_handling,
-    validation_decorator=with_input_validation,
-)
-def create_directory(intent: str, dir_name: str) -> str:
-    """
-    Create a directory (including parents).
-
-    Args:
-        intent: Why you're creating (e.g., "Setting up project structure")
-        dir_name: Directory path relative to BASE_DIR
-
-    Returns:
-        JSON with dir_name, created, already_existed
-    """
-    logger.info(f"Creating directory: {dir_name}")
-
-    # Resolve path (don't check exists since we're creating it)
-    dir_path = _secure_resolve_dir(dir_name, check_exists=False)
-
-    # Create directory
-    already_existed = dir_path.exists()
-    dir_path.mkdir(parents=True, exist_ok=True)
-
-    # Build and return response
-    data = {
-        "dir_name": dir_name,
-        "created": not already_existed,
-        "already_existed": already_existed,
-    }
-    logger.info(f"Successfully created directory: {dir_name}")
-    return file_success_response(intent, data)
-
-
-@tool_function(
-    "delete_lines_range",
-    validate={"offset": True, "length": True},
-    error_handler=with_file_operation_error_handling,
-    validation_decorator=with_input_validation,
-)
-def delete_lines_range(
-    intent: str, file_name: str, offset: int, length: int
-) -> str:
-    """
-    Delete a contiguous range of lines from a file.
-
-    Args:
-        intent: Why you're deleting (e.g., "Removing obsolete code")
-        file_name: Path relative to BASE_DIR
-        offset: 0-indexed starting line
-        length: Number of lines to delete
-
-    Returns:
-        JSON with lines_deleted, offset, old_total_lines,
-        # new_total_lines, backup_created
-    """
-    logger.info(
-        f"Deleting lines from {file_name} (offset={offset}, length={length})"
-    )
-
-    # Resolve path
-    resolved_path = _secure_resolve_path(file_name)
-
-    # Always create backup before deletion
-    backup_path = _create_backup(resolved_path)
-
-    # Delete lines using streaming
-    old_total_lines, new_total_lines = _modify_lines_streaming(
-        resolved_path, offset, length, None
-    )
-
-    # Build and return response
-    data = {
-        "file_name": file_name,
-        "lines_deleted": length,
-        "offset": offset,
-        "old_total_lines": old_total_lines,
-        "new_total_lines": new_total_lines,
-        "backup_created": backup_path is not None,
-    }
-    logger.info(f"Successfully deleted {length} lines from {file_name}")
-    return file_success_response(intent, data)
-
-
-@tool_function(
-    "insert_lines_at",
-    validate={"offset": True, "new_lines": True},
-    error_handler=with_file_operation_error_handling,
-    validation_decorator=with_input_validation,
-)
-def insert_lines_at(
-    intent: str, file_name: str, new_lines: List[str], offset: int
-) -> str:
-    """
-    Insert lines at a given offset.
-
-    Args:
-        intent: Why you're inserting (e.g., "Adding new function")
-        file_name: Path relative to BASE_DIR
-        new_lines: List of lines to insert
-        offset: 0-indexed line number to insert at
-
-    Returns:
-        JSON with lines_inserted, offset, old_total_lines, new_total_lines
-    """
-    logger.info(
-        f"Inserting {len(new_lines)} lines at offset {offset} in {file_name}"
-    )
-
-    # Resolve path
-    resolved_path = _secure_resolve_path(file_name)
-
-    # Insert lines using streaming
-    old_total_lines, new_total_lines = _modify_lines_streaming(
-        resolved_path, offset, 0, new_lines
-    )
-
-    # Build and return response
-    data = {
-        "file_name": file_name,
-        "lines_inserted": len(new_lines),
-        "offset": offset,
-        "old_total_lines": old_total_lines,
-        "new_total_lines": new_total_lines,
-    }
-    logger.info(f"Successfully inserted {len(new_lines)} lines in {file_name}")
-    return file_success_response(intent, data)
-
-
-@tool_function(
-    "replace_lines_range",
-    validate={"offset": True, "length": True, "new_lines": True},
-    error_handler=with_file_operation_error_handling,
-    validation_decorator=with_input_validation,
-)
-def replace_lines_range(
+def write_file(
     intent: str,
     file_name: str,
-    new_lines: List[str],
-    offset: int,
-    length: int,
+    contents: str,
+    mode: str = "overwrite",
 ) -> str:
-    """
-    Replace a contiguous range of lines in a file.
+    """Write or append to a file.
 
-    Args:
-        intent: Why you're replacing (e.g., "Updating function")
-        file_name: Path relative to BASE_DIR
-        new_lines: Lines to insert
-        offset: 0-indexed starting line
-        length: Number of lines to replace
-
-    Returns:
-        JSON with lines_replaced, new_lines_inserted, backup_created
-    """
-    logger.info(f"Replacing {length} lines at offset {offset} in {file_name}")
-
-    # Resolve path
-    resolved_path = _secure_resolve_path(file_name)
-
-    # Always create backup before modification
-    backup_path = _create_backup(resolved_path)
-
-    # Replace lines using streaming
-    old_total_lines, new_total_lines = _modify_lines_streaming(
-        resolved_path, offset, length, new_lines
-    )
-
-    # Build and return response
-    data = {
-        "file_name": file_name,
-        "lines_replaced": length,
-        "new_lines_inserted": len(new_lines),
-        "offset": offset,
-        "old_total_lines": old_total_lines,
-        "new_total_lines": new_total_lines,
-        "backup_created": backup_path is not None,
-    }
-    logger.info(f"Successfully replaced {length} lines in {file_name}")
-    return file_success_response(intent, data)
-
-
-@tool_function(
-    "write_full_file",
-    validate={"contents": True},
-    error_handler=with_file_operation_error_handling,
-    validation_decorator=with_input_validation,
-)
-def write_full_file(intent: str, file_name: str, contents: str) -> str:
-    """
-    Create/overwrite a file atomically.
+    Merges write_full_file + append_to_file + create_directory.
+    Parent directories are always auto-created.
 
     Args:
         intent: Why you're writing (e.g., "Creating new module")
         file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
-        contents: Full file content
+        contents: Content to write
+        mode: "overwrite" to create/replace file, "append" to add to existing
 
     Returns:
-        JSON with bytes_written, lines_written, created, backup_created
+        JSON with mode-specific metrics:
+        - overwrite: bytes_written, lines_written, created, backup_created
+        - append: bytes_appended, new_total_lines, new_file_size
     """
-    logger.info(f"Writing full file: {file_name}")
+    if mode not in ("overwrite", "append"):
+        raise FileOperationError(
+            f"Invalid mode: {mode!r}. Must be 'overwrite' or 'append'."
+        )
+
+    if mode == "overwrite":
+        return _write_file_overwrite(intent, file_name, contents)
+    else:
+        return _write_file_append(intent, file_name, contents)
+
+
+def _write_file_overwrite(intent: str, file_name: str, contents: str) -> str:
+    """Overwrite or create a file atomically."""
+    logger.info(f"Writing file (overwrite): {file_name}")
 
     # Resolve path
     resolved_path = _secure_resolve_path(file_name, check_exists=False)
@@ -394,10 +191,127 @@ def write_full_file(intent: str, file_name: str, contents: str) -> str:
     # Build and return response
     data = {
         "file_name": file_name,
+        "mode": "overwrite",
         "bytes_written": bytes_written,
         "lines_written": lines_written,
         "created": not file_existed,
         "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully wrote {bytes_written} bytes to {file_name}")
+    return file_success_response(intent, data, tool="write_file")
+
+
+def _write_file_append(intent: str, file_name: str, contents: str) -> str:
+    """Append content to an existing file."""
+    logger.info(f"Appending to file: {file_name}")
+
+    # Resolve path
+    resolved_path = _secure_resolve_path(file_name)
+
+    # Append content
+    with open(resolved_path, "a", encoding="utf-8") as f:
+        f.write(contents)
+
+    # Calculate metrics
+    bytes_appended = len(contents.encode("utf-8"))
+    new_total_lines = _count_lines_efficiently(resolved_path)
+    new_file_size = resolved_path.stat().st_size
+
+    # Build and return response
+    data = {
+        "file_name": file_name,
+        "mode": "append",
+        "bytes_appended": bytes_appended,
+        "new_total_lines": new_total_lines,
+        "new_file_size": new_file_size,
+    }
+    logger.info(f"Successfully appended {bytes_appended} bytes to {file_name}")
+    return file_success_response(intent, data, tool="write_file")
+
+
+@tool_function(
+    "edit_file",
+    validate={"offset": True},
+    error_handler=with_file_operation_error_handling,
+    validation_decorator=with_input_validation,
+)
+def edit_file(
+    intent: str,
+    file_name: str,
+    offset: int,
+    length: int = 0,
+    new_lines: Optional[List[str]] = None,
+) -> str:
+    """Edit lines in a file: insert, replace, or delete.
+
+    Merges insert_lines_at + replace_lines_range + delete_lines_range.
+
+    Args:
+        intent: Why you're editing (e.g., "Updating function")
+        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
+        offset: 0-indexed starting line
+        length: Number of lines to replace/delete (0 = insert only)
+        new_lines: Lines to insert/replace with (None = delete only)
+
+    Returns:
+        JSON with operation, offset, length, lines_affected,
+        old_total_lines, new_total_lines, backup_created
+
+    Examples:
+        Insert:  edit_file("...", "f.txt", offset=2, new_lines=["new"])
+        Replace: edit_file("...", "f.txt", offset=2, length=3,
+                           new_lines=["a", "b"])
+        Delete:  edit_file("...", "f.txt", offset=2, length=3)
+    """
+    # Determine operation type
+    if length == 0 and new_lines is not None:
+        operation = "insert"
+    elif length > 0 and new_lines is not None:
+        operation = "replace"
+    elif length > 0 and new_lines is None:
+        operation = "delete"
+    else:
+        raise FileOperationError(
+            "Invalid edit_file parameters: provide new_lines for insert, "
+            "or length>0 for replace/delete."
+        )
+
+    logger.info(
+        f"Editing file {file_name}: {operation} "
+        f"(offset={offset}, length={length})"
+    )
+
+    # Resolve path
+    resolved_path = _secure_resolve_path(file_name)
+
+    # Always create backup before modification
+    backup_path = _create_backup(resolved_path)
+
+    # Modify lines using streaming
+    old_total_lines, new_total_lines = _modify_lines_streaming(
+        resolved_path, offset, length, new_lines
+    )
+
+    # Calculate lines affected
+    if operation == "delete":
+        lines_affected = length
+    else:
+        # insert or replace — new_lines is guaranteed non-None
+        lines_affected = len(new_lines)  # type: ignore[arg-type]
+
+    # Build and return response
+    data = {
+        "file_name": file_name,
+        "operation": operation,
+        "offset": offset,
+        "length": length,
+        "lines_affected": lines_affected,
+        "old_total_lines": old_total_lines,
+        "new_total_lines": new_total_lines,
+        "backup_created": backup_path is not None,
+    }
+    logger.info(
+        f"Successfully {operation}ed in {file_name}: "
+        f"{old_total_lines} → {new_total_lines} lines"
+    )
     return file_success_response(intent, data)

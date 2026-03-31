@@ -110,23 +110,6 @@ def delete_file(intent: str, file_name: str) -> str:
     return file_success_response(intent, data, tool="delete_file")
 
 
-@tool_function("move_file")
-def move_file(intent: str, source: str, destination: str) -> str:
-    """
-    Move a file (alias for rename_file).
-
-    Args:
-        intent: Why you're moving (e.g., "Reorganizing project")
-        source: Source path relative to BASE_DIR
-        destination: Destination path relative to BASE_DIR
-
-    Returns:
-        JSON with source, destination, success
-    """
-    # Delegate to rename_file
-    return rename_file(intent, source, destination)
-
-
 @tool_function(
     "rename_file",
     error_handler=with_file_operation_error_handling,

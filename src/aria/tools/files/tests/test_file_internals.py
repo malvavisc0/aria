@@ -24,7 +24,7 @@ from aria.tools.files._internals import (
     validate_and_resolve_two_files,
 )
 from aria.tools.files.exceptions import FileOperationError, FileSecurityError
-from aria.tools.files.read_operations import (
+from aria.tools.files.unified_read import (
     _build_directory_tree,
     _count_lines_efficiently,
     _count_tree_items,
@@ -555,8 +555,7 @@ class TestBuildDirectoryTree:
 
             tree = _build_directory_tree(tmpdir_path, 0, 2)
             assert any(
-                child["type"] == "directory"
-                for child in tree["children"].values()
+                child["type"] == "directory" for child in tree["children"]
             )
 
     def test_build_tree_max_depth(self):
@@ -567,7 +566,8 @@ class TestBuildDirectoryTree:
             subdir.mkdir()
 
             tree = _build_directory_tree(tmpdir_path, 0, 0)
-            assert tree["type"] == "truncated"
+            assert tree["type"] == "directory"
+            assert tree["truncated"] is True
 
     def test_build_tree_permission_error(self):
         """Test handling of permission errors."""
@@ -578,7 +578,8 @@ class TestBuildDirectoryTree:
             with patch.object(Path, "iterdir") as mock_iterdir:
                 mock_iterdir.side_effect = PermissionError("Access denied")
                 tree = _build_directory_tree(tmpdir_path, 0, 2)
-                assert tree["type"] == "permission_denied"
+                assert tree["type"] == "directory"
+                assert tree["error"] == "Permission denied"
 
 
 class TestCountTreeItems:
@@ -588,18 +589,19 @@ class TestCountTreeItems:
         """Test counting files and directories in tree."""
         tree = {
             "type": "directory",
-            "children": {
-                "file1.txt": {"type": "file", "size": 1},
-                "file2.txt": {"type": "file", "size": 1},
-                "subdir": {
+            "children": [
+                {"name": "file1.txt", "type": "file"},
+                {"name": "file2.txt", "type": "file"},
+                {
+                    "name": "subdir",
                     "type": "directory",
-                    "children": {"file3.txt": {"type": "file", "size": 1}},
+                    "children": [{"name": "file3.txt", "type": "file"}],
                 },
-            },
+            ],
         }
         files, dirs = _count_tree_items(tree)
         assert files == 3
-        assert dirs == 1
+        assert dirs == 2  # root dir + subdir
 
 
 class TestFormatPermissionsSymbolic:

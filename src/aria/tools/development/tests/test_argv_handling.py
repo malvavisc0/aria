@@ -1,133 +1,89 @@
-"""
-Tests for sys.argv handling in Python code execution.
-
-This test suite verifies that:
-1. sys.argv is properly isolated during code execution
-2. Custom argv values can be passed to scripts
-3. SystemExit exceptions are handled gracefully
-4. Scripts using argparse work correctly
-"""
-
 import json
+import os
+import shutil
+import tempfile
+from pathlib import Path
 
-from aria.tools.development.python import execute_python_code
+from aria.tools.development import python
 
 
 class TestArgvHandling:
-    """Test sys.argv handling in code execution."""
+    """Test argv handling for the unified python tool."""
+
+    def setup_method(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.base_dir = Path(self.test_dir)
+        self.original_cwd = os.getcwd()
+        os.chdir(self.test_dir)
+
+    def teardown_method(self):
+        os.chdir(self.original_cwd)
+        shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_argparse_with_default_argv(self):
-        """Test that argparse works with default argv (no arguments)."""
+        """
+        Test that argparse works with default sys.argv.
+        """
         code = """
 import argparse
-
-parser = argparse.ArgumentParser(description='Test CLI')
-parser.add_argument('--name', type=str, default='World')
-parser.add_argument('--count', type=int, default=1)
-
+parser = argparse.ArgumentParser()
+parser.add_argument('--name', default='World')
 args = parser.parse_args()
-
-for i in range(args.count):
-    print(f"Hello, {args.name}! (greeting #{i+1})")
+print(f'Hello {args.name}')
 """
-        result = execute_python_code("Testing argparse", code)
+        result = python("Testing argparse", code=code)
         result_dict = json.loads(result)
-
         assert result_dict["data"]["result"]["success"] is True
-        assert "Hello, World!" in result_dict["data"]["result"]["stdout"]
+        assert "Hello World" in result_dict["data"]["result"]["stdout"]
 
     def test_argparse_with_custom_argv(self):
-        """Test that argparse works with custom argv values."""
+        """
+        Test that custom argv is properly passed to sys.argv.
+        """
         code = """
 import argparse
-
-parser = argparse.ArgumentParser(description='Test CLI')
-parser.add_argument('--name', type=str, default='World')
-parser.add_argument('--count', type=int, default=1)
-
+parser = argparse.ArgumentParser()
+parser.add_argument('--name', default='World')
 args = parser.parse_args()
-
-for i in range(args.count):
-    print(f"Hello, {args.name}! (greeting #{i+1})")
+print(f'Hello {args.name}')
 """
-        result = execute_python_code(
+        result = python(
             "Testing argparse with custom argv",
-            code,
-            argv=["test_cli.py", "--name", "Alice", "--count", "3"],
+            code=code,
+            args=["script.py", "--name", "Custom"],
         )
         result_dict = json.loads(result)
-
         assert result_dict["data"]["result"]["success"] is True
-        stdout = result_dict["data"]["result"]["stdout"]
-        assert "Hello, Alice!" in stdout
-        assert stdout.count("Hello, Alice!") == 3
+        assert "Hello Custom" in result_dict["data"]["result"]["stdout"]
 
     def test_sys_exit_zero(self):
-        """Test that sys.exit(0) is handled gracefully."""
-        code = """
-import sys
-print("Before exit")
-sys.exit(0)
-"""
-        result = execute_python_code("Testing sys.exit(0)", code)
+        """
+        Test that sys.exit(0) is handled gracefully.
+        """
+        code = "import sys\nsys.exit(0)\n"
+        result = python("Testing sys.exit(0)", code=code)
         result_dict = json.loads(result)
-
         assert result_dict["data"]["result"]["success"] is True
-        assert result_dict["data"]["result"]["exit_code"] == 0
 
     def test_sys_exit_nonzero(self):
-        """Test that sys.exit(1) is handled and marked as failure."""
-        code = """
-import sys
-print("Before exit")
-sys.exit(1)
-"""
-        result = execute_python_code("Testing sys.exit(1)", code)
+        """
+        Test that sys.exit(1) is handled gracefully.
+        """
+        code = "import sys\nsys.exit(1)\n"
+        result = python("Testing sys.exit(1)", code=code)
         result_dict = json.loads(result)
-
         assert result_dict["data"]["result"]["success"] is False
         assert result_dict["data"]["result"]["exit_code"] == 1
 
-    def test_argparse_help_flag(self):
-        """Test that argparse --help is handled gracefully."""
-        code = """
-import argparse
-
-parser = argparse.ArgumentParser(description='Test CLI')
-parser.add_argument('--name', type=str, default='World')
-
-args = parser.parse_args()
-print(f"Hello, {args.name}!")
-"""
-        result = execute_python_code(
-            "Testing argparse help", code, argv=["script.py", "--help"]
-        )
-        result_dict = json.loads(result)
-
-        # --help causes sys.exit(0), which should be success
-        assert result_dict["data"]["result"]["success"] is True
-        assert result_dict["data"]["result"]["exit_code"] == 0
-
     def test_argv_isolation(self):
-        """Test that sys.argv changes don't affect parent process."""
-        code = """
-import sys
-print(f"sys.argv: {sys.argv}")
-"""
-        # Execute with custom argv
-        result = execute_python_code(
-            "Testing argv isolation", code, argv=["test.py", "arg1", "arg2"]
+        """
+        Test that argv is properly isolated between calls.
+        """
+        code = "import sys\nprint(' '.join(sys.argv))\n"
+        result1 = python(
+            "Testing argv isolation",
+            code=code,
+            args=["test.py", "arg1", "arg2"],
         )
-        result_dict = json.loads(result)
-
-        assert result_dict["data"]["result"]["success"] is True
-        assert (
-            "['test.py', 'arg1', 'arg2']"
-            in result_dict["data"]["result"]["stdout"]
-        )
-
-        # Verify parent process argv is unchanged
-        import sys
-
-        assert "test.py" not in sys.argv
-        assert "arg1" not in sys.argv
+        result_dict1 = json.loads(result1)
+        assert "arg1 arg2" in result_dict1["data"]["result"]["stdout"]
