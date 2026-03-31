@@ -299,7 +299,7 @@ Check whether a file/directory exists.
 
 ```python
 result = file_exists("Verifying config exists", "config.json")
-# Returns: {"exists": true, "is_file": true, "is_directory": false}
+# Returns Standard Envelope with data: {"exists": true, "is_file": true, "is_directory": false}
 ```
 
 #### `get_directory_tree(intent: str, path: str, max_depth=3) -> str`
@@ -1164,13 +1164,12 @@ flowchart TB
 
 ## Common Patterns
 
-### Tool Response Format
+### Unified Tool Response Format
 
-Tools return JSON strings in two different envelope formats depending on the tool category:
+All tools return JSON strings using a single **Standard Envelope** format. The `tool` field is populated dynamically via [`get_function_name()`](src/aria/tools/utils.py:195) — no hardcoded tool name strings.
 
-#### Standard Envelope (vision, search, planner, reasoning tools)
+#### Success Response
 
-**Success:**
 ```json
 {
   "status": "success",
@@ -1181,7 +1180,8 @@ Tools return JSON strings in two different envelope formats depending on the too
 }
 ```
 
-**Error:**
+#### Error Response
+
 ```json
 {
   "status": "error",
@@ -1192,27 +1192,37 @@ Tools return JSON strings in two different envelope formats depending on the too
     "code": "ERROR_CODE",
     "message": "human readable message",
     "type": "ExceptionType",
-    "recoverable": false
+    "recoverable": false,
+    "how_to_fix": "guidance for recovery"
   }
 }
 ```
 
-#### Operation Envelope (file tools, shell tools)
+#### Response Helpers
 
-File tools and shell tools use a different response format via `safe_json()`:
+| Helper | Module | Description |
+|--------|--------|-------------|
+| [`tool_response()`](src/aria/tools/utils.py:164) | `aria.tools` | Convenience wrapper — auto-selects success/error based on `exc` |
+| [`tool_success_response()`](src/aria/tools/utils.py:74) | `aria.tools` | Build a success envelope |
+| [`tool_error_response()`](src/aria/tools/utils.py:108) | `aria.tools` | Build an error envelope from an exception |
+| [`file_success_response()`](src/aria/tools/files/_responses.py:12) | `aria.tools.files._responses` | File-specific success (auto-populates `tool` via `get_function_name(depth=2)`) |
+| [`file_error_response()`](src/aria/tools/files/_responses.py:34) | `aria.tools.files._responses` | File-specific error |
 
-**Success:**
+#### Reasoning Tools Extension
+
+Reasoning tools extend the Standard Envelope with `agent_id` and `session_id` fields and return `dict` instead of JSON strings:
+
 ```json
 {
-  "operation": "operation_name",
-  "result": {...},
-  "metadata": {
-    "timestamp": "2024-01-01T12:00:00Z"
-  }
+  "status": "success",
+  "tool": "start_reasoning",
+  "intent": "...",
+  "agent_id": "aria",
+  "session_id": "aria_session_abc123",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "data": {...}
 }
 ```
-
-**Note**: A future task could unify these formats by migrating file/shell tools to the standard envelope.
 
 ### Intent Parameter
 

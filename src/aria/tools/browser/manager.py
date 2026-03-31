@@ -33,7 +33,7 @@ from typing import Awaitable, Callable, Optional
 from loguru import logger
 from playwright.async_api import Browser, Page, Playwright, async_playwright
 
-from aria.tools import safe_json
+from aria.tools import tool_error_response, tool_success_response
 from aria.tools.browser.constants import (
     BROWSER_COMMAND_TIMEOUT,
     BROWSER_CONTENT_DIR,
@@ -265,16 +265,26 @@ class LightpandaManager:
     # Response helpers
     # ------------------------------------------------------------------
 
-    def _success(self, data: dict) -> str:
-        """Create a success JSON response."""
-        return safe_json(data)
+    def _success(self, data: dict, *, tool: str = "", intent: str = "") -> str:
+        """Create a Standard Envelope success JSON response."""
+        return tool_success_response(tool, intent, data)
 
-    def _error(self, message: str, recovery: bool = False) -> str:
-        """Create an error JSON response."""
-        result = {"error": message}
+    def _error(
+        self,
+        message: str,
+        *,
+        recovery: bool = False,
+        tool: str = "",
+        intent: str = "",
+    ) -> str:
+        """Create a Standard Envelope error JSON response."""
+        exc = RuntimeError(message)
         if recovery:
-            result["recovery"] = "Browser crashed. Restarted. Retry."
-        return safe_json(result)
+            exc.recoverable = True  # type: ignore[attr-defined]
+            exc.how_to_fix = (  # type: ignore[attr-defined]
+                "Browser crashed. Restarted. Retry."
+            )
+        return tool_error_response(tool=tool, intent=intent, exc=exc)
 
     def _persist_content(self, content: str, url: str, action: str) -> Path:
         """Write content to a timestamped file and return the path.
@@ -301,7 +311,14 @@ class LightpandaManager:
         return "Unknown"
 
     def _content_response(
-        self, content: str, url: str, title: str, content_path: Path
+        self,
+        content: str,
+        url: str,
+        title: str,
+        content_path: Path,
+        *,
+        tool: str = "",
+        intent: str = "",
     ) -> str:
         """Build the standard content JSON response.
 
@@ -310,6 +327,8 @@ class LightpandaManager:
             url: Current page URL.
             title: Page title.
             content_path: Path where content was persisted.
+            tool: Tool name for the response envelope.
+            intent: Agent intent for the response envelope.
 
         Returns:
             JSON string with page metadata.
@@ -323,7 +342,9 @@ class LightpandaManager:
                     content[:500] + "..." if len(content) > 500 else content
                 ),
                 "content_size": len(content),
-            }
+            },
+            tool=tool,
+            intent=intent,
         )
 
     # ------------------------------------------------------------------
@@ -334,6 +355,9 @@ class LightpandaManager:
         self,
         action_name: str,
         fn: Callable[[Page], Awaitable[str]],
+        *,
+        tool: str = "",
+        intent: str = "",
     ) -> str:
         """Run *fn* with page validation and crash recovery.
 
@@ -345,12 +369,16 @@ class LightpandaManager:
             action_name: Human-readable label for log messages.
             fn: Async callable that receives the current Page and
                 returns a JSON string result.
+            tool: Tool name for the response envelope.
+            intent: Agent intent for the response envelope.
 
         Returns:
             JSON string — either the result of *fn* or an error.
         """
         if not await self._ensure_page():
-            return self._error("Browser not available")
+            return self._error(
+                "Browser not available", tool=tool, intent=intent
+            )
 
         try:
             return await fn(self._page)  # type: ignore[arg-type]
@@ -362,18 +390,24 @@ class LightpandaManager:
                     "attempting restart..."
                 )
                 if await self._ensure_page():
-                    return self._error(str(e), recovery=True)
-            return self._error(str(e))
+                    return self._error(
+                        str(e), recovery=True, tool=tool, intent=intent
+                    )
+            return self._error(str(e), tool=tool, intent=intent)
 
     # ------------------------------------------------------------------
     # Browser actions
     # ------------------------------------------------------------------
 
-    async def navigate(self, url: str) -> str:
+    async def navigate(
+        self, url: str, *, tool: str = "", intent: str = ""
+    ) -> str:
         """Navigate to URL and return rendered content.
 
         Args:
             url: URL to navigate to.
+            tool: Tool name for the response envelope.
+            intent: Agent intent for the response envelope.
 
         Returns:
             JSON string with page content and metadata.
@@ -388,21 +422,32 @@ class LightpandaManager:
             if self._is_navigation_failed(content, page.url):
                 reason = content if content else "Navigation failed"
                 logger.error(f"Navigation failed: {reason}")
-                return self._error(reason)
+                return self._error(reason, tool=tool, intent=intent)
 
             content_path = self._persist_content(content, page.url, "open")
             title = await self._safe_title()
             return self._content_response(
-                content, page.url, title, content_path
+                content,
+                page.url,
+                title,
+                content_path,
+                tool=tool,
+                intent=intent,
             )
 
-        return await self._with_recovery("navigate", _do_navigate)
+        return await self._with_recovery(
+            "navigate", _do_navigate, tool=tool, intent=intent
+        )
 
-    async def click(self, selector: str) -> str:
+    async def click(
+        self, selector: str, *, tool: str = "", intent: str = ""
+    ) -> str:
         """Click element by CSS selector and return updated content.
 
         Args:
             selector: CSS selector for element to click.
+            tool: Tool name for the response envelope.
+            intent: Agent intent for the response envelope.
 
         Returns:
             JSON string with updated page content.
@@ -416,13 +461,26 @@ class LightpandaManager:
             content_path = self._persist_content(content, page.url, "click")
             title = await self._safe_title()
             return self._content_response(
-                content, page.url, title, content_path
+                content,
+                page.url,
+                title,
+                content_path,
+                tool=tool,
+                intent=intent,
             )
 
-        return await self._with_recovery("click", _do_click)
+        return await self._with_recovery(
+            "click", _do_click, tool=tool, intent=intent
+        )
 
-    async def get_page_content(self) -> str:
+    async def get_page_content(
+        self, *, tool: str = "", intent: str = ""
+    ) -> str:
         """Get current page content as clean text.
+
+        Args:
+            tool: Tool name for the response envelope.
+            intent: Agent intent for the response envelope.
 
         Returns:
             Page content as text, or error JSON if unavailable.
@@ -431,7 +489,9 @@ class LightpandaManager:
         async def _do_get_content(page: Page) -> str:
             return await self._get_text_content(page)
 
-        return await self._with_recovery("get_page_content", _do_get_content)
+        return await self._with_recovery(
+            "get_page_content", _do_get_content, tool=tool, intent=intent
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -474,7 +534,8 @@ class LightpandaManager:
             Cleaned text content string.
         """
         try:
-            content = await page.evaluate("""
+            content = await page.evaluate(
+                """
                 () => {
                     const clone = document.body.cloneNode(true);
                     const remove = ['script', 'style', 'noscript'];
@@ -485,7 +546,8 @@ class LightpandaManager:
                     });
                     return clone.innerText || clone.textContent || '';
                 }
-            """)
+            """
+            )
             lines = (line.strip() for line in content.splitlines())
             return "\n".join(line for line in lines if line)
 

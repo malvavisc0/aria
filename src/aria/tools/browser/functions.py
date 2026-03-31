@@ -20,6 +20,7 @@ Example:
     ```
 """
 
+from aria.tools import get_function_name
 from aria.tools.browser.manager import get_browser_manager
 
 
@@ -63,7 +64,7 @@ async def open_url(intent: str, url: str) -> str:
         ```
     """
     manager = _get_manager()
-    return await manager.navigate(url)
+    return await manager.navigate(url, tool=get_function_name(), intent=intent)
 
 
 async def browser_click(intent: str, selector: str) -> str:
@@ -98,4 +99,7 @@ async def browser_click(intent: str, selector: str) -> str:
         ```
     """
     manager = _get_manager()
+    return await manager.click(
+        selector, tool=get_function_name(), intent=intent
+    )
     return await manager.click(selector)

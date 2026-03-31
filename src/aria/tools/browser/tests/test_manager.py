@@ -27,22 +27,47 @@ def test_is_running_true_when_all_set() -> None:
     assert manager.is_running is True
 
 
-def test_success_and_error_use_safe_json() -> None:
+def test_success_uses_standard_envelope() -> None:
     manager = _make_manager()
 
-    ok_payload = json.loads(manager._success({"status": "ok"}))
-    assert ok_payload == {"status": "ok"}
+    ok_payload = json.loads(
+        manager._success({"key": "val"}, tool="test_tool", intent="testing")
+    )
+    assert ok_payload["status"] == "success"
+    assert ok_payload["tool"] == "test_tool"
+    assert ok_payload["intent"] == "testing"
+    assert "timestamp" in ok_payload
+    assert ok_payload["data"] == {"key": "val"}
 
-    err_payload = json.loads(manager._error("boom", recovery=True))
-    assert err_payload["error"] == "boom"
-    assert err_payload["recovery"] == "Browser crashed. Restarted. Retry."
+
+def test_error_uses_standard_envelope() -> None:
+    manager = _make_manager()
+
+    err_payload = json.loads(
+        manager._error(
+            "boom", recovery=True, tool="test_tool", intent="testing"
+        )
+    )
+    assert err_payload["status"] == "error"
+    assert err_payload["tool"] == "test_tool"
+    assert err_payload["intent"] == "testing"
+    assert "timestamp" in err_payload
+    assert err_payload["error"]["message"] == "boom"
+    assert err_payload["error"]["recoverable"] is True
+    assert err_payload["error"]["how_to_fix"] == (
+        "Browser crashed. Restarted. Retry."
+    )
 
 
 def test_error_without_recovery() -> None:
     manager = _make_manager()
-    payload = json.loads(manager._error("something broke"))
-    assert payload == {"error": "something broke"}
-    assert "recovery" not in payload
+    payload = json.loads(
+        manager._error("something broke", tool="t", intent="i")
+    )
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "something broke"
+    assert payload["error"]["recoverable"] is False
+    assert "how_to_fix" not in payload["error"]
 
 
 @pytest.mark.asyncio
@@ -50,9 +75,12 @@ async def test_with_recovery_returns_error_when_page_unavailable() -> None:
     manager = _make_manager()
     manager._ensure_page = AsyncMock(return_value=False)
 
-    result = await manager._with_recovery("test", AsyncMock(return_value="ok"))
+    result = await manager._with_recovery(
+        "test", AsyncMock(return_value="ok"), tool="t", intent="i"
+    )
     payload = json.loads(result)
-    assert payload["error"] == "Browser not available"
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "Browser not available"
 
 
 @pytest.mark.asyncio
@@ -78,11 +106,15 @@ async def test_with_recovery_returns_recovery_error_on_crash() -> None:
     manager._is_page_valid = Mock(return_value=False)
 
     fn = AsyncMock(side_effect=Exception("crashed"))
-    result = await manager._with_recovery("test", fn)
+    result = await manager._with_recovery("test", fn, tool="t", intent="i")
     payload = json.loads(result)
 
-    assert payload["error"] == "crashed"
-    assert payload["recovery"] == "Browser crashed. Restarted. Retry."
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "crashed"
+    assert payload["error"]["recoverable"] is True
+    assert payload["error"]["how_to_fix"] == (
+        "Browser crashed. Restarted. Retry."
+    )
 
 
 @pytest.mark.asyncio
@@ -96,11 +128,12 @@ async def test_with_recovery_returns_plain_error_when_page_still_valid() -> (
     manager._is_page_valid = Mock(return_value=True)
 
     fn = AsyncMock(side_effect=Exception("timeout"))
-    result = await manager._with_recovery("test", fn)
+    result = await manager._with_recovery("test", fn, tool="t", intent="i")
     payload = json.loads(result)
 
-    assert payload["error"] == "timeout"
-    assert "recovery" not in payload
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "timeout"
+    assert payload["error"]["recoverable"] is False
 
 
 @pytest.mark.asyncio
@@ -122,11 +155,14 @@ async def test_navigate_returns_recovery_error_after_crash() -> None:
     manager._is_page_valid = Mock(return_value=False)
     manager._ensure_page = AsyncMock(side_effect=[True, True])
 
-    result = await manager.navigate("https://example.com")
+    result = await manager.navigate(
+        "https://example.com", tool="open_url", intent="testing"
+    )
     payload = json.loads(result)
 
-    assert payload["error"] == "nav failed"
-    assert payload["recovery"] == "Browser crashed. Restarted. Retry."
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "nav failed"
+    assert payload["error"]["recoverable"] is True
 
 
 @pytest.mark.asyncio
@@ -147,11 +183,14 @@ async def test_click_returns_recovery_error_after_crash() -> None:
     manager._is_page_valid = Mock(return_value=False)
     manager._ensure_page = AsyncMock(side_effect=[True, True])
 
-    result = await manager.click("button.accept")
+    result = await manager.click(
+        "button.accept", tool="browser_click", intent="testing"
+    )
     payload = json.loads(result)
 
-    assert payload["error"] == "click failed"
-    assert payload["recovery"] == "Browser crashed. Restarted. Retry."
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "click failed"
+    assert payload["error"]["recoverable"] is True
 
 
 @pytest.mark.asyncio
@@ -159,10 +198,11 @@ async def test_get_page_content_returns_error_json_when_unavailable() -> None:
     manager = _make_manager()
     manager._ensure_page = AsyncMock(return_value=False)
 
-    result = await manager.get_page_content()
+    result = await manager.get_page_content(tool="t", intent="i")
     payload = json.loads(result)
 
-    assert payload["error"] == "Browser not available"
+    assert payload["status"] == "error"
+    assert payload["error"]["message"] == "Browser not available"
 
 
 @pytest.mark.asyncio
