@@ -44,7 +44,7 @@ def load_agent_instructions(
             parts.append(file.read())
 
     if extras:
-        parts.append(f"# Additional Notes\n{extras}")
+        parts.append(f"# Environment\n{extras}")
 
     content = "\n\n".join(parts)
 

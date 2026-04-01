@@ -264,26 +264,12 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
         f"{timestamp.year}"
     )
 
-    shell_hint = (
-        "PowerShell/cmd"
-        if platform.system() == "Windows"
-        else "/bin/bash (likely)"
-    )
-
-    from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
     from aria.tools.development.constants import RESTRICTED_BUILTINS
 
+    tz = timestamp.astimezone().tzinfo
     lines: list[str] = [
-        f"- **Current date**: {date_str}",
-        f"- **Current time**: {timestamp.strftime('%H:%M')}",
-        f"- **Timezone**: {timestamp.astimezone().tzinfo}",
+        f"- **Date**: {date_str}, {timestamp.strftime('%H:%M')} ({tz})",
         f"- **OS**: {host}",
-        f"- **Architecture**: {platform.machine()}",
-        f"- **Shell**: {shell_hint}",
-        (
-            f"- **Python timeout**: default {DEFAULT_TIMEOUT}s, "
-            f"max {MAX_TIMEOUT}s"
-        ),
         f"- **Restricted builtins**: {', '.join(sorted(RESTRICTED_BUILTINS))}",
     ]
     if add_agent_id:

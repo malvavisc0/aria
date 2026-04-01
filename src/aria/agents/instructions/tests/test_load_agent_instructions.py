@@ -24,7 +24,7 @@ class TestLoadAgentInstructions:
             extras="Custom extra note",
         )
         assert "Custom extra note" in result
-        assert "Additional Notes" in result
+        assert "Environment" in result
 
     def test_unknown_agent_returns_empty(self):
         """Unknown agent name should return empty string (no file found)."""
