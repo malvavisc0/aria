@@ -14,7 +14,7 @@ Example:
     data_layer = SQLiteSQLAlchemyDataLayer("sqlite:///./data/aria.db")
 
     # Set up local storage
-    storage = LocalStorageClient("data/storage")
+    storage = LocalStorageClient("data/storage", base_url="/storage")
 
     # Hash a password
     hashed = hash_password("secret")

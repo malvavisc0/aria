@@ -124,6 +124,22 @@ async def on_app_startup_handler() -> None:
             logging.getLogger(_ws_logger_name).setLevel(logging.WARNING)
         logger.info("Starting Aria web UI...")
 
+        # Mount local storage directory so the browser can fetch
+        # element files (images, documents, etc.) via HTTP.
+        from chainlit.server import app
+        from starlette.staticfiles import StaticFiles
+
+        from aria.config.folders import Storage as StorageConfig
+
+        storage_dir = StorageConfig.path
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        app.mount(
+            "/storage",
+            StaticFiles(directory=str(storage_dir)),
+            name="local-storage",
+        )
+        logger.info(f"Mounted /storage → {storage_dir}")
+
         logger.info("Initializing database...")
         from aria.db.models import Base
 

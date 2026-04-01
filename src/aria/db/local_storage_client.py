@@ -2,6 +2,11 @@
 
 This provides a local alternative to cloud storage providers (S3, Azure, GCS)
 for development and self-hosted deployments.
+
+URLs are generated as HTTP paths (e.g. ``/storage/image.png``) that the browser
+can fetch from the same origin.  A corresponding ``StaticFiles`` mount must be
+registered on the Chainlit/FastAPI app so that these paths resolve to the
+actual files on disk.
 """
 
 import logging
@@ -23,12 +28,14 @@ class LocalStorageClient(BaseStorageClient):
     Args:
         storage_path: Path to directory for storing files
             (e.g. ``data/storage``)
-        base_url: Base URL for serving files (default: "file://")
+        base_url: Base URL prefix for serving files.  Defaults to
+            ``/storage`` which produces browser-relative HTTP URLs like
+            ``/storage/image.png``.
 
     Example:
         >>> client = LocalStorageClient(storage_path="data/storage")
         >>> await client.upload_file("image.png", b"...", mime="image/png")
-        {'object_key': 'image.png', 'url': 'file://.../data/storage/image.png'}
+        {'object_key': 'image.png', 'url': '/storage/image.png'}
 
     Can be used as an async context manager:
 
@@ -37,14 +44,15 @@ class LocalStorageClient(BaseStorageClient):
     """
 
     def __init__(
-        self, storage_path: Union[str, Path], base_url: str = "file://"
+        self, storage_path: Union[str, Path], base_url: str = "/storage"
     ):
         """Initialize local storage client.
 
         Args:
             storage_path: Directory path for storing files (str or Path)
-            base_url: Base URL for file access (use "file://" for local,
-                     or "http://localhost:8000/files/" if serving via HTTP)
+            base_url: URL prefix for file access.  Use ``/storage`` (default)
+                for browser-relative HTTP URLs, or a full URL like
+                ``http://localhost:9876/storage`` if absolute URLs are needed.
         """
         self.storage_path = Path(storage_path).resolve()
         self.base_url = base_url.rstrip("/")
@@ -66,22 +74,19 @@ class LocalStorageClient(BaseStorageClient):
             Resolved absolute path within storage_path
 
         Raises:
-            ValueError: If object_key contains path traversal attempts
+            ValueError: If object_key is an absolute path or resolves outside
+                the storage directory
         """
-        # Reject absolute paths and path traversal patterns
+        # Reject absolute paths
         if object_key.startswith("/"):
             raise ValueError(
                 f"Invalid object_key: absolute paths not allowed: {object_key}"
-            )
-        if ".." in object_key:
-            raise ValueError(
-                f"Invalid object_key: path traversal detected: {object_key}"
             )
 
         # Resolve the path and verify it's within storage_path
         file_path = (self.storage_path / object_key).resolve()
 
-        if not str(file_path).startswith(str(self.storage_path)):
+        if not file_path.is_relative_to(self.storage_path):
             raise ValueError(
                 f"Invalid object_key: escapes storage directory: {object_key}"
             )
@@ -137,11 +142,11 @@ class LocalStorageClient(BaseStorageClient):
             async with aiofiles.open(file_path, "wb") as f:
                 await f.write(data)
         else:
-            async with aiofiles.open(file_path, "w") as f:
+            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
                 await f.write(str(data))
 
-        # Generate URL
-        url = f"{self.base_url}/{file_path.absolute()}"
+        # Generate URL using the relative object_key
+        url = f"{self.base_url}/{object_key}"
 
         logger.debug(f"Uploaded file: {object_key} ({mime})")
 
@@ -176,19 +181,18 @@ class LocalStorageClient(BaseStorageClient):
             object_key: Unique identifier for the file
 
         Returns:
-            URL to access the file, or the object_key if file not found
-            (for compatibility with base class signature)
+            HTTP-relative URL to access the file (e.g. ``/storage/image.png``)
 
         Raises:
             ValueError: If object_key is invalid (path traversal)
+            FileNotFoundError: If the file does not exist on disk
         """
         file_path = self._validate_object_key(object_key)
 
         if not file_path.exists():
-            logger.warning(f"File not found: {object_key}")
-            return object_key
+            raise FileNotFoundError(f"Storage file not found: {object_key}")
 
-        url = f"{self.base_url}/{file_path.absolute()}"
+        url = f"{self.base_url}/{object_key}"
         return url
 
     async def close(self) -> None:

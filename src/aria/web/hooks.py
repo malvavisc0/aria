@@ -41,7 +41,9 @@ def get_data_layer_handler() -> SQLiteSQLAlchemyDataLayer:
     engine = create_engine(SQLiteConfig.db_url)
     Base.metadata.create_all(engine)
 
-    storage_client = LocalStorageClient(storage_path=StorageConfig.path)
+    storage_client = LocalStorageClient(
+        storage_path=StorageConfig.path, base_url="/storage"
+    )
     return SQLiteSQLAlchemyDataLayer(
         conninfo=SQLiteConfig.conn_info,
         storage_provider=storage_client,

@@ -131,7 +131,7 @@ class TestStorageIntegration:
         url = await storage_client.get_read_url(object_key)
 
         assert object_key in url
-        assert url.startswith("file://")
+        assert url.startswith("/storage/")
 
     @pytest.mark.asyncio
     async def test_multiple_elements_storage(self, data_layer_with_storage):
