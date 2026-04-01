@@ -1,15 +1,10 @@
 """Tests for reasoning functions with persistence and multi-agent support."""
 
-import os
-import tempfile
-
 import pytest
 
-from aria.tools.database import ToolsDatabase
 from aria.tools.reasoning import reasoning, registry
 from aria.tools.reasoning.database import ReasoningDatabase
 from aria.tools.scratchpad import scratchpad
-from aria.tools.scratchpad.database import ScratchpadDatabase
 
 
 @pytest.fixture
@@ -19,47 +14,22 @@ def test_agent_id():
 
 
 @pytest.fixture(autouse=True)
-def test_db():
-    """Create a temporary database for testing and clean up after each test."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_tools.db")
+def test_db(test_tools_db):
+    """Create a temporary reasoning database for testing.
 
-        original_db = registry.get_db()
+    Depends on the shared ``test_tools_db`` fixture (defined in root
+    ``conftest.py``) which handles temp-file creation and singleton
+    resets.
+    """
+    test_reasoning_db = ReasoningDatabase()
 
-        # Reset singletons to force new instance
-        ToolsDatabase._instance = None
-        ReasoningDatabase._instance = None
-        ScratchpadDatabase._instance = None
+    import aria.tools.reasoning.registry as reg_module
 
-        # Reset the module-level _db_instance in get_tools_database
-        import aria.tools.database as db_module
+    reg_module._db = test_reasoning_db
 
-        db_module._db_instance = None
+    yield test_reasoning_db
 
-        # Create shared tools database with temp path
-        test_tools_db = ToolsDatabase(db_path)
-        test_reasoning_db = ReasoningDatabase()
-
-        # Replace the database in registry module
-        import aria.tools.reasoning.registry as reg_module
-
-        reg_module._db = test_reasoning_db
-
-        # Reset scratchpad singleton so it picks up the test DB
-        ScratchpadDatabase._instance = None
-
-        yield test_reasoning_db
-
-        # Clean up after test
-        registry.clear_all()
-        test_tools_db.close()
-        # Reset singletons again
-        ToolsDatabase._instance = None
-        ReasoningDatabase._instance = None
-        ScratchpadDatabase._instance = None
-        db_module._db_instance = None
-        # Restore original
-        reg_module._db = original_db
+    registry.clear_all()
 
 
 def test_start_reasoning(test_agent_id, test_db):

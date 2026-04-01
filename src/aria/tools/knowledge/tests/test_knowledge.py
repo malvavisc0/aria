@@ -1,43 +1,24 @@
 """Tests for knowledge store tool."""
 
 import json
-import os
-import tempfile
 
 import pytest
 
-from aria.tools.database import ToolsDatabase
 from aria.tools.knowledge import knowledge
 from aria.tools.knowledge.database import KnowledgeDatabase
 
 
 @pytest.fixture(autouse=True)
-def test_db():
-    """Create a temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_knowledge.db")
+def test_db(test_tools_db):
+    """Create a temporary knowledge database for testing.
 
-        # Reset singletons
-        ToolsDatabase._instance = None
-        KnowledgeDatabase._instance = None
+    Depends on the shared ``test_tools_db`` fixture (defined in root
+    ``conftest.py``) which handles temp-file creation and singleton
+    resets.
+    """
+    test_kdb = KnowledgeDatabase()
 
-        import aria.tools.database as db_module
-        import aria.tools.knowledge.database as kdb_module
-
-        db_module._db_instance = None
-        kdb_module.KnowledgeDatabase._instance = None
-        kdb_module.KnowledgeDatabase._initialized = False
-
-        test_db = ToolsDatabase(db_path)
-        test_kdb = KnowledgeDatabase()
-
-        yield test_kdb
-
-        # Cleanup
-        test_db.close()
-        ToolsDatabase._instance = None
-        KnowledgeDatabase._instance = None
-        db_module._db_instance = None
+    yield test_kdb
 
 
 class TestKnowledgeStore:

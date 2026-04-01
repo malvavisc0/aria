@@ -1,40 +1,22 @@
 """Shared fixtures for planner tests."""
 
-import os
-import tempfile
-
 import pytest
 
-from aria.tools.database import ToolsDatabase
 from aria.tools.planner.database import PlannerDatabase
 
 
 @pytest.fixture(autouse=True)
-def test_db():
-    """Create a temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_tools.db")
+def test_db(test_tools_db):
+    """Create a temporary planner database for testing.
 
-        # Reset singletons
-        ToolsDatabase._instance = None
-        PlannerDatabase._instance = None
+    Depends on the shared ``test_tools_db`` fixture (defined in root
+    ``conftest.py``) which handles temp-file creation and singleton
+    resets.
+    """
+    test_planner_db = PlannerDatabase()
 
-        # Reset the module-level _db_instance in get_tools_database
-        import aria.tools.database as db_module
+    import aria.tools.planner.registry as reg_module
 
-        db_module._db_instance = None
+    reg_module._db = test_planner_db
 
-        test_tools_db = ToolsDatabase(db_path)
-        test_planner_db = PlannerDatabase()
-
-        import aria.tools.planner.registry as reg_module
-
-        reg_module._db = test_planner_db
-
-        yield test_planner_db
-
-        test_tools_db.close()
-        ToolsDatabase._instance = None
-        PlannerDatabase._instance = None
-        db_module._db_instance = None
-        reg_module._db = None
+    yield test_planner_db

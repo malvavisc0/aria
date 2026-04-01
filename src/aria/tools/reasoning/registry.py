@@ -7,13 +7,22 @@ from loguru import logger
 from .database import get_database
 from .session import ReasoningSession
 
-# Get database instance
-_db = get_database()
+# Lazy database instance — only created when first accessed.
+# This avoids creating the production database at import time.
+_db = None
+
+
+def _get_db():
+    """Get or create the database instance (lazy initialization)."""
+    global _db
+    if _db is None:
+        _db = get_database()
+    return _db
 
 
 def get_active_session_id(agent_id: str) -> Optional[str]:
     """Get most-recent active session ID for an agent from the database."""
-    sessions = _db.list_sessions(agent_id)
+    sessions = _get_db().list_sessions(agent_id)
     if not sessions:
         return None
 
@@ -40,9 +49,10 @@ def get_session(session_id: str, agent_id: str) -> ReasoningSession:
     Raises:
         ValueError: If the session does not exist
     """
-    session_data = _db.load_session(session_id, agent_id)
+    db = _get_db()
+    session_data = db.load_session(session_id, agent_id)
     if session_data is None:
-        available = [s["session_id"] for s in _db.list_sessions(agent_id)]
+        available = [s["session_id"] for s in db.list_sessions(agent_id)]
         logger.error(
             f"Session '{session_id}' for agent '{agent_id}' "
             f"does not exist. Available sessions: {available or ['(none)']}"
@@ -53,7 +63,7 @@ def get_session(session_id: str, agent_id: str) -> ReasoningSession:
         )
 
     session = ReasoningSession.from_dict(session_data)
-    session.set_database(_db)
+    session.set_database(db)
     logger.debug(
         f"Loaded session {session_id} for agent {agent_id} from database"
     )
@@ -76,4 +86,4 @@ def clear_all() -> None:
 
 def get_db():
     """Get the database instance."""
-    return _db
+    return _get_db()

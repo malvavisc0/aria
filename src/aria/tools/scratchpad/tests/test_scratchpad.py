@@ -1,41 +1,19 @@
 """Tests for standalone scratchpad tool."""
 
-import os
-import tempfile
-
 import pytest
 
-from aria.tools.database import ToolsDatabase
 from aria.tools.scratchpad import scratchpad
-from aria.tools.scratchpad.database import ScratchpadDatabase
 
 
 @pytest.fixture(autouse=True)
-def test_db():
-    """Create a temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_tools.db")
+def test_db(test_tools_db):
+    """Create a temporary database for testing.
 
-        # Reset singletons
-        ToolsDatabase._instance = None
-        ScratchpadDatabase._instance = None
-
-        import aria.tools.database as db_module
-
-        db_module._db_instance = None
-
-        # Create test database
-        test_tools_db = ToolsDatabase(db_path)
-        # Force ScratchpadDatabase to pick up the test DB
-        ScratchpadDatabase._instance = None
-
-        yield
-
-        # Clean up
-        test_tools_db.close()
-        ToolsDatabase._instance = None
-        ScratchpadDatabase._instance = None
-        db_module._db_instance = None
+    Depends on the shared ``test_tools_db`` fixture (defined in root
+    ``conftest.py``) which handles temp-file creation and singleton
+    resets.
+    """
+    yield
 
 
 class TestScratchpadStandalone:
