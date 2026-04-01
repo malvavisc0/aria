@@ -19,6 +19,7 @@ from aria.tools import (
     tool_error_response,
     tool_success_response,
 )
+from aria.tools.decorators import log_tool_call
 from aria.tools.search._download_internals import (
     _save_content_to_file,
     _validate_url,
@@ -41,11 +42,15 @@ def _extract_video_id(url: str) -> Optional[str]:
     return None
 
 
-def _get_youtube_transcript(video_id: str) -> tuple[str, list, float]:
+def _get_youtube_transcript(
+    video_id: str, languages: Optional[list[str]] = None
+) -> tuple[str, list, float]:
     """Fetch and format YouTube transcript.
 
     Args:
         video_id: YouTube video ID
+        languages: Ordered list of language codes to try (e.g. ["de", "en"]).
+            Defaults to ["en"] when not provided.
 
     Returns:
         Tuple of (transcript_text, snippets, estimated_duration)
@@ -55,7 +60,7 @@ def _get_youtube_transcript(video_id: str) -> tuple[str, list, float]:
         TranscriptsDisabled: If transcripts are disabled
     """
     api = YouTubeTranscriptApi()
-    transcript = api.fetch(video_id)
+    transcript = api.fetch(video_id, languages=languages or ["en"])
 
     formatter = TextFormatter()
     transcript_text = formatter.format_transcript(transcript)
@@ -67,10 +72,11 @@ def _get_youtube_transcript(video_id: str) -> tuple[str, list, float]:
     )
 
 
+@log_tool_call
 def get_youtube_video_transcription(
     reason: str,
     url: str,
-    download_path: Optional[str] = None,
+    languages: Optional[list[str]] = None,
 ) -> str:
     """Download and save a YouTube video's captions/transcript to disk.
 
@@ -91,8 +97,9 @@ def get_youtube_video_transcription(
         reason: Why you're downloading the transcript
             (for logging/auditing).
         url: YouTube video URL.
-        download_path: Optional path to save the transcript
-            (default: DOWNLOADS_DIR).
+        languages: Ordered list of language codes to try, e.g.
+            ["de", "en"] to prefer German and fall back to English.
+            Defaults to ["en"] when not provided.
 
     Returns:
         JSON with file_path and metadata (video_id,
@@ -122,7 +129,9 @@ def get_youtube_video_transcription(
     logger.debug(f"Extracted video ID: {video_id} from {validated_url}")
 
     try:
-        transcript_text, snippets, duration = _get_youtube_transcript(video_id)
+        transcript_text, snippets, duration = _get_youtube_transcript(
+            video_id, languages=languages
+        )
 
         file_path, metadata = _save_content_to_file(
             transcript_text,
@@ -130,9 +139,7 @@ def get_youtube_video_transcription(
             "text/plain",
             "text",
             original_filename=f"{video_id}_transcript.txt",
-            download_path=(
-                str(DOWNLOADS_DIR) if not download_path else download_path
-            ),
+            download_path=str(DOWNLOADS_DIR),
         )
 
         metadata["video_id"] = video_id

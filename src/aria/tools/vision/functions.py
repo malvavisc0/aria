@@ -31,6 +31,7 @@ from aria.tools import (
     tool_error_response,
     tool_success_response,
 )
+from aria.tools.decorators import log_tool_call
 from aria.tools.vision.constants import VISION_OUTPUT_DIR
 from aria.tools.vision.exceptions import (
     UnsupportedFormatError,
@@ -247,7 +248,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
             pages_processed=len(pages),
         )
 
-    return parse_pdf
+    return log_tool_call(parse_pdf)
 
 
 def _persist_pdf_extraction_result(

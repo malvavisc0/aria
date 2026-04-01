@@ -588,8 +588,8 @@ class TestYouTubeTranscription:
 
         mock_api_class.assert_called_once()
         mock_api.fetch.assert_called_once_with(
-            "dQw4w9WgXcQ"
-        )  # Should match video ID
+            "dQw4w9WgXcQ", languages=["en"]
+        )  # Should match video ID with default language
         mock_formatter_class.assert_called_once()
         mock_formatter.format_transcript.assert_called_once_with(
             mock_transcript

@@ -22,6 +22,7 @@ Example:
 
 from aria.tools import get_function_name
 from aria.tools.browser.manager import get_browser_manager
+from aria.tools.decorators import log_tool_call
 
 
 def _get_manager():
@@ -41,6 +42,7 @@ def _get_manager():
     return manager
 
 
+@log_tool_call
 async def open_url(reason: str, url: str) -> str:
     """Open a URL in the headless browser and get page content.
 
@@ -75,6 +77,7 @@ async def open_url(reason: str, url: str) -> str:
     return await manager.navigate(url, tool=get_function_name(), reason=reason)
 
 
+@log_tool_call
 async def browser_click(reason: str, selector: str) -> str:
     """Click an element on the current page by CSS selector.
 

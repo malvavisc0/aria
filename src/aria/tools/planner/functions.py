@@ -14,6 +14,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from aria.tools import tool_response
+from aria.tools.decorators import log_tool_call
 
 from . import registry
 
@@ -729,6 +730,7 @@ def _action_reorder(
         )
 
 
+@log_tool_call
 def plan(
     reason: str,
     action: str,

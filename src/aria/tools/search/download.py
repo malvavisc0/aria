@@ -51,7 +51,6 @@ def download(
     output: Optional[str] = "auto",
     custom_headers: Optional[Dict[str, str]] = None,
     max_size: Optional[int] = None,
-    download_path: Optional[str] = None,
     convert_to_markdown: bool = False,
 ) -> str:
     """Download files from URLs (PDFs, images, archives, HTML, etc.).
@@ -77,7 +76,6 @@ def download(
         output: Format — auto/markdown/text/binary (default: "auto").
         custom_headers: Optional HTTP headers.
         max_size: Max bytes to download (default: 5 MB).
-        download_path: Save directory (default: DOWNLOADS_DIR).
         convert_to_markdown: Convert HTML content to markdown
             (default: False).
 
@@ -97,10 +95,7 @@ def download(
         validated_format = _validate_format(output_value)
         max_size_value = MAX_FILE_SIZE if max_size is None else max_size
 
-        if not download_path:
-            download_path_value = str(DOWNLOADS_DIR)
-        else:
-            download_path_value = download_path
+        download_path_value = str(DOWNLOADS_DIR)
 
         response_data, content_type, filename = _fetch_file(
             validated_url,

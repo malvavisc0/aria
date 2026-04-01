@@ -11,6 +11,7 @@ from aria.tools import (
     tool_error_response,
     tool_success_response,
 )
+from aria.tools.decorators import log_tool_call
 
 SEARXNG_URL = getenv("SEARXNG_URL", "").rstrip("/")
 _REQUEST_TIMEOUT_SECONDS = 10.0
@@ -77,6 +78,7 @@ _CATEGORY_FIELD_MAP: Dict[str, list[FieldSpec]] = {
 }
 
 
+@log_tool_call
 def searxng_web_search(
     reason: str,
     query: str,

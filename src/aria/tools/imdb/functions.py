@@ -32,6 +32,7 @@ from aria.tools import (
     tool_error_response,
     tool_success_response,
 )
+from aria.tools.decorators import log_tool_call
 from aria.tools.imdb.constants import (
     ERROR_EMPTY_IMDB_ID,
     ERROR_EMPTY_QUERY,
@@ -175,6 +176,7 @@ def _imdb_tool(
     return decorator
 
 
+@log_tool_call
 def search_imdb_titles(
     reason: str, query: str, title_type: Optional[str] = None
 ) -> str:
@@ -264,6 +266,7 @@ def search_imdb_titles(
         )
 
 
+@log_tool_call
 @_imdb_tool(ERROR_MOVIE_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_details(reason: str, imdb_id: str) -> str:
     """Get comprehensive details for a movie or TV series.
@@ -365,6 +368,7 @@ def get_movie_details(reason: str, imdb_id: str) -> str:
     return tool_success_response(get_function_name(), reason, result)
 
 
+@log_tool_call
 @_imdb_tool(
     ERROR_PERSON_NOT_FOUND.format(person_id="{person_id}"),
     id_param="person_id",
@@ -419,6 +423,7 @@ def get_person_details(reason: str, person_id: str) -> str:
     return tool_success_response(get_function_name(), reason, result)
 
 
+@log_tool_call
 @_imdb_tool(
     ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id="{person_id}"),
     id_param="person_id",
@@ -479,6 +484,7 @@ def get_person_filmography(reason: str, person_id: str) -> str:
     return tool_success_response(get_function_name(), reason, result)
 
 
+@log_tool_call
 @_imdb_tool(ERROR_EPISODES_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_all_series_episodes(reason: str, imdb_id: str) -> str:
     """
@@ -539,6 +545,7 @@ def get_all_series_episodes(reason: str, imdb_id: str) -> str:
     return tool_success_response(get_function_name(), reason, result)
 
 
+@log_tool_call
 @_imdb_tool(ERROR_REVIEWS_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_reviews(reason: str, imdb_id: str) -> str:
     """
@@ -581,6 +588,7 @@ def get_movie_reviews(reason: str, imdb_id: str) -> str:
     return tool_success_response(get_function_name(), reason, result)
 
 
+@log_tool_call
 @_imdb_tool(ERROR_TRIVIA_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_trivia(reason: str, imdb_id: str) -> str:
     """

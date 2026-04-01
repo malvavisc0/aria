@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from aria.tools import utc_timestamp
+from aria.tools.decorators import log_tool_call
 
 from . import registry
 from .session import ReasoningSession
@@ -84,6 +85,7 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
     return registry.get_session(session_id, agent_id)
 
 
+@log_tool_call
 def reasoning(
     reason: str,
     action: str,

@@ -77,10 +77,20 @@ These prompts are designed to verify the updated agent instructions are working 
 
 ## 4. Financial Analysis
 
+### Stock analysis with planning and multi-source reasoning
+> Analyze Nvidia stock. Is it a good investment right now?
+
+**Expected**: Aria creates a plan with steps like: fetch price, fetch company info, fetch news, web search for recent developments. Then uses reasoning to synthesize findings into a balanced assessment. Does NOT just report the current price. Tests the Analysis Protocol workflow.
+
+### Multi-source analysis
+> What do you think about Tesla as a company?
+
+**Expected**: Uses multiple finance tools (`fetch_current_stock_price`, `fetch_company_information`, `fetch_ticker_news`) plus `web_search` for broader context, then uses `reasoning` to evaluate findings. Does NOT rely on a single data source. Tests the Multi-Source Principle.
+
 ### Plain-English financial analysis
 > Analyze Apple stock. Is it a good buy right now?
 
-**Expected**: Conversational analysis in paragraphs, not a Wall Street-style report. Should cite data sources inline. Tests the "How to Answer" section.
+**Expected**: Conversational analysis in paragraphs, not a Wall Street-style report. Should cite data sources inline. Uses plan → gather → reason → synthesize workflow.
 
 ### Risk acknowledgment
 > What will Bitcoin be worth next month?
