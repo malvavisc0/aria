@@ -1,11 +1,13 @@
 """Integration tests for SQLiteSQLAlchemyDataLayer."""
 
 import uuid
+from datetime import UTC, datetime
 from typing import Callable
 
 import pytest
+from chainlit.types import Pagination, ThreadFilter
 
-from aria.db.layer import SQLiteSQLAlchemyDataLayer
+from aria.db.layer import SQLiteSQLAlchemyDataLayer, _to_local_timestamp_string
 
 
 class TestThreadOperations:
@@ -425,6 +427,90 @@ class TestThreadRetrieval:
         assert thread["tags"] == tags
         assert isinstance(thread["metadata"], dict)
         assert thread["metadata"] == metadata
+
+    @pytest.mark.asyncio
+    async def test_get_all_user_threads_normalizes_created_at_for_sidebar_grouping(
+        self,
+        data_layer: SQLiteSQLAlchemyDataLayer,
+        create_user: Callable,
+        raw_db_query: Callable,
+    ):
+        """Returned thread timestamps should include a local offset for frontend day bucketing."""
+        user = await create_user()
+        user_id = user["id"]
+        thread_id = str(uuid.uuid4())
+        created_at = "2026-04-01T23:58:48.216144Z"
+
+        await data_layer.update_thread(
+            thread_id=thread_id,
+            user_id=user_id,
+            name="elon's companies",
+        )
+        await raw_db_query(
+            'UPDATE threads SET "createdAt" = :created_at WHERE id = :id',
+            {"created_at": created_at, "id": thread_id},
+        )
+
+        threads = await data_layer.get_all_user_threads(user_id=user_id)
+        assert threads is not None
+        thread = next(t for t in threads if t["id"] == thread_id)
+
+        expected = _to_local_timestamp_string(created_at)
+        assert thread["createdAt"] == expected
+        assert thread["createdAt"] != created_at
+        parsed = datetime.fromisoformat(thread["createdAt"])
+        assert parsed.tzinfo is not None
+
+    @pytest.mark.asyncio
+    async def test_list_threads_normalizes_created_at_for_sidebar_grouping(
+        self,
+        data_layer: SQLiteSQLAlchemyDataLayer,
+        create_user: Callable,
+        raw_db_query: Callable,
+    ):
+        """Pagination path should return the same normalized thread timestamps."""
+        user = await create_user()
+        user_id = user["id"]
+        thread_id = str(uuid.uuid4())
+        created_at = "2026-04-01T23:58:48.216144Z"
+
+        await data_layer.update_thread(
+            thread_id=thread_id,
+            user_id=user_id,
+            name="late night thread",
+        )
+        await raw_db_query(
+            'UPDATE threads SET "createdAt" = :created_at WHERE id = :id',
+            {"created_at": created_at, "id": thread_id},
+        )
+
+        response = await data_layer.list_threads(
+            Pagination(first=20), ThreadFilter(userId=user_id)
+        )
+        thread = next(t for t in response.data if t["id"] == thread_id)
+
+        assert thread["createdAt"] == _to_local_timestamp_string(created_at)
+
+
+class TestTimestampNormalizationHelpers:
+    def test_to_local_timestamp_string_preserves_invalid_values(self):
+        """Invalid values should pass through unchanged."""
+        assert _to_local_timestamp_string(None) is None
+        assert (
+            _to_local_timestamp_string("not-a-timestamp") == "not-a-timestamp"
+        )
+
+    def test_to_local_timestamp_string_returns_timezone_aware_isoformat(self):
+        """UTC values should be converted to explicit local-offset ISO strings."""
+        original = "2026-04-01T23:58:48.216144Z"
+        normalized = _to_local_timestamp_string(original)
+
+        assert normalized != original
+        parsed = datetime.fromisoformat(normalized)
+        assert parsed.tzinfo is not None
+        assert parsed.astimezone(UTC) == datetime.fromisoformat(
+            original.replace("Z", "+00:00")
+        )
 
 
 class TestRoundTrip:

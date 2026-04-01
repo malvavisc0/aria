@@ -36,6 +36,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid as _uuid
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, cast
 
 from chainlit import PersistedUser
@@ -82,6 +83,44 @@ def _json_loads_or(value: Any, default: Any) -> Any:
     return value
 
 
+def _parse_iso_timestamp(value: Any) -> Optional[datetime]:
+    """Parse an ISO 8601 timestamp string into a timezone-aware datetime."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        logger.warning(f"Failed to parse timestamp value: {value}")
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+
+    return parsed
+
+
+def _to_local_timestamp_string(value: Any) -> Any:
+    """Convert ISO timestamps to local-time ISO strings for Chainlit sidebar bucketing.
+
+    Chainlit's frontend groups threads by constructing `new Date(createdAt)` and then
+    zeroing local hours before computing day buckets. When timestamps end with `Z`, the
+    bucket is based on the user's local timezone. Some SQLite-returned timestamps near
+    midnight UTC are therefore grouped into an unexpected day from the user's point of
+    view. Returning an explicit local offset keeps the represented wall-clock day aligned
+    with the local grouping logic without mutating persisted database values.
+    """
+    parsed = _parse_iso_timestamp(value)
+    if parsed is None:
+        return value
+
+    return parsed.astimezone().isoformat(timespec="microseconds")
+
+
 class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
     """Chainlit SQLAlchemy data layer patched for SQLite."""
 
@@ -122,6 +161,9 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         """
         thread["tags"] = _json_loads_or(thread.get("tags"), default=[])
         thread["metadata"] = _json_loads_or(thread.get("metadata"), default={})
+        thread["createdAt"] = _to_local_timestamp_string(
+            thread.get("createdAt")
+        )
 
         for step in thread.get("steps") or []:
             self._deserialize_step(cast(StepDict, step))
