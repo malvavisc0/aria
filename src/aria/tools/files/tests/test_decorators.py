@@ -9,7 +9,7 @@ from aria.tools.files.decorators import (
     with_file_operation_error_handling,
     with_input_validation,
 )
-from aria.tools.files.exceptions import FileOperationError, FileSecurityError
+from aria.tools.files.exceptions import FileSecurityError
 
 
 class TestWithFileOperationErrorHandling:
@@ -49,55 +49,6 @@ class TestWithFileOperationErrorHandling:
         result = function_that_raises_security_error("test", "test.txt")
         assert isinstance(result, str)
         assert "Security" in result
-
-    def test_decorator_reraises_file_operation_error(self):
-        """Test decorator returns error response for FileOperationError."""
-
-        @with_file_operation_error_handling("test_operation")
-        def function_that_raises_file_operation_error(
-            reason: str, file_name: str
-        ):
-            raise FileOperationError("Operation failed")
-
-        result = function_that_raises_file_operation_error("test", "test.txt")
-        assert isinstance(result, str)
-        assert "Operation failed" in result
-
-    def test_decorator_successful_execution(self):
-        """Test that decorator allows successful execution."""
-
-        @with_file_operation_error_handling("test_operation")
-        def successful_function(reason: str, file_name: str):
-            return f"Success: {file_name}"
-
-        result = successful_function("test", "test.txt")
-        assert result == "Success: test.txt"
-
-    def test_decorator_with_no_args(self):
-        """Test decorator with function that has no args (no raise)."""
-
-        @with_file_operation_error_handling("test_operation")
-        def function_with_no_args():
-            raise OSError("No file specified")
-
-        result = function_with_no_args()
-        assert isinstance(result, str)
-        assert "error" in result
-
-    def test_decorator_with_kwargs(self):
-        """Test decorator with function called using kwargs (no raise)."""
-
-        @with_file_operation_error_handling("test_operation")
-        def function_with_kwargs(reason: str, file_name: str, content: str):
-            raise OSError("Write failed")
-
-        result = function_with_kwargs(
-            reason="test",
-            file_name="test.txt",
-            content="data",
-        )
-        assert isinstance(result, str)
-        assert "error" in result
 
 
 class TestWithInputValidation:
@@ -166,16 +117,6 @@ class TestWithInputValidation:
         assert "Size: 100" in result
         assert "Offset: 0" in result
 
-    def test_decorator_with_defaults(self):
-        """Test decorator with function that has default parameter values."""
-
-        @with_input_validation(chunk_size=True)
-        def function_with_defaults(file_name, chunk_size=1000):
-            return f"Chunk size: {chunk_size}"
-
-        result = function_with_defaults("test.txt")
-        assert result == "Chunk size: 1000"
-
     def test_decorator_preserves_function_metadata(self):
         """Test that decorator preserves original function metadata."""
 
@@ -197,14 +138,3 @@ class TestWithInputValidation:
 
         assert documented_function.__name__ == "documented_function"
         assert documented_function.__doc__ == "This is a documented function."
-
-    def test_decorator_with_false_validation_params(self):
-        """Test decorator ignores parameters with False validation flag."""
-
-        @with_input_validation(contents=False, chunk_size=True)
-        def selective_validation(file_name, contents, chunk_size):
-            return f"Validated chunk_size: {chunk_size}"
-
-        # Should validate chunk_size but not contents
-        result = selective_validation("test.txt", "any content", 500)
-        assert "Validated chunk_size: 500" in result

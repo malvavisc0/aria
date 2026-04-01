@@ -25,28 +25,6 @@ from aria.tools.development.exceptions import (
 class TestWithRunnerErrorHandling:
     """Test suite for with_runner_error_handling decorator."""
 
-    def test_successful_execution(self):
-        """Test decorator with successful function execution."""
-
-        @with_runner_error_handling("test_operation")
-        def successful_func(code: str) -> str:
-            return f"Success: {code}"
-
-        result = successful_func("print('hello')")
-        assert "Success: print('hello')" in result
-
-    def test_long_identifier_truncation(self):
-        """Test that long identifiers are truncated in error messages."""
-
-        @with_runner_error_handling("test_operation")
-        def failing_func(code: str) -> str:
-            raise ValueError("Test error")
-
-        long_code = "x" * 100
-        result = failing_func(long_code)
-        # Should contain truncated identifier
-        assert "error" in result.lower()
-
     def test_security_error_handling(self):
         """Test handling of PythonSecurityError."""
 

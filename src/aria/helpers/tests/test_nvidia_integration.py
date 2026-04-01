@@ -88,8 +88,6 @@ class TestNvidiaIntegration:
 
     def test_check_gpu_memory_usage_with_valid_index(self):
         """Test memory usage check with valid GPU index."""
-        gpu_count = detect_gpu_count()
-
         # Test first GPU (index 0)
         result_low_threshold = check_gpu_memory_usage(0, 100.0)
         result_high_threshold = check_gpu_memory_usage(0, 0.0)
@@ -273,11 +271,6 @@ class TestNvidiaIntegrationEdgeCases:
         result_100 = check_gpu_memory_usage(0, 100.0)
         # Should be True unless GPU is exactly 100% full
         assert isinstance(result_100, bool)
-
-
-# ============================================================================
-# Manual Test Utilities
-# ============================================================================
 
 
 def print_gpu_info():

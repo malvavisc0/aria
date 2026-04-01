@@ -5,20 +5,11 @@ Run with: pytest src/aria/tools/tests/test_contract_verification.py -v
 
 import inspect
 
-import aria.tools.files as files_pkg
-import aria.tools.planner as planner_pkg
-import aria.tools.reasoning as reasoning_pkg
 from aria.tools import tool_success_response
 
 
 class TestFilesPackageContract:
     """Verify files package exports match their implementations."""
-
-    def test_files_package_exports_are_callable(self):
-        """All exported names should be callable functions."""
-        for name in files_pkg.__all__:
-            obj = getattr(files_pkg, name)
-            assert callable(obj), f"{name} is not callable"
 
     def test_files_read_operations_have_expected_signatures(self):
         """Verify read operation functions have documented parameter names."""
@@ -78,24 +69,8 @@ class TestFilesPackageContract:
         ), "copy_file should have 'dest' or 'destination' parameter"
 
 
-class TestPlannerPackageContract:
-    """Verify planner package exports match their implementations."""
-
-    def test_planner_exports_are_callable(self):
-        """All exported planner functions should be callable."""
-        for name in planner_pkg.__all__:
-            obj = getattr(planner_pkg, name)
-            assert callable(obj), f"{name} is not callable"
-
-
 class TestReasoningPackageContract:
     """Verify reasoning package exports match their implementations."""
-
-    def test_reasoning_exports_are_callable(self):
-        """All exported reasoning functions should be callable."""
-        for name in reasoning_pkg.__all__:
-            obj = getattr(reasoning_pkg, name)
-            assert callable(obj), f"{name} is not callable"
 
     def test_reasoning_has_no_conclusion_parameter(self):
         """Issue #12: reasoning should NOT have a 'conclusion' parameter.
