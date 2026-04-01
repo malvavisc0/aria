@@ -47,7 +47,7 @@ These prompts are designed to verify the updated agent instructions are working 
 ### Surgical edit preference
 > In the file /home/user/project/main.py, change the function name from `process_data` to `transform_data`.
 
-**Expected**: Aria uses `replace_lines_range` or similar surgical edit, NOT a full file rewrite. Tests the "broad rewrite" boundary condition.
+**Expected**: Aria uses the `edit_file` tool for surgical line-level modifications, NOT a full file rewrite. Tests the "broad rewrite" boundary condition.
 
 ### Syntax validation before execution
 > Write a Python script that reads a CSV file and prints the top 5 rows.
@@ -108,17 +108,17 @@ These prompts are designed to verify the updated agent instructions are working 
 ### Complex reasoning task
 > Should a small SaaS company migrate from AWS to self-hosted infrastructure? Consider cost, reliability, team expertise, and scaling needs.
 
-**Expected**: Aria uses `start_reasoning`, `add_reasoning_step`, `add_reflection`, `evaluate_reasoning`, `end_reasoning` tools directly. Tests the full reasoning tool chain.
+**Expected**: Aria uses the `reasoning` tool with actions: `start`, `step`, `reflect`, `evaluate`, `end`. Tests the full reasoning tool chain.
 
 ### Tradeoff analysis task
 > We need to choose between three authentication solutions: build our own, use Auth0, or use Supabase Auth. Evaluate each option considering security, cost, developer time, and future flexibility.
 
-**Expected**: Aria uses structured reasoning tools directly to analyze tradeoffs systematically.
+**Expected**: Aria uses the `reasoning` tool to analyze tradeoffs systematically.
 
 ### Direct reasoning for strategic decisions
 > What's the best approach for handling database migrations in a production system with minimal downtime?
 
-**Expected**: Aria uses structured reasoning tools directly to analyze tradeoffs.
+**Expected**: Aria uses the `reasoning` tool to analyze tradeoffs.
 
 ---
 
@@ -127,12 +127,12 @@ These prompts are designed to verify the updated agent instructions are working 
 ### Task decomposition
 > Help me plan a migration from a monolithic Django app to a microservices architecture.
 
-**Expected**: Aria uses `plan` to create a structured execution plan with clear steps.
+**Expected**: Aria uses the `plan` tool with `action="create"` to create a structured execution plan with clear steps.
 
 ### Plan step management
 > [After creating a plan] Update step 3 to mark it as done, then add a new step after step 5.
 
-**Expected**: Aria uses `update_plan_step` and `add_plan_step` to manage the plan.
+**Expected**: Aria uses `plan` with `action="update"` and `action="add"` to manage the plan.
 
 ---
 
@@ -168,6 +168,6 @@ These prompts are designed to verify the updated agent instructions are working 
 **Expected**: Just calls the tool and reports results. Should NOT say "I'll now use the web_search tool to..." Tests anti-pattern rules.
 
 ### Browser tools awareness
-> Go to https://example.com and take a screenshot.
+> Go to https://example.com and extract the page content.
 
-**Expected**: If Lightpanda is installed, uses `open_url` + `browser_screenshot`. If not, explains that browser tools aren't available and offers alternatives.
+**Expected**: If Lightpanda is installed, uses `open_url`. If not, explains that browser tools aren't available and offers alternatives.
