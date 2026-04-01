@@ -68,23 +68,40 @@ def _get_youtube_transcript(video_id: str) -> tuple[str, list, float]:
 
 
 def get_youtube_video_transcription(
-    intent: str,
+    reason: str,
     url: str,
     download_path: Optional[str] = None,
 ) -> str:
-    """Download and save a YouTube video's captions/transcript as a text file.
+    """Download and save a YouTube video's captions/transcript to disk.
 
-    Note: Despite the 'get_*' naming, this function is persistence-first:
-    it writes the transcript to disk and returns file metadata, not the
-    transcript content directly.
+    When to use:
+        - Use this when the user wants the transcript/subtitles of a
+          YouTube video.
+        - Use this to extract spoken content from videos for analysis
+          or summarization.
+        - Do NOT use this to download the video itself — only captions
+          are extracted.
+
+    Why:
+        Persistence-first design: writes the transcript to disk and
+        returns file metadata. Use `read_file` to read the saved
+        transcript afterward.
 
     Args:
-        intent: Why you're downloading the transcript
-        url: YouTube video URL
+        reason: Why you're downloading the transcript
+            (for logging/auditing).
+        url: YouTube video URL.
         download_path: Optional path to save the transcript
+            (default: DOWNLOADS_DIR).
 
     Returns:
-        JSON string with file path and metadata
+        JSON with file_path and metadata (video_id,
+        transcript_segments, estimated_duration).
+
+    Important:
+        - Only works for videos that have captions/subtitles available.
+        - The transcript is saved to disk, not returned inline.
+        - Use `read_file` on the returned file_path to get the content.
     """
     from aria.tools.search.download import URLDownloadError
 
@@ -92,14 +109,14 @@ def get_youtube_video_transcription(
         validated_url = _validate_url(url)
     except URLDownloadError as exc:
         logger.error(f"Invalid URL for YouTube transcription: {exc}")
-        return tool_error_response(get_function_name(), intent, exc)
+        return tool_error_response(get_function_name(), reason, exc)
 
     video_id = _extract_video_id(validated_url)
     if not video_id:
         error_msg = "Could not extract YouTube video ID from URL"
         logger.error(error_msg)
         return tool_error_response(
-            get_function_name(), intent, RuntimeError(error_msg)
+            get_function_name(), reason, RuntimeError(error_msg)
         )
 
     logger.debug(f"Extracted video ID: {video_id} from {validated_url}")
@@ -124,7 +141,7 @@ def get_youtube_video_transcription(
 
         return tool_success_response(
             get_function_name(),
-            intent,
+            reason,
             {"file_path": file_path, "metadata": metadata},
         )
 
@@ -135,17 +152,17 @@ def get_youtube_video_transcription(
         )
         logger.warning(error_msg)
         return tool_error_response(
-            get_function_name(), intent, RuntimeError(error_msg)
+            get_function_name(), reason, RuntimeError(error_msg)
         )
     except TranscriptsDisabled:
         error_msg = f"Transcripts disabled for video {video_id} by uploader."
         logger.warning(error_msg)
         return tool_error_response(
-            get_function_name(), intent, RuntimeError(error_msg)
+            get_function_name(), reason, RuntimeError(error_msg)
         )
     except Exception as exc:
         error_msg = f"Failed to get YouTube transcription from {url}: {exc}"
         logger.error(error_msg)
         return tool_error_response(
-            get_function_name(), intent, RuntimeError(error_msg)
+            get_function_name(), reason, RuntimeError(error_msg)
         )

@@ -112,7 +112,7 @@ class ReasoningDatabase:
                         "reasoning_type": step.reasoning_type,
                         "content": step.content,
                         "confidence": step.confidence,
-                        "intent": getattr(step, "intent", None),
+                        "reason": getattr(step, "reason", None),
                         "evidence": (
                             json.loads(step.evidence) if step.evidence else []
                         ),
@@ -132,7 +132,7 @@ class ReasoningDatabase:
                     {
                         "content": refl.content,
                         "step_id": refl.step_id,
-                        "intent": getattr(refl, "intent", None),
+                        "reason": getattr(refl, "reason", None),
                         "timestamp": refl.timestamp.isoformat(),
                     }
                 )
@@ -143,7 +143,7 @@ class ReasoningDatabase:
                 scratchpad[item.key] = {
                     "value": item.value,
                     "updated": item.updated_at.isoformat(),
-                    "intent": getattr(item, "intent", None),
+                    "reason": getattr(item, "reason", None),
                 }
 
             # Convert tool events to dict
@@ -152,7 +152,7 @@ class ReasoningDatabase:
                 tool_events.append(
                     {
                         "tool_name": ev.tool_name,
-                        "intent": ev.intent,
+                        "reason": ev.reason,
                         "payload": (
                             json.loads(ev.payload_json)
                             if ev.payload_json
@@ -190,7 +190,7 @@ class ReasoningDatabase:
                 reasoning_type=step["reasoning_type"],
                 content=step["content"],
                 confidence=step["confidence"],
-                intent=step.get("intent"),
+                reason=step.get("reason"),
                 evidence=json.dumps(step["evidence"]),
                 biases_detected=json.dumps(step["biases_detected"]),
                 timestamp=datetime.fromisoformat(step["timestamp"]),
@@ -218,7 +218,7 @@ class ReasoningDatabase:
                 session_id=session_internal_id,
                 content=reflection["content"],
                 step_id=reflection.get("step_id"),
-                intent=reflection.get("intent"),
+                reason=reflection.get("reason"),
                 timestamp=datetime.fromisoformat(reflection["timestamp"]),
             )
             session.add(refl_model)
@@ -239,7 +239,7 @@ class ReasoningDatabase:
         key: str,
         value: str,
         updated_at: str,
-        intent: Optional[str] = None,
+        reason: Optional[str] = None,
     ) -> None:
         """Save or update a scratchpad item."""
         with self.get_session() as session:
@@ -253,15 +253,15 @@ class ReasoningDatabase:
             if existing:
                 existing.value = value
                 existing.updated_at = datetime.fromisoformat(updated_at)
-                if intent is not None:
-                    existing.intent = intent
+                if reason is not None:
+                    existing.reason = reason
             else:
                 item = ReasoningScratchpadModel(
                     session_id=session_internal_id,
                     key=key,
                     value=value,
                     updated_at=datetime.fromisoformat(updated_at),
-                    intent=intent,
+                    reason=reason,
                 )
                 session.add(item)
 
@@ -275,7 +275,7 @@ class ReasoningDatabase:
         self,
         session_internal_id: str,
         tool_name: str,
-        intent: str,
+        reason: str,
         timestamp: str,
         payload: Optional[Dict] = None,
     ) -> None:
@@ -284,7 +284,7 @@ class ReasoningDatabase:
             ev = ReasoningToolEventModel(
                 session_id=session_internal_id,
                 tool_name=tool_name,
-                intent=intent,
+                reason=reason,
                 payload_json=(
                     json.dumps(payload) if payload is not None else None
                 ),

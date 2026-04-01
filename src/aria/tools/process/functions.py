@@ -84,27 +84,38 @@ def _is_command_blocked(command: str) -> bool:
 
 @log_tool_call
 def process(
-    intent: str,
+    reason: str,
     action: str,
     name: Optional[str] = None,
     command: Optional[str] = None,
     args: Optional[List[str]] = None,
     timeout: Optional[int] = None,
 ) -> str:
-    """Manage background processes.
+    """Manage long-running background processes.
 
-    Start, stop, and monitor background processes. Useful for
-    long-running tasks like build processes, servers, or data pipelines.
+    When to use:
+        - Use this to start processes that run in the background
+          (e.g., dev servers, build watchers, data pipelines).
+        - Use this to check status, read logs, or stop background
+          processes.
+        - Do NOT use this for one-off commands — use `shell` instead.
+        - Do NOT use this for Python code execution — use `python`.
+
+    Why:
+        Unlike `shell` (which waits for completion), this tool manages
+        processes that run asynchronously. You can start a server, check
+        its logs later, and stop it when done.
 
     Actions:
-    - "start": Start a new background process (requires name, command)
-    - "stop": Stop a running process (requires name)
-    - "status": Get status of a process (requires name)
-    - "logs": Get recent output from a process (requires name)
-    - "list": List all managed processes
+        - "start": Start a new background process (requires name,
+            command).
+        - "stop": Stop a running process (requires name).
+        - "status": Get status of a process (requires name).
+        - "logs": Get recent output from a process (requires name).
+        - "list": List all managed processes.
 
     Args:
-        intent: Why you're managing this process.
+        reason: Why you're managing this process (for logging/auditing).
         action: One of: start, stop, status, logs, list.
         name: Unique name for the process.
         command: Command to execute (for start).
@@ -113,23 +124,30 @@ def process(
 
     Returns:
         JSON with action-specific process data.
+
+    Important:
+        - In-memory only — processes are lost on server restart.
+        - Maximum 5 concurrent processes.
+        - Blocked commands include: sudo, shutdown, reboot, rm -rf /,
+          fork bombs.
+        - Logs retain the last 200 lines per stream (stdout/stderr).
     """
     action = action.lower().strip()
 
     if action == "start":
-        return _action_start(intent, name, command, args, timeout)
+        return _action_start(reason, name, command, args, timeout)
     elif action == "stop":
-        return _action_stop(intent, name)
+        return _action_stop(reason, name)
     elif action == "status":
-        return _action_status(intent, name)
+        return _action_status(reason, name)
     elif action == "logs":
-        return _action_logs(intent, name)
+        return _action_logs(reason, name)
     elif action == "list":
-        return _action_list(intent)
+        return _action_list(reason)
     else:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={
                 "error": f"Unknown action '{action}'. "
                 "Valid: start, stop, status, logs, list",
@@ -138,7 +156,7 @@ def process(
 
 
 def _action_start(
-    intent: str,
+    reason: str,
     name: Optional[str],
     command: Optional[str],
     args: Optional[List[str]],
@@ -148,13 +166,13 @@ def _action_start(
     if not name:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": "Missing required 'name' parameter."},
         )
     if not command:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": "Missing required 'command' parameter."},
         )
 
@@ -163,14 +181,14 @@ def _action_start(
         if managed.proc.poll() is None:
             return tool_response(
                 tool="process",
-                intent=intent,
+                reason=reason,
                 data={"error": f"Process '{name}' is already running."},
             )
 
     if _is_command_blocked(command):
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": "Command contains blocked patterns."},
         )
 
@@ -178,7 +196,7 @@ def _action_start(
     if active_count >= _MAX_PROCESSES:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={
                 "error": (
                     f"Maximum {active_count} concurrent processes. "
@@ -201,7 +219,7 @@ def _action_start(
         logger.info(f"Started process '{name}': {cmd_list}")
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={
                 "action": "start",
                 "name": name,
@@ -212,23 +230,23 @@ def _action_start(
     except FileNotFoundError:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": f"Command not found: {command}"},
         )
     except Exception as exc:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": f"Failed to start process: {exc}"},
         )
 
 
-def _action_stop(intent: str, name: Optional[str]) -> str:
+def _action_stop(reason: str, name: Optional[str]) -> str:
     """Stop a running process."""
     if not name:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": "Missing required 'name' parameter."},
         )
 
@@ -236,7 +254,7 @@ def _action_stop(intent: str, name: Optional[str]) -> str:
     if managed is None or managed.proc.poll() is not None:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": f"Process '{name}' is not running."},
         )
 
@@ -250,7 +268,7 @@ def _action_stop(intent: str, name: Optional[str]) -> str:
     logger.info(f"Stopped process '{name}'")
     return tool_response(
         tool="process",
-        intent=intent,
+        reason=reason,
         data={
             "action": "stop",
             "name": name,
@@ -259,12 +277,12 @@ def _action_stop(intent: str, name: Optional[str]) -> str:
     )
 
 
-def _action_status(intent: str, name: Optional[str]) -> str:
+def _action_status(reason: str, name: Optional[str]) -> str:
     """Get process status."""
     if not name:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": "Missing required 'name' parameter."},
         )
 
@@ -272,7 +290,7 @@ def _action_status(intent: str, name: Optional[str]) -> str:
     if managed is None:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": f"Process '{name}' not found."},
         )
 
@@ -280,7 +298,7 @@ def _action_status(intent: str, name: Optional[str]) -> str:
     status = "running" if return_code is None else f"exited ({return_code})"
     return tool_response(
         tool="process",
-        intent=intent,
+        reason=reason,
         data={
             "action": "status",
             "name": name,
@@ -291,7 +309,7 @@ def _action_status(intent: str, name: Optional[str]) -> str:
     )
 
 
-def _action_logs(intent: str, name: Optional[str]) -> str:
+def _action_logs(reason: str, name: Optional[str]) -> str:
     """Get recent output from a process (non-blocking).
 
     Returns the last ``_MAX_LOG_LINES`` lines captured by the background
@@ -301,7 +319,7 @@ def _action_logs(intent: str, name: Optional[str]) -> str:
     if not name:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": "Missing required 'name' parameter."},
         )
 
@@ -309,7 +327,7 @@ def _action_logs(intent: str, name: Optional[str]) -> str:
     if managed is None:
         return tool_response(
             tool="process",
-            intent=intent,
+            reason=reason,
             data={"error": f"Process '{name}' not found."},
         )
 
@@ -324,7 +342,7 @@ def _action_logs(intent: str, name: Optional[str]) -> str:
 
     return tool_response(
         tool="process",
-        intent=intent,
+        reason=reason,
         data={
             "action": "logs",
             "name": name,
@@ -334,7 +352,7 @@ def _action_logs(intent: str, name: Optional[str]) -> str:
     )
 
 
-def _action_list(intent: str) -> str:
+def _action_list(reason: str) -> str:
     """List all managed processes."""
     entries = []
     for name, managed in _processes.items():
@@ -350,7 +368,7 @@ def _action_list(intent: str) -> str:
 
     return tool_response(
         tool="process",
-        intent=intent,
+        reason=reason,
         data={
             "action": "list",
             "count": len(entries),

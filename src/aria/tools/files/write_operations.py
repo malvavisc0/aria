@@ -124,26 +124,41 @@ def _modify_lines_streaming(
     validation_decorator=with_input_validation,
 )
 def write_file(
-    intent: str,
+    reason: str,
     file_name: str,
     contents: str,
     mode: str = "overwrite",
 ) -> str:
-    """Write or append to a file.
+    """Write or append content to a file with atomic writes.
 
-    Merges write_full_file + append_to_file + create_directory.
-    Parent directories are always auto-created.
+    When to use:
+        - Use this to create new files or completely replace existing ones
+          (mode="overwrite").
+        - Use this to add content to the end of an existing file
+          (mode="append").
+        - Do NOT use this for surgical line-level edits — use `edit_file`.
+        - Do NOT use this to copy files — use `copy_file`.
+
+    Why:
+        Atomic writes (write to temp file, then rename) prevent data
+        corruption if the process crashes mid-write. Parent directories
+        are auto-created so you never need to mkdir first.
 
     Args:
-        intent: Why you're writing (e.g., "Creating new module")
-        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
-        contents: Content to write
-        mode: "overwrite" to create/replace file, "append" to add to existing
+        reason: Why you're writing (for logging/auditing).
+        file_name: Absolute path to the file.
+        contents: Content to write.
+        mode: "overwrite" to create/replace, "append" to add to end
+            (default: "overwrite").
 
     Returns:
         JSON with mode-specific metrics:
         - overwrite: bytes_written, lines_written, created, backup_created
         - append: bytes_appended, new_total_lines, new_file_size
+
+    Important:
+        - Overwrite mode creates a backup of the existing file first.
+        - Parent directories are created automatically if they don't exist.
     """
     if mode not in ("overwrite", "append"):
         raise FileOperationError(
@@ -151,12 +166,12 @@ def write_file(
         )
 
     if mode == "overwrite":
-        return _write_file_overwrite(intent, file_name, contents)
+        return _write_file_overwrite(reason, file_name, contents)
     else:
-        return _write_file_append(intent, file_name, contents)
+        return _write_file_append(reason, file_name, contents)
 
 
-def _write_file_overwrite(intent: str, file_name: str, contents: str) -> str:
+def _write_file_overwrite(reason: str, file_name: str, contents: str) -> str:
     """Overwrite or create a file atomically."""
     logger.info(f"Writing file (overwrite): {file_name}")
 
@@ -193,10 +208,10 @@ def _write_file_overwrite(intent: str, file_name: str, contents: str) -> str:
         "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully wrote {bytes_written} bytes to {file_name}")
-    return file_success_response(intent, data, tool="write_file")
+    return file_success_response(reason, data, tool="write_file")
 
 
-def _write_file_append(intent: str, file_name: str, contents: str) -> str:
+def _write_file_append(reason: str, file_name: str, contents: str) -> str:
     """Append content to an existing file."""
     logger.info(f"Appending to file: {file_name}")
 
@@ -221,7 +236,7 @@ def _write_file_append(intent: str, file_name: str, contents: str) -> str:
         "new_file_size": new_file_size,
     }
     logger.info(f"Successfully appended {bytes_appended} bytes to {file_name}")
-    return file_success_response(intent, data, tool="write_file")
+    return file_success_response(reason, data, tool="write_file")
 
 
 @tool_function(
@@ -231,32 +246,45 @@ def _write_file_append(intent: str, file_name: str, contents: str) -> str:
     validation_decorator=with_input_validation,
 )
 def edit_file(
-    intent: str,
+    reason: str,
     file_name: str,
     offset: int,
     length: int = 0,
     new_lines: Optional[List[str]] = None,
 ) -> str:
-    """Edit lines in a file: insert, replace, or delete.
+    """Edit lines in a file: insert, replace, or delete specific lines.
 
-    Merges insert_lines_at + replace_lines_range + delete_lines_range.
+    When to use:
+        - Use this for surgical, line-level modifications to existing files.
+        - Use this to insert new lines at a specific position
+          (length=0, new_lines provided).
+        - Use this to replace a range of lines (length>0, new_lines provided).
+        - Use this to delete a range of lines (length>0, new_lines=None).
+        - Do NOT use this to create new files — use `write_file`.
+        - Do NOT use this to append to a file — use `write_file` with
+          mode="append".
+
+    Why:
+        Line-level edits are more precise and safer than rewriting entire
+        files. A backup is always created before modifications.
 
     Args:
-        intent: Why you're editing (e.g., "Updating function")
-        file_name: Absolute path (e.g., /home/user/data/downloads/file.txt)
-        offset: 0-indexed starting line
-        length: Number of lines to replace/delete (0 = insert only)
-        new_lines: Lines to insert/replace with (None = delete only)
+        reason: Why you're editing (for logging/auditing).
+        file_name: Absolute path to the file.
+        offset: 0-indexed starting line number.
+        length: Number of lines to replace/delete (0 = insert only).
+        new_lines: List of lines to insert/replace with
+            (None = delete only).
 
     Returns:
         JSON with operation, offset, length, lines_affected,
-        old_total_lines, new_total_lines, backup_created
+        old_total_lines, new_total_lines, backup_created.
 
-    Examples:
-        Insert:  edit_file("...", "f.txt", offset=2, new_lines=["new"])
-        Replace: edit_file("...", "f.txt", offset=2, length=3,
-                           new_lines=["a", "b"])
-        Delete:  edit_file("...", "f.txt", offset=2, length=3)
+    Important:
+        - A backup is always created before any modification.
+        - Operation is determined by the combination of length and new_lines:
+          length=0 + new_lines → insert; length>0 + new_lines → replace;
+          length>0 + new_lines=None → delete.
     """
     # Determine operation type
     if length == 0 and new_lines is not None:
@@ -309,4 +337,4 @@ def edit_file(
         f"Successfully {operation}ed in {file_name}: "
         f"{old_total_lines} → {new_total_lines} lines"
     )
-    return file_success_response(intent, data)
+    return file_success_response(reason, data)

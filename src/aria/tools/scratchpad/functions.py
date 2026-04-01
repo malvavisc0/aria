@@ -16,48 +16,67 @@ _DEFAULT_AGENT_ID = "aria"
 
 @log_tool_call
 def scratchpad(
-    intent: str,
+    reason: str,
     key: str,
     value: Optional[str] = None,
     operation: str = "get",
     agent_id: str = _DEFAULT_AGENT_ID,
 ) -> Dict[str, Any]:
-    """Standalone key-value scratchpad for working memory.
+    """Ephemeral key-value scratchpad for working memory.
 
-    Use this to store and retrieve intermediate results, plans, error logs,
-    or any data you need to reference later. Works independently of reasoning
-    sessions — no need to call reasoning first.
+    When to use:
+        - Use this to store intermediate results, calculations, or
+          notes within a task (e.g., "analysis_v1": "Option A: 8/10").
+        - Use this to pass data between reasoning steps or across
+          tool calls within the same task.
+        - Use this to save partial progress that you'll reference
+          later in the conversation.
+        - Do NOT use this for long-term facts that must survive
+          across conversations — use `knowledge` instead.
+        - Do NOT use this for structured execution plans — use `plan`.
+
+    Why:
+        Scratchpad is lightweight working memory that persists across
+        reasoning sessions but is designed for ephemeral data. It's
+        independent of reasoning sessions — no need to call reasoning
+        first.
 
     Operations:
-    - "get" — retrieve a stored value by key
-    - "set" — store a value (requires value parameter)
-    - "delete" — remove a key
-    - "list" — show all stored keys and values
+        - "get": Retrieve a stored value by key.
+        - "set": Store a value (requires value parameter).
+        - "delete": Remove a key (use key="all" to clear everything).
+        - "list": Show all stored keys and values.
 
     Args:
-        intent: Why you're using the scratchpad (e.g., "Storing plan outline").
+        reason: Why you're using the scratchpad (for logging/auditing).
         key: The key to operate on (ignored for "list" operation).
         value: Value to store (required for "set" operation).
-        operation: One of "get", "set", "delete", "list" (default: "get").
+        operation: One of "get", "set", "delete", "list"
+            (default: "get").
         agent_id: Agent identifier (auto-set, do not provide).
 
     Returns:
         Operation result with the stored/retrieved value.
+
+    Important:
+        - Data is persisted to SQLite and survives server restarts,
+          but is designed for ephemeral use within a task.
+        - Use key="all" with operation="delete" to clear all entries.
     """
     operation = operation.lower().strip()
     now = utc_timestamp()
 
     if operation == "set":
-        return _op_set(intent, agent_id, key, value, now)
+        return _op_set(reason, agent_id, key, value, now)
     elif operation == "get":
-        return _op_get(intent, agent_id, key, now)
+        return _op_get(reason, agent_id, key, now)
     elif operation == "delete":
-        return _op_delete(intent, agent_id, key, now)
+        return _op_delete(reason, agent_id, key, now)
     elif operation == "list":
-        return _op_list(intent, agent_id, now)
+        return _op_list(reason, agent_id, now)
     else:
         return _err(
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             code="UNSUPPORTED_OPERATION",
             message=(
@@ -73,7 +92,7 @@ def scratchpad(
 
 def _ok(
     *,
-    intent: str,
+    reason: str,
     agent_id: str,
     data: Dict[str, Any],
     timestamp: str,
@@ -81,7 +100,7 @@ def _ok(
     return {
         "status": "success",
         "tool": "scratchpad",
-        "intent": intent,
+        "reason": reason,
         "agent_id": agent_id,
         "timestamp": timestamp,
         "data": data,
@@ -90,7 +109,7 @@ def _ok(
 
 def _err(
     *,
-    intent: str,
+    reason: str,
     agent_id: str,
     code: str,
     message: str,
@@ -106,7 +125,7 @@ def _err(
     return {
         "status": "error",
         "tool": "scratchpad",
-        "intent": intent,
+        "reason": reason,
         "agent_id": agent_id,
         "timestamp": utc_timestamp(),
         "error": err,
@@ -117,7 +136,7 @@ def _err(
 
 
 def _op_set(
-    intent: str,
+    reason: str,
     agent_id: str,
     key: str,
     value: Optional[str],
@@ -125,7 +144,7 @@ def _op_set(
 ) -> Dict[str, Any]:
     if value is None:
         return _err(
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             code="VALUE_REQUIRED",
             message="Value required for set operation",
@@ -133,24 +152,24 @@ def _op_set(
         )
 
     db = get_database()
-    db.set_item(agent_id, key, value, intent)
+    db.set_item(agent_id, key, value, reason)
 
     return _ok(
-        intent=intent,
+        reason=reason,
         agent_id=agent_id,
         timestamp=now,
         data={
             "tool": "set",
             "key": key,
             "value": value,
-            "intent": intent,
+            "reason": reason,
             "timestamp": now,
         },
     )
 
 
 def _op_get(
-    intent: str,
+    reason: str,
     agent_id: str,
     key: str,
     now: str,
@@ -160,7 +179,7 @@ def _op_get(
 
     if item is None:
         return _err(
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             code="KEY_NOT_FOUND",
             message=f"Key '{key}' not found",
@@ -168,7 +187,7 @@ def _op_get(
         )
 
     return _ok(
-        intent=intent,
+        reason=reason,
         agent_id=agent_id,
         timestamp=now,
         data={
@@ -181,7 +200,7 @@ def _op_get(
 
 
 def _op_delete(
-    intent: str,
+    reason: str,
     agent_id: str,
     key: str,
     now: str,
@@ -191,7 +210,7 @@ def _op_delete(
     if key == "all":
         count = db.clear_all(agent_id)
         return _ok(
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             timestamp=now,
             data={
@@ -205,14 +224,14 @@ def _op_delete(
     success = db.delete_item(agent_id, key)
     if not success:
         return _err(
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             code="KEY_NOT_FOUND",
             message=f"Key '{key}' not found for delete operation",
         )
 
     return _ok(
-        intent=intent,
+        reason=reason,
         agent_id=agent_id,
         timestamp=now,
         data={
@@ -224,7 +243,7 @@ def _op_delete(
 
 
 def _op_list(
-    intent: str,
+    reason: str,
     agent_id: str,
     now: str,
 ) -> Dict[str, Any]:
@@ -232,7 +251,7 @@ def _op_list(
     items = db.list_items(agent_id)
 
     return _ok(
-        intent=intent,
+        reason=reason,
         agent_id=agent_id,
         timestamp=now,
         data={

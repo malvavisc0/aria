@@ -50,17 +50,33 @@ MAX_ARTICLES = 50
 
 
 @log_tool_call
-def fetch_current_stock_price(intent: str, ticker: str) -> str:
+def fetch_current_stock_price(reason: str, ticker: str) -> str:
     """
-    Fetch current price for a ticker.
+    Fetch the current market price for a stock or crypto ticker.
+
+    When to use:
+        - Use this when the user asks for the current price of a stock,
+          ETF, or cryptocurrency.
+        - Use this to get the day's change (absolute and percentage).
+        - Do NOT use this for company fundamentals — use
+          `fetch_company_information`.
+
+    Why:
+        Provides real-time and previous-close pricing via Yahoo Finance,
+        including market state (open/closed) and day change calculations.
 
     Args:
-        intent: Why you're fetching (e.g., "Checking portfolio value")
-        ticker: Stock symbol (e.g., AAPL, GOOGL, BTC-USD)
+        reason: Why you're fetching (for logging/auditing).
+        ticker: Stock symbol (e.g., AAPL, GOOGL, BTC-USD).
 
     Returns:
         JSON with current_price, currency, market_state, day_change,
         day_change_percent, previous_close.
+
+    Important:
+        - Supports stocks, ETFs, and crypto (use BTC-USD format for
+          crypto pairs).
+        - Market state indicates whether the exchange is currently open.
     """
     logger.info(f"fetch_current_stock_price called with ticker='{ticker}'")
     raw_ticker = ticker
@@ -116,13 +132,13 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
             f"Successfully fetched price for {ticker}: "
             f"${result['current_price']} {result['currency']}"
         )
-        return tool_success_response(get_function_name(), intent, result)
+        return tool_success_response(get_function_name(), reason, result)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker}: {exc}")
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             exc,
             ticker=raw_ticker,
             error_type="validation_error",
@@ -131,7 +147,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
         logger.error(f"Data error for {raw_ticker}: {exc}")
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             exc,
             ticker=raw_ticker,
             error_type="data_error",
@@ -144,7 +160,7 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
         )
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             RuntimeError(f"Failed to get current price: {exc}"),
             ticker=raw_ticker,
             error_type="unexpected_error",
@@ -152,17 +168,34 @@ def fetch_current_stock_price(intent: str, ticker: str) -> str:
 
 
 @log_tool_call
-def fetch_company_information(intent: str, ticker: str) -> str:
+def fetch_company_information(reason: str, ticker: str) -> str:
     """
-    Fetch company fundamentals/metadata for a ticker.
+    Fetch comprehensive company fundamentals and metadata for a ticker.
+
+    When to use:
+        - Use this when the user asks about a company's business,
+          financials, valuation, or analyst recommendations.
+        - Use this to get sector, industry, market cap, P/E ratio,
+          revenue growth, and other fundamental data.
+        - Do NOT use this for just the current price — use
+          `fetch_current_stock_price`.
+
+    Why:
+        Aggregates all key company data into one response: basic info,
+        financial metrics, price data, financial health, and analyst
+        consensus — essential for investment research.
 
     Args:
-        intent: Why you're fetching (e.g., "Researching investment")
-        ticker: Stock symbol (e.g., AAPL, GOOGL)
+        reason: Why you're fetching (for logging/auditing).
+        ticker: Stock symbol (e.g., AAPL, GOOGL).
 
     Returns:
         JSON with basic_info, financial_metrics, price_data,
         financial_health, analyst_data, location.
+
+    Important:
+        - Data source is Yahoo Finance.
+        - Some fields may be None if not available for the ticker.
     """
     logger.info(f"fetch_company_information called with ticker='{ticker}'")
     raw_ticker = ticker
@@ -243,13 +276,13 @@ def fetch_company_information(intent: str, ticker: str) -> str:
             f"Successfully fetched company info for {ticker}: "
             f"{company_info['basic_info'].get('name', 'Unknown')}"
         )
-        return tool_success_response(get_function_name(), intent, company_info)
+        return tool_success_response(get_function_name(), reason, company_info)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker}: {exc}")
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             exc,
             ticker=raw_ticker,
             error_type="validation_error",
@@ -258,7 +291,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
         logger.error(f"Data error for {raw_ticker}: {exc}")
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             exc,
             ticker=raw_ticker,
             error_type="data_error",
@@ -269,7 +302,7 @@ def fetch_company_information(intent: str, ticker: str) -> str:
         )
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             RuntimeError(f"Failed to get company information: {exc}"),
             ticker=raw_ticker,
             error_type="unexpected_error",
@@ -277,17 +310,33 @@ def fetch_company_information(intent: str, ticker: str) -> str:
 
 
 @log_tool_call
-def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
+def fetch_ticker_news(reason: str, ticker: str, max_articles: int = 10) -> str:
     """
-    Fetch recent news for a ticker.
+    Fetch recent news articles for a stock or crypto ticker.
+
+    When to use:
+        - Use this when the user asks about recent news or events
+          related to a specific stock or company.
+        - Use this to gauge market sentiment around a ticker.
+        - Do NOT use this for company fundamentals — use
+          `fetch_company_information`.
+
+    Why:
+        Provides the latest news headlines with publisher info and
+        timestamps, helping users stay informed about market-moving
+        events.
 
     Args:
-        intent: Why you're fetching (e.g., "Checking market sentiment")
-        ticker: Stock symbol (e.g., AAPL, GOOGL)
-        max_articles: Number of articles (default: 10, max: 50)
+        reason: Why you're fetching (for logging/auditing).
+        ticker: Stock symbol (e.g., AAPL, GOOGL).
+        max_articles: Number of articles (default: 10, max: 50).
 
     Returns:
         JSON with articles[{title, publisher, link, publish_time}].
+
+    Important:
+        - Data source is Yahoo Finance news feed.
+        - Articles are sorted by recency (most recent first).
     """
     logger.info(
         f"fetch_ticker_news called with ticker='{ticker}', "
@@ -318,7 +367,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         if not news_data:
             return tool_success_response(
                 get_function_name(),
-                intent,
+                reason,
                 {
                     "ticker": ticker,
                     "articles": [],
@@ -344,13 +393,13 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         logger.info(
             f"Successfully fetched {len(articles)} news articles for {ticker}"
         )
-        return tool_success_response(get_function_name(), intent, result)
+        return tool_success_response(get_function_name(), reason, result)
 
     except YFinanceValidationError as exc:
         logger.error(f"Validation error for {raw_ticker} news: {exc}")
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             exc,
             ticker=raw_ticker,
             error_type="validation_error",
@@ -361,7 +410,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         logger.error(f"Data error for {raw_ticker} news: {exc}")
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             exc,
             ticker=raw_ticker,
             error_type="data_error",
@@ -374,7 +423,7 @@ def fetch_ticker_news(intent: str, ticker: str, max_articles: int = 10) -> str:
         )
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             RuntimeError(f"Failed to get news: {exc}"),
             ticker=raw_ticker,
             error_type="unexpected_error",

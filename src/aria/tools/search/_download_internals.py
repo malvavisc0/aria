@@ -252,19 +252,19 @@ def _markitdown(
 
 
 def _create_response(
-    tool: str, intent: str, file_path: str, metadata: Dict
+    tool: str, reason: str, file_path: str, metadata: Dict
 ) -> str:
     """Create a success JSON response."""
     return tool_success_response(
         tool,
-        intent,
+        reason,
         {"file_path": file_path, "metadata": metadata},
     )
 
 
-def _create_error_response(tool: str, intent: str, error_message: str) -> str:
+def _create_error_response(tool: str, reason: str, error_message: str) -> str:
     """Create an error JSON response."""
-    return tool_error_response(tool, intent, RuntimeError(error_message))
+    return tool_error_response(tool, reason, RuntimeError(error_message))
 
 
 def _save_content_to_file(

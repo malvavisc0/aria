@@ -31,11 +31,11 @@ def test_success_uses_standard_envelope() -> None:
     manager = _make_manager()
 
     ok_payload = json.loads(
-        manager._success({"key": "val"}, tool="test_tool", intent="testing")
+        manager._success({"key": "val"}, tool="test_tool", reason="testing")
     )
     assert ok_payload["status"] == "success"
     assert ok_payload["tool"] == "test_tool"
-    assert ok_payload["intent"] == "testing"
+    assert ok_payload["reason"] == "testing"
     assert "timestamp" in ok_payload
     assert ok_payload["data"] == {"key": "val"}
 
@@ -45,12 +45,12 @@ def test_error_uses_standard_envelope() -> None:
 
     err_payload = json.loads(
         manager._error(
-            "boom", recovery=True, tool="test_tool", intent="testing"
+            "boom", recovery=True, tool="test_tool", reason="testing"
         )
     )
     assert err_payload["status"] == "error"
     assert err_payload["tool"] == "test_tool"
-    assert err_payload["intent"] == "testing"
+    assert err_payload["reason"] == "testing"
     assert "timestamp" in err_payload
     assert err_payload["error"]["message"] == "boom"
     assert err_payload["error"]["recoverable"] is True
@@ -62,7 +62,7 @@ def test_error_uses_standard_envelope() -> None:
 def test_error_without_recovery() -> None:
     manager = _make_manager()
     payload = json.loads(
-        manager._error("something broke", tool="t", intent="i")
+        manager._error("something broke", tool="t", reason="i")
     )
     assert payload["status"] == "error"
     assert payload["error"]["message"] == "something broke"
@@ -76,7 +76,7 @@ async def test_with_recovery_returns_error_when_page_unavailable() -> None:
     manager._ensure_page = AsyncMock(return_value=False)
 
     result = await manager._with_recovery(
-        "test", AsyncMock(return_value="ok"), tool="t", intent="i"
+        "test", AsyncMock(return_value="ok"), tool="t", reason="i"
     )
     payload = json.loads(result)
     assert payload["status"] == "error"
@@ -106,7 +106,7 @@ async def test_with_recovery_returns_recovery_error_on_crash() -> None:
     manager._is_page_valid = Mock(return_value=False)
 
     fn = AsyncMock(side_effect=Exception("crashed"))
-    result = await manager._with_recovery("test", fn, tool="t", intent="i")
+    result = await manager._with_recovery("test", fn, tool="t", reason="i")
     payload = json.loads(result)
 
     assert payload["status"] == "error"
@@ -128,7 +128,7 @@ async def test_with_recovery_returns_plain_error_when_page_still_valid() -> (
     manager._is_page_valid = Mock(return_value=True)
 
     fn = AsyncMock(side_effect=Exception("timeout"))
-    result = await manager._with_recovery("test", fn, tool="t", intent="i")
+    result = await manager._with_recovery("test", fn, tool="t", reason="i")
     payload = json.loads(result)
 
     assert payload["status"] == "error"
@@ -156,7 +156,7 @@ async def test_navigate_returns_recovery_error_after_crash() -> None:
     manager._ensure_page = AsyncMock(side_effect=[True, True])
 
     result = await manager.navigate(
-        "https://example.com", tool="open_url", intent="testing"
+        "https://example.com", tool="open_url", reason="testing"
     )
     payload = json.loads(result)
 
@@ -184,7 +184,7 @@ async def test_click_returns_recovery_error_after_crash() -> None:
     manager._ensure_page = AsyncMock(side_effect=[True, True])
 
     result = await manager.click(
-        "button.accept", tool="browser_click", intent="testing"
+        "button.accept", tool="browser_click", reason="testing"
     )
     payload = json.loads(result)
 
@@ -198,7 +198,7 @@ async def test_get_page_content_returns_error_json_when_unavailable() -> None:
     manager = _make_manager()
     manager._ensure_page = AsyncMock(return_value=False)
 
-    result = await manager.get_page_content(tool="t", intent="i")
+    result = await manager.get_page_content(tool="t", reason="i")
     payload = json.loads(result)
 
     assert payload["status"] == "error"

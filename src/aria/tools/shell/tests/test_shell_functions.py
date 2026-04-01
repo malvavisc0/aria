@@ -69,7 +69,7 @@ class TestShellSingleCommand:
     def test_execute_simple_command(self):
         """Test executing a simple echo command."""
         result = shell(
-            intent="Test echo command",
+            reason="Test echo command",
             commands={"command_name": "echo", "args": ["hello"]},
             timeout=5,
         )
@@ -84,7 +84,7 @@ class TestShellSingleCommand:
     def test_execute_command_with_timeout(self):
         """Test command execution with custom timeout."""
         result = shell(
-            intent="Test sleep command",
+            reason="Test sleep command",
             commands={
                 "command_name": "python",
                 "args": ["-c", "import time; time.sleep(0.1)"],
@@ -99,7 +99,7 @@ class TestShellSingleCommand:
         """Test command execution with custom working directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = shell(
-                intent="Test ls in temp dir",
+                reason="Test ls in temp dir",
                 commands={
                     "command_name": "ls" if not IS_WINDOWS else "dir",
                     "args": [],
@@ -115,7 +115,7 @@ class TestShellSingleCommand:
     def test_execute_command_treats_shell_operators_as_literal_args(self):
         """Test that shell operators in args are treated as literal text."""
         result = shell(
-            intent="Test literal args",
+            reason="Test literal args",
             commands={
                 "command_name": "echo",
                 "args": ["hello | world"],
@@ -130,7 +130,7 @@ class TestShellSingleCommand:
     def test_execute_command_timeout(self):
         """Test command execution timeout."""
         result = shell(
-            intent="Test timeout",
+            reason="Test timeout",
             commands={
                 "command_name": "python",
                 "args": ["-c", "import time; time.sleep(10)"],
@@ -144,7 +144,7 @@ class TestShellSingleCommand:
     def test_execute_command_error_handling(self):
         """Test command execution with non-zero exit code."""
         result = shell(
-            intent="Test error handling",
+            reason="Test error handling",
             commands={
                 "command_name": "python",
                 "args": ["-c", "import sys; sys.exit(1)"],
@@ -158,7 +158,7 @@ class TestShellSingleCommand:
     def test_execute_blocked_command_returns_error(self):
         """Test that executing a blocked command returns an error result."""
         result = shell(
-            intent="Test blocked command",
+            reason="Test blocked command",
             commands={"command_name": "shutdown", "args": []},
             timeout=5,
         )
@@ -171,7 +171,7 @@ class TestShellSingleCommand:
     def test_response_has_timestamp(self):
         """Test that response includes timestamp at top level."""
         result = shell(
-            intent="Test metadata",
+            reason="Test metadata",
             commands={"command_name": "echo", "args": ["test"]},
             timeout=5,
         )
@@ -182,7 +182,7 @@ class TestShellSingleCommand:
     def test_response_has_platform(self):
         """Test that response includes platform info."""
         result = shell(
-            intent="Test platform in response",
+            reason="Test platform in response",
             commands={"command_name": "echo", "args": ["test"]},
             timeout=5,
         )
@@ -198,7 +198,7 @@ class TestShellSingleCommand:
             test_file.write_text("test content")
 
             result = shell(
-                intent="Test cat command",
+                reason="Test cat command",
                 commands={
                     "command_name": "cat" if not IS_WINDOWS else "type",
                     "args": [str(test_file)],
@@ -215,7 +215,7 @@ class TestShellSingleCommand:
         # vm_stat is in the safe list but only exists on macOS
         if not IS_WINDOWS:
             result = shell(
-                intent="Test command not found",
+                reason="Test command not found",
                 commands={"command_name": "vm_stat", "args": []},
                 timeout=5,
             )
@@ -227,7 +227,7 @@ class TestShellSingleCommand:
     def test_legacy_command_string_format(self):
         """Test legacy command string format (shlex split)."""
         result = shell(
-            intent="Test legacy format",
+            reason="Test legacy format",
             commands={"command": "echo hello world"},
             timeout=5,
         )
@@ -239,7 +239,7 @@ class TestShellSingleCommand:
     def test_single_command_has_batch_metadata(self):
         """Test that single dict input returns batch metadata."""
         result = shell(
-            intent="Test batch metadata for single",
+            reason="Test batch metadata for single",
             commands={"command_name": "echo", "args": ["test"]},
             timeout=5,
         )
@@ -261,7 +261,7 @@ class TestShellBatch:
             {"command": "echo world"},
         ]
         result = shell(
-            intent="Test batch execution",
+            reason="Test batch execution",
             commands=commands,
             stop_on_error=True,
         )
@@ -280,7 +280,7 @@ class TestShellBatch:
             {"command": "echo world"},
         ]
         result = shell(
-            intent="Test batch with error",
+            reason="Test batch with error",
             commands=commands,
             stop_on_error=True,
         )
@@ -298,7 +298,7 @@ class TestShellBatch:
             {"command": "echo world"},
         ]
         result = shell(
-            intent="Test batch continue on error",
+            reason="Test batch continue on error",
             commands=commands,
             stop_on_error=True,
         )
@@ -311,7 +311,7 @@ class TestShellBatch:
         """Test that batch response includes timestamp."""
         commands = [{"command": "echo test"}]
         result = shell(
-            intent="Test batch metadata",
+            reason="Test batch metadata",
             commands=commands,
         )
         data = json.loads(result)
@@ -322,7 +322,7 @@ class TestShellBatch:
     def test_execute_empty_commands(self):
         """Test that empty commands list returns valid response."""
         result = shell(
-            intent="Test empty commands",
+            reason="Test empty commands",
             commands=[],
         )
         data = json.loads(result)

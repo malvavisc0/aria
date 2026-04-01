@@ -45,14 +45,14 @@ def _build_response(
     if error:
         return tool_response(
             tool=operation,
-            intent="",
+            reason="",
             data={"error": error},
             **metadata,
         )
 
     return tool_response(
         tool=operation,
-        intent="",
+        reason="",
         data={"result": result, "tool": operation},
         **metadata,
     )
@@ -62,7 +62,7 @@ def _error_response(
     operation: str,
     identifier: str,
     exc: Exception,
-    intent: str = "",
+    reason: str = "",
 ) -> str:
     """Generate error response for Python runner operations.
 
@@ -70,14 +70,14 @@ def _error_response(
         operation: The operation that failed (unused, kept for API compatibility)
         identifier: Code snippet or filename involved in the operation
         exc: The exception that occurred
-        intent: The agent's stated intent for calling this tool
+        reason: The agent's stated reason for calling this tool
 
     Returns:
         str: JSON formatted error response string
     """
     return tool_error_response(
         tool=get_function_name(depth=2),
-        intent=intent,
+        reason=reason,
         exc=exc,
         identifier=identifier,
     )

@@ -15,35 +15,52 @@ _ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
 @log_tool_call
 def http_request(
-    intent: str,
+    reason: str,
     method: str,
     url: str,
     headers: Optional[Dict[str, str]] = None,
     body: Optional[str] = None,
     timeout: Optional[int] = None,
 ) -> str:
-    """Make HTTP requests to web APIs.
+    """Make HTTP requests to web APIs with redirect following.
 
-    Supports GET, POST, PUT, DELETE, PATCH methods with configurable
-    headers and body.
+    When to use:
+        - Use this to call REST APIs, fetch JSON data, or interact with
+          web services.
+        - Use this when you need full control over HTTP method, headers,
+          and body (e.g., POST with JSON payload).
+        - Do NOT use this to browse websites — use `open_url` for pages
+          that need JavaScript rendering.
+        - Do NOT use this to download files — use `download`.
+
+    Why:
+        Provides a general-purpose HTTP client (httpx) for API
+        integration. Follows redirects and never raises — errors are
+        returned in the response JSON.
 
     Args:
-        intent: Why you're making this request.
-        method: HTTP method (GET, POST, PUT, DELETE, PATCH).
+        reason: Why you're making this request (for logging/auditing).
+        method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD,
+            OPTIONS).
         url: The URL to request.
-        headers: Optional request headers.
-        body: Optional request body (for POST/PUT/PATCH).
+        headers: Optional request headers (dict).
+        body: Optional request body string (for POST/PUT/PATCH).
         timeout: Timeout in seconds (default: 30, max: 300).
 
     Returns:
-        JSON with status_code, headers, and body.
+        JSON with status_code, headers, body, url. Never raises —
+        errors are returned in the response data.
+
+    Important:
+        - This tool never raises exceptions; errors are returned as JSON.
+        - Follows HTTP redirects automatically.
     """
     method = method.upper().strip()
 
     if method not in _ALLOWED_METHODS:
         return tool_response(
             tool="http_request",
-            intent=intent,
+            reason=reason,
             data={
                 "error": (
                     f"Method '{method}' not allowed. "
@@ -71,7 +88,7 @@ def http_request(
 
         return tool_response(
             tool="http_request",
-            intent=intent,
+            reason=reason,
             data={
                 "status_code": response.status_code,
                 "headers": dict(response.headers),
@@ -83,19 +100,19 @@ def http_request(
     except httpx.TimeoutException:
         return tool_response(
             tool="http_request",
-            intent=intent,
+            reason=reason,
             data={"error": f"Request timed out after {actual_timeout}s"},
         )
     except httpx.ConnectError as exc:
         return tool_response(
             tool="http_request",
-            intent=intent,
+            reason=reason,
             data={"error": f"Connection failed: {exc}"},
         )
     except Exception as exc:
         logger.exception("HTTP request failed")
         return tool_response(
             tool="http_request",
-            intent=intent,
+            reason=reason,
             data={"error": f"Request failed: {exc}"},
         )

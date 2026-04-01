@@ -46,20 +46,20 @@ class TestFilesPackageContract:
         """Verify write operation functions have documented parameter names."""
         from aria.tools.files.write_operations import edit_file, write_file
 
-        # write_file: intent, file_name, contents, mode
+        # write_file: reason, file_name, contents, mode
         sig = inspect.signature(write_file)
         params = list(sig.parameters.keys())
-        assert "intent" in params
+        assert "reason" in params
         assert "file_name" in params
         assert (
             "contents" in params
         ), "write_file should have 'contents' parameter"
         assert "mode" in params, "write_file should have 'mode' parameter"
 
-        # edit_file: intent, file_name, offset, length, new_lines
+        # edit_file: reason, file_name, offset, length, new_lines
         sig = inspect.signature(edit_file)
         params = list(sig.parameters.keys())
-        assert "intent" in params
+        assert "reason" in params
         assert "file_name" in params
         assert "offset" in params, "edit_file should have 'offset' parameter"
 
@@ -113,35 +113,35 @@ class TestReasoningPackageContract:
 
 
 class TestToolSuccessResponseContract:
-    """Verify tool_success_response handles intent correctly."""
+    """Verify tool_success_response handles reason correctly."""
 
-    def test_tool_success_response_uses_provided_intent(self):
-        """Verify tool_success_response preserves the intent parameter."""
+    def test_tool_success_response_uses_provided_reason(self):
+        """Verify tool_success_response preserves the reason parameter."""
         response_str = tool_success_response(
             tool="test_tool",
-            intent="my_test_intent",
+            reason="my_test_reason",
             data={"result": "success"},
         )
         import json
 
         response = json.loads(response_str)
         assert (
-            response["intent"] == "my_test_intent"
-        ), "tool_success_response should preserve the intent parameter"
+            response["reason"] == "my_test_reason"
+        ), "tool_success_response should preserve the reason parameter"
 
-    def test_tool_success_response_falls_back_for_empty_intent(self):
-        """Verify tool_success_response handles empty intent gracefully."""
+    def test_tool_success_response_falls_back_for_empty_reason(self):
+        """Verify tool_success_response handles empty reason gracefully."""
         response_str = tool_success_response(
             tool="test_tool",
-            intent="",
+            reason="",
             data={"result": "success"},
         )
         import json
 
         response = json.loads(response_str)
         assert (
-            response["intent"] == "unspecified_test_tool_operation"
-        ), "tool_success_response should use fallback intent when empty"
+            response["reason"] == "unspecified_test_tool_operation"
+        ), "tool_success_response should use fallback reason when empty"
 
 
 class TestPathContractConsistency:

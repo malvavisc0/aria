@@ -2,6 +2,19 @@
 
 A comprehensive guide to all tools available in the `src/aria/tools` package. Each tool returns JSON-formatted responses. Tools are organized into **7 categories** managed by a centralized registry.
 
+## Docstring Convention
+
+All tool function docstrings follow an LLM-friendly format designed to help the LLM make good tool-selection decisions. Each docstring includes:
+
+- **One-line summary** — what the tool does.
+- **When to use** — positive signals (use when) and negative signals (do NOT use when) with cross-references to alternative tools.
+- **Why** — the tool's purpose in the ecosystem and what problem it solves.
+- **Args** — parameter descriptions (with `reason` noted as for logging/auditing).
+- **Returns** — response structure.
+- **Important** — gotchas, constraints, and tips.
+
+This format is consumed by LlamaIndex's `FunctionTool.from_defaults()` which extracts the docstring as the tool description sent to the LLM.
+
 ---
 
 ## Table of Contents
@@ -48,11 +61,11 @@ Shared utilities, decorators, constants, error handling, and retry mechanisms us
 
 #### `log_tool_call(func)`
 
-Logs tool calls with intent parameter. Extracts intent from the first argument. Auto-detects sync/async.
+Logs tool calls with reason parameter. Extracts reason from the first argument. Auto-detects sync/async.
 
 ```python
 @log_tool_call
-def my_tool(intent: str, ...) -> str:
+def my_tool(reason: str, ...) -> str:
     ...
 ```
 
@@ -70,7 +83,7 @@ Composes logging, validation, and error handling. Wrapper order (outermost to in
     error_handler=with_runner_error_handling,
     validation_decorator=with_input_validation,
 )
-def my_tool(intent: str, code: str) -> str:
+def my_tool(reason: str, code: str) -> str:
     ...
 ```
 
@@ -80,9 +93,9 @@ def my_tool(intent: str, code: str) -> str:
 |----------|-------------|
 | `utc_timestamp() -> str` | Generate UTC ISO 8601 timestamp |
 | `safe_json(data, *, default, indent, ensure_ascii) -> str` | Safe JSON serialization with fallback to `str()` |
-| `tool_response(tool, intent, data=None, exc=None, **context) -> str` | Auto-selects success/error response |
-| `tool_success_response(tool, intent, data, **context) -> str` | Standardized success JSON |
-| `tool_error_response(tool, intent, exc, **context) -> str` | Standardized error JSON |
+| `tool_response(tool, reason, data=None, exc=None, **context) -> str` | Auto-selects success/error response |
+| `tool_success_response(tool, reason, data, **context) -> str` | Standardized success JSON |
+| `tool_error_response(tool, reason, exc, **context) -> str` | Standardized error JSON |
 | `get_function_name(depth=1) -> str` | Get calling function name |
 
 **Success response structure:**
@@ -90,7 +103,7 @@ def my_tool(intent: str, code: str) -> str:
 {
   "status": "success",
   "tool": "tool_name",
-  "intent": "why this was called",
+  "reason": "why this was called",
   "timestamp": "2024-01-01T12:00:00Z",
   "data": { }
 }
@@ -101,7 +114,7 @@ def my_tool(intent: str, code: str) -> str:
 {
   "status": "error",
   "tool": "tool_name",
-  "intent": "why this was called",
+  "reason": "why this was called",
   "timestamp": "2024-01-01T12:00:00Z",
   "error": {
     "code": "ERROR_CODE",
@@ -195,24 +208,24 @@ Each category has a private loader (e.g., `_get_core_tools()`) that lazily impor
 
 Browser automation using Lightpanda with Playwright CDP. Bypasses anti-bot protection. Browser starts automatically with the Aria server.
 
-### `open_url(intent, url)` -- async
+### `open_url(reason, url)` -- async
 
 Open a URL and get page content.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `intent` | `str` | Yes | Why you are opening this URL |
+| `reason` | `str` | Yes | Why you are opening this URL |
 | `url` | `str` | Yes | The URL to navigate to |
 
 **Returns:** JSON with URL, title, persisted content metadata (`content_file`, `content_preview`, `content_size`).
 
-### `browser_click(intent, selector)` -- async
+### `browser_click(reason, selector)` -- async
 
 Click an element by CSS selector.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `intent` | `str` | Yes | Why you are clicking |
+| `reason` | `str` | Yes | Why you are clicking |
 | `selector` | `str` | Yes | CSS selector (e.g., `button.accept`, `a[href="/next"]`, `#submit-button`) |
 
 **Returns:** JSON with updated page content metadata.
@@ -230,13 +243,13 @@ await browser_click("Going to next page", "a.next-page")
 
 Consolidates `check_python_syntax`, `check_python_file_syntax`, `execute_python_code`, `execute_python_file` into one tool.
 
-### `python(intent, code?, file?, args?, timeout=30, check_only=False)`
+### `python(reason, code?, file?, args?, timeout=30, check_only=False)`
 
 Execute or validate Python code. Provide **exactly one** of `code` or `file`.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `intent` | `str` | Yes | -- | Why you're running this |
+| `reason` | `str` | Yes | -- | Why you're running this |
 | `code` | `str` | One of code/file | `None` | Python code string |
 | `file` | `str` | One of code/file | `None` | Path to Python file |
 | `args` | `List[str]` | No | `None` | CLI arguments for `sys.argv` |
@@ -269,13 +282,13 @@ Consolidates 15+ previous functions into 9 tools:
 
 All paths resolved relative to `BASE_DIR` with security validation.
 
-### `read_file(intent, file_name, offset=0, length=0, max_lines=500)`
+### `read_file(reason, file_name, offset=0, length=0, max_lines=500)`
 
 Read file contents with optional chunking.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why you're reading |
+| `reason` | `str` | -- | Why you're reading |
 | `file_name` | `str` | -- | Path relative to `BASE_DIR` |
 | `offset` | `int` | `0` | 0-indexed starting line |
 | `length` | `int` | `0` | Lines to read (0 = all) |
@@ -286,29 +299,29 @@ Read file contents with optional chunking.
 
 **Returns:** JSON with `file_name`, `content`, `lines[]`, `total_lines`, `mode`.
 
-### `file_info(intent, file_name)`
+### `file_info(reason, file_name)`
 
 Get file metadata: `exists`, `is_file`, `is_directory`, `size`, `created`, `modified`, `permissions`, `mime_type`.
 
-### `list_files(intent, pattern="*", recursive=False, max_depth=3, max_results=100, path=".")`
+### `list_files(reason, pattern="*", recursive=False, max_depth=3, max_results=100, path=".")`
 
 List files/directories. `recursive=True` gives tree view; `False` gives flat list.
 
 **Returns:** JSON with `files` or `tree`, plus `count`.
 
-### `search_files(intent, pattern, mode="name", file_pattern="**/*", recursive=True, max_results=500, context_lines=2, path=".")`
+### `search_files(reason, pattern, mode="name", file_pattern="**/*", recursive=True, max_results=500, context_lines=2, path=".")`
 
 Search by filename (`mode="name"`) or content (`mode="content"`) regex.
 
 **Returns:** JSON with `matches[]`, `count`.
 
-### `write_file(intent, file_name, contents, mode="overwrite")`
+### `write_file(reason, file_name, contents, mode="overwrite")`
 
 Write or append. Auto-creates parent dirs. Atomic writes with backup.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why you're writing |
+| `reason` | `str` | -- | Why you're writing |
 | `file_name` | `str` | -- | Absolute path |
 | `contents` | `str` | -- | Content to write |
 | `mode` | `str` | `"overwrite"` | `"overwrite"` or `"append"` |
@@ -316,7 +329,7 @@ Write or append. Auto-creates parent dirs. Atomic writes with backup.
 **Returns (overwrite):** `bytes_written`, `lines_written`, `created`, `backup_created`
 **Returns (append):** `bytes_appended`, `new_total_lines`, `new_file_size`
 
-### `edit_file(intent, file_name, offset, length=0, new_lines?)`
+### `edit_file(reason, file_name, offset, length=0, new_lines?)`
 
 Insert, replace, or delete lines. Always creates backup.
 
@@ -334,15 +347,15 @@ edit_file("Updating fn", "module.py", offset=2, length=3, new_lines=["def new():
 edit_file("Removing code", "module.py", offset=2, length=3)
 ```
 
-### `copy_file(intent, source, destination, overwrite=False)`
+### `copy_file(reason, source, destination, overwrite=False)`
 
 Copy a file. Returns `source`, `destination`, `bytes_copied`, `success`.
 
-### `delete_file(intent, file_name)`
+### `delete_file(reason, file_name)`
 
 Delete with backup. Returns `file_name`, `deleted`, `backup_created`.
 
-### `rename_file(intent, old_name, new_name)`
+### `rename_file(reason, old_name, new_name)`
 
 Rename/move. Returns `old_name`, `new_name`, `success`.
 
@@ -352,13 +365,13 @@ Rename/move. Returns `old_name`, `new_name`, `success`.
 
 **Package:** `aria.tools.http` -- **Category:** SYSTEM (on-demand)
 
-### `http_request(intent, method, url, headers?, body?, timeout?)`
+### `http_request(reason, method, url, headers?, body?, timeout?)`
 
 General-purpose HTTP requests via `httpx` with redirect following.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why you're requesting |
+| `reason` | `str` | -- | Why you're requesting |
 | `method` | `str` | -- | `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS` |
 | `url` | `str` | -- | URL to request |
 | `headers` | `Dict[str, str]` | `None` | Request headers |
@@ -382,37 +395,37 @@ http_request("Creating user", "POST", "https://api.example.com/users",
 
 Movie/TV information via the `imdbinfo` package. Returns curated field subsets.
 
-### `search_imdb_titles(intent, query, title_type?)`
+### `search_imdb_titles(reason, query, title_type?)`
 
 Search titles. `title_type`: `movie`, `series`, `episode`, `short`, `tv_movie`, `video`.
 
 **Returns:** `titles[{imdbId, title, year, kind, rating}]`, `names[{imdbId, name, job}]`.
 
-### `get_movie_details(intent, imdb_id)`
+### `get_movie_details(reason, imdb_id)`
 
 Full movie/series details: `title`, `year`, `rating`, `genres`, `plot`, `runtime`, `directors[]`, `writers[]`, `cast[]`, `stars[]`, `awards`.
 
-### `get_person_details(intent, person_id)`
+### `get_person_details(reason, person_id)`
 
 Person bio and filmography highlights.
 
-### `get_person_filmography(intent, person_id)`
+### `get_person_filmography(reason, person_id)`
 
 Full filmography: `director[]`, `actor[]`, `producer[]`, `writer[]`.
 
-### `get_all_series_episodes(intent, imdb_id)`
+### `get_all_series_episodes(reason, imdb_id)`
 
 All episodes with season, episode number, title, rating, air date.
 
-### `get_movie_reviews(intent, imdb_id)`
+### `get_movie_reviews(reason, imdb_id)`
 
 User reviews for a title.
 
-### `get_movie_trivia(intent, imdb_id)`
+### `get_movie_trivia(reason, imdb_id)`
 
 Trivia for a title.
 
-### `get_youtube_video_transcription(intent, url, download_path?)`
+### `get_youtube_video_transcription(reason, url, download_path?)`
 
 Download YouTube captions to disk. Returns `file_path`, `metadata` (with `video_id`, `transcript_segments`, `estimated_duration`).
 
@@ -426,11 +439,11 @@ Download YouTube captions to disk. Returns `file_path`, `metadata` (with `video_
 
 Persistent key-value store across conversations. SQLite-backed.
 
-### `knowledge(intent, action, key?, value?, tags?, entry_id?, query?, max_results=10, agent_id="aria")`
+### `knowledge(reason, action, key?, value?, tags?, entry_id?, query?, max_results=10, agent_id="aria")`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why you're using the store |
+| `reason` | `str` | -- | Why you're using the store |
 | `action` | `str` | -- | `store`, `recall`, `search`, `list`, `update`, `delete` |
 | `key` | `str` | `None` | Entry key (for `store`/`recall`) |
 | `value` | `str` | `None` | Value (for `store`/`update`) |
@@ -463,11 +476,11 @@ knowledge("Searching", action="search", query="Python")
 
 Consolidates 7 previous functions into one. SQLite-backed execution plans.
 
-### `plan(intent, action, task?, steps?, step_id?, status?, result?, description?, after_step_id?, step_ids?, execution_id?, agent_id="default")`
+### `plan(reason, action, task?, steps?, step_id?, status?, result?, description?, after_step_id?, step_ids?, execution_id?, agent_id="default")`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | What and why |
+| `reason` | `str` | -- | What and why |
 | `action` | `str` | -- | `create`, `get`, `update`, `add`, `remove`, `replace`, `reorder` |
 | `task` | `str` | `None` | Task description (for `create`) |
 | `steps` | `List[str]` | `None` | Step descriptions (for `create`) |
@@ -511,11 +524,11 @@ plan("Tests passed", action="update",
 
 Background process manager. In-memory (dies on restart). Max 5 concurrent.
 
-### `process(intent, action, name?, command?, args?, timeout?)`
+### `process(reason, action, name?, command?, args?, timeout?)`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why |
+| `reason` | `str` | -- | Why |
 | `action` | `str` | -- | `start`, `stop`, `status`, `logs`, `list` |
 | `name` | `str` | `None` | Unique process name |
 | `command` | `str` | `None` | Command (for `start`) |
@@ -548,13 +561,13 @@ process("Stopping", action="stop", name="devserver")
 
 Consolidates 9 previous functions into `reasoning` + independent `scratchpad`.
 
-### `reasoning(intent, action, content?, cognitive_mode?, reasoning_type?, evidence?, confidence?, on_step?, agent_id="aria")`
+### `reasoning(reason, action, content?, cognitive_mode?, reasoning_type?, evidence?, confidence?, on_step?, agent_id="aria")`
 
 Structured analysis tool. One active session per agent (auto-managed).
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | What and why |
+| `reason` | `str` | -- | What and why |
 | `action` | `str` | -- | `start`, `step`, `reflect`, `evaluate`, `summary`, `end` |
 | `content` | `str` | `None` | Reasoning content (for `step`/`reflect`) |
 | `cognitive_mode` | `str` | `"analysis"` | `planning`, `analysis`, `evaluation`, `synthesis`, `creative`, `reflection` |
@@ -587,13 +600,13 @@ reasoning("Quality check", action="evaluate")
 reasoning("Done", action="end")
 ```
 
-### `scratchpad(intent, key, value?, operation="get", agent_id="aria")`
+### `scratchpad(reason, key, value?, operation="get", agent_id="aria")`
 
 Independent key-value working memory. Persists across sessions.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why |
+| `reason` | `str` | -- | Why |
 | `key` | `str` | -- | Key (ignored for `list`) |
 | `value` | `str` | `None` | Value (for `set`) |
 | `operation` | `str` | `"get"` | `get`, `set`, `delete`, `list` |
@@ -619,13 +632,13 @@ scratchpad("Clearing", key="all", operation="delete")
 
 **Package:** `aria.tools.search` -- **Category:** CORE (always loaded) + FINANCE (on-demand)
 
-### `web_search(intent, query, category?, time_range?, max_results=10)`
+### `web_search(reason, query, category?, time_range?, max_results=10)`
 
 Auto-selects DuckDuckGo or SearXNG (if `SEARXNG_URL` env var set).
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why |
+| `reason` | `str` | -- | Why |
 | `query` | `str` | -- | Search query |
 | `category` | `str` | `None` | SearXNG only: `general`, `files`, `news`, `videos`, `images` |
 | `time_range` | `str` | `None` | SearXNG only: `day`, `week`, `month`, `year` |
@@ -633,13 +646,13 @@ Auto-selects DuckDuckGo or SearXNG (if `SEARXNG_URL` env var set).
 
 **Returns:** `results[{title, href}]`.
 
-### `download(intent, url, output="auto", custom_headers?, max_size?, download_path?, convert_to_markdown=False)`
+### `download(reason, url, output="auto", custom_headers?, max_size?, download_path?, convert_to_markdown=False)`
 
 Download files (PDFs, images, archives, HTML, etc.).
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why |
+| `reason` | `str` | -- | Why |
 | `url` | `str` | -- | Direct URL |
 | `output` | `str` | `"auto"` | `auto`, `markdown`, `text`, `binary` |
 | `custom_headers` | `Dict[str, str]` | `None` | HTTP headers |
@@ -649,13 +662,13 @@ Download files (PDFs, images, archives, HTML, etc.).
 
 **Returns:** `file_path`, `metadata` (mime_type, size_bytes), optionally `content` (markdown).
 
-### `get_current_weather(intent, location)`
+### `get_current_weather(reason, location)`
 
 Current weather via Open-Meteo (no API key).
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `intent` | `str` | Why |
+| `reason` | `str` | Why |
 | `location` | `str` | City name or place (e.g., `"Berlin"`) |
 
 **Returns:**
@@ -668,15 +681,15 @@ Current weather via Open-Meteo (no API key).
 
 ### Finance Tools (FINANCE category)
 
-#### `fetch_current_stock_price(intent, ticker)`
+#### `fetch_current_stock_price(reason, ticker)`
 
 Current price via Yahoo Finance. Returns `current_price`, `currency`, `market_state`, `day_change`, `day_change_percent`.
 
-#### `fetch_company_information(intent, ticker)`
+#### `fetch_company_information(reason, ticker)`
 
 Company fundamentals. Returns `basic_info`, `financial_metrics`, `price_data`, `financial_health`, `analyst_data`, `location`.
 
-#### `fetch_ticker_news(intent, ticker, max_articles=10)`
+#### `fetch_ticker_news(reason, ticker, max_articles=10)`
 
 Recent news. Returns `articles[{title, publisher, link, publish_time}]`. Max 50 articles.
 
@@ -688,11 +701,11 @@ Recent news. Returns `articles[{title, publisher, link, publish_time}]`. Max 50 
 
 Consolidates `execute_command`, `execute_command_batch`, `execute_safe_command` into one tool.
 
-### `shell(intent, commands, stop_on_error=True, timeout?, working_dir?)`
+### `shell(reason, commands, stop_on_error=True, timeout?, working_dir?)`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why |
+| `reason` | `str` | -- | Why |
 | `commands` | `Dict` or `List[Dict]` | -- | Command dict(s) |
 | `stop_on_error` | `bool` | `True` | Stop batch on failure |
 | `timeout` | `int` | `30` | Default timeout (max: 300) |
@@ -739,11 +752,11 @@ Factory returning async `parse_pdf` closure bound to VL server.
 | `api_base` | `str` | VL server URL (e.g., `http://localhost:9091/v1`) |
 | `model` | `str` | Model name (e.g., `granite-docling-258M-Q8_0.gguf`) |
 
-### `parse_pdf(intent, file_path, prompt="")` -- async
+### `parse_pdf(reason, file_path, prompt="")` -- async
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `intent` | `str` | -- | Why you're extracting |
+| `reason` | `str` | -- | Why you're extracting |
 | `file_path` | `str` | -- | Absolute path to PDF |
 | `prompt` | `str` | `""` | Extraction instruction (defaults to full text/table extraction) |
 

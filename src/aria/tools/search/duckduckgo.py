@@ -12,13 +12,13 @@ from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
 @log_tool_call
 def duckduckgo_web_search(
-    intent: str, query: str, max_results: Optional[int] = 5
+    reason: str, query: str, max_results: Optional[int] = 5
 ) -> str:
     """
     Search the web and return a small set of {title, href} results.
 
     Args:
-        intent: Why you're searching (e.g., "Finding documentation")
+        reason: Why you're searching (e.g., "Finding documentation")
         query: Search query string
         max_results: Maximum results (default: 5, max: 50)
 
@@ -31,7 +31,7 @@ def duckduckgo_web_search(
     validation_error = _validate_inputs(query, max_results)
     if validation_error:
         return tool_error_response(
-            get_function_name(), intent, RuntimeError(validation_error)
+            get_function_name(), reason, RuntimeError(validation_error)
         )
 
     results: List[Dict[str, str]] = []
@@ -66,13 +66,13 @@ def duckduckgo_web_search(
         logger.error(error_msg)
         # Log the full exception for debugging
         logger.debug(f"Full exception details: {type(exc).__name__}: {exc}")
-        return tool_error_response(get_function_name(), intent, exc)
+        return tool_error_response(get_function_name(), reason, exc)
 
     # Create and return final response
     from aria.tools import tool_success_response
 
     return tool_success_response(
-        get_function_name(), intent, {"results": results}
+        get_function_name(), reason, {"results": results}
     )
 
 

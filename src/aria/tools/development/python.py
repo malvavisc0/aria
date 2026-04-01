@@ -30,31 +30,45 @@ from aria.tools.development.exceptions import PythonSecurityError
     validation_decorator=with_input_validation,
 )
 def python(
-    intent: str,
+    reason: str,
     code: Optional[str] = None,
     file: Optional[str] = None,
     args: Optional[List[str]] = None,
     timeout: Optional[int] = DEFAULT_TIMEOUT,
     check_only: bool = False,
 ) -> str:
-    """Execute or validate Python code.
+    """Execute or validate Python code with sandboxed output capture.
 
-    Merges check_python_syntax + check_python_file_syntax +
-    execute_python_code + execute_python_file into one tool.
+    When to use:
+        - Use this to run Python code snippets or scripts when you need
+          to compute, transform data, or test logic.
+        - Use this with check_only=True to validate syntax without
+          executing (e.g., before writing code to a file).
+        - Use this to run Python test files or scripts from disk.
+        - Do NOT use this for shell commands (git, pip, npm) — use
+          the `shell` tool instead.
 
-    Provide exactly one of ``code`` or ``file``.
+    Why:
+        Provides a controlled Python execution environment with timeout
+        enforcement, stdout/stderr capture, and syntax validation —
+        essential for safe code execution within an agent workflow.
 
     Args:
-        intent: Why you're running this (e.g., "Testing algorithm")
-        code: Python code string to execute or validate
-        file: Path to a Python file to execute or validate
-        args: CLI arguments for sys.argv (execution only)
-        timeout: Max seconds (default: 30, max: 300)
-        check_only: If True, validate syntax without executing
+        reason: Why you're running this (for logging/auditing).
+        code: Python code string to execute or validate.
+        file: Path to a Python file to execute or validate.
+        args: CLI arguments for sys.argv (execution only).
+        timeout: Max seconds (default: 30, max: 300).
+        check_only: If True, validate syntax without executing.
 
     Returns:
         JSON with result data. For check_only: valid, error_type, message.
         For execution: success, stdout, stderr, error_type, traceback.
+
+    Important:
+        - Provide exactly one of ``code`` or ``file``, not both.
+        - Execution is sandboxed with restricted globals (no imports of
+          os, sys, subprocess, etc.).
     """
     # Validate mutual exclusivity
     if code is None and file is None:
@@ -65,13 +79,13 @@ def python(
         )
 
     if check_only:
-        return _python_check(intent, code, file)
+        return _python_check(reason, code, file)
     else:
-        return _python_execute(intent, code, file, args, timeout)
+        return _python_execute(reason, code, file, args, timeout)
 
 
 def _python_check(
-    intent: str,
+    reason: str,
     code: Optional[str],
     file: Optional[str],
 ) -> str:
@@ -115,7 +129,7 @@ def _python_check(
 
 
 def _python_execute(
-    intent: str,
+    reason: str,
     code: Optional[str],
     file: Optional[str],
     args: Optional[List[str]],

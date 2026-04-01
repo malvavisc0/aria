@@ -118,37 +118,44 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         :class:`~llama_index.core.tools.FunctionTool`.
     """
 
-    async def parse_pdf(intent: str, file_path: str, prompt: str = "") -> str:
-        """Extract text and tables from a PDF using the vision-language model.
+    async def parse_pdf(reason: str, file_path: str, prompt: str = "") -> str:
+        """Extract text and tables from a PDF using a vision-language model.
 
-        Renders each page to PNG via pypdfium2, base64-encodes it, and sends
-        it to the VL server at api_base using the OpenAI multimodal chat
-        format.
+        When to use:
+            - Use this when you need to extract text, tables, or structured
+              content from PDF files.
+            - Use this with a custom prompt to target specific extraction
+              (e.g., "Extract only tables as markdown").
+            - Do NOT use this for non-PDF files — only PDF is supported.
 
-        If the VL model fails (e.g., due to multimodal input not being
-        supported), falls back to text-based extraction using pypdfium2's
-        text extraction capabilities.
+        Why:
+            Renders each PDF page as an image and sends it to a
+            vision-language model, which excels at understanding complex
+            layouts, tables, and multi-column text that pure text
+            extraction often misses. Falls back to text extraction if
+            the VL model fails.
 
         Args:
-            intent: Why you're extracting (e.g., "Analyzing document content")
+            reason: Why you're extracting (for logging/auditing).
             file_path: Absolute path to the PDF file.
             prompt: Optional extraction instruction. Defaults to full
                 extraction of text, tables, and structured content.
 
         Returns:
-            JSON with source_file, output_file, content_preview, total_chars,
-            and pages_processed. Full extracted content is persisted to file.
+            JSON with source_file, output_file, content_preview,
+            total_chars, and pages_processed.
 
-        Raises:
-            ValueError: If the file does not exist or is not a PDF.
-            httpx.HTTPStatusError: If the VL server returns an error response
-                and fallback also fails.
+        Important:
+            - Full extracted content is persisted to a markdown file
+              in VISION_OUTPUT_DIR.
+            - Falls back to text-based extraction if the VL server fails.
+            - Requires a running VL server (configured at startup).
         """
         path = Path(file_path)
         if not path.exists():
             return tool_error_response(
                 get_function_name(),
-                intent,
+                reason,
                 VisionFileNotFoundError(f"File not found: {file_path}"),
             )
 
@@ -156,7 +163,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         if suffix != ".pdf":
             return tool_error_response(
                 get_function_name(),
-                intent,
+                reason,
                 UnsupportedFormatError(
                     f"Unsupported file format '{suffix}'. "
                     "Only PDF files are supported."
@@ -226,7 +233,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
             # Fall back to text-based extraction
             extracted_text = _extract_text_from_pdf(path)
             return _persist_pdf_extraction_result(
-                intent=intent,
+                reason=reason,
                 source_path=path,
                 extracted_text=extracted_text,
                 pages_processed=len(pages),
@@ -234,7 +241,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
 
         extracted_text = "\n\n".join(parts)
         return _persist_pdf_extraction_result(
-            intent=intent,
+            reason=reason,
             source_path=path,
             extracted_text=extracted_text,
             pages_processed=len(pages),
@@ -244,7 +251,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
 
 
 def _persist_pdf_extraction_result(
-    intent: str,
+    reason: str,
     source_path: Path,
     extracted_text: str,
     pages_processed: int,
@@ -261,7 +268,7 @@ def _persist_pdf_extraction_result(
 
     return tool_success_response(
         "parse_pdf",
-        intent,
+        reason,
         {
             "source_file": str(source_path),
             "output_file": str(output_path),

@@ -265,9 +265,9 @@ class LightpandaManager:
     # Response helpers
     # ------------------------------------------------------------------
 
-    def _success(self, data: dict, *, tool: str = "", intent: str = "") -> str:
+    def _success(self, data: dict, *, tool: str = "", reason: str = "") -> str:
         """Create a Standard Envelope success JSON response."""
-        return tool_success_response(tool, intent, data)
+        return tool_success_response(tool, reason, data)
 
     def _error(
         self,
@@ -275,7 +275,7 @@ class LightpandaManager:
         *,
         recovery: bool = False,
         tool: str = "",
-        intent: str = "",
+        reason: str = "",
     ) -> str:
         """Create a Standard Envelope error JSON response."""
         exc = RuntimeError(message)
@@ -284,7 +284,7 @@ class LightpandaManager:
             exc.how_to_fix = (  # type: ignore[attr-defined]
                 "Browser crashed. Restarted. Retry."
             )
-        return tool_error_response(tool=tool, intent=intent, exc=exc)
+        return tool_error_response(tool=tool, reason=reason, exc=exc)
 
     def _persist_content(self, content: str, url: str, action: str) -> Path:
         """Write content to a timestamped file and return the path.
@@ -318,7 +318,7 @@ class LightpandaManager:
         content_path: Path,
         *,
         tool: str = "",
-        intent: str = "",
+        reason: str = "",
     ) -> str:
         """Build the standard content JSON response.
 
@@ -328,7 +328,7 @@ class LightpandaManager:
             title: Page title.
             content_path: Path where content was persisted.
             tool: Tool name for the response envelope.
-            intent: Agent intent for the response envelope.
+            reason: Agent reason for the response envelope.
 
         Returns:
             JSON string with page metadata.
@@ -344,7 +344,7 @@ class LightpandaManager:
                 "content_size": len(content),
             },
             tool=tool,
-            intent=intent,
+            reason=reason,
         )
 
     # ------------------------------------------------------------------
@@ -357,7 +357,7 @@ class LightpandaManager:
         fn: Callable[[Page], Awaitable[str]],
         *,
         tool: str = "",
-        intent: str = "",
+        reason: str = "",
     ) -> str:
         """Run *fn* with page validation and crash recovery.
 
@@ -370,14 +370,14 @@ class LightpandaManager:
             fn: Async callable that receives the current Page and
                 returns a JSON string result.
             tool: Tool name for the response envelope.
-            intent: Agent intent for the response envelope.
+            reason: Agent reason for the response envelope.
 
         Returns:
             JSON string — either the result of *fn* or an error.
         """
         if not await self._ensure_page():
             return self._error(
-                "Browser not available", tool=tool, intent=intent
+                "Browser not available", tool=tool, reason=reason
             )
 
         try:
@@ -391,23 +391,23 @@ class LightpandaManager:
                 )
                 if await self._ensure_page():
                     return self._error(
-                        str(e), recovery=True, tool=tool, intent=intent
+                        str(e), recovery=True, tool=tool, reason=reason
                     )
-            return self._error(str(e), tool=tool, intent=intent)
+            return self._error(str(e), tool=tool, reason=reason)
 
     # ------------------------------------------------------------------
     # Browser actions
     # ------------------------------------------------------------------
 
     async def navigate(
-        self, url: str, *, tool: str = "", intent: str = ""
+        self, url: str, *, tool: str = "", reason: str = ""
     ) -> str:
         """Navigate to URL and return rendered content.
 
         Args:
             url: URL to navigate to.
             tool: Tool name for the response envelope.
-            intent: Agent intent for the response envelope.
+            reason: Agent reason for the response envelope.
 
         Returns:
             JSON string with page content and metadata.
@@ -422,7 +422,7 @@ class LightpandaManager:
             if self._is_navigation_failed(content, page.url):
                 reason = content if content else "Navigation failed"
                 logger.error(f"Navigation failed: {reason}")
-                return self._error(reason, tool=tool, intent=intent)
+                return self._error(reason, tool=tool, reason=reason)
 
             content_path = self._persist_content(content, page.url, "open")
             title = await self._safe_title()
@@ -432,22 +432,22 @@ class LightpandaManager:
                 title,
                 content_path,
                 tool=tool,
-                intent=intent,
+                reason=reason,
             )
 
         return await self._with_recovery(
-            "navigate", _do_navigate, tool=tool, intent=intent
+            "navigate", _do_navigate, tool=tool, reason=reason
         )
 
     async def click(
-        self, selector: str, *, tool: str = "", intent: str = ""
+        self, selector: str, *, tool: str = "", reason: str = ""
     ) -> str:
         """Click element by CSS selector and return updated content.
 
         Args:
             selector: CSS selector for element to click.
             tool: Tool name for the response envelope.
-            intent: Agent intent for the response envelope.
+            reason: Agent reason for the response envelope.
 
         Returns:
             JSON string with updated page content.
@@ -466,21 +466,21 @@ class LightpandaManager:
                 title,
                 content_path,
                 tool=tool,
-                intent=intent,
+                reason=reason,
             )
 
         return await self._with_recovery(
-            "click", _do_click, tool=tool, intent=intent
+            "click", _do_click, tool=tool, reason=reason
         )
 
     async def get_page_content(
-        self, *, tool: str = "", intent: str = ""
+        self, *, tool: str = "", reason: str = ""
     ) -> str:
         """Get current page content as clean text.
 
         Args:
             tool: Tool name for the response envelope.
-            intent: Agent intent for the response envelope.
+            reason: Agent reason for the response envelope.
 
         Returns:
             Page content as text, or error JSON if unavailable.
@@ -490,7 +490,7 @@ class LightpandaManager:
             return await self._get_text_content(page)
 
         return await self._with_recovery(
-            "get_page_content", _do_get_content, tool=tool, intent=intent
+            "get_page_content", _do_get_content, tool=tool, reason=reason
         )
 
     # ------------------------------------------------------------------

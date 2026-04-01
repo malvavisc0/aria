@@ -10,12 +10,12 @@ from aria.tools import get_function_name, tool_error_response, tool_response
 
 
 def file_success_response(
-    intent: str, data: Dict[str, Any], tool: str = ""
+    reason: str, data: Dict[str, Any], tool: str = ""
 ) -> str:
     """Build standardized success response for file operations.
 
     Args:
-        intent: The agent's stated intent for calling this tool.
+        reason: The agent's stated reason for calling this tool.
         data: The response data payload.
         tool: Tool name (if empty, uses get_function_name).
 
@@ -26,16 +26,16 @@ def file_success_response(
         tool = get_function_name(depth=2)
     return tool_response(
         tool=tool,
-        intent=intent,
+        reason=reason,
         data=data,
     )
 
 
-def file_error_response(intent: str, exc: Exception) -> str:
+def file_error_response(reason: str, exc: Exception) -> str:
     """Build standardized error response for file operations.
 
     Args:
-        intent: The agent's stated intent for calling this tool.
+        reason: The agent's stated reason for calling this tool.
         exc: The exception that occurred.
 
     Returns:
@@ -43,6 +43,6 @@ def file_error_response(intent: str, exc: Exception) -> str:
     """
     return tool_error_response(
         tool=get_function_name(),
-        intent=intent,
+        reason=reason,
         exc=exc,
     )

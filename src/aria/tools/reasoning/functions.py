@@ -25,7 +25,7 @@ _DEFAULT_AGENT_ID = "aria"
 def _ok(
     *,
     tool: str,
-    intent: str,
+    reason: str,
     agent_id: str,
     session_id: Optional[str],
     data: Dict[str, Any],
@@ -34,7 +34,7 @@ def _ok(
     return {
         "status": "success",
         "tool": tool,
-        "intent": intent,
+        "reason": reason,
         "agent_id": agent_id,
         **({"session_id": session_id} if session_id is not None else {}),
         "timestamp": timestamp or utc_timestamp(),
@@ -45,7 +45,7 @@ def _ok(
 def _err(
     *,
     tool: str,
-    intent: str,
+    reason: str,
     agent_id: str,
     session_id: Optional[str],
     code: str,
@@ -60,7 +60,7 @@ def _err(
     return {
         "status": "error",
         "tool": tool,
-        "intent": intent,
+        "reason": reason,
         "agent_id": agent_id,
         **({"session_id": session_id} if session_id is not None else {}),
         "timestamp": timestamp or utc_timestamp(),
@@ -85,7 +85,7 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
 
 
 def reasoning(
-    intent: str,
+    reason: str,
     action: str,
     content: Optional[str] = None,
     cognitive_mode: Optional[str] = None,
@@ -96,46 +96,69 @@ def reasoning(
     agent_id: str = _DEFAULT_AGENT_ID,
 ) -> Dict[str, Any]:
     """
-    Unified reasoning tool for structured analysis.
+    Structured reasoning tool for systematic analysis and decision-making.
 
-    Use this tool to work through complex problems systematically. Each action
-    corresponds to a phase of the reasoning process:
+    When to use:
+        - Use this to work through complex, multi-faceted problems
+          where a single answer isn't sufficient (e.g., comparing
+          architectural options, debugging root causes).
+        - Use this when you want to make your thinking transparent
+          and reviewable.
+        - Use this to reduce bias by explicitly reflecting on your
+          reasoning process.
+        - Do NOT use this for simple factual lookups — answer directly.
+        - Do NOT use this for task tracking — use `plan`.
+
+    Why:
+        Structured reasoning with explicit steps, evidence, and
+        self-reflection produces better outcomes than unstructured
+        thinking. The session model lets you build up an argument
+        incrementally and evaluate its quality.
 
     Actions:
-    - "start": Begin a new reasoning session (always first)
-    - "step": Add a reasoning step with your analysis
-    - "reflect": Add meta-cognitive reflection on your thinking
-    - "evaluate": Score the quality of your reasoning
-    - "summary": Review your progress so far
-    - "end": Close the session when done
+        - "start": Begin a new reasoning session (always first).
+        - "step": Add a reasoning step with your analysis.
+        - "reflect": Add meta-cognitive reflection on your thinking.
+        - "evaluate": Score the quality of your reasoning.
+        - "summary": Review your progress so far.
+        - "end": Close the session when done.
 
     Typical workflow:
-    1. start → 2. step (multiple) → 3. reflect → 4. evaluate → 5. end
+        1. start → 2. step (multiple) → 3. reflect → 4. evaluate
+           → 5. end
 
     Args:
-        intent: What you're doing and why.
+        reason: What you're doing and why (for logging/auditing).
         action: One of: start, step, reflect, evaluate, summary, end.
-        content: The reasoning content (required for "step" and "reflect").
-        cognitive_mode: Type of thinking for "step": planning, analysis,
-            evaluation, synthesis, creative, reflection (default: "analysis").
-        reasoning_type: Logical approach for "step": deductive, inductive,
-            abductive, causal, probabilistic, analogical
+        content: The reasoning content (required for "step" and
+            "reflect").
+        cognitive_mode: Type of thinking for "step": planning,
+            analysis, evaluation, synthesis, creative, reflection
+            (default: "analysis").
+        reasoning_type: Logical approach for "step": deductive,
+            inductive, abductive, causal, probabilistic, analogical
             (default: "deductive").
         evidence: Optional list of evidence supporting a "step".
-        confidence: Confidence level 0.0-1.0 for "step" (default: 0.65).
-        on_step: Step number this reflection refers to (for "reflect").
+        confidence: Confidence level 0.0-1.0 for "step"
+            (default: 0.65).
+        on_step: Step number this reflection refers to (for
+            "reflect").
         agent_id: Agent identifier (auto-set, do not provide).
 
     Returns:
         Action-specific result with session status and data.
+
+    Important:
+        - One active session per agent at a time (auto-managed).
+        - Sessions are persisted to SQLite and survive restarts.
     """
     action = action.lower().strip()
 
     if action == "start":
-        return _action_start(intent, agent_id)
+        return _action_start(reason, agent_id)
     elif action == "step":
         return _action_step(
-            intent,
+            reason,
             agent_id,
             content,
             cognitive_mode,
@@ -144,17 +167,17 @@ def reasoning(
             confidence,
         )
     elif action == "reflect":
-        return _action_reflect(intent, agent_id, content, on_step)
+        return _action_reflect(reason, agent_id, content, on_step)
     elif action == "evaluate":
-        return _action_evaluate(intent, agent_id)
+        return _action_evaluate(reason, agent_id)
     elif action == "summary":
-        return _action_summary(intent, agent_id)
+        return _action_summary(reason, agent_id)
     elif action == "end":
-        return _action_end(intent, agent_id)
+        return _action_end(reason, agent_id)
     else:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="INVALID_ACTION",
@@ -170,7 +193,7 @@ def reasoning(
         )
 
 
-def _action_start(intent: str, agent_id: str) -> Dict[str, Any]:
+def _action_start(reason: str, agent_id: str) -> Dict[str, Any]:
     """Start a new reasoning session."""
     # Auto-generate unique session ID using UUID for collision resistance
     session_id = f"{agent_id}_session_{uuid.uuid4().hex[:12]}"
@@ -198,13 +221,13 @@ def _action_start(intent: str, agent_id: str) -> Dict[str, Any]:
     # Audit event
     session.persist_tool_event(
         tool_name="reasoning",
-        intent=intent,
+        reason=reason,
         timestamp=now,
         payload={"action": "start"},
     )
     return _ok(
         tool="reasoning",
-        intent=intent,
+        reason=reason,
         agent_id=agent_id,
         session_id=session_id,
         timestamp=now,
@@ -216,7 +239,7 @@ def _action_start(intent: str, agent_id: str) -> Dict[str, Any]:
 
 
 def _action_step(
-    intent: str,
+    reason: str,
     agent_id: str,
     content: Optional[str],
     cognitive_mode: Optional[str],
@@ -228,7 +251,7 @@ def _action_step(
     if content is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="MISSING_CONTENT",
@@ -241,7 +264,7 @@ def _action_step(
     if session_id is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="NO_ACTIVE_SESSION",
@@ -253,7 +276,7 @@ def _action_step(
     try:
         session = _get_session(session_id, agent_id)
         step = session.add_step(
-            intent=intent,
+            reason=reason,
             content=content,
             cognitive_mode=cognitive_mode or "analysis",
             reasoning_type=reasoning_type or "deductive",
@@ -262,7 +285,7 @@ def _action_step(
         )
         return _ok(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             timestamp=step.get("timestamp"),
@@ -272,7 +295,7 @@ def _action_step(
         logger.exception("reasoning step failed")
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             code="INTERNAL_ERROR",
@@ -281,7 +304,7 @@ def _action_step(
 
 
 def _action_reflect(
-    intent: str,
+    reason: str,
     agent_id: str,
     content: Optional[str],
     on_step: Optional[int],
@@ -290,7 +313,7 @@ def _action_reflect(
     if content is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="MISSING_CONTENT",
@@ -305,7 +328,7 @@ def _action_reflect(
     if session_id is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="NO_ACTIVE_SESSION",
@@ -316,13 +339,13 @@ def _action_reflect(
     try:
         session = _get_session(session_id, agent_id)
         refl = session.add_reflection(
-            intent=intent,
+            reason=reason,
             reflection=content,
             on_step=on_step,
         )
         return _ok(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             timestamp=refl.get("timestamp"),
@@ -332,7 +355,7 @@ def _action_reflect(
         logger.exception("reasoning reflect failed")
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             code="INTERNAL_ERROR",
@@ -340,13 +363,13 @@ def _action_reflect(
         )
 
 
-def _action_evaluate(intent: str, agent_id: str) -> Dict[str, Any]:
+def _action_evaluate(reason: str, agent_id: str) -> Dict[str, Any]:
     """Evaluate reasoning quality."""
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="NO_ACTIVE_SESSION",
@@ -356,10 +379,10 @@ def _action_evaluate(intent: str, agent_id: str) -> Dict[str, Any]:
 
     try:
         session = _get_session(session_id, agent_id)
-        evaluation = session.evaluate(intent=intent)
+        evaluation = session.evaluate(reason=reason)
         return _ok(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             timestamp=evaluation.get("timestamp"),
@@ -369,7 +392,7 @@ def _action_evaluate(intent: str, agent_id: str) -> Dict[str, Any]:
         logger.exception("reasoning evaluate failed")
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             code="INTERNAL_ERROR",
@@ -377,13 +400,13 @@ def _action_evaluate(intent: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def _action_summary(intent: str, agent_id: str) -> Dict[str, Any]:
+def _action_summary(reason: str, agent_id: str) -> Dict[str, Any]:
     """Get session summary."""
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="NO_ACTIVE_SESSION",
@@ -393,10 +416,10 @@ def _action_summary(intent: str, agent_id: str) -> Dict[str, Any]:
 
     try:
         session = _get_session(session_id, agent_id)
-        summary = session.summary(intent=intent)
+        summary = session.summary(reason=reason)
         return _ok(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             timestamp=summary.get("timestamp"),
@@ -406,7 +429,7 @@ def _action_summary(intent: str, agent_id: str) -> Dict[str, Any]:
         logger.exception("reasoning summary failed")
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=session_id,
             code="INTERNAL_ERROR",
@@ -414,13 +437,13 @@ def _action_summary(intent: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def _action_end(intent: str, agent_id: str) -> Dict[str, Any]:
+def _action_end(reason: str, agent_id: str) -> Dict[str, Any]:
     """End the reasoning session."""
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
         return _err(
             tool="reasoning",
-            intent=intent,
+            reason=reason,
             agent_id=agent_id,
             session_id=None,
             code="NO_ACTIVE_SESSION",
@@ -433,7 +456,7 @@ def _action_end(intent: str, agent_id: str) -> Dict[str, Any]:
         session = registry.get_session(session_id, agent_id)
         session.persist_tool_event(
             tool_name="reasoning",
-            intent=intent,
+            reason=reason,
             timestamp=now,
             payload={"action": "end"},
         )
@@ -449,7 +472,7 @@ def _action_end(intent: str, agent_id: str) -> Dict[str, Any]:
     logger.info(f"Ended reasoning session for agent '{agent_id}'")
     return _ok(
         tool="reasoning",
-        intent=intent,
+        reason=reason,
         agent_id=agent_id,
         session_id=session_id,
         timestamp=now,

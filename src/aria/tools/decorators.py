@@ -8,10 +8,10 @@ from loguru import logger
 
 
 def log_tool_call(func: Callable) -> Callable:
-    """Decorator that logs tool calls with intent parameter.
+    """Decorator that logs tool calls with reason parameter.
 
-    Extracts the intent from the first argument (expected to be a string)
-    and logs the function call with the function name and intent.
+    Extracts the reason from the first argument (expected to be a string)
+    and logs the function call with the function name and reason.
 
     Args:
         func: The function to wrap.
@@ -22,14 +22,14 @@ def log_tool_call(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        intent = args[0] if args and isinstance(args[0], str) else "unknown"
-        logger.debug(f"Calling {func.__name__} to achieve: {intent}")
+        reason = args[0] if args and isinstance(args[0], str) else "unknown"
+        logger.debug(f"Calling {func.__name__} to achieve: {reason}")
         return func(*args, **kwargs)
 
     @wraps(func)
     async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-        intent = args[0] if args and isinstance(args[0], str) else "unknown"
-        logger.debug(f"Calling {func.__name__} to achieve: {intent}")
+        reason = args[0] if args and isinstance(args[0], str) else "unknown"
+        logger.debug(f"Calling {func.__name__} to achieve: {reason}")
         return await func(*args, **kwargs)
 
     if inspect.iscoroutinefunction(func):

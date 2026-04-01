@@ -38,7 +38,7 @@ class ScratchpadItemModel(Base):
     )
     key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
-    intent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)

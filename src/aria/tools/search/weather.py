@@ -48,13 +48,13 @@ _WEATHER_CODE_TEXT: dict[int, str] = {
 }
 
 
-def _ok(intent: str, result: Dict[str, Any]) -> str:
-    return tool_success_response(get_function_name(), intent, result)
+def _ok(reason: str, result: Dict[str, Any]) -> str:
+    return tool_success_response(get_function_name(), reason, result)
 
 
-def _err(intent: str, message: str) -> str:
+def _err(reason: str, message: str) -> str:
     return tool_error_response(
-        get_function_name(), intent, RuntimeError(message)
+        get_function_name(), reason, RuntimeError(message)
     )
 
 
@@ -65,21 +65,34 @@ def _get_weather_text(code: Optional[int]) -> str:
 
 
 @log_tool_call
-def get_current_weather(intent: str, location: str) -> str:
-    """Get current weather for a city/location string using Open-Meteo.
+def get_current_weather(reason: str, location: str) -> str:
+    """Get current weather conditions for a city or location.
+
+    When to use:
+        - Use this when the user asks about current weather conditions
+          for any location worldwide.
+        - Use this to get temperature, wind, and weather description.
+
+    Why:
+        Powered by Open-Meteo (free, no API key required). Resolves
+        city names to coordinates automatically via geocoding.
 
     Args:
-        intent: Why you're checking (e.g., "Planning outdoor activity")
-        location: City name (e.g., "Berlin") or free-form place name
+        reason: Why you're checking (for logging/auditing).
+        location: City name (e.g., "Berlin") or free-form place name.
 
     Returns:
-        JSON with temperature, wind_speed, weather_code, weather_text.
-        No API key required.
+        JSON with resolved location (name, country, latitude),
+        temperature_c, wind_speed_kmh, conditions.
+
+    Important:
+        - No API key required — uses the free Open-Meteo API.
+        - Only provides current conditions, not forecasts.
     """
 
     location_value = (location or "").strip()
     if not location_value:
-        return _err(intent, "location must be a non-empty string")
+        return _err(reason, "location must be a non-empty string")
 
     # Logging handled by @log_tool_call decorator
 
@@ -95,7 +108,7 @@ def get_current_weather(intent: str, location: str) -> str:
         results = geo_json.get("results") or []
         if not results:
             return _err(
-                intent, f"No geocoding result for location: {location_value}"
+                reason, f"No geocoding result for location: {location_value}"
             )
 
         first = results[0]
@@ -103,7 +116,7 @@ def get_current_weather(intent: str, location: str) -> str:
         lon = first.get("longitude")
         if lat is None or lon is None:
             return _err(
-                intent, "Geocoding response missing latitude/longitude"
+                reason, "Geocoding response missing latitude/longitude"
             )
 
         resolved_name = first.get("name") or location_value
@@ -132,7 +145,7 @@ def get_current_weather(intent: str, location: str) -> str:
         weather_code = current.get("weather_code")
 
         return _ok(
-            intent,
+            reason,
             {
                 "tool": "get_current_weather",
                 "query": {"location": location_value},
@@ -154,10 +167,10 @@ def get_current_weather(intent: str, location: str) -> str:
         )
     except httpx.HTTPError as exc:
         logger.warning(f"Weather lookup failed for {location_value}: {exc}")
-        return _err(intent, f"Weather request failed: {exc}")
+        return _err(reason, f"Weather request failed: {exc}")
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception("Unexpected error in get_current_weather")
-        return _err(intent, f"Unexpected error: {type(exc).__name__}: {exc}")
+        return _err(reason, f"Unexpected error: {type(exc).__name__}: {exc}")
 
 
 __all__ = ["get_current_weather"]

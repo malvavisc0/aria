@@ -203,7 +203,7 @@ class TestGetFileFromURL:
         # Check required fields
         assert "status" in data
         assert "tool" in data
-        assert "intent" in data
+        assert "reason" in data
         assert "timestamp" in data
         assert "error" in data
 
@@ -534,7 +534,7 @@ class TestResponseCreation:
         metadata = {"url": "https://example.com", "size": 100}
         response = _create_response(
             "download",
-            "test intent",
+            "test reason",
             "/path/to/file",
             metadata,
         )
@@ -545,7 +545,7 @@ class TestResponseCreation:
     def test_create_error_response(self):
         """Test creating error response."""
         response = _create_error_response(
-            "download", "test intent", "Test error"
+            "download", "test reason", "Test error"
         )
         err = _response_error(response)
         assert err == "Test error"
@@ -576,7 +576,7 @@ class TestYouTubeTranscription:
         mock_save.return_value = ("/tmp/mock_file.txt", {"file_size": 20})
 
         result = get_youtube_video_transcription(
-            intent="Testing YouTube transcription",
+            reason="Testing YouTube transcription",
             url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         )
 

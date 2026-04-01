@@ -98,14 +98,14 @@ class TestToolSuccessResponse:
         """Should create a basic success response."""
         result = tool_success_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             data={"result": "success"},
         )
         parsed = json.loads(result)
 
         assert parsed["status"] == "success"
         assert parsed["tool"] == "test_tool"
-        assert parsed["intent"] == "test intent"
+        assert parsed["reason"] == "test reason"
         assert parsed["data"] == {"result": "success"}
         assert "timestamp" in parsed
 
@@ -113,7 +113,7 @@ class TestToolSuccessResponse:
         """Should include additional context fields."""
         result = tool_success_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             data={"result": "success"},
             extra_field="extra_value",
         )
@@ -121,33 +121,33 @@ class TestToolSuccessResponse:
 
         assert parsed["context"]["extra_field"] == "extra_value"
 
-    def test_handles_empty_intent(self):
-        """Should handle empty intent with fallback."""
+    def test_handles_empty_reason(self):
+        """Should handle empty reason with fallback."""
         result = tool_success_response(
             tool="test_tool",
-            intent="",
+            reason="",
             data={"result": "success"},
         )
         parsed = json.loads(result)
 
-        assert "unspecified_test_tool_operation" in parsed["intent"]
+        assert "unspecified_test_tool_operation" in parsed["reason"]
 
-    def test_handles_whitespace_intent(self):
-        """Should handle whitespace-only intent with fallback."""
+    def test_handles_whitespace_reason(self):
+        """Should handle whitespace-only reason with fallback."""
         result = tool_success_response(
             tool="test_tool",
-            intent="   ",
+            reason="   ",
             data={"result": "success"},
         )
         parsed = json.loads(result)
 
-        assert "unspecified_test_tool_operation" in parsed["intent"]
+        assert "unspecified_test_tool_operation" in parsed["reason"]
 
     def test_timestamp_is_utc(self):
         """Timestamp should be in UTC."""
         result = tool_success_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             data={},
         )
         parsed = json.loads(result)
@@ -170,14 +170,14 @@ class TestToolErrorResponse:
         exc = TestError("Test error message")
         result = tool_error_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             exc=exc,
         )
         parsed = json.loads(result)
 
         assert parsed["status"] == "error"
         assert parsed["tool"] == "test_tool"
-        assert parsed["intent"] == "test intent"
+        assert parsed["reason"] == "test reason"
         assert parsed["error"]["code"] == "TEST_ERROR"
         assert parsed["error"]["message"] == "Test error message"
         assert parsed["error"]["recoverable"] is True
@@ -189,7 +189,7 @@ class TestToolErrorResponse:
         exc = ValueError("Simple error")
         result = tool_error_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             exc=exc,
         )
         parsed = json.loads(result)
@@ -203,7 +203,7 @@ class TestToolErrorResponse:
         exc = ValueError("Error")
         result = tool_error_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             exc=exc,
             extra_field="extra_value",
         )
@@ -219,7 +219,7 @@ class TestToolResponse:
         """Should return success response when no exception provided."""
         result = tool_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             data={"result": "success"},
         )
         parsed = json.loads(result)
@@ -232,7 +232,7 @@ class TestToolResponse:
         exc = ValueError("Error occurred")
         result = tool_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             exc=exc,
         )
         parsed = json.loads(result)
@@ -244,7 +244,7 @@ class TestToolResponse:
         """Should use empty dict for data when None is provided."""
         result = tool_response(
             tool="test_tool",
-            intent="test intent",
+            reason="test reason",
             data=None,
         )
         parsed = json.loads(result)

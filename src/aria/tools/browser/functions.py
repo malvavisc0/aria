@@ -41,65 +41,69 @@ def _get_manager():
     return manager
 
 
-async def open_url(intent: str, url: str) -> str:
+async def open_url(reason: str, url: str) -> str:
     """Open a URL in the headless browser and get page content.
 
-    This bypasses anti-bot protection by using a real browser via
-    Lightpanda's CDP implementation. Use this for browsing websites,
-    not for downloading files.
+    When to use:
+        - Use this when you need to browse a website that requires JavaScript
+          rendering, cookie consent, or anti-bot bypass.
+        - Use this when you need the rendered DOM content of a page.
+        - Do NOT use this to download files (PDFs, images, archives) — use
+          the `download` tool instead.
+        - Do NOT use this for simple HTTP API calls — use `http_request`.
 
-    The browser is already running — this just navigates to the URL.
+    Why:
+        Lightpanda provides a real browser via CDP that bypasses anti-bot
+        protection, unlike plain HTTP requests which get blocked by many
+        modern websites. The browser is already running at server startup.
 
     Args:
-        intent: Why you are opening this URL (e.g., "Reading documentation")
-        url: The URL to navigate to
+        reason: Why you are opening this URL (for logging/auditing).
+        url: The URL to navigate to.
 
     Returns:
-        JSON with URL/title and persisted content metadata.
+        JSON with URL, title, and persisted content metadata
+        (content_file, content_preview, content_size).
 
-    Example:
-        ```python
-        result = await open_url("Reading article", "https://example.com")
-        # Returns JSON with content_file/content_preview/content_size
-        ```
+    Important:
+        - The browser is already running — this just navigates to the URL.
+        - Page content is persisted to disk; the response contains a preview
+          and file path, not the full content inline.
+        - Requires Lightpanda to be installed (`aria lightpanda download`).
     """
     manager = _get_manager()
-    return await manager.navigate(url, tool=get_function_name(), intent=intent)
+    return await manager.navigate(url, tool=get_function_name(), reason=reason)
 
 
-async def browser_click(intent: str, selector: str) -> str:
-    """Click an element by CSS selector.
+async def browser_click(reason: str, selector: str) -> str:
+    """Click an element on the current page by CSS selector.
 
-    Use this to interact with elements like:
-    - Accepting cookie consent banners
-    - Clicking 'Load more' buttons
-    - Navigating pagination
-    - Following links
+    When to use:
+        - Use this after `open_url` to interact with page elements such as
+          accepting cookie consent banners, clicking 'Load more' buttons,
+          navigating pagination, or following links.
+        - Do NOT use this without first calling `open_url` — there must be
+          an active page in the browser.
 
-    After clicking, returns metadata and persisted updated page content.
+    Why:
+        Many websites hide content behind interactions (consent walls,
+        lazy-loaded sections, paginated results). This tool lets you
+        interact with the page to reveal the content you need.
 
     Args:
-        intent: Why you are clicking this element (e.g., "Accepting cookies")
+        reason: Why you are clicking this element (for logging/auditing).
         selector: CSS selector for the element, e.g. 'button.accept',
-            'a[href="/next"]', '#submit-button'
+            'a[href="/next"]', '#submit-button'.
 
     Returns:
         JSON with updated page content metadata after the click.
 
-    Example:
-        ```python
-        # Click a button with class "accept"
-        result = await browser_click("Accepting cookies", "button.accept")
-
-        # Click a link by its href
-        result = await browser_click("Going to next page", "a.next-page")
-
-        # Click by ID
-        result = await browser_click("Submitting form", "#submit-button")
-        ```
+    Important:
+        - Always call `open_url` first to navigate to a page before clicking.
+        - Use specific selectors (class, ID, data attributes) rather than
+          generic tag selectors to avoid clicking the wrong element.
     """
     manager = _get_manager()
     return await manager.click(
-        selector, tool=get_function_name(), intent=intent
+        selector, tool=get_function_name(), reason=reason
     )
-    return await manager.click(selector)

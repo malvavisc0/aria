@@ -606,24 +606,24 @@ class TestGetMovieTrivia:
         assert "No trivia available" in err
 
 
-class TestIntentParameter:
-    """Tests that intent parameter is accepted and does not affect output."""
+class TestReasonParameter:
+    """Tests that reason parameter is accepted and does not affect output."""
 
     @patch("aria.tools.imdb.functions.search_title")
-    def test_intent_parameter_accepted(self, mock_search):
-        """Test that intent parameter is accepted without error."""
+    def test_reason_parameter_accepted(self, mock_search):
+        """Test that reason parameter is accepted without error."""
         mock_result = MagicMock()
         mock_result.titles = []
         mock_result.names = []
         mock_search.return_value = mock_result
 
-        result = search_imdb_titles("This is my intent", "test query")
+        result = search_imdb_titles("This is my reason", "test query")
         # Verify the function completes without error
         assert result is not None
 
     @patch("aria.tools.imdb.functions.get_movie")
-    def test_intent_in_get_details(self, mock_get_movie):
-        """Test intent parameter in get_movie_details."""
+    def test_reason_in_get_details(self, mock_get_movie):
+        """Test reason parameter in get_movie_details."""
         mock_movie = MagicMock()
         mock_movie.imdbId = "tt0133093"
         mock_movie.title = "Test"
@@ -649,6 +649,6 @@ class TestIntentParameter:
         mock_get_movie.return_value = mock_movie
 
         result = _response_data(
-            get_movie_details("My intent here", "tt0133093")
+            get_movie_details("My reason here", "tt0133093")
         )
         assert result["imdbId"] == "tt0133093"

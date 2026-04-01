@@ -19,7 +19,7 @@ class TestWithFileOperationErrorHandling:
         """Test that decorator converts OSError to an error response."""
 
         @with_file_operation_error_handling("test_operation")
-        def function_that_raises_oserror(intent: str, file_name: str):
+        def function_that_raises_oserror(reason: str, file_name: str):
             raise OSError("Permission denied")
 
         result = function_that_raises_oserror("test", "test.txt")
@@ -31,7 +31,7 @@ class TestWithFileOperationErrorHandling:
 
         @with_file_operation_error_handling("test_operation")
         def function_that_raises_generic_exception(
-            intent: str, file_name: str
+            reason: str, file_name: str
         ):
             raise ValueError("Unexpected error")
 
@@ -43,7 +43,7 @@ class TestWithFileOperationErrorHandling:
         """Test decorator converts FileSecurityError to error response."""
 
         @with_file_operation_error_handling("test_operation")
-        def function_that_raises_security_error(intent: str, file_name: str):
+        def function_that_raises_security_error(reason: str, file_name: str):
             raise FileSecurityError("Security violation")
 
         result = function_that_raises_security_error("test", "test.txt")
@@ -55,7 +55,7 @@ class TestWithFileOperationErrorHandling:
 
         @with_file_operation_error_handling("test_operation")
         def function_that_raises_file_operation_error(
-            intent: str, file_name: str
+            reason: str, file_name: str
         ):
             raise FileOperationError("Operation failed")
 
@@ -67,7 +67,7 @@ class TestWithFileOperationErrorHandling:
         """Test that decorator allows successful execution."""
 
         @with_file_operation_error_handling("test_operation")
-        def successful_function(intent: str, file_name: str):
+        def successful_function(reason: str, file_name: str):
             return f"Success: {file_name}"
 
         result = successful_function("test", "test.txt")
@@ -88,7 +88,7 @@ class TestWithFileOperationErrorHandling:
         """Test decorator with function called using kwargs (no raise)."""
 
         @with_file_operation_error_handling("test_operation")
-        def function_with_kwargs(intent: str, file_name: str, content: str):
+        def function_with_kwargs(reason: str, file_name: str, content: str):
             raise OSError("Write failed")
 
         result = function_with_kwargs(

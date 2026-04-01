@@ -78,7 +78,7 @@ _CATEGORY_FIELD_MAP: Dict[str, list[FieldSpec]] = {
 
 
 def searxng_web_search(
-    intent: str,
+    reason: str,
     query: str,
     category: Categories = "general",
     time_range: TimeRange = "",
@@ -91,7 +91,7 @@ def searxng_web_search(
     results with text cleaning.
 
     Args:
-        intent: Short explanation of why the search is needed.
+        reason: Short explanation of why the search is needed.
         query: Search query text.
         category: Result type to request. Use `general` for normal web search.
         time_range: Optional freshness filter (day/week/month/year).
@@ -107,17 +107,17 @@ def searxng_web_search(
     if not SEARXNG_URL:
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             RuntimeError("SEARXNG_URL environment variable is not set"),
         )
     if not query:
         return tool_error_response(
-            get_function_name(), intent, RuntimeError("query cannot be empty")
+            get_function_name(), reason, RuntimeError("query cannot be empty")
         )
     if max_results < 1:
         return tool_error_response(
             get_function_name(),
-            intent,
+            reason,
             RuntimeError("max_results must be positive"),
         )
 
@@ -165,7 +165,7 @@ def searxng_web_search(
                     break
 
     except Exception as exc:
-        return tool_error_response(get_function_name(), intent, exc)
+        return tool_error_response(get_function_name(), reason, exc)
 
     # Trim to max_results
     results = results[:max_results]
@@ -175,7 +175,7 @@ def searxng_web_search(
 
     return tool_success_response(
         get_function_name(),
-        intent,
+        reason,
         {
             "count": len(results),
             "findings": results,

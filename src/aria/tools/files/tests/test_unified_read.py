@@ -45,7 +45,7 @@ class TestReadFile:
     def test_read_full_file(self, sample_files):
         """Test reading entire file."""
         result = read_file(
-            intent="Testing full read",
+            reason="Testing full read",
             file_name=str(sample_files / "test1.txt"),
         )
         data = json.loads(result)
@@ -58,7 +58,7 @@ class TestReadFile:
     def test_read_file_chunk(self, sample_files):
         """Test reading file chunk."""
         result = read_file(
-            intent="Testing chunk read",
+            reason="Testing chunk read",
             file_name=str(sample_files / "test1.txt"),
             offset=1,
             length=2,
@@ -75,7 +75,7 @@ class TestReadFile:
     def test_read_file_exceeds_max_lines(self, sample_files):
         """Test error when file exceeds max_lines."""
         result = read_file(
-            intent="Testing max lines",
+            reason="Testing max lines",
             file_name=str(sample_files / "test1.txt"),
             max_lines=3,
         )
@@ -87,7 +87,7 @@ class TestReadFile:
     def test_read_nonexistent_file(self, temp_dir):
         """Test error for nonexistent file."""
         result = read_file(
-            intent="Testing nonexistent",
+            reason="Testing nonexistent",
             file_name=str(temp_dir / "nonexistent.txt"),
         )
         data = json.loads(result)
@@ -101,7 +101,7 @@ class TestFileInfo:
     def test_file_info_exists(self, sample_files):
         """Test getting info for existing file."""
         result = file_info(
-            intent="Testing file info",
+            reason="Testing file info",
             file_name=str(sample_files / "test1.txt"),
         )
         data = json.loads(result)
@@ -117,7 +117,7 @@ class TestFileInfo:
     def test_file_info_directory(self, sample_files):
         """Test getting info for directory."""
         result = file_info(
-            intent="Testing directory info",
+            reason="Testing directory info",
             file_name=str(sample_files / "subdir"),
         )
         data = json.loads(result)
@@ -130,7 +130,7 @@ class TestFileInfo:
     def test_file_info_nonexistent(self, temp_dir):
         """Test getting info for nonexistent file."""
         result = file_info(
-            intent="Testing nonexistent",
+            reason="Testing nonexistent",
             file_name=str(temp_dir / "nonexistent.txt"),
         )
         data = json.loads(result)
@@ -145,7 +145,7 @@ class TestListFiles:
     def test_list_files_flat(self, sample_files):
         """Test flat file listing."""
         result = list_files(
-            intent="Testing flat list",
+            reason="Testing flat list",
             pattern="*.txt",
             recursive=False,
             path=str(sample_files),
@@ -159,7 +159,7 @@ class TestListFiles:
     def test_list_files_recursive(self, sample_files):
         """Test recursive file listing."""
         result = list_files(
-            intent="Testing recursive list",
+            reason="Testing recursive list",
             pattern="*.txt",
             recursive=True,
             path=str(sample_files),
@@ -173,7 +173,7 @@ class TestListFiles:
     def test_list_files_tree(self, sample_files):
         """Test tree view."""
         result = list_files(
-            intent="Testing tree view",
+            reason="Testing tree view",
             recursive=True,
             max_depth=2,
             path=str(sample_files),
@@ -192,7 +192,7 @@ class TestSearchFiles:
     def test_search_by_name(self, sample_files):
         """Test searching by filename."""
         result = search_files(
-            intent="Testing name search",
+            reason="Testing name search",
             pattern=r"\.txt$",
             mode="name",
             path=str(sample_files),
@@ -206,7 +206,7 @@ class TestSearchFiles:
     def test_search_by_content(self, sample_files):
         """Test searching by content."""
         result = search_files(
-            intent="Testing content search",
+            reason="Testing content search",
             pattern="Line 2",
             mode="content",
             path=str(sample_files),
@@ -221,7 +221,7 @@ class TestSearchFiles:
     def test_search_invalid_mode(self, sample_files):
         """Test error for invalid mode."""
         result = search_files(
-            intent="Testing invalid mode",
+            reason="Testing invalid mode",
             pattern="test",
             mode="invalid",
             path=str(sample_files),
@@ -234,7 +234,7 @@ class TestSearchFiles:
     def test_search_invalid_regex(self, sample_files):
         """Test error for invalid regex."""
         result = search_files(
-            intent="Testing invalid regex",
+            reason="Testing invalid regex",
             pattern="[invalid(",
             mode="name",
             path=str(sample_files),

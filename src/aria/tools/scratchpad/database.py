@@ -40,7 +40,7 @@ class ScratchpadDatabase:
         agent_id: str,
         key: str,
         value: str,
-        intent: Optional[str] = None,
+        reason: Optional[str] = None,
     ) -> None:
         """Set a scratchpad item (upsert by agent_id + key)."""
         with self.get_session() as session:
@@ -53,14 +53,14 @@ class ScratchpadDatabase:
 
             if existing:
                 existing.value = value
-                existing.intent = intent
+                existing.reason = reason
                 existing.updated_at = datetime.now(timezone.utc)
             else:
                 item = ScratchpadItemModel(
                     agent_id=agent_id,
                     key=key,
                     value=value,
-                    intent=intent,
+                    reason=reason,
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc),
                     is_active=True,
@@ -86,7 +86,7 @@ class ScratchpadDatabase:
             return {
                 "key": item.key,
                 "value": item.value,
-                "intent": item.intent,
+                "reason": item.reason,
                 "updated_at": item.updated_at.isoformat(),
             }
 
@@ -126,7 +126,7 @@ class ScratchpadDatabase:
                 {
                     "key": item.key,
                     "value": item.value,
-                    "intent": item.intent,
+                    "reason": item.reason,
                     "updated_at": item.updated_at.isoformat(),
                 }
                 for item in items

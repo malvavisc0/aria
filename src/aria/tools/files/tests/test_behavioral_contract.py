@@ -70,7 +70,7 @@ class TestFilesReturnJsonContract:
             str(self.base_dir / "read_test.txt"),
         )
         data = json.loads(result)
-        # unified_read uses _ok() format: {tool, intent, data}
+        # unified_read uses _ok() format: {tool, reason, data}
         assert "tool" in data
         assert "data" in data
         assert data["data"]["metadata"]["success"] is True
@@ -125,7 +125,7 @@ class TestFilesErrorResponseContract:
             str(self.base_dir / "nonexistent.txt"),
         )
         data = json.loads(result)
-        # unified_read uses _err() format: {tool, intent, data: {error}}
+        # unified_read uses _err() format: {tool, reason, data: {error}}
         assert data["data"]["error"] != ""
 
 
@@ -160,11 +160,11 @@ class TestListFilesParameterNaming:
 class TestReadFileParameterNaming:
     """Verify read_file uses correct parameter names."""
 
-    def test_read_file_has_intent_parameter(self):
-        """read_file should have 'intent' parameter."""
+    def test_read_file_has_reason_parameter(self):
+        """read_file should have 'reason' parameter."""
         sig = inspect.signature(unified_read.read_file)
         params = list(sig.parameters.keys())
-        assert "intent" in params
+        assert "reason" in params
 
     def test_read_file_has_file_name_parameter(self):
         """read_file should have 'file_name' parameter."""

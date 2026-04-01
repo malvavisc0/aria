@@ -73,7 +73,7 @@ def _default_json_handler(obj: Any) -> str:
 
 def tool_success_response(
     tool: str,
-    intent: str,
+    reason: str,
     data: Dict[str, Any],
     **context: Any,
 ) -> str:
@@ -81,7 +81,7 @@ def tool_success_response(
 
     Args:
         tool: Name of the tool that generated the response.
-        intent: The agent's stated intent for calling this tool.
+        reason: The agent's stated reason for calling this tool.
         data: The response data payload.
         **context: Additional tool-specific context fields.
 
@@ -89,13 +89,13 @@ def tool_success_response(
         JSON string with standardized success format.
     """
 
-    if not intent or not intent.strip():
-        intent = f"unspecified_{tool}_operation"
+    if not reason or not reason.strip():
+        reason = f"unspecified_{tool}_operation"
 
     response: Dict[str, Any] = {
         "status": "success",
         "tool": tool,
-        "intent": intent,
+        "reason": reason,
         "timestamp": utc_timestamp(),
         "data": data,
     }
@@ -107,7 +107,7 @@ def tool_success_response(
 
 def tool_error_response(
     tool: str,
-    intent: str,
+    reason: str,
     exc: Exception,
     **context: Any,
 ) -> str:
@@ -115,7 +115,7 @@ def tool_error_response(
 
     Args:
         tool: Name of the tool that generated the error.
-        intent: The agent's stated intent for calling this tool.
+        reason: The agent's stated reason for calling this tool.
         exc: The exception that occurred.
         **context: Additional tool-specific context fields.
 
@@ -138,7 +138,7 @@ def tool_error_response(
     response: Dict[str, Any] = {
         "status": "error",
         "tool": tool,
-        "intent": intent,
+        "reason": reason,
         "timestamp": utc_timestamp(),
         "error": error_block,
     }
@@ -150,7 +150,7 @@ def tool_error_response(
         "Tool error occurred",
         extra={
             "tool": tool,
-            "intent": intent,
+            "reason": reason,
             "error_code": error_code,
             "recoverable": recoverable,
             "error_type": type(exc).__name__,
@@ -163,7 +163,7 @@ def tool_error_response(
 
 def tool_response(
     tool: str,
-    intent: str,
+    reason: str,
     data: Optional[Dict[str, Any]] = None,
     exc: Optional[Exception] = None,
     **context: Any,
@@ -175,7 +175,7 @@ def tool_response(
 
     Args:
         tool: Name of the tool that generated the response.
-        intent: The agent's stated intent for calling this tool.
+        reason: The agent's stated reason for calling this tool.
         data: The response data payload (for success responses).
         exc: The exception that occurred (for error responses).
         **context: Additional tool-specific context fields.
@@ -184,12 +184,12 @@ def tool_response(
         JSON string with standardized format.
     """
     if exc is not None:
-        return tool_error_response(tool, intent, exc, **context)
+        return tool_error_response(tool, reason, exc, **context)
 
     if data is None:
         data = {}
 
-    return tool_success_response(tool, intent, data, **context)
+    return tool_success_response(tool, reason, data, **context)
 
 
 def get_function_name(depth: int = 1) -> str:

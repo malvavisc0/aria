@@ -45,7 +45,7 @@ def _build_response(
     return {
         "status": "success",
         "tool": get_function_name(),
-        "intent": "",
+        "reason": "",
         "timestamp": utc_timestamp(),
         "data": {
             "stdout": stdout[:MAX_OUTPUT_SIZE] if stdout else "",

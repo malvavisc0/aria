@@ -23,7 +23,7 @@ from aria.tools.shell.validation import (
 
 
 def _execute_single_command(
-    intent: str,
+    reason: str,
     command_name: str,
     args: List[str],
     timeout: Optional[int] = None,
@@ -33,7 +33,7 @@ def _execute_single_command(
     """Execute a single whitelisted command without shell interpretation.
 
     Args:
-        intent: Why you're executing
+        reason: Why you're executing
         command_name: Name of the command from the safe list
         args: List of arguments for the command
         timeout: Timeout in seconds (default: 30, max: 300)
@@ -44,7 +44,7 @@ def _execute_single_command(
         JSON with stdout, stderr, return_code, execution_time.
     """
     logger.info(f"Executing safe command: {command_name} {args}")
-    logger.debug(f"Safe command to achieve: {intent}")
+    logger.debug(f"Safe command to achieve: {reason}")
 
     # Validate against blocked commands before execution
     _validate_command(command_name)
@@ -60,7 +60,7 @@ def _execute_single_command(
     if cmd_path is None:
         return tool_response(
             tool=tool_name,
-            intent=intent,
+            reason=reason,
             data={
                 "stdout": "",
                 "stderr": f"Command not found: {command_name}",
@@ -85,39 +85,61 @@ def _execute_single_command(
     )
     return tool_response(
         tool=tool_name,
-        intent=intent,
+        reason=reason,
         data=response["data"],
     )
 
 
 def shell(
-    intent: str,
+    reason: str,
     commands: Union[Dict[str, Any], List[Dict[str, Any]]],
     stop_on_error: bool = True,
     timeout: Optional[int] = None,
     working_dir: Optional[str] = None,
 ) -> str:
-    """Execute shell commands safely.
+    """Execute shell commands safely with timeout and security constraints.
 
-    Merges execute_command + execute_command_batch into one tool.
-    Accepts a single command dict or a list of command dicts.
+    When to use:
+        - Use this to run system commands like git, pip, npm, pytest,
+          docker, etc.
+        - Use this for batch operations (multiple commands in sequence).
+        - Use this when you need to interact with the OS (file system,
+          package management, process control).
+        - Do NOT use this for Python code execution — use the `python`
+          tool instead.
+        - Do NOT use this for long-running background processes — use
+          the `process` tool.
+
+    Why:
+        Provides a safe execution environment with automatic timeout
+        enforcement, output capture, command resolution via PATH,
+        and blocked-command protection (sudo, rm -rf /, fork bombs).
 
     Args:
-        intent: Why you're executing (e.g., "Git status check")
-        commands: Single dict or list of dicts, each with:
-            - command_name: The command to execute
-            - args: Optional list of command arguments
-            - timeout: Optional timeout in seconds
-            - working_dir: Optional working directory
-            - continue_on_error: Optional, continue if this fails
-            - command: (legacy) Full command string parsed via shlex
-        stop_on_error: Stop execution if a command fails (default: True)
+        reason: Why you're executing (for logging/auditing).
+        commands: Single command dict or list of dicts, each with:
+            - command_name: The executable to run (resolved via
+                shutil.which).
+            - args: Optional list of command arguments.
+            - timeout: Optional per-command timeout in seconds.
+            - working_dir: Optional per-command working directory.
+            - continue_on_error: Optional, continue batch if this
+                command fails.
+            - command: (legacy) Full command string parsed via shlex.
+        stop_on_error: Stop batch on first failure (default: True).
         timeout: Default timeout in seconds for all commands
-        working_dir: Default working directory for all commands
+            (default: 30, max: 300).
+        working_dir: Default working directory for all commands.
 
     Returns:
-        JSON with stdout, stderr, return_code for single command,
-        or results[], total_execution_time, success_count for batch.
+        JSON with results[] containing stdout, stderr, return_code,
+        execution_time, timed_out per command.
+
+    Important:
+        - Commands are resolved via shutil.which() — must be on PATH.
+        - Blocked commands: sudo, shutdown, reboot, rm -rf /, mkfs,
+          dd if=, fork bombs.
+        - Prefer args list over full command strings when possible.
     """
     # Normalize single command to list
     if isinstance(commands, dict):
@@ -126,7 +148,7 @@ def shell(
     if not commands:
         return tool_response(
             tool=get_function_name(),
-            intent=intent,
+            reason=reason,
             data={
                 "results": [],
                 "total_execution_time": 0,
@@ -161,7 +183,7 @@ def shell(
 
         try:
             result_str = _execute_single_command(
-                intent=(
+                reason=(
                     f"Batch command {i+1}/{len(commands)}: "
                     f"{display_command}"
                 ),
@@ -212,6 +234,6 @@ def shell(
     )
     return tool_response(
         tool=get_function_name(),
-        intent=intent,
+        reason=reason,
         data=data,
     )

@@ -26,7 +26,7 @@ def _error_response(
     operation: str,
     file_name: str,
     exc: Exception,
-    intent: str = "",
+    reason: str = "",
 ) -> str:
     """Generate secure error response without information disclosure.
 
@@ -34,7 +34,7 @@ def _error_response(
         operation: The operation that failed
         file_name: The file name involved in the operation
         exc: The exception that occurred
-        intent: The agent's stated intent for calling this tool
+        reason: The agent's stated reason for calling this tool
 
     Returns:
         str: JSON formatted error response
@@ -70,7 +70,7 @@ def _error_response(
     response = {
         "status": "error",
         "tool": operation,
-        "intent": intent,
+        "reason": reason,
         "timestamp": utc_timestamp(),
         "error": error_block,
     }

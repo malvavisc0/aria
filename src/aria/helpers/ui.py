@@ -80,12 +80,12 @@ def _step_label_from_tool_call(event: ToolCall) -> str:
     """Best-effort label for a tool call.
 
     Prepends the tool emoji (from TOOL_EMOJI) when available.
-    Label preference: `intent`, else `reason`, else tool name.
+    Label preference: `reason`, else `reason`, else tool name.
     """
 
     tool_name = (event.tool_name or "").strip() or "<unknown_tool>"
     tool_kwargs = event.tool_kwargs or {}
-    label = tool_kwargs.get("intent", None)
+    label = tool_kwargs.get("reason", None)
     if not label:
         label = tool_kwargs.get("reason", None)
 
@@ -108,7 +108,7 @@ def _make_tool_step(label: str, tool_name: str = "tool") -> cl.Step:
 
     The step name is used for both display and avatar lookup. We strip
     emojis from the label to make it avatar-compatible while preserving
-    the descriptive intent text.
+    the descriptive reason text.
 
     Args:
         label: The display label with emoji (e.g., "📰 Reading file...")

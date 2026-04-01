@@ -46,7 +46,7 @@ class ContentParsingError(Exception):
 
 @log_tool_call
 def download(
-    intent: str,
+    reason: str,
     url: str,
     output: Optional[str] = "auto",
     custom_headers: Optional[Dict[str, str]] = None,
@@ -54,26 +54,42 @@ def download(
     download_path: Optional[str] = None,
     convert_to_markdown: bool = False,
 ) -> str:
-    """Download a file from a URL (PDFs, images, archives, HTML, etc.).
+    """Download files from URLs (PDFs, images, archives, HTML, etc.).
 
-    This function is for downloading files:
-    - PDFs, DOCX, XLSX
-    - Images, videos, audio
-    - ZIP, TAR, archives
-    - Raw data files (JSON, CSV, XML)
-    - HTML pages (optionally converted to markdown)
+    When to use:
+        - Use this to download any file from a direct URL (PDFs, images,
+          archives, data files, HTML pages).
+        - Use this with convert_to_markdown=True to get readable text
+          from HTML pages.
+        - Do NOT use this to browse websites interactively — use
+          `open_url`.
+        - Do NOT use this to search the web — use `web_search` first
+          to find URLs.
+
+    Why:
+        Provides a persistence-first download mechanism that saves files
+        to disk and returns metadata. Supports format conversion for
+        HTML content.
 
     Args:
-        intent: Why you're downloading (e.g., "Downloading PDF report")
-        url: Direct URL to the file
-        output: Format - auto/markdown/text/binary (default: auto)
-        custom_headers: Optional HTTP headers
-        max_size: Max bytes (default: 5MB)
-        download_path: Save directory (default: DOWNLOADS_DIR)
-        convert_to_markdown: Convert HTML content to markdown (default: False)
+        reason: Why you're downloading (for logging/auditing).
+        url: Direct URL to the file.
+        output: Format — auto/markdown/text/binary (default: "auto").
+        custom_headers: Optional HTTP headers.
+        max_size: Max bytes to download (default: 5 MB).
+        download_path: Save directory (default: DOWNLOADS_DIR).
+        convert_to_markdown: Convert HTML content to markdown
+            (default: False).
 
     Returns:
-        JSON with file_path, mime_type, size_bytes, and content (if markdown).
+        JSON with file_path, mime_type, size_bytes, and optionally
+        content (if markdown).
+
+    Important:
+        - Files are saved to disk; the response contains the file path.
+        - For HTML pages, set convert_to_markdown=True to get text
+          content in the response.
+        - Large files are rejected if they exceed max_size.
     """
     try:
         validated_url = _validate_url(url)
@@ -114,13 +130,13 @@ def download(
 
         return tool_success_response(
             get_function_name(),
-            intent,
+            reason,
             result_data,
         )
 
     except URLDownloadError as exc:
-        return tool_error_response(get_function_name(), intent, exc)
+        return tool_error_response(get_function_name(), reason, exc)
     except ContentParsingError as exc:
-        return tool_error_response(get_function_name(), intent, exc)
+        return tool_error_response(get_function_name(), reason, exc)
     except Exception as exc:
-        return tool_error_response(get_function_name(), intent, exc)
+        return tool_error_response(get_function_name(), reason, exc)

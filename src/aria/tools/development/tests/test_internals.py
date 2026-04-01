@@ -120,7 +120,7 @@ class TestErrorResponse:
     def test_error_response_security_error(self):
         """Test error response for PythonSecurityError"""
         exc = PythonSecurityError("Security violation detected")
-        result = _error_response("test_op", "test_code", exc, "testing intent")
+        result = _error_response("test_op", "test_code", exc, "testing reason")
         parsed = json.loads(result)
         assert parsed["status"] == "error"
         assert parsed["error"]["type"] == "PythonSecurityError"
@@ -131,7 +131,7 @@ class TestErrorResponse:
     def test_error_response_syntax_error(self):
         """Test error response for PythonSyntaxValidationError"""
         exc = PythonSyntaxValidationError("Invalid syntax")
-        result = _error_response("test_op", "test_code", exc, "testing intent")
+        result = _error_response("test_op", "test_code", exc, "testing reason")
         parsed = json.loads(result)
         assert parsed["status"] == "error"
         error_type = parsed["error"]["type"]

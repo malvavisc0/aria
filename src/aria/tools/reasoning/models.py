@@ -117,8 +117,8 @@ class ReasoningStepModel(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # Why this step was added (echoed from tool `intent`)
-    intent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Why this step was added (echoed from tool `reason`)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # JSON stored as text (will be serialized/deserialized)
     evidence: Mapped[str] = mapped_column(Text, nullable=True)
@@ -163,8 +163,8 @@ class ReasoningReflectionModel(Base):
         Integer, nullable=True
     )  # Optional reference to step
 
-    # Why this reflection was added (echoed from tool `intent`)
-    intent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Why this reflection was added (echoed from tool `reason`)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -199,8 +199,8 @@ class ReasoningScratchpadModel(Base):
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Why this scratchpad key was last modified (echoed from tool `intent`)
-    intent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Why this scratchpad key was last modified (echoed from tool `reason`)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -223,7 +223,7 @@ class ReasoningScratchpadModel(Base):
 
 
 class ReasoningToolEventModel(Base):
-    """Audit log of all reasoning tool calls and their intents."""
+    """Audit log of all reasoning tool calls and their reasons."""
 
     __tablename__ = "reasoning_tool_events"
 
@@ -240,7 +240,7 @@ class ReasoningToolEventModel(Base):
     )
 
     tool_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    intent: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Optional minimal JSON payload for debugging/audit
     payload_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

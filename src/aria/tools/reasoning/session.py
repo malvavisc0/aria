@@ -40,7 +40,7 @@ class ReasoningSession:
 
     def add_step(
         self,
-        intent: str,
+        reason: str,
         content: str,
         cognitive_mode: str = "analysis",
         reasoning_type: str = "deductive",
@@ -79,7 +79,7 @@ class ReasoningSession:
             "reasoning_type": reasoning_type,
             "content": content,
             "confidence": confidence,
-            "intent": intent,
+            "reason": reason,
             "evidence": evidence or [],
             "biases_detected": biases,
             "timestamp": datetime.now().isoformat(),
@@ -94,7 +94,7 @@ class ReasoningSession:
         # Persist tool event (audit)
         self.persist_tool_event(
             tool_name="add_reasoning_step",
-            intent=intent,
+            reason=reason,
             timestamp=step["timestamp"],
             payload={
                 "step_id": step["id"],
@@ -110,7 +110,7 @@ class ReasoningSession:
             "reasoning_type": reasoning_type,
             "content": content,
             "confidence": confidence,
-            "intent": intent,
+            "reason": reason,
             "evidence": step["evidence"],
             "biases_detected": biases,
             "timestamp": step["timestamp"],
@@ -122,7 +122,7 @@ class ReasoningSession:
         return result
 
     def add_reflection(
-        self, intent: str, reflection: str, on_step: Optional[int] = None
+        self, reason: str, reflection: str, on_step: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Add meta-cognitive reflection.
@@ -149,7 +149,7 @@ class ReasoningSession:
             "id": len(self.reflections) + 1,
             "content": reflection,
             "step_id": on_step,
-            "intent": intent,
+            "reason": reason,
             "timestamp": datetime.now().isoformat(),
         }
         self.reflections.append(entry)
@@ -160,7 +160,7 @@ class ReasoningSession:
         # Persist tool event (audit)
         self.persist_tool_event(
             tool_name="add_reflection",
-            intent=intent,
+            reason=reason,
             timestamp=entry["timestamp"],
             payload={"reflection_id": entry["id"], "step_id": on_step},
         )
@@ -169,13 +169,13 @@ class ReasoningSession:
             "reflection_id": entry["id"],
             "content": reflection,
             "step_id": on_step,
-            "intent": intent,
+            "reason": reason,
             "timestamp": entry["timestamp"],
         }
 
     def scratchpad_operation(
         self,
-        intent: str,
+        reason: str,
         key: str,
         operation: str = "get",
         value: Optional[str] = None,
@@ -205,14 +205,14 @@ class ReasoningSession:
                 self.scratchpad[key] = {
                     "value": value,
                     "updated": now,
-                    "intent": intent,
+                    "reason": reason,
                 }
                 # Persist to database
                 self.persist_scratchpad_item(key, self.scratchpad[key])
 
                 self.persist_tool_event(
                     tool_name="use_scratchpad",
-                    intent=intent,
+                    reason=reason,
                     timestamp=now,
                     payload={"tool": "set", "key": key},
                 )
@@ -221,7 +221,7 @@ class ReasoningSession:
                     "tool": "set",
                     "key": key,
                     "value": value,
-                    "intent": intent,
+                    "reason": reason,
                     "timestamp": now,
                 }
             case "get":
@@ -253,7 +253,7 @@ class ReasoningSession:
                             "key": k,
                             "value": v.get("value"),
                             "updated": v.get("updated"),
-                            "intent": v.get("intent"),
+                            "reason": v.get("reason"),
                         }
                         for k, v in self.scratchpad.items()
                     ],
@@ -265,7 +265,7 @@ class ReasoningSession:
                     self.clear_scratchpad_db()
                     self.persist_tool_event(
                         tool_name="use_scratchpad",
-                        intent=intent,
+                        reason=reason,
                         timestamp=now,
                         payload={"tool": "clear", "key": "all"},
                     )
@@ -287,7 +287,7 @@ class ReasoningSession:
                 self.delete_scratchpad_item_db(key)
                 self.persist_tool_event(
                     tool_name="use_scratchpad",
-                    intent=intent,
+                    reason=reason,
                     timestamp=now,
                     payload={"tool": "clear", "key": key},
                 )
@@ -307,7 +307,7 @@ class ReasoningSession:
                     },
                 }
 
-    def evaluate(self, intent: str) -> Dict[str, Any]:
+    def evaluate(self, reason: str) -> Dict[str, Any]:
         """
         Quick quality assessment of the reasoning chain.
 
@@ -335,7 +335,7 @@ class ReasoningSession:
         now = datetime.now().isoformat()
         self.persist_tool_event(
             tool_name="evaluate_reasoning",
-            intent=intent,
+            reason=reason,
             timestamp=now,
             payload={"quality_score": score},
         )
@@ -346,11 +346,11 @@ class ReasoningSession:
             "reflections_count": n_refl,
             "average_confidence": avg_conf,
             "recommendations": recommendations,
-            "intent": intent,
+            "reason": reason,
             "timestamp": now,
         }
 
-    def summary(self, intent: str) -> Dict[str, Any]:
+    def summary(self, reason: str) -> Dict[str, Any]:
         """
         Current state overview.
 
@@ -365,7 +365,7 @@ class ReasoningSession:
         now = datetime.now().isoformat()
         self.persist_tool_event(
             tool_name="get_reasoning_summary",
-            intent=intent,
+            reason=reason,
             timestamp=now,
             payload=None,
         )
@@ -378,11 +378,11 @@ class ReasoningSession:
             "average_confidence": avg_conf,
             "created_at": self.created_at,
             "last_updated": now,
-            "intent": intent,
+            "reason": reason,
             "timestamp": now,
         }
 
-    def reset(self, intent: str) -> Dict[str, Any]:
+    def reset(self, reason: str) -> Dict[str, Any]:
         """
         Clear all reasoning data in this session.
 
@@ -398,13 +398,13 @@ class ReasoningSession:
         now = datetime.now().isoformat()
         self.persist_tool_event(
             tool_name="reset_reasoning",
-            intent=intent,
+            reason=reason,
             timestamp=now,
             payload=None,
         )
         return {
             "message": "Reasoning session reset successfully",
-            "intent": intent,
+            "reason": reason,
             "timestamp": now,
         }
 
@@ -483,20 +483,20 @@ class ReasoningSession:
                 key,
                 value_dict["value"],
                 value_dict["updated"],
-                value_dict.get("intent"),
+                value_dict.get("reason"),
             )
 
     def persist_tool_event(
         self,
         tool_name: str,
-        intent: str,
+        reason: str,
         timestamp: str,
         payload: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist a tool call event to database and local memory."""
         event = {
             "tool_name": tool_name,
-            "intent": intent,
+            "reason": reason,
             "timestamp": timestamp,
             "payload": payload,
         }
@@ -505,7 +505,7 @@ class ReasoningSession:
             self._db.save_tool_event(
                 session_internal_id=self.id,
                 tool_name=tool_name,
-                intent=intent,
+                reason=reason,
                 timestamp=timestamp,
                 payload=payload,
             )

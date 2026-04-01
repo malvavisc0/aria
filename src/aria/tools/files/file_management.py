@@ -24,22 +24,37 @@ from aria.tools.files.exceptions import FileOperationError
     error_handler=with_file_operation_error_handling,
 )
 def copy_file(
-    intent: str,
+    reason: str,
     source: str,
     destination: str,
     overwrite: Optional[bool] = False,
 ) -> str:
     """
-    Copy a file.
+    Copy a file to a new location.
+
+    When to use:
+        - Use this to duplicate a file (e.g., create a backup before
+          editing).
+        - Use this to copy a file to a different directory.
+        - Do NOT use this to move/rename files — use `rename_file`.
+
+    Why:
+        Copying preserves the original file while creating a duplicate,
+        which is safer than move operations when you need to keep both.
 
     Args:
-        intent: Why you're copying (e.g., "Creating backup")
-        source: Absolute path (e.g., /home/user/data/downloads/file.txt)
-        destination: Absolute path (e.g., /home/user/data/downloads/file.txt)
-        overwrite: If True, overwrite existing destination (default: False)
+        reason: Why you're copying (for logging/auditing).
+        source: Absolute path to the source file.
+        destination: Absolute path to the destination.
+        overwrite: If True, overwrite existing destination
+            (default: False).
 
     Returns:
-        JSON with source, destination, bytes_copied, success
+        JSON with source, destination, bytes_copied, success.
+
+    Important:
+        - Destination parent directories are created automatically.
+        - Returns an error if destination exists and overwrite=False.
     """
     logger.info(f"Copying file from {source} to {destination}")
 
@@ -51,7 +66,7 @@ def copy_file(
     # Check overwrite policy
     if dest_path.exists() and not overwrite:
         return file_error_response(
-            intent,
+            reason,
             FileOperationError(
                 f"Destination {destination} already exists and overwrite=False"
             ),
@@ -71,23 +86,35 @@ def copy_file(
         "success": True,
     }
     logger.info(f"Successfully copied {source} to {destination}")
-    return file_success_response(intent, data, tool="copy_file")
+    return file_success_response(reason, data, tool="copy_file")
 
 
 @tool_function(
     "delete_file",
     error_handler=with_file_operation_error_handling,
 )
-def delete_file(intent: str, file_name: str) -> str:
+def delete_file(reason: str, file_name: str) -> str:
     """
-    Delete a file (creates a backup first).
+    Delete a file with automatic backup.
+
+    When to use:
+        - Use this to remove files that are no longer needed.
+        - Do NOT use this to rename or move files — use `rename_file`.
+
+    Why:
+        A backup is always created before deletion, so you can recover
+        the file if the deletion was a mistake.
 
     Args:
-        intent: Why you're deleting (e.g., "Removing obsolete file")
-        file_name: Path relative to BASE_DIR
+        reason: Why you're deleting (for logging/auditing).
+        file_name: Path relative to BASE_DIR.
 
     Returns:
-        JSON with file_name, deleted, backup_created
+        JSON with file_name, deleted, backup_created.
+
+    Important:
+        - A backup is always created before deletion.
+        - Only files can be deleted (not directories).
     """
     logger.info(f"Deleting file: {file_name}")
 
@@ -107,24 +134,39 @@ def delete_file(intent: str, file_name: str) -> str:
         "backup_created": backup_path is not None,
     }
     logger.info(f"Successfully deleted file: {file_name}")
-    return file_success_response(intent, data, tool="delete_file")
+    return file_success_response(reason, data, tool="delete_file")
 
 
 @tool_function(
     "rename_file",
     error_handler=with_file_operation_error_handling,
 )
-def rename_file(intent: str, old_name: str, new_name: str) -> str:
+def rename_file(reason: str, old_name: str, new_name: str) -> str:
     """
-    Rename/move a file.
+    Rename or move a file to a new location.
+
+    When to use:
+        - Use this to rename a file (fix a typo, change extension).
+        - Use this to move a file to a different directory.
+        - Do NOT use this to copy files — use `copy_file`.
+        - Do NOT use this to delete files — use `delete_file`.
+
+    Why:
+        Renaming/moving is atomic on most filesystems and is the
+        standard way to reorganize files without duplicating data.
 
     Args:
-        intent: Why you're renaming (e.g., "Fixing filename typo")
-        old_name: Current path relative to BASE_DIR
-        new_name: New path relative to BASE_DIR
+        reason: Why you're renaming (for logging/auditing).
+        old_name: Current path relative to BASE_DIR.
+        new_name: New path relative to BASE_DIR.
 
     Returns:
-        JSON with old_name, new_name, success
+        JSON with old_name, new_name, success.
+
+    Important:
+        - Destination parent directories are created automatically.
+        - This is a move operation — the source file will no longer exist
+          at old_name after success.
     """
     logger.info(f"Renaming file from {old_name} to {new_name}")
 
@@ -144,4 +186,4 @@ def rename_file(intent: str, old_name: str, new_name: str) -> str:
         "success": True,
     }
     logger.info(f"Successfully renamed {old_name} to {new_name}")
-    return file_success_response(intent, data, tool="rename_file")
+    return file_success_response(reason, data, tool="rename_file")

@@ -4,11 +4,11 @@ from pathlib import Path
 from aria.tools.vision import functions as vision_functions
 
 
-def test_persist_pdf_extraction_result_preserves_intent(tmp_path, monkeypatch):
+def test_persist_pdf_extraction_result_preserves_reason(tmp_path, monkeypatch):
     monkeypatch.setattr(vision_functions, "VISION_OUTPUT_DIR", tmp_path)
 
     response = vision_functions._persist_pdf_extraction_result(
-        intent="Analyzing quarterly report",
+        reason="Analyzing quarterly report",
         source_path=Path("/tmp/report.pdf"),
         extracted_text="hello world",
         pages_processed=2,
@@ -18,7 +18,7 @@ def test_persist_pdf_extraction_result_preserves_intent(tmp_path, monkeypatch):
 
     assert payload["status"] == "success"
     assert payload["tool"] == "parse_pdf"
-    assert payload["intent"] == "Analyzing quarterly report"
+    assert payload["reason"] == "Analyzing quarterly report"
     assert payload["data"]["pages_processed"] == 2
     assert "report_extracted_" in payload["data"]["output_file"]
 

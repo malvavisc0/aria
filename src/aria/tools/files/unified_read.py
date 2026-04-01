@@ -165,13 +165,13 @@ def _format_permissions_symbolic(mode: int) -> str:
     return "".join(perms)
 
 
-def _ok(tool: str, intent: str, result: Dict[str, Any], **metadata) -> str:
+def _ok(tool: str, reason: str, result: Dict[str, Any], **metadata) -> str:
     """Build a success response."""
     import json
 
     response = {
         "tool": tool,
-        "intent": intent,
+        "reason": reason,
         "data": {
             "result": result,
             "error": "",
@@ -185,13 +185,13 @@ def _ok(tool: str, intent: str, result: Dict[str, Any], **metadata) -> str:
     return json.dumps(response)
 
 
-def _err(tool: str, intent: str, message: str, **metadata) -> str:
+def _err(tool: str, reason: str, message: str, **metadata) -> str:
     """Build an error response."""
     import json
 
     response = {
         "tool": tool,
-        "intent": intent,
+        "reason": reason,
         "data": {
             "result": {},
             "error": message,
@@ -210,27 +210,38 @@ def _err(tool: str, intent: str, message: str, **metadata) -> str:
     error_handler=with_file_operation_error_handling,
 )
 def read_file(
-    intent: str,
+    reason: str,
     file_name: str,
     offset: Optional[int] = 0,
     length: Optional[int] = 0,
     max_lines: Optional[int] = 500,
 ) -> str:
-    """Read file contents with optional chunking.
+    """Read file contents with optional chunking for large files.
 
-    Merges read_full_file + read_file_chunk functionality.
-    - offset=0, length=0: Read entire file (subject to max_lines)
-    - offset>0 or length>0: Read specific chunk
+    When to use:
+        - Use this when you need to inspect the contents of a file.
+        - Use this with offset/length to read large files in chunks.
+        - Do NOT use this to check if a file exists — use `file_info` instead.
+        - Do NOT use this to find files — use `list_files` or `search_files`.
+
+    Why:
+        Reading files is the foundation of understanding codebases, configs,
+        and data. Chunked reading prevents context overflow on large files.
 
     Args:
-        intent: Why you're reading (e.g., "Inspecting config file")
-        file_name: Path relative to BASE_DIR
-        offset: 0-indexed starting line (default: 0)
-        length: Number of lines to read (0 = read all, subject to max_lines)
-        max_lines: Maximum lines for full read (default: 500)
+        reason: Why you're reading (for logging/auditing).
+        file_name: Path relative to BASE_DIR.
+        offset: 0-indexed starting line (default: 0).
+        length: Number of lines to read (0 = read all, subject to max_lines).
+        max_lines: Maximum lines for full read (default: 500).
 
     Returns:
-        JSON with lines/content, offset, total_lines, has_more, next_offset
+        JSON with lines/content, offset, total_lines, has_more, next_offset.
+
+    Important:
+        - offset=0, length=0 reads the full file (up to max_lines).
+        - For files exceeding max_lines, use offset/length to paginate.
+        - Returns has_more=True and next_offset when there is more content.
     """
     offset_value = 0 if offset is None else offset
     length_value = 0 if length is None else length
@@ -254,7 +265,7 @@ def read_file(
             if total_lines > max_lines_value:
                 return _err(
                     tool="read_file",
-                    intent=intent,
+                    reason=reason,
                     message=(
                         f"File has {total_lines} lines, exceeds limit of "
                         f"{max_lines_value}. Use offset/length for chunked."
@@ -270,7 +281,7 @@ def read_file(
 
             return _ok(
                 tool="read_file",
-                intent=intent,
+                reason=reason,
                 result={
                     "file_name": file_name,
                     "content": content,
@@ -292,7 +303,7 @@ def read_file(
 
             return _ok(
                 tool="read_file",
-                intent=intent,
+                reason=reason,
                 result={
                     "file_name": file_name,
                     "lines": lines,
@@ -309,7 +320,7 @@ def read_file(
     except Exception as exc:
         return _err(
             tool="read_file",
-            intent=intent,
+            reason=reason,
             message=str(exc),
             file_name=file_name,
         )
@@ -319,19 +330,29 @@ def read_file(
     "file_info",
     error_handler=with_file_operation_error_handling,
 )
-def file_info(intent: str, file_name: str) -> str:
-    """Get comprehensive file information.
+def file_info(reason: str, file_name: str) -> str:
+    """Get comprehensive metadata for a file or directory.
 
-    Merges file_exists + get_file_info functionality.
-    Returns exists, is_file, is_directory, size, dates, permissions.
+    When to use:
+        - Use this to check whether a file or directory exists before
+          reading, writing, or editing.
+        - Use this to get file size, type, permissions, or timestamps.
+        - Do NOT use this to read file contents — use `read_file` instead.
+        - Do NOT use this to list directory contents —
+          use `list_files` instead.
+
+    Why:
+        Checking metadata before operations prevents errors (e.g., trying to
+        read a directory) and helps decide the right strategy (e.g., chunked
+        read for large files).
 
     Args:
-        intent: Why you're checking (e.g., "Determining read strategy")
-        file_name: Absolute path to the file or directory
+        reason: Why you're checking (for logging/auditing).
+        file_name: Absolute path to the file or directory.
 
     Returns:
-        JSON with file metadata including existence, type, size, timestamps,
-        and permissions
+        JSON with exists, is_file, is_directory, is_symlink, size_bytes,
+        size_mb, modified, created, permissions, mime_type.
     """
     logger.info(f"Getting file info for: {file_name}")
 
@@ -388,7 +409,7 @@ def file_info(intent: str, file_name: str) -> str:
 
         return _ok(
             tool="file_info",
-            intent=intent,
+            reason=reason,
             result=result,
             file_name=file_name,
         )
@@ -396,7 +417,7 @@ def file_info(intent: str, file_name: str) -> str:
     except Exception as exc:
         return _err(
             tool="file_info",
-            intent=intent,
+            reason=reason,
             message=str(exc),
             file_name=file_name,
         )
@@ -407,29 +428,42 @@ def file_info(intent: str, file_name: str) -> str:
     error_handler=with_file_operation_error_handling,
 )
 def list_files(
-    intent: str,
+    reason: str,
     pattern: Optional[str] = "*",
     recursive: Optional[bool] = False,
     max_depth: Optional[int] = 3,
     max_results: Optional[int] = 100,
     path: Optional[str] = ".",
 ) -> str:
-    """List files with optional tree view.
+    """List files and directories with optional recursive tree view.
 
-    Merges list_files + get_directory_tree functionality.
-    - recursive=False: Simple flat list
-    - recursive=True with max_depth: Tree structure
+    When to use:
+        - Use this to explore a directory structure or discover what files
+          are available.
+        - Use this with recursive=True to get a tree view of a project.
+        - Use this with a glob pattern to filter (e.g., "*.py").
+        - Do NOT use this to search file contents — use `search_files`.
+        - Do NOT use this to get file metadata — use `file_info`.
+
+    Why:
+        Understanding directory structure is essential before making changes.
+        The tree view gives a quick overview; the flat list is faster for
+        targeted lookups.
 
     Args:
-        intent: Why you're listing (e.g., "Finding all Python files")
-        pattern: Glob pattern relative to path (default: "*")
-        recursive: Search recursively (default: False)
-        max_depth: Maximum depth for tree view (default: 3)
-        max_results: Maximum results for flat list (default: 100)
-        path: Starting directory relative to BASE_DIR (default: ".")
+        reason: Why you're listing (for logging/auditing).
+        pattern: Glob pattern to filter results (default: "*").
+        recursive: Search recursively with tree view (default: False).
+        max_depth: Maximum depth for tree view (default: 3).
+        max_results: Maximum results for flat list (default: 100).
+        path: Starting directory relative to BASE_DIR (default: ".").
 
     Returns:
-        JSON with files/tree, count, and metadata
+        JSON with files (flat list) or tree (recursive), plus count.
+
+    Important:
+        - recursive=False returns a flat list; recursive=True returns a tree.
+        - Large directories are capped at max_results to prevent flooding.
     """
     pattern_value = pattern or "*"
     recursive_value = False if recursive is None else recursive
@@ -453,7 +487,7 @@ def list_files(
         if not resolved_path.exists():
             return _err(
                 tool="list_files",
-                intent=intent,
+                reason=reason,
                 message=f"Path does not exist: {path_value}",
                 path=path_value,
             )
@@ -462,7 +496,7 @@ def list_files(
             # Single file - return info about it
             return _ok(
                 tool="list_files",
-                intent=intent,
+                reason=reason,
                 result={
                     "path": path_value,
                     "is_file": True,
@@ -481,7 +515,7 @@ def list_files(
 
             return _ok(
                 tool="list_files",
-                intent=intent,
+                reason=reason,
                 result={
                     "path": path_value,
                     "tree": tree,
@@ -522,7 +556,7 @@ def list_files(
 
             return _ok(
                 tool="list_files",
-                intent=intent,
+                reason=reason,
                 result={
                     "path": path_value,
                     "pattern": pattern_value,
@@ -537,7 +571,7 @@ def list_files(
     except Exception as exc:
         return _err(
             tool="list_files",
-            intent=intent,
+            reason=reason,
             message=str(exc),
             path=path_value,
         )
@@ -548,7 +582,7 @@ def list_files(
     error_handler=with_file_operation_error_handling,
 )
 def search_files(
-    intent: str,
+    reason: str,
     pattern: str,
     mode: Optional[str] = "name",
     file_pattern: Optional[str] = "**/*",
@@ -557,24 +591,37 @@ def search_files(
     context_lines: Optional[int] = 2,
     path: Optional[str] = ".",
 ) -> str:
-    """Search files by name or content.
+    """Search for files by name pattern or content regex.
 
-    Merges search_files_by_name + search_in_files functionality.
-    - mode="name": Search file names using regex
-    - mode="content": Search file contents using regex
+    When to use:
+        - Use this with mode="name" to find files matching a pattern
+          (e.g., all test files, all config files).
+        - Use this with mode="content" to find text/regex matches inside
+          files (e.g., all TODO comments, all function definitions).
+        - Do NOT use this to list directory contents — use `list_files`.
+        - Do NOT use this to read a specific file — use `read_file`.
+
+    Why:
+        Searching is the fastest way to locate relevant files and code
+        patterns in a codebase without manually traversing directories.
 
     Args:
-        intent: Why you're searching (e.g., "Finding test files")
-        pattern: Regex pattern to match
+        reason: Why you're searching (for logging/auditing).
+        pattern: Regex pattern to match against names or content.
         mode: "name" for filename search, "content" for content search
-        file_pattern: Glob pattern for files (default: "**/*")
-        recursive: Search recursively (default: True)
-        max_results: Maximum results (default: 500)
-        context_lines: Context lines for content matches (default: 2)
-        path: Starting directory relative to BASE_DIR (default: ".")
+            (default: "name").
+        file_pattern: Glob pattern for files to search (default: "**/*").
+        recursive: Search recursively (default: True).
+        max_results: Maximum results (default: 500).
+        context_lines: Context lines around content matches (default: 2).
+        path: Starting directory relative to BASE_DIR (default: ".").
 
     Returns:
-        JSON with matches, count, and search metadata
+        JSON with matches[] (each with file, line, context), count.
+
+    Important:
+        - Content search skips files larger than 1 MB to prevent RAM issues.
+        - Use specific patterns to keep results manageable.
     """
     # Maximum file size for content search (1MB) to prevent RAM exhaustion
     MAX_CONTENT_FILE_SIZE = 1024 * 1024
@@ -602,7 +649,7 @@ def search_files(
         if not resolved_path.exists():
             return _err(
                 tool="search_files",
-                intent=intent,
+                reason=reason,
                 message=f"Path does not exist: {path_value}",
                 path=path_value,
             )
@@ -613,7 +660,7 @@ def search_files(
         except re.error as exc:
             return _err(
                 tool="search_files",
-                intent=intent,
+                reason=reason,
                 message=f"Invalid regex pattern: {exc}",
                 pattern=pattern,
             )
@@ -641,7 +688,7 @@ def search_files(
 
             return _ok(
                 tool="search_files",
-                intent=intent,
+                reason=reason,
                 result={
                     "pattern": pattern,
                     "mode": "name",
@@ -743,7 +790,7 @@ def search_files(
 
             return _ok(
                 tool="search_files",
-                intent=intent,
+                reason=reason,
                 result={
                     "pattern": pattern,
                     "mode": "content",
@@ -759,7 +806,7 @@ def search_files(
         else:
             return _err(
                 tool="search_files",
-                intent=intent,
+                reason=reason,
                 message=(
                     f"Invalid mode '{mode_value}'. " "Use 'name' or 'content'."
                 ),
@@ -769,7 +816,7 @@ def search_files(
     except Exception as exc:
         return _err(
             tool="search_files",
-            intent=intent,
+            reason=reason,
             message=str(exc),
             pattern=pattern,
         )
