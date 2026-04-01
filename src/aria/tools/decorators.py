@@ -22,14 +22,18 @@ def log_tool_call(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        reason = args[0] if args and isinstance(args[0], str) else "unknown"
-        logger.debug(f"Calling {func.__name__} to achieve: {reason}")
+        reason = kwargs.get("reason") or (
+            args[0] if args and isinstance(args[0], str) else "unknown"
+        )
+        logger.debug(f"Calling {func.__name__} — {reason}")
         return func(*args, **kwargs)
 
     @wraps(func)
     async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-        reason = args[0] if args and isinstance(args[0], str) else "unknown"
-        logger.debug(f"Calling {func.__name__} to achieve: {reason}")
+        reason = kwargs.get("reason") or (
+            args[0] if args and isinstance(args[0], str) else "unknown"
+        )
+        logger.debug(f"Calling {func.__name__} — {reason}")
         return await func(*args, **kwargs)
 
     if inspect.iscoroutinefunction(func):
@@ -52,9 +56,8 @@ def tool_function(
     3. error handler decorator (optional)
 
     Args:
-        operation_name: Operation name passed to error_handler decorator factory.
-        validate: Keyword args for validation_decorator. Use {} to apply default
-            validation with no options.
+        operation_name: Operation name passed to the decorator factory.
+        validate: Keyword args for validation_decorator.
         error_handler: Decorator factory that accepts operation_name.
         validation_decorator: Decorator factory that accepts validation kwargs.
 

@@ -29,13 +29,13 @@ from aria.server.llama import LlamaCppServerManager
 from aria.web.state import _state
 
 LOG_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
-    "{name}:{function}:{line} - {message}"
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
 )
 
 _HEALTH_ENDPOINTS = ("/health",)
 
 _log_sink_id: int | None = None
+_tool_call_sink_id: int | None = None
 
 
 class _HealthCheckFilter(logging.Filter):
@@ -68,7 +68,7 @@ async def on_app_startup_handler() -> None:
         Exception: If any critical initialization step fails,
             cleanup is attempted before re-raising.
     """
-    global _log_sink_id
+    global _log_sink_id, _tool_call_sink_id
     try:
         from chainlit.config import FILES_DIRECTORY
 
@@ -103,6 +103,15 @@ async def on_app_startup_handler() -> None:
             log_path,
             rotation="10 MB",
             level="INFO",  # Never store DEBUG to keep logs clean
+            format=LOG_FORMAT,
+        )
+
+        # Dedicated sink for tool-call debug logs (keeps main log clean).
+        _tool_call_sink_id = logger.add(
+            DebugConfig.logs_path.parent / "tool-calls.log",
+            rotation="10 MB",
+            level="DEBUG",
+            filter=lambda r: "Calling" in r["message"],
             format=LOG_FORMAT,
         )
         logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
@@ -195,7 +204,7 @@ async def on_app_shutdown_handler() -> None:
     - Database connections
     - Logging sinks
     """
-    global _log_sink_id
+    global _log_sink_id, _tool_call_sink_id
     logger.info("Shutting down Aria web UI...")
 
     if _state.llama_manager:
@@ -234,3 +243,7 @@ async def on_app_shutdown_handler() -> None:
     if _log_sink_id is not None:
         logger.remove(_log_sink_id)
         _log_sink_id = None
+
+    if _tool_call_sink_id is not None:
+        logger.remove(_tool_call_sink_id)
+        _tool_call_sink_id = None
