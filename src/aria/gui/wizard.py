@@ -188,9 +188,13 @@ class _EnginePage(QWizardPage):
         return self._download_done
 
     def cleanupPage(self):
-        if self._thread is not None and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait(3000)
+        try:
+            if self._thread is not None and self._thread.isRunning():
+                self._thread.quit()
+                self._thread.wait(3000)
+        except RuntimeError:
+            pass
+        self._thread = None
 
 
 class _ModelPage(QWizardPage):
@@ -235,6 +239,24 @@ class _ModelPage(QWizardPage):
         self._thread: QThread | None = None
         self._worker: _DownloadWorker | None = None
         self._download_done = False
+
+    def initializePage(self):
+        """Auto-detect already-downloaded models and mark step as done."""
+        from aria.config.api import LlamaCpp
+        from aria.config.models import Chat
+        from aria.scripts.gguf import is_model_downloaded
+
+        if Chat.filename and is_model_downloaded(
+            Chat.filename, LlamaCpp.models_path
+        ):
+            self._download_done = True
+            self._status_label.setText(
+                "✓ Chat model already downloaded. Click Next to continue."
+            )
+            self._status_label.setStyleSheet(
+                "color: #2e7d32; font-weight: bold;"
+            )
+            self.completeChanged.emit()
 
     def _start_download(self):
         from aria.config.api import LlamaCpp
@@ -320,9 +342,13 @@ class _ModelPage(QWizardPage):
         return self._download_done
 
     def cleanupPage(self):
-        if self._thread is not None and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait(3000)
+        try:
+            if self._thread is not None and self._thread.isRunning():
+                self._thread.quit()
+                self._thread.wait(3000)
+        except RuntimeError:
+            pass
+        self._thread = None
 
 
 class _UserPage(QWizardPage):
