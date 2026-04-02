@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtGui import QIcon
 
 from aria.gui.ui.mainwindow import Ui_MainWindow
 
@@ -23,9 +24,11 @@ _ANSI_ESCAPE = re.compile(
     r"|\r"
 )
 
+_PROGRESS_RE = re.compile(r"(\d+(?:\.\d+)?)%")
+
 
 def _strip_ansi(text: str) -> str:
-    """Remove ANSI/VT100 escape sequences and carriage returns from *text*."""
+    """Remove ANSI/VT100 escape sequences and carriage returns."""
     return _ANSI_ESCAPE.sub("", text)
 
 
@@ -35,9 +38,6 @@ class _SignalStream(io.TextIOBase):
     Used to redirect ``sys.stdout`` / ``sys.stderr`` inside worker threads so
     that all console output (rich, print, loguru) is forwarded to the GUI text
     area instead of the terminal.
-
-    Args:
-        emit_fn: Callable that receives a single non-empty stripped line.
     """
 
     def __init__(self, emit_fn: Callable[[str], None]):
@@ -60,32 +60,35 @@ class _SignalStream(io.TextIOBase):
             self._buf = ""
 
 
-class _LlamaDownloadWorker(QObject):
-    """Worker that downloads llama.cpp binaries in a background thread.
+# ---------------------------------------------------------------------------
+# Generic download worker
+# ---------------------------------------------------------------------------
 
-    Emits ``log_line`` for each line of output, ``finished`` on success,
-    or ``error`` with a message string on failure.
+
+class _BaseDownloadWorker(QObject):
+    """Base worker that redirects stdout/stderr to the ``log_line`` signal.
+
+    Subclasses must implement :meth:`run` and call
+    :meth:`_run_with_redirected_output` with the actual download callable.
     """
 
     finished = Signal()
     error = Signal(str)
     log_line = Signal(str)
 
-    def __init__(self, bin_dir: Path, version: Optional[str] = None):
-        super().__init__()
-        self._bin_dir = bin_dir
-        self._version = version
-
     def run(self) -> None:
-        """Download llama.cpp binaries (runs in a QThread)."""
-        from aria.scripts.llama import download_llama_cpp
+        """Execute the download. Must be overridden by subclasses."""
 
+    def _run_with_redirected_output(
+        self, fn: Callable, *args, **kwargs
+    ) -> None:
+        """Run *fn* with stdout/stderr redirected to ``log_line``."""
         stream = _SignalStream(self.log_line.emit)
         old_stdout, old_stderr = sys.stdout, sys.stderr
         sys.stdout = stream  # type: ignore[assignment]
         sys.stderr = stream  # type: ignore[assignment]
         try:
-            download_llama_cpp(bin_dir=self._bin_dir, version=self._version)
+            fn(*args, **kwargs)
             self.finished.emit()
         except Exception as exc:
             self.error.emit(str(exc))
@@ -95,18 +98,26 @@ class _LlamaDownloadWorker(QObject):
             sys.stderr = old_stderr
 
 
-class _ModelDownloadWorker(QObject):
-    """Worker that downloads a GGUF model in a background thread.
+class _LlamaDownloadWorker(_BaseDownloadWorker):
+    """Worker that downloads llama.cpp binaries in a background thread."""
 
-    Emits ``log_line`` for each line of output, ``finished`` on success,
-    or ``error`` with a message string on failure.
+    def __init__(self, bin_dir: Path, version: Optional[str] = None):
+        super().__init__()
+        self._bin_dir = bin_dir
+        self._version = version
 
-    For the ``vl`` alias the mmproj file is also downloaded when configured.
-    """
+    def run(self) -> None:
+        from aria.scripts.llama import download_llama_cpp
 
-    finished = Signal()
-    error = Signal(str)
-    log_line = Signal(str)
+        self._run_with_redirected_output(
+            download_llama_cpp,
+            bin_dir=self._bin_dir,
+            version=self._version,
+        )
+
+
+class _ModelDownloadWorker(_BaseDownloadWorker):
+    """Worker that downloads a GGUF model in a background thread."""
 
     def __init__(
         self,
@@ -120,7 +131,6 @@ class _ModelDownloadWorker(QObject):
         self._force = force
 
     def run(self) -> None:
-        """Download the selected GGUF model (runs in a QThread)."""
         from aria.config.api import LlamaCpp
         from aria.config.models import Chat, Embeddings, Vision
         from aria.scripts.gguf import download_gguf_model
@@ -161,11 +171,7 @@ class _ModelDownloadWorker(QObject):
             self.error.emit(f"Unknown model alias: {self._alias!r}")
             return
 
-        stream = _SignalStream(self.log_line.emit)
-        old_stdout, old_stderr = sys.stdout, sys.stderr
-        sys.stdout = stream  # type: ignore[assignment]
-        sys.stderr = stream  # type: ignore[assignment]
-        try:
+        def _download_all():
             for repo_id, filename in downloads:
                 download_gguf_model(
                     repo_id=repo_id,
@@ -174,25 +180,12 @@ class _ModelDownloadWorker(QObject):
                     token=self._token,
                     force=self._force,
                 )
-            self.finished.emit()
-        except Exception as exc:
-            self.error.emit(str(exc))
-        finally:
-            stream.flush()
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
+
+        self._run_with_redirected_output(_download_all)
 
 
-class _LightpandaDownloadWorker(QObject):
-    """Worker that downloads Lightpanda binary in a background thread.
-
-    Emits ``log_line`` for each line of output, ``finished`` on success,
-    or ``error`` with a message string on failure.
-    """
-
-    finished = Signal()
-    error = Signal(str)
-    log_line = Signal(str)
+class _LightpandaDownloadWorker(_BaseDownloadWorker):
+    """Worker that downloads Lightpanda binary in a background thread."""
 
     def __init__(self, bin_dir: Path, version: Optional[str] = None):
         super().__init__()
@@ -200,54 +193,64 @@ class _LightpandaDownloadWorker(QObject):
         self._version = version
 
     def run(self) -> None:
-        """Download Lightpanda binary (runs in a QThread)."""
         from aria.scripts.lightpanda import download_lightpanda
 
-        stream = _SignalStream(self.log_line.emit)
-        old_stdout, old_stderr = sys.stdout, sys.stderr
-        sys.stdout = stream  # type: ignore[assignment]
-        sys.stderr = stream  # type: ignore[assignment]
-        try:
-            download_lightpanda(bin_dir=self._bin_dir, version=self._version)
-            self.finished.emit()
-        except Exception as exc:
-            self.error.emit(str(exc))
-        finally:
-            stream.flush()
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
+        self._run_with_redirected_output(
+            download_lightpanda,
+            bin_dir=self._bin_dir,
+            version=self._version,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Download slot — bundles per-download widget references
+# ---------------------------------------------------------------------------
+
+
+class _DownloadSlot:
+    """Holds per-download widget references and callbacks."""
+
+    def __init__(
+        self,
+        thread_attr: str,
+        worker_attr: str,
+        button,
+        output,
+        progress,
+        default_text: str,
+        start_handler: Callable,
+    ):
+        self.thread_attr = thread_attr
+        self.worker_attr = worker_attr
+        self.button = button
+        self.output = output
+        self.progress = progress
+        self.default_text = default_text
+        self.start_handler = start_handler
+
+
+# ---------------------------------------------------------------------------
+# Mixin
+# ---------------------------------------------------------------------------
 
 
 class SetupHandlersMixin:
     """Mixin class providing Setup tab handlers for MainWindow.
 
     This mixin expects to be combined with a QMainWindow that has a ``ui``
-    attribute of type ``Ui_MainWindow``. It provides:
+    attribute of type ``Ui_MainWindow``.  It provides:
 
-    - Status label population for LlamaCpp binaries, GGUF models, and Lightpanda
-    - Background download of llama.cpp binaries via ``_LlamaDownloadWorker``
-    - Background download of GGUF models via ``_ModelDownloadWorker``
-    - Background download of Lightpanda via ``_LightpandaDownloadWorker``
-
-    Attributes:
-        _llama_dl_thread: QThread for the llama.cpp download worker.
-        _llama_dl_worker: The active llama download worker (kept alive).
-        _model_dl_thread: QThread for the model download worker.
-        _model_dl_worker: The active model download worker (kept alive).
-        _lightpanda_dl_thread: QThread for Lightpanda download worker.
-        _lightpanda_dl_worker: Active Lightpanda download worker (kept alive).
+    - Status label population for binaries, models, and Lightpanda
+    - Generic background download with progress, cancel, and auto-refresh
     """
 
     ui: Ui_MainWindow
 
     # Provided by ServerHandlersMixin when combined in MainWindow
-    def _run_preflight(self) -> None: ...
+    def _run_preflight(self) -> None: ...  # pragma: no cover
 
     def _connect_setup_signals(self) -> None:
-        """Wire Setup tab button signals and initialise thread handles.
-
-        Call this from ``MainWindow.__init__()`` after ``setupUi()``.
-        """
+        """Wire Setup tab button signals and initialise download slots."""
         self.ui.pushButton_LlamaDownload.clicked.connect(
             self.on_llama_download_clicked
         )
@@ -257,6 +260,8 @@ class SetupHandlersMixin:
         self.ui.pushButton_LightpandaDownload.clicked.connect(
             self.on_lightpanda_download_clicked
         )
+
+        # Thread / worker attribute handles (kept for closeEvent compat)
         self._llama_dl_thread: Optional[QThread] = None
         self._llama_dl_worker: Optional[_LlamaDownloadWorker] = None
         self._model_dl_thread: Optional[QThread] = None
@@ -264,8 +269,42 @@ class SetupHandlersMixin:
         self._lightpanda_dl_thread: Optional[QThread] = None
         self._lightpanda_dl_worker: Optional[_LightpandaDownloadWorker] = None
 
+        self._dl_slots: dict[str, _DownloadSlot] = {
+            "llama": _DownloadSlot(
+                thread_attr="_llama_dl_thread",
+                worker_attr="_llama_dl_worker",
+                button=self.ui.pushButton_LlamaDownload,
+                output=self.ui.plainTextEdit_LlamaOutput,
+                progress=self.ui.progressBar_LlamaDownload,
+                default_text="Download Binaries",
+                start_handler=self.on_llama_download_clicked,
+            ),
+            "model": _DownloadSlot(
+                thread_attr="_model_dl_thread",
+                worker_attr="_model_dl_worker",
+                button=self.ui.pushButton_ModelDownload,
+                output=self.ui.plainTextEdit_ModelOutput,
+                progress=self.ui.progressBar_ModelDownload,
+                default_text="Download Model",
+                start_handler=self.on_model_download_clicked,
+            ),
+            "lightpanda": _DownloadSlot(
+                thread_attr="_lightpanda_dl_thread",
+                worker_attr="_lightpanda_dl_worker",
+                button=self.ui.pushButton_LightpandaDownload,
+                output=self.ui.plainTextEdit_LightpandaOutput,
+                progress=self.ui.progressBar_LightpandaDownload,
+                default_text="Download",
+                start_handler=self.on_lightpanda_download_clicked,
+            ),
+        }
+
+    # ------------------------------------------------------------------
+    # Setup tab — status labels
+    # ------------------------------------------------------------------
+
     def load_setup(self) -> None:
-        """Populate all Setup tab status labels from current configuration."""
+        """Populate all Setup tab status labels from current config."""
         from aria.config.api import LlamaCpp
         from aria.config.models import Chat, Embeddings, Vision
         from aria.scripts.gguf import is_model_downloaded
@@ -330,12 +369,12 @@ class SetupHandlersMixin:
             )
             self.ui.label_Lightpanda_BrowserTools.setText("Disabled")
 
-    def _cleanup_thread(self, attr: str) -> None:
-        """Safely stop and clean up a QThread stored as an instance attribute.
+    # ------------------------------------------------------------------
+    # Generic download helpers
+    # ------------------------------------------------------------------
 
-        Args:
-            attr: Name of the ``QThread`` attribute on ``self``.
-        """
+    def _cleanup_thread(self, attr: str) -> None:
+        """Safely stop and clean up a QThread stored as an instance attr."""
         thread = getattr(self, attr, None)
         if thread is not None:
             if thread.isRunning():
@@ -346,179 +385,140 @@ class SetupHandlersMixin:
             setattr(self, attr, None)
 
     def _cleanup_llama_dl_thread(self) -> None:
-        """Safely stop and clean up the llama download thread."""
         self._cleanup_thread("_llama_dl_thread")
         self._llama_dl_worker = None
 
-    def on_llama_download_clicked(self) -> None:
-        """Handle Download Binaries button click.
-
-        Starts ``_LlamaDownloadWorker`` in a background QThread.
-        """
-        from aria.config.api import LlamaCpp
-
-        self._cleanup_llama_dl_thread()
-        self.ui.pushButton_LlamaDownload.setEnabled(False)
-        self.ui.plainTextEdit_LlamaOutput.clear()
-
-        version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
-
-        self._llama_dl_worker = _LlamaDownloadWorker(
-            bin_dir=LlamaCpp.bin_path, version=version_text
-        )
-        self._llama_dl_thread = QThread()
-        self._llama_dl_worker.moveToThread(self._llama_dl_thread)
-
-        self._llama_dl_thread.started.connect(self._llama_dl_worker.run)
-        self._llama_dl_worker.log_line.connect(self._on_llama_log_line)
-        self._llama_dl_worker.finished.connect(self._on_llama_dl_finished)
-        self._llama_dl_worker.error.connect(self._on_llama_dl_error)
-        self._llama_dl_worker.finished.connect(self._llama_dl_thread.quit)
-        self._llama_dl_worker.error.connect(self._llama_dl_thread.quit)
-        self._llama_dl_thread.finished.connect(
-            self._llama_dl_worker.deleteLater
-        )
-        self._llama_dl_thread.finished.connect(self._clear_llama_dl_worker)
-
-        self._llama_dl_thread.start()
-
-    def _clear_llama_dl_worker(self) -> None:
-        self._llama_dl_worker = None
-
-    def _on_llama_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_LlamaOutput.appendPlainText(_strip_ansi(line))
-
-    def _on_llama_dl_finished(self) -> None:
-        self.ui.pushButton_LlamaDownload.setEnabled(True)
-        self.load_setup()
-        self._run_preflight()
-
-    def _on_llama_dl_error(self, message: str) -> None:
-        self.ui.plainTextEdit_LlamaOutput.appendPlainText(f"ERROR: {message}")
-        self.ui.pushButton_LlamaDownload.setEnabled(True)
-
     def _cleanup_model_dl_thread(self) -> None:
-        """Safely stop and clean up the model download thread."""
         self._cleanup_thread("_model_dl_thread")
         self._model_dl_worker = None
 
+    def _cleanup_lightpanda_dl_thread(self) -> None:
+        self._cleanup_thread("_lightpanda_dl_thread")
+        self._lightpanda_dl_worker = None
+
+    def _start_download(self, key: str, worker: _BaseDownloadWorker) -> None:
+        """Start a generic download in a background thread."""
+        slot = self._dl_slots[key]
+
+        # Clean up any previous download
+        self._cleanup_thread(slot.thread_attr)
+        setattr(self, slot.worker_attr, None)
+
+        # Reset UI
+        slot.output.clear()
+        slot.progress.setVisible(True)
+        slot.progress.setValue(0)
+
+        # Create and wire thread
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.log_line.connect(
+            lambda line, k=key: self._on_dl_log_line(k, line)
+        )
+        worker.finished.connect(lambda k=key: self._on_dl_finished(k))
+        worker.error.connect(lambda msg, k=key: self._on_dl_error(k, msg))
+        worker.finished.connect(thread.quit)
+        worker.error.connect(thread.quit)
+        thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(lambda k=key: self._clear_dl_worker(k))
+
+        # Store references
+        setattr(self, slot.thread_attr, thread)
+        setattr(self, slot.worker_attr, worker)
+
+        # Switch button to Cancel mode
+        slot.button.setText("Cancel")
+        slot.button.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop))
+        )
+        slot.button.clicked.disconnect()
+        slot.button.clicked.connect(lambda k=key: self._cancel_download(k))
+        slot.button.setEnabled(True)
+
+        thread.start()
+
+    def _cancel_download(self, key: str) -> None:
+        """Cancel a running download."""
+        slot = self._dl_slots[key]
+        thread = getattr(self, slot.thread_attr, None)
+        if thread is not None and thread.isRunning():
+            thread.terminate()
+            thread.wait()
+        self._reset_download_button(key)
+
+    def _reset_download_button(self, key: str) -> None:
+        """Reset a download button to its default state."""
+        slot = self._dl_slots[key]
+        slot.button.setText(slot.default_text)
+        slot.button.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
+        slot.button.setEnabled(True)
+        slot.button.clicked.disconnect()
+        slot.button.clicked.connect(slot.start_handler)
+        slot.progress.setVisible(False)
+
+    def _clear_dl_worker(self, key: str) -> None:
+        """Clear the worker reference for a download slot."""
+        slot = self._dl_slots[key]
+        setattr(self, slot.worker_attr, None)
+
+    def _on_dl_log_line(self, key: str, line: str) -> None:
+        """Append a log line and update progress bar."""
+        slot = self._dl_slots[key]
+        slot.output.appendPlainText(_strip_ansi(line))
+        match = _PROGRESS_RE.search(line)
+        if match:
+            pct = int(float(match.group(1)))
+            slot.progress.setValue(pct)
+
+    def _on_dl_finished(self, key: str) -> None:
+        """Handle download completion."""
+        self._reset_download_button(key)
+        self.load_setup()
+        self._run_preflight()
+
+    def _on_dl_error(self, key: str, message: str) -> None:
+        """Handle download error."""
+        slot = self._dl_slots[key]
+        slot.output.appendPlainText(f"ERROR: {message}")
+        self._reset_download_button(key)
+
+    # ------------------------------------------------------------------
+    # Per-download click handlers (thin wrappers)
+    # ------------------------------------------------------------------
+
+    def on_llama_download_clicked(self) -> None:
+        """Handle Download Binaries button click."""
+        from aria.config.api import LlamaCpp
+
+        version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
+        worker = _LlamaDownloadWorker(
+            bin_dir=LlamaCpp.bin_path, version=version_text
+        )
+        self._start_download("llama", worker)
+
     def on_model_download_clicked(self) -> None:
-        """Handle Download Model button click.
-
-        Starts ``_ModelDownloadWorker`` in a background QThread.
-        """
+        """Handle Download Model button click."""
         from aria.config.huggingface import HuggingFace
-
-        self._cleanup_model_dl_thread()
-        self.ui.pushButton_ModelDownload.setEnabled(False)
-        self.ui.plainTextEdit_ModelOutput.clear()
 
         alias = self.ui.comboBox_ModelSelect.currentText()
         token_text = (
             self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
         )
         force = self.ui.checkBox_ModelForce.isChecked()
-
-        self._model_dl_worker = _ModelDownloadWorker(
+        worker = _ModelDownloadWorker(
             alias=alias, token=token_text, force=force
         )
-        self._model_dl_thread = QThread()
-        self._model_dl_worker.moveToThread(self._model_dl_thread)
-
-        self._model_dl_thread.started.connect(self._model_dl_worker.run)
-        self._model_dl_worker.log_line.connect(self._on_model_log_line)
-        self._model_dl_worker.finished.connect(self._on_model_dl_finished)
-        self._model_dl_worker.error.connect(self._on_model_dl_error)
-        self._model_dl_worker.finished.connect(self._model_dl_thread.quit)
-        self._model_dl_worker.error.connect(self._model_dl_thread.quit)
-        self._model_dl_thread.finished.connect(
-            self._model_dl_worker.deleteLater
-        )
-        self._model_dl_thread.finished.connect(self._clear_model_dl_worker)
-
-        self._model_dl_thread.start()
-
-    def _clear_model_dl_worker(self) -> None:
-        self._model_dl_worker = None
-
-    def _on_model_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_ModelOutput.appendPlainText(_strip_ansi(line))
-
-    def _on_model_dl_finished(self) -> None:
-        self.ui.pushButton_ModelDownload.setEnabled(True)
-        self.load_setup()
-        self._run_preflight()
-
-    def _on_model_dl_error(self, message: str) -> None:
-        self.ui.plainTextEdit_ModelOutput.appendPlainText(f"ERROR: {message}")
-        self.ui.pushButton_ModelDownload.setEnabled(True)
-
-    def _cleanup_lightpanda_dl_thread(self) -> None:
-        """Safely stop and clean up the Lightpanda download thread."""
-        self._cleanup_thread("_lightpanda_dl_thread")
-        self._lightpanda_dl_worker = None
+        self._start_download("model", worker)
 
     def on_lightpanda_download_clicked(self) -> None:
-        """Handle Download Lightpanda button click.
-
-        Starts ``_LightpandaDownloadWorker`` in a background QThread.
-        """
+        """Handle Download Lightpanda button click."""
         from aria.config.api import Lightpanda
-
-        self._cleanup_lightpanda_dl_thread()
-        self.ui.pushButton_LightpandaDownload.setEnabled(False)
-        self.ui.plainTextEdit_LightpandaOutput.clear()
 
         version_text = (
             self.ui.lineEdit_LightpandaVersion.text().strip() or None
         )
-
-        self._lightpanda_dl_worker = _LightpandaDownloadWorker(
+        worker = _LightpandaDownloadWorker(
             bin_dir=Lightpanda.get_bin_path(), version=version_text
         )
-        self._lightpanda_dl_thread = QThread()
-        self._lightpanda_dl_worker.moveToThread(self._lightpanda_dl_thread)
-
-        self._lightpanda_dl_thread.started.connect(
-            self._lightpanda_dl_worker.run
-        )
-        self._lightpanda_dl_worker.log_line.connect(
-            self._on_lightpanda_log_line
-        )
-        self._lightpanda_dl_worker.finished.connect(
-            self._on_lightpanda_dl_finished
-        )
-        self._lightpanda_dl_worker.error.connect(self._on_lightpanda_dl_error)
-        self._lightpanda_dl_worker.finished.connect(
-            self._lightpanda_dl_thread.quit
-        )
-        self._lightpanda_dl_worker.error.connect(
-            self._lightpanda_dl_thread.quit
-        )
-        self._lightpanda_dl_thread.finished.connect(
-            self._lightpanda_dl_worker.deleteLater
-        )
-        self._lightpanda_dl_thread.finished.connect(
-            self._clear_lightpanda_dl_worker
-        )
-
-        self._lightpanda_dl_thread.start()
-
-    def _clear_lightpanda_dl_worker(self) -> None:
-        self._lightpanda_dl_worker = None
-
-    def _on_lightpanda_log_line(self, line: str) -> None:
-        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(
-            _strip_ansi(line)
-        )
-
-    def _on_lightpanda_dl_finished(self) -> None:
-        self.ui.pushButton_LightpandaDownload.setEnabled(True)
-        self.load_setup()
-        self._run_preflight()
-
-    def _on_lightpanda_dl_error(self, message: str) -> None:
-        self.ui.plainTextEdit_LightpandaOutput.appendPlainText(
-            f"ERROR: {message}"
-        )
-        self.ui.pushButton_LightpandaDownload.setEnabled(True)
+        self._start_download("lightpanda", worker)

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime
 
-from PySide6.QtWidgets import QDialog, QMessageBox, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QDialog, QListWidgetItem, QMessageBox, QWidget
 from sqlalchemy import select
 
 from aria.cli import get_db_session
@@ -14,6 +17,8 @@ from aria.db.auth import hash_password
 from aria.db.models import User
 from aria.gui.dialogs import EditUserDialog
 from aria.gui.ui.mainwindow import Ui_MainWindow
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class UserHandlersMixin:
@@ -33,16 +38,68 @@ class UserHandlersMixin:
                 self.ui.listWidget_CurrentUsers.clear()
                 for user in users:
                     self.ui.listWidget_CurrentUsers.addItem(user.identifier)
+                if not users:
+                    item = QListWidgetItem(
+                        "No users yet. Create one to get started."
+                    )
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                    item.setForeground(QColor("#999999"))
+                    self.ui.listWidget_CurrentUsers.addItem(item)
         except Exception as e:
             self.ui.statusBar.showMessage(f"Error listing users: {e}")
+
+    @staticmethod
+    def _is_valid_email(email: str) -> bool:
+        """Return True if *email* has a basic valid format."""
+        return bool(_EMAIL_RE.match(email))
+
+    @staticmethod
+    def _password_strength(password: str) -> tuple[str, str]:
+        """Return (label, color) for password strength."""
+        if not password:
+            return "", ""
+        score = 0
+        if len(password) >= 8:
+            score += 1
+        if len(password) >= 12:
+            score += 1
+        if re.search(r"[A-Z]", password):
+            score += 1
+        if re.search(r"[0-9]", password):
+            score += 1
+        if re.search(r"[^A-Za-z0-9]", password):
+            score += 1
+        if score <= 2:
+            return "Weak", "#c62828"
+        elif score <= 3:
+            return "Fair", "#e65100"
+        else:
+            return "Strong", "#2e7d32"
+
+    def _update_password_strength(self) -> None:
+        """Update the password strength indicator label."""
+        label, color = self._password_strength(
+            self.ui.lineEdit_UserPassword.text()
+        )
+        self.ui.label_PasswordStrength.setText(label)
+        if color:
+            self.ui.label_PasswordStrength.setStyleSheet(
+                f"color: {color}; font-weight: bold;"
+            )
+        else:
+            self.ui.label_PasswordStrength.setStyleSheet("")
 
     def validate_create_fields(self) -> None:
         """Enable Create User button only when all fields are filled."""
         name = self.ui.lineEdit_UserName.text().strip()
         email = self.ui.lineEdit_UserEmail.text().strip()
         password = self.ui.lineEdit_UserPassword.text()
+        confirm = self.ui.lineEdit_UserConfirmPassword.text()
 
-        all_filled = bool(name and email and password)
+        email_valid = self._is_valid_email(email) if email else False
+        all_filled = bool(
+            name and email_valid and password and password == confirm
+        )
         self.ui.pushButton_CreateUser.setEnabled(all_filled)
 
     def validate_user_selection(self) -> None:
@@ -57,6 +114,14 @@ class UserHandlersMixin:
         name = self.ui.lineEdit_UserName.text().strip()
         identifier = self.ui.lineEdit_UserEmail.text().strip()
         password = self.ui.lineEdit_UserPassword.text()
+
+        if not self._is_valid_email(identifier):
+            self.show_error("Please enter a valid email address")
+            return
+
+        if password != self.ui.lineEdit_UserConfirmPassword.text():
+            self.show_error("Passwords do not match")
+            return
 
         try:
             with get_db_session() as session:
@@ -85,6 +150,9 @@ class UserHandlersMixin:
             self.ui.lineEdit_UserName.clear()
             self.ui.lineEdit_UserEmail.clear()
             self.ui.lineEdit_UserPassword.clear()
+            self.ui.lineEdit_UserConfirmPassword.clear()
+            self.ui.label_PasswordStrength.setText("")
+            self.ui.label_PasswordStrength.setStyleSheet("")
             self.ui.statusBar.showMessage(
                 f"User '{identifier}' created.", 3000
             )

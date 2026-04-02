@@ -72,6 +72,7 @@ class ServerHandlersMixin:
         self._preflight_result = None
         self._preflight_running = False
         self._is_stopping = False  # Track stopping state for UI feedback
+        self._was_healthy = False  # Track crash detection
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
         self._server_timer.start(1000)
@@ -126,6 +127,55 @@ class ServerHandlersMixin:
         """Persist completed preflight results and refresh the UI."""
         self._preflight_result = result
         self._preflight_running = False
+
+        # Handle settings-specific status messages
+        if getattr(self, "_settings_just_saved", False):
+            self._settings_just_saved = False
+            if result.passed:
+                self.statusBar().showMessage(
+                    "Settings saved — all checks passed. " "Restart to apply.",
+                    5000,
+                )
+            else:
+                failure_count = len(result.failures)
+                self.statusBar().showMessage(
+                    f"Settings saved — {failure_count} check(s) failed. "
+                    "Restart to apply.",
+                    10000,
+                )
+                failures = "\n".join(
+                    f"  • {c.name}: {c.error}" for c in result.failures
+                )
+                self.ui.pushButton_SettingsSave.setToolTip(
+                    f"Preflight checks failed:\n{failures}"
+                )
+            self._update_server_status()
+            return
+
+        if getattr(self, "_settings_just_loaded", False):
+            self._settings_just_loaded = False
+            if result.passed:
+                self.statusBar().showMessage(
+                    "Settings loaded — all checks passed. "
+                    "Server can be started.",
+                    5000,
+                )
+            else:
+                failure_count = len(result.failures)
+                self.statusBar().showMessage(
+                    f"Settings loaded — {failure_count} preflight check(s) "
+                    "failed. Fix issues before starting the server.",
+                    10000,
+                )
+                failures = "\n".join(
+                    f"  • {c.name}: {c.error}" for c in result.failures
+                )
+                self.ui.pushButton_SettingsSave.setToolTip(
+                    f"Preflight checks failed:\n{failures}"
+                )
+            self._update_server_status()
+            return
+
         self._update_server_status()
 
     def _on_preflight_failed(self, error: str) -> None:
@@ -166,6 +216,20 @@ class ServerHandlersMixin:
         The llama-server inference processes are stopped automatically by
         the web UI via the Chainlit ``on_app_shutdown`` lifecycle hook.
         """
+        # Confirm before stopping a healthy server
+        status = self._server_manager.get_status()
+        if status.healthy:
+            reply = QMessageBox.question(
+                self,
+                "Confirm Stop",
+                "Are you sure you want to stop the server?\n"
+                "Active chat sessions will be disconnected.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
         # Disable both buttons immediately to prevent double-clicks
         self.ui.pushButton_ServiceStop.setEnabled(False)
         self.ui.pushButton_ServiceStart.setEnabled(False)
@@ -211,6 +275,7 @@ class ServerHandlersMixin:
 
         _BADGE_BASE = "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
         if status.healthy:
+            self._was_healthy = True
             self.ui.label_ServiceStatus.setText("Running")
             self.ui.label_ServiceStatus.setStyleSheet(
                 f"QLabel {{ background-color: #2e7d32; {_BADGE_BASE} }}"
@@ -233,18 +298,25 @@ class ServerHandlersMixin:
                     "Starting Aria server\u2026 this may take a few minutes."
                 )
         else:
+            crashed = self._was_healthy and not self._is_stopping
+            self._was_healthy = False
             self.ui.label_ServiceStatus.setText("Stopped")
             self.ui.label_ServiceStatus.setStyleSheet(
                 f"QLabel {{ background-color: #c62828; {_BADGE_BASE} }}"
             )
-            # Show preflight failures in status bar when server is stopped
-            if (
+            if crashed:
+                # Crash message takes priority
+                self.statusBar().showMessage(
+                    "Server stopped unexpectedly. " "Check logs for details.",
+                    10000,
+                )
+            elif (
                 self._preflight_result is not None
                 and not self._preflight_result.passed
             ):
-                failure_count = len(self._preflight_result.failures)
+                n = len(self._preflight_result.failures)
                 self.statusBar().showMessage(
-                    f"Cannot start: {failure_count} preflight check(s) failed. "
+                    f"Cannot start: {n} preflight check(s) failed. "
                     "Hover over Start button for details."
                 )
             else:
@@ -308,3 +380,8 @@ class ServerHandlersMixin:
                 )
         else:
             self.ui.pushButton_ServiceStart.setToolTip("")
+
+        # Keep tray icon in sync
+        tray = getattr(self, "_tray_icon", None)
+        if tray is not None:
+            tray.update_status(running=status.running, healthy=status.healthy)
