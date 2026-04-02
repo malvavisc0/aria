@@ -128,9 +128,13 @@ This reduces routing complexity, lowers prompt overhead, and makes future capabi
 
 ### Prerequisites
 
+- **GPU with 8 GB+ VRAM** (minimum; 12 GB+ recommended)
+- **16 GB+ system RAM**
 - Python 3.12 or higher
 - `uv` package manager (recommended)
 - Git
+
+> See [`docs/memory-requirements.md`](docs/memory-requirements.md) for detailed VRAM/RAM breakdown per model.
 
 ### Install
 
