@@ -12,6 +12,10 @@ import sys
 from pathlib import Path
 from typing import Callable, Optional
 
+from PySide6.QtCore import QObject, QThread, Signal
+
+from aria.gui.ui.mainwindow import Ui_MainWindow
+
 _ANSI_ESCAPE = re.compile(
     r"\x1b\[[0-9;?]*[a-zA-Z]"
     r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"
@@ -23,11 +27,6 @@ _ANSI_ESCAPE = re.compile(
 def _strip_ansi(text: str) -> str:
     """Remove ANSI/VT100 escape sequences and carriage returns from *text*."""
     return _ANSI_ESCAPE.sub("", text)
-
-
-from PySide6.QtCore import QObject, QThread, Signal
-
-from aria.gui.ui.mainwindow import Ui_MainWindow
 
 
 class _SignalStream(io.TextIOBase):

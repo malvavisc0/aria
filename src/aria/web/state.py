@@ -39,6 +39,15 @@ class AppStateNotInitializedError(RuntimeError):
         super().__init__(message)
 
 
+_REQUIRED_FIELDS = (
+    "llm",
+    "embeddings",
+    "vector_db",
+    "agents_workflow",
+    "db_engine",
+)
+
+
 class AppState(BaseModel):
     """Application state initialized at startup.
 
@@ -72,33 +81,24 @@ class AppState(BaseModel):
         Returns:
             bool: True if all required components are initialized.
         """
-        return all(
-            [
-                self.llm is not None,
-                self.embeddings is not None,
-                self.vector_db is not None,
-                self.agents_workflow is not None,
-                self.db_engine is not None,
-                self.startup_complete,
-            ]
+        return (
+            all(getattr(self, field) is not None for field in _REQUIRED_FIELDS)
+            and self.startup_complete
         )
 
     def validate_initialized(self) -> None:
         """Validate that the application state is fully initialized."""
-        if self.llm is None:
-            raise AppStateNotInitializedError("llm not initialized")
-        if self.embeddings is None:
-            raise AppStateNotInitializedError("embeddings not initialized")
-        if self.vector_db is None:
-            raise AppStateNotInitializedError("vector_db not initialized")
-        if self.agents_workflow is None:
+        if not self.is_initialized():
+            missing = [f for f in _REQUIRED_FIELDS if getattr(self, f) is None]
+            if not self.startup_complete:
+                missing.append("startup_complete")
             raise AppStateNotInitializedError(
-                "agents_workflow not initialized"
+                f"Not initialized: {', '.join(missing)}"
             )
-        if self.db_engine is None:
-            raise AppStateNotInitializedError("db_engine not initialized")
-        if not self.startup_complete:
-            raise AppStateNotInitializedError("startup not complete")
 
 
+# NOTE: _state is a mutable singleton accessed from multiple async coroutines.
+# This is safe under CPython's GIL given the startup-once pattern, but should
+# be revisited if true parallelism is introduced. Consider adding an
+# asyncio.Lock if concurrent writes become necessary.
 _state = AppState()

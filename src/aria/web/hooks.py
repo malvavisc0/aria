@@ -15,7 +15,7 @@ import json
 import chainlit as cl
 from chainlit.types import ThreadDict
 from loguru import logger
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aria.config.database import SQLite as SQLiteConfig
@@ -23,32 +23,36 @@ from aria.config.folders import Storage as StorageConfig
 from aria.db.auth import verify_password
 from aria.db.layer import SQLiteSQLAlchemyDataLayer
 from aria.db.local_storage_client import LocalStorageClient
-from aria.db.models import Base, User
+from aria.db.models import User
 from aria.web.session import restore_chat_history, wait_for_initialization
 from aria.web.state import _state
 
+_cached_data_layer: SQLiteSQLAlchemyDataLayer | None = None
+
 
 def get_data_layer_handler() -> SQLiteSQLAlchemyDataLayer:
-    """Create and return a SQLite data layer instance.
+    """Return a cached SQLite data layer instance.
 
-    Initializes the database engine with SQLite configuration,
-    creates all necessary tables, and returns a configured
-    SQLiteSQLAlchemyDataLayer with local storage client.
+    The data layer is created once and reused for all subsequent calls.
+    The database engine and tables are already initialized at startup
+    by lifecycle.py, so no additional setup is needed here.
 
     Returns:
         SQLiteSQLAlchemyDataLayer: Configured data layer instance.
     """
-    engine = create_engine(SQLiteConfig.db_url)
-    Base.metadata.create_all(engine)
+    global _cached_data_layer
+    if _cached_data_layer is not None:
+        return _cached_data_layer
 
     storage_client = LocalStorageClient(
         storage_path=StorageConfig.path, base_url="/storage"
     )
-    return SQLiteSQLAlchemyDataLayer(
+    _cached_data_layer = SQLiteSQLAlchemyDataLayer(
         conninfo=SQLiteConfig.conn_info,
         storage_provider=storage_client,
         show_logger=True,
     )
+    return _cached_data_layer
 
 
 async def auth_callback_handler(

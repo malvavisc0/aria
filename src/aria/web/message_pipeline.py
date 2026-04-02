@@ -30,6 +30,7 @@ from aria.web.state import AppStateNotInitializedError, _state
 # Regex patterns to detect LLM thinking/reasoning content
 # These match opening tags (partial content being streamed)
 THINKING_OPEN_PATTERNS = [
+    re.compile(r"💭", re.IGNORECASE),
     re.compile(r"<think>", re.IGNORECASE),
     re.compile(r"<reasoning", re.IGNORECASE),
     re.compile(r"<reflection", re.IGNORECASE),
@@ -37,30 +38,63 @@ THINKING_OPEN_PATTERNS = [
 
 # These match closing tags
 THINKING_CLOSE_PATTERNS = [
+    re.compile(r"💭", re.IGNORECASE),
     re.compile(r"</think>", re.IGNORECASE),
     re.compile(r"</reasoning>", re.IGNORECASE),
     re.compile(r"</reflection>", re.IGNORECASE),
 ]
 
 
-def _contains_thinking_open(text: str) -> bool:
-    """Check if text contains an opening thinking tag."""
-    if not text:
-        return False
-    for pattern in THINKING_OPEN_PATTERNS:
-        if pattern.search(text):
-            return True
-    return False
+class ThinkingBlockDetector:
+    """State machine to detect thinking/reasoning blocks across stream deltas.
 
+    Handles the case where thinking tags are split across multiple deltas
+    (e.g. ``<think`` in one chunk and ``ing>`` in the next) by maintaining
+    a small pending buffer.
+    """
 
-def _contains_thinking_close(text: str) -> bool:
-    """Check if text contains a closing thinking tag."""
-    if not text:
-        return False
-    for pattern in THINKING_CLOSE_PATTERNS:
-        if pattern.search(text):
-            return True
-    return False
+    def __init__(self) -> None:
+        self._pending: str = ""
+        self._in_thinking: bool = False
+
+    def process_delta(self, delta: str) -> tuple[bool, bool]:
+        """Process a stream delta and return ``(entered, exited)`` flags.
+
+        Args:
+            delta: Text chunk from the LLM stream.
+
+        Returns:
+            (entered, exited) booleans for thinking block transitions.
+        """
+        self._pending += delta
+        entered = False
+        exited = False
+
+        if not self._in_thinking:
+            for pattern in THINKING_OPEN_PATTERNS:
+                if pattern.search(self._pending):
+                    self._in_thinking = True
+                    entered = True
+                    self._pending = ""
+                    break
+        else:
+            for pattern in THINKING_CLOSE_PATTERNS:
+                if pattern.search(self._pending):
+                    self._in_thinking = False
+                    exited = True
+                    self._pending = ""
+                    break
+
+        # Keep pending buffer bounded to avoid unbounded growth
+        if len(self._pending) > 50:
+            self._pending = self._pending[-20:]
+
+        return entered, exited
+
+    @property
+    def in_thinking(self) -> bool:
+        """Whether we are currently inside a thinking block."""
+        return self._in_thinking
 
 
 def _extract_text_from_blocks(blocks: Any) -> str:
@@ -137,6 +171,105 @@ async def _show_thinking_step() -> cl.Step:
     return step
 
 
+async def _stream_agent_response(
+    handler: Any,
+    output: cl.Message,
+) -> bool:
+    """Stream agent events to the UI and return whether output was emitted.
+
+    Iterates over the agent's streaming events, manages thinking-block
+    detection, tool-call steps, and content buffering.
+
+    Args:
+        handler: The running agent workflow handler (with ``stream_events``
+            and ``__await__``).
+        output: The Chainlit message to stream tokens into.
+
+    Returns:
+        True if any visible content was emitted, False otherwise.
+    """
+    current_step: cl.Step | None = None
+    thinking_step: cl.Step | None = None
+    last_agent_output: AgentOutput | None = None
+    stream_buffer: list[str] = []
+    emitted_output = False
+    thinking_detector = ThinkingBlockDetector()
+
+    async for event in handler.stream_events():
+        if isinstance(event, ToolCall):
+            await maybe_remove_step(current_step)
+            await maybe_remove_step(thinking_step)
+            thinking_step = None
+            current_step = await send_tool_step(event)
+        elif isinstance(event, AgentStream):
+            delta = event.delta or ""
+            if delta:
+                entered, exited = thinking_detector.process_delta(delta)
+                if entered:
+                    # Clear buffer — thinking content won't be shown
+                    stream_buffer.clear()
+                    await maybe_remove_step(current_step)
+                    current_step = None
+                    thinking_step = await _show_thinking_step()
+                elif exited:
+                    await maybe_remove_step(thinking_step)
+                    thinking_step = None
+                elif not thinking_detector.in_thinking:
+                    stream_buffer.append(delta)
+        elif isinstance(event, AgentOutput):
+            last_agent_output = event
+            if not event.tool_calls:
+                await maybe_remove_step(current_step)
+                await maybe_remove_step(thinking_step)
+                thinking_step = None
+                current_step = None
+                content = "".join(
+                    stream_buffer
+                ).strip() or _extract_response_text(event.response)
+                if content:
+                    await output.stream_token(content)
+                    emitted_output = True
+                stream_buffer.clear()
+
+    # Final fallback — use the handler result if nothing was emitted
+    handler_result = await handler
+
+    if not emitted_output:
+        await maybe_remove_step(current_step)
+        await maybe_remove_step(thinking_step)
+        current_step = None
+        thinking_step = None
+        result_response = getattr(handler_result, "response", None)
+        content = "".join(stream_buffer).strip() or _extract_response_text(
+            result_response
+        )
+        if content:
+            await output.stream_token(content)
+            emitted_output = True
+
+    if not emitted_output:
+        agent_name = (
+            last_agent_output.current_agent_name
+            if last_agent_output is not None
+            else "unknown"
+        )
+        tool_call_count = (
+            len(last_agent_output.tool_calls)
+            if last_agent_output is not None and last_agent_output.tool_calls
+            else 0
+        )
+        logger.warning(
+            "No assistant output emitted for message "
+            f"(agent={agent_name}, tool_calls={tool_call_count})."
+        )
+        output.content = (
+            "I couldn't produce a visible response for that request. "
+            "Please try again."
+        )
+
+    return emitted_output
+
+
 async def on_message_handler(message: cl.Message) -> None:
     """Handle incoming user messages and execute the agent workflow.
 
@@ -162,102 +295,13 @@ async def on_message_handler(message: cl.Message) -> None:
             cl.user_session.set("memory", memory)
             logger.debug(f"Created new Memory for thread {message.thread_id}")
 
-        assert _state.agents_workflow is not None
         handler = _state.agents_workflow.run(
             user_msg=prompt,
             memory=memory,
             max_iterations=ChatConfig.max_iteration,
         )
 
-        current_step: cl.Step | None = None
-        thinking_step: cl.Step | None = None
-        last_agent_output: AgentOutput | None = None
-        stream_buffer: list[str] = []
-        emitted_output = False
-        in_thinking_block = False
-
-        async for event in handler.stream_events():
-            if isinstance(event, ToolCall):
-                await maybe_remove_step(current_step)
-                await maybe_remove_step(thinking_step)
-                thinking_step = None
-                in_thinking_block = False
-                current_step = await send_tool_step(event)
-            elif isinstance(event, AgentStream):
-                delta = event.delta or ""
-                if delta:
-                    # Check if we're entering a thinking block
-                    if (
-                        _contains_thinking_open(delta)
-                        and not in_thinking_block
-                    ):
-                        # Clear buffer - thinking content won't be shown
-                        stream_buffer.clear()
-                        in_thinking_block = True
-                        # Show thinking indicator
-                        await maybe_remove_step(current_step)
-                        current_step = None
-                        thinking_step = await _show_thinking_step()
-                    # Check if we're exiting a thinking block
-                    elif in_thinking_block and _contains_thinking_close(delta):
-                        await maybe_remove_step(thinking_step)
-                        thinking_step = None
-                        in_thinking_block = False
-                    # Only add to buffer if not in thinking content
-                    elif not in_thinking_block:
-                        stream_buffer.append(delta)
-            elif isinstance(event, AgentOutput):
-                last_agent_output = event
-                if not event.tool_calls:
-                    await maybe_remove_step(current_step)
-                    await maybe_remove_step(thinking_step)
-                    thinking_step = None
-                    in_thinking_block = False
-                    current_step = None
-                    content = "".join(
-                        stream_buffer
-                    ).strip() or _extract_response_text(event.response)
-                    if content:
-                        await output.stream_token(content)
-                        emitted_output = True
-                stream_buffer.clear()
-
-        handler_result = await handler
-
-        if not emitted_output:
-            await maybe_remove_step(current_step)
-            await maybe_remove_step(thinking_step)
-            current_step = None
-            thinking_step = None
-            result_response = getattr(handler_result, "response", None)
-            content = "".join(stream_buffer).strip() or _extract_response_text(
-                result_response
-            )
-            if content:
-                await output.stream_token(content)
-                emitted_output = True
-
-        if not emitted_output:
-            agent_name = (
-                last_agent_output.current_agent_name
-                if last_agent_output is not None
-                else "unknown"
-            )
-            tool_call_count = (
-                len(last_agent_output.tool_calls)
-                if last_agent_output is not None
-                and last_agent_output.tool_calls
-                else 0
-            )
-            logger.warning(
-                "No assistant output emitted for message "
-                f"(agent={agent_name}, tool_calls={tool_call_count})."
-            )
-            output.content = (
-                "I couldn't produce a visible response for that request. "
-                "Please try again."
-            )
-
+        await _stream_agent_response(handler, output)
         await output.send()
 
     except AppStateNotInitializedError as e:

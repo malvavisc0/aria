@@ -50,19 +50,193 @@ class _HealthCheckFilter(logging.Filter):
         return not any(ep in msg for ep in _HEALTH_ENDPOINTS)
 
 
+def _init_langfuse() -> None:
+    """Initialize Langfuse instrumentation if env vars are present."""
+    _langfuse_keys = (
+        "LANGFUSE_SECRET_KEY",
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_BASE_URL",
+    )
+    if all(os.getenv(k) for k in _langfuse_keys):
+        from langfuse import get_client
+        from openinference.instrumentation.llama_index import (
+            LlamaIndexInstrumentor,
+        )
+
+        get_client()
+        LlamaIndexInstrumentor().instrument()
+        logger.info("Langfuse instrumentation initialized")
+    else:
+        _missing = [k for k in _langfuse_keys if not os.getenv(k)]
+        logger.warning(
+            f"Langfuse instrumentation disabled — "
+            f"missing env vars: {', '.join(_missing)}"
+        )
+
+
+def _init_logging() -> None:
+    """Configure loguru file sinks and stdlib logger filters."""
+    global _log_sink_id, _tool_call_sink_id
+
+    logger.remove()
+
+    log_path = DebugConfig.logs_path
+    # Always store INFO+ to avoid DEBUG log spam (WebSocket frames, etc.)
+    _log_sink_id = logger.add(
+        log_path,
+        rotation="10 MB",
+        level="INFO",  # Never store DEBUG to keep logs clean
+        format=LOG_FORMAT,
+    )
+
+    # Dedicated sink for tool-call debug logs (keeps main log clean).
+    _tool_call_sink_id = logger.add(
+        DebugConfig.logs_path.parent / "tool-calls.log",
+        rotation="10 MB",
+        level="DEBUG",
+        filter=lambda r: "Calling" in r["message"],
+        format=LOG_FORMAT,
+    )
+    logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
+    # Suppress WebSocket frame debug logs (TEXT/PING/PONG/keepalive spam)
+    for _ws_logger_name in (
+        "websockets",
+        "uvicorn.protocol.websockets",
+        "uvicorn.protocols.websockets",
+    ):
+        logging.getLogger(_ws_logger_name).setLevel(logging.WARNING)
+
+
+def _init_storage_mount() -> None:
+    """Mount the local storage directory as a static file server."""
+    from chainlit.server import app
+    from starlette.staticfiles import StaticFiles
+
+    from aria.config.folders import Storage as StorageConfig
+
+    storage_dir = StorageConfig.path
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/storage",
+        StaticFiles(directory=str(storage_dir)),
+        name="local-storage",
+    )
+    logger.info(f"Mounted /storage → {storage_dir}")
+
+
+def _init_database() -> None:
+    """Create the SQLite engine and ensure all tables exist."""
+    from aria.db.models import Base
+
+    _state.db_engine = create_engine(SQLiteConfig.db_url)
+    Base.metadata.create_all(_state.db_engine)
+
+
+def _init_llama_servers() -> None:
+    """Start all configured LlamaCpp inference servers."""
+    _state.llama_manager = LlamaCppServerManager()
+    _state.llama_manager.start_all()
+    logger.info("All LlamaCpp servers ready")
+
+
+def _init_llm_clients() -> None:
+    """Initialize the LLM and embeddings clients."""
+    _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
+    _state.embeddings = get_embeddings_model(
+        api_base=EmbeddingsConfig.api_url,
+        model_name=EmbeddingsConfig.model,
+    )
+
+
+def _init_vector_db() -> None:
+    """Initialize the ChromaDB persistent vector database."""
+    _state.vector_db = ChromaDBPersistentClient(
+        path=ChromaDBConfig.db_path,
+        settings=ChromaDBSettings(
+            is_persistent=True,
+            persist_directory=ChromaDBConfig.db_path.absolute().as_posix(),
+            anonymized_telemetry=False,
+        ),
+    )
+
+
+def _init_agent_workflows() -> None:
+    """Create the agent workflow and prompt enhancer."""
+    from aria.agents import get_prompt_enhancer_agent
+
+    _state.agents_workflow = get_agent_workflow(llm=_state.llm)
+    _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
+
+
+async def _init_browser() -> None:
+    """Start the Lightpanda browser if available."""
+    from aria.config.api import Lightpanda
+
+    if Lightpanda.is_available():
+        from aria.tools.browser.manager import (
+            LightpandaManager,
+            set_browser_manager,
+        )
+
+        binary = Lightpanda.get_binary_path()
+        if binary:
+            browser_mgr = LightpandaManager(binary, port=Lightpanda.port)
+            if await browser_mgr.start():
+                _state.browser_manager = browser_mgr
+                set_browser_manager(browser_mgr)
+                logger.info("Lightpanda browser started successfully")
+            else:
+                logger.warning(
+                    "Lightpanda browser failed to start — "
+                    "browser tools disabled"
+                )
+    else:
+        logger.info("Lightpanda not installed — browser tools disabled")
+
+
+async def _cleanup_on_failure() -> None:
+    """Clean up partially initialized resources after startup failure.
+
+    Mirrors the shutdown order in reverse so that resources are freed
+    in the correct dependency order.
+    """
+    global _log_sink_id, _tool_call_sink_id
+
+    if _state.browser_manager:
+        try:
+            await _state.browser_manager.stop()
+        except Exception:
+            pass
+        _state.browser_manager = None
+
+    if _state.llama_manager:
+        try:
+            _state.llama_manager.stop_all()
+        except Exception:
+            pass
+        _state.llama_manager = None
+
+    if _state.db_engine:
+        try:
+            _state.db_engine.dispose()
+        except Exception:
+            pass
+        _state.db_engine = None
+
+    # Remove log sinks last so that cleanup logging above is captured.
+    if _log_sink_id is not None:
+        logger.remove(_log_sink_id)
+        _log_sink_id = None
+    if _tool_call_sink_id is not None:
+        logger.remove(_tool_call_sink_id)
+        _tool_call_sink_id = None
+
+
 async def on_app_startup_handler() -> None:
     """Initialize the application on startup.
 
-    Called by Chainlit when the application starts. Performs:
-    - Creates files directory for uploads
-    - Initializes Langfuse and LlamaIndex instrumentation
-    - Configures logging with file rotation
-    - Creates SQLite database and tables
-    - Starts LlamaCpp inference servers
-    - Initializes LLM and embeddings clients
-    - Sets up ChromaDB vector database
-    - Creates agent workflows
-    - Starts Lightpanda browser if available
+    Called by Chainlit when the application starts. Orchestrates a
+    sequence of initialization steps with proper cleanup on failure.
 
     Raises:
         Exception: If any critical initialization step fails,
@@ -74,139 +248,35 @@ async def on_app_startup_handler() -> None:
 
         FILES_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
-        _langfuse_keys = (
-            "LANGFUSE_SECRET_KEY",
-            "LANGFUSE_PUBLIC_KEY",
-            "LANGFUSE_BASE_URL",
-        )
-        if all(os.getenv(k) for k in _langfuse_keys):
-            from langfuse import get_client
-            from openinference.instrumentation.llama_index import (
-                LlamaIndexInstrumentor,
-            )
-
-            get_client()
-            LlamaIndexInstrumentor().instrument()
-            logger.info("Langfuse instrumentation initialized")
-        else:
-            _missing = [k for k in _langfuse_keys if not os.getenv(k)]
-            logger.warning(
-                f"Langfuse instrumentation disabled — "
-                f"missing env vars: {', '.join(_missing)}"
-            )
-
-        logger.remove()
-
-        log_path = DebugConfig.logs_path
-        # Always store INFO+ to avoid DEBUG log spam (WebSocket frames, etc.)
-        _log_sink_id = logger.add(
-            log_path,
-            rotation="10 MB",
-            level="INFO",  # Never store DEBUG to keep logs clean
-            format=LOG_FORMAT,
-        )
-
-        # Dedicated sink for tool-call debug logs (keeps main log clean).
-        _tool_call_sink_id = logger.add(
-            DebugConfig.logs_path.parent / "tool-calls.log",
-            rotation="10 MB",
-            level="DEBUG",
-            filter=lambda r: "Calling" in r["message"],
-            format=LOG_FORMAT,
-        )
-        logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
-        # Suppress WebSocket frame debug logs (TEXT/PING/PONG/keepalive spam)
-        for _ws_logger_name in (
-            "websockets",
-            "uvicorn.protocol.websockets",
-            "uvicorn.protocols.websockets",
-        ):
-            logging.getLogger(_ws_logger_name).setLevel(logging.WARNING)
+        _init_langfuse()
+        _init_logging()
         logger.info("Starting Aria web UI...")
 
-        # Mount local storage directory so the browser can fetch
-        # element files (images, documents, etc.) via HTTP.
-        from chainlit.server import app
-        from starlette.staticfiles import StaticFiles
-
-        from aria.config.folders import Storage as StorageConfig
-
-        storage_dir = StorageConfig.path
-        storage_dir.mkdir(parents=True, exist_ok=True)
-        app.mount(
-            "/storage",
-            StaticFiles(directory=str(storage_dir)),
-            name="local-storage",
-        )
-        logger.info(f"Mounted /storage → {storage_dir}")
+        _init_storage_mount()
 
         logger.info("Initializing database...")
-        from aria.db.models import Base
-
-        _state.db_engine = create_engine(SQLiteConfig.db_url)
-        Base.metadata.create_all(_state.db_engine)
+        _init_database()
 
         logger.info("Starting LlamaCpp inference servers...")
-        _state.llama_manager = LlamaCppServerManager()
-        _state.llama_manager.start_all()
-        logger.info("All LlamaCpp servers ready")
+        _init_llama_servers()
 
         logger.info("Initializing LLM and embeddings clients...")
-        _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
-        _state.embeddings = get_embeddings_model(
-            api_base=EmbeddingsConfig.api_url,
-            model_name=EmbeddingsConfig.model,
-        )
+        _init_llm_clients()
 
         logger.info("Initializing vector database...")
-        _state.vector_db = ChromaDBPersistentClient(
-            path=ChromaDBConfig.db_path,
-            settings=ChromaDBSettings(
-                is_persistent=True,
-                persist_directory=ChromaDBConfig.db_path.absolute().as_posix(),
-                anonymized_telemetry=False,
-            ),
-        )
+        _init_vector_db()
 
         logger.info("Initializing agent workflows...")
-        from aria.agents import get_prompt_enhancer_agent
+        _init_agent_workflows()
 
-        _state.agents_workflow = get_agent_workflow(llm=_state.llm)
-        _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
-
-        from aria.config.api import Lightpanda
-
-        if Lightpanda.is_available():
-            from aria.tools.browser.manager import (
-                LightpandaManager,
-                set_browser_manager,
-            )
-
-            binary = Lightpanda.get_binary_path()
-            if binary:
-                browser_mgr = LightpandaManager(binary, port=Lightpanda.port)
-                if await browser_mgr.start():
-                    _state.browser_manager = browser_mgr
-                    set_browser_manager(browser_mgr)
-                    logger.info("Lightpanda browser started successfully")
-                else:
-                    logger.warning(
-                        "Lightpanda browser failed to start — "
-                        "browser tools disabled"
-                    )
-        else:
-            logger.info("Lightpanda not installed — browser tools disabled")
+        await _init_browser()
 
         _state.startup_complete = True
         logger.info("Aria web UI startup complete")
 
     except Exception as e:
         logger.exception(f"Failed to start Aria web UI: {e}")
-        if _state.llama_manager:
-            try:
-                _state.llama_manager.stop_all()
-            except Exception as cleanup_error:
-                logger.error(f"Error during cleanup: {cleanup_error}")
+        await _cleanup_on_failure()
         raise
 
 
@@ -256,6 +326,9 @@ async def on_app_shutdown_handler() -> None:
 
     logger.info("Aria web UI shutdown complete")
 
+    # Log sinks are removed LAST so that all cleanup logging above is
+    # captured by the file sinks. This is intentional — removing sinks
+    # earlier would silently drop diagnostic messages during shutdown.
     if _log_sink_id is not None:
         logger.remove(_log_sink_id)
         _log_sink_id = None

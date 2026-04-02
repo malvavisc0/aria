@@ -7,11 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ---------------------------------------------------------------------------
-# Shared test database fixture
-# ---------------------------------------------------------------------------
-
-
 def _reset_all_db_singletons():
     """Reset all database singletons so the next call creates fresh ones."""
     from aria.tools.database import ToolsDatabase

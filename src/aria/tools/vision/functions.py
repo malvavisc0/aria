@@ -66,11 +66,6 @@ _DEFAULT_IMAGE_PROMPT = (
 )
 
 
-# ---------------------------------------------------------------------------
-# Shared VL layer
-# ---------------------------------------------------------------------------
-
-
 async def _call_vl_model(
     client: httpx.AsyncClient,
     endpoint: str,
@@ -172,11 +167,6 @@ def _persist_vision_result(
     return tool_success_response(tool_name, reason, data)
 
 
-# ---------------------------------------------------------------------------
-# PDF rendering helpers
-# ---------------------------------------------------------------------------
-
-
 def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
     """Render every page of a PDF to PNG bytes at ``_PDF_RENDER_DPI`` DPI.
 
@@ -259,11 +249,6 @@ def _extract_text_from_pdf(pdf_path: Path) -> str:
     return "\n\n".join(pages_text)
 
 
-# ---------------------------------------------------------------------------
-# Image loading helper
-# ---------------------------------------------------------------------------
-
-
 def _load_image_file(image_path: Path) -> bytes:
     """Load an image file and return its bytes as PNG.
 
@@ -304,11 +289,6 @@ def _load_image_file(image_path: Path) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
-
-
-# ---------------------------------------------------------------------------
-# Tool factories
-# ---------------------------------------------------------------------------
 
 
 def make_parse_pdf(api_base: str, model: str) -> Callable:

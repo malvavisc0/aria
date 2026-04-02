@@ -50,10 +50,6 @@ def create_memory(thread_id: str) -> Memory:
     if not thread_id:
         raise ValueError("thread_id cannot be None or empty")
 
-    assert _state.vector_db is not None
-    assert _state.embeddings is not None
-    assert _state.llm is not None
-
     return get_default_memory(
         vector_db=_state.vector_db,
         thread_id=thread_id,
@@ -78,9 +74,9 @@ async def wait_for_initialization(
     Returns:
         bool: True if initialization completed, False if timeout reached.
     """
-    start_time = asyncio.get_event_loop().time()
+    start_time = asyncio.get_running_loop().time()
     while not _state.is_initialized():
-        elapsed = asyncio.get_event_loop().time() - start_time
+        elapsed = asyncio.get_running_loop().time() - start_time
         if elapsed >= timeout:
             return False
         await asyncio.sleep(poll_interval)
@@ -111,7 +107,9 @@ def extract_file_paths(message: cl.Message) -> list[str]:
             shutil.copy2(path_str, dest)
             path_str = str(dest)
         except OSError:
-            pass
+            logger.warning(
+                f"Failed to copy uploaded file {path_str} to {dest}"
+            )
 
         paths.append(path_str)
     return paths
