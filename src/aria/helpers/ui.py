@@ -56,6 +56,7 @@ TOOL_EMOJI: Dict[str, str] = {
     "process": "⚙️",
     # Vision / OCR
     "parse_pdf": "🐾",
+    "analyze_image": "🖼️",
 }
 
 

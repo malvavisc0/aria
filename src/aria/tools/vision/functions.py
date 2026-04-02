@@ -1,20 +1,19 @@
-"""Document analysis tool for the vision-language model.
+"""Document and image analysis tools for the vision-language model.
 
-Provides :func:`make_parse_pdf`, which returns an async ``parse_pdf``
-closure bound to a VL server URL and model name.
+Provides :func:`make_parse_pdf` and :func:`make_analyze_image`, which
+return async closures bound to a VL server URL and model name.
 
-The tool accepts a local file path to a PDF, renders each page to PNG
-via ``pypdfium2``, base64-encodes the PNG bytes, and sends them directly
-to the VL server using the OpenAI multimodal chat format over ``httpx``.
-No LlamaIndex LLM wrapper is involved — the HTTP call is made directly.
+PDF analysis renders each page to PNG via ``pypdfium2``, base64-encodes
+the PNG bytes, and sends them directly to the VL server using the OpenAI
+multimodal chat format over ``httpx``.  No LlamaIndex LLM wrapper is
+involved — the HTTP call is made directly.
 
-PDF rendering uses ``pypdfium2`` (pure-Python, no system dependencies).
-Each page is rendered at 150 DPI and sent to the VL model individually;
-results are concatenated into a single markdown document.
+Image analysis loads an image file, validates it, converts to PNG via
+Pillow, and sends it to the VL server using the same multimodal format.
 
 If the VL model fails (e.g., due to multimodal input not being supported),
-the tool falls back to text-based extraction using pypdfium2's text extraction
-capabilities.
+the PDF tool falls back to text-based extraction using pypdfium2's text
+extraction capabilities.
 """
 
 import base64
@@ -32,10 +31,14 @@ from aria.tools import (
     tool_success_response,
 )
 from aria.tools.decorators import log_tool_call
-from aria.tools.vision.constants import VISION_OUTPUT_DIR
+from aria.tools.vision.constants import (
+    SUPPORTED_IMAGE_FORMATS,
+    VISION_OUTPUT_DIR,
+)
 from aria.tools.vision.exceptions import (
     UnsupportedFormatError,
     VisionFileNotFoundError,
+    VLModelError,
 )
 
 # HTTP exceptions to catch for fallback
@@ -54,6 +57,124 @@ _DEFAULT_PROMPT = (
     "document page. Return the result as clean markdown, preserving "
     "headings, lists, and table structure."
 )
+
+# Default analysis instruction for images.
+_DEFAULT_IMAGE_PROMPT = (
+    "Describe this image in detail. Include any text, diagrams, "
+    "charts, visual elements, and their relationships. Return the "
+    "result as clean markdown."
+)
+
+
+# ---------------------------------------------------------------------------
+# Shared VL layer
+# ---------------------------------------------------------------------------
+
+
+async def _call_vl_model(
+    client: httpx.AsyncClient,
+    endpoint: str,
+    model: str,
+    png_bytes: bytes,
+    prompt: str,
+) -> str:
+    """Send a single image to the VL server and return the text result.
+
+    Args:
+        client: An ``httpx.AsyncClient`` instance.
+        endpoint: Full URL to the ``/chat/completions`` endpoint.
+        model: Model name to pass in the request body.
+        png_bytes: PNG-encoded image bytes.
+        prompt: Text instruction for the VL model.
+
+    Returns:
+        The model's text response, stripped of whitespace.
+
+    Raises:
+        httpx.HTTPStatusError: On non-2xx responses.
+        httpx.TimeoutException: On request timeout.
+        httpx.ConnectError: On connection failure.
+    """
+    b64 = base64.b64encode(png_bytes).decode("ascii")
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{b64}",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt,
+                    },
+                ],
+            }
+        ],
+    }
+
+    response = await client.post(
+        endpoint,
+        json=payload,
+        headers={"Authorization": "Bearer sk-dummy"},
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    text: str = (
+        data.get("choices", [{}])[0]
+        .get("message", {})
+        .get("content", "")
+        .strip()
+    )
+    return text
+
+
+def _persist_vision_result(
+    tool_name: str,
+    reason: str,
+    source_path: Path,
+    extracted_text: str,
+    pages_processed: int | None = None,
+) -> str:
+    """Persist extracted markdown and return compact JSON metadata.
+
+    Args:
+        tool_name: Name of the tool (e.g. ``"parse_pdf"`` or
+            ``"analyze_image"``).
+        reason: Why the extraction was performed.
+        source_path: Original file path.
+        extracted_text: Full extracted/analysed text.
+        pages_processed: Number of pages processed (PDF only).
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"{source_path.stem}_extracted_{timestamp}.md"
+    output_path = VISION_OUTPUT_DIR / output_filename
+    output_path.write_text(extracted_text, encoding="utf-8")
+
+    preview = extracted_text[:500]
+    if len(extracted_text) > 500:
+        preview += "..."
+
+    data: dict = {
+        "source_file": str(source_path),
+        "output_file": str(output_path),
+        "content_preview": preview,
+        "total_chars": len(extracted_text),
+    }
+    if pages_processed is not None:
+        data["pages_processed"] = pages_processed
+
+    return tool_success_response(tool_name, reason, data)
+
+
+# ---------------------------------------------------------------------------
+# PDF rendering helpers
+# ---------------------------------------------------------------------------
 
 
 def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
@@ -95,6 +216,99 @@ def _render_pdf_pages(pdf_path: Path) -> list[bytes]:
         doc.close()
 
     return pages_png
+
+
+def _extract_text_from_pdf(pdf_path: Path) -> str:
+    """Extract text from a PDF using pypdfium2's text extraction capabilities.
+
+    This is a fallback method when the VL model fails to process
+    multimodal input.
+
+    Args:
+        pdf_path: Absolute path to the PDF file.
+
+    Returns:
+        Extracted text content with page separators.
+
+    Raises:
+        ImportError: If pypdfium2 is not installed.
+    """
+    try:
+        import pypdfium2 as pdfium  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise ImportError(
+            "pypdfium2 is required for PDF text extraction fallback. "
+            "Install it with: uv add pypdfium2"
+        ) from exc
+
+    pages_text: list[str] = []
+    doc = pdfium.PdfDocument(str(pdf_path))
+    try:
+        for page_index in range(len(doc)):
+            page = doc[page_index]
+            # Get text from the page
+            text = page.get_textpage().get_text_range()
+            pages_text.append(f"--- Page {page_index + 1} ---\n\n{text}")
+            logger.debug(
+                f"Extracted text from PDF page {page_index + 1}/{len(doc)} "
+                f"({len(text)} chars)"
+            )
+    finally:
+        doc.close()
+
+    return "\n\n".join(pages_text)
+
+
+# ---------------------------------------------------------------------------
+# Image loading helper
+# ---------------------------------------------------------------------------
+
+
+def _load_image_file(image_path: Path) -> bytes:
+    """Load an image file and return its bytes as PNG.
+
+    Validates the file extension against ``SUPPORTED_IMAGE_FORMATS``,
+    opens with Pillow to verify it is a valid image, and converts
+    to PNG format for consistent VL server input.
+
+    Args:
+        image_path: Absolute path to the image file.
+
+    Returns:
+        PNG-encoded image bytes.
+
+    Raises:
+        UnsupportedFormatError: If the file extension is not supported.
+        VisionFileNotFoundError: If the file does not exist.
+        ImportError: If Pillow is not installed.
+    """
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise ImportError(
+            "Pillow is required for image loading. "
+            "Install it with: uv add pillow"
+        ) from exc
+
+    if not image_path.exists():
+        raise VisionFileNotFoundError(f"File not found: {image_path}")
+
+    suffix = image_path.suffix.lower()
+    if suffix not in SUPPORTED_IMAGE_FORMATS:
+        raise UnsupportedFormatError(
+            f"Unsupported image format '{suffix}'. "
+            f"Supported formats: {', '.join(sorted(SUPPORTED_IMAGE_FORMATS))}."
+        )
+
+    img = Image.open(image_path)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Tool factories
+# ---------------------------------------------------------------------------
 
 
 def make_parse_pdf(api_base: str, model: str) -> Callable:
@@ -183,46 +397,11 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 for i, png_bytes in enumerate(pages, start=1):
                     logger.info(
-                        f"Analysing PDF page {i}/{len(pages)}: {path.name}"
+                        f"Analysing PDF page {i}/{len(pages)}: " f"{path.name}"
                     )
 
-                    b64 = base64.b64encode(png_bytes).decode("ascii")
-                    payload = {
-                        "model": model,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": (
-                                                f"data:image/png;base64,{b64}"
-                                            ),
-                                        },
-                                    },
-                                    {
-                                        "type": "text",
-                                        "text": user_prompt,
-                                    },
-                                ],
-                            }
-                        ],
-                    }
-
-                    response = await client.post(
-                        endpoint,
-                        json=payload,
-                        headers={"Authorization": "Bearer sk-dummy"},
-                    )
-                    response.raise_for_status()
-
-                    data = response.json()
-                    text: str = (
-                        data.get("choices", [{}])[0]
-                        .get("message", {})
-                        .get("content", "")
-                        .strip()
+                    text = await _call_vl_model(
+                        client, endpoint, model, png_bytes, user_prompt
                     )
                     parts.append(f"--- Page {i} ---\n\n{text}")
 
@@ -233,89 +412,109 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
             )
             # Fall back to text-based extraction
             extracted_text = _extract_text_from_pdf(path)
-            return _persist_pdf_extraction_result(
-                reason=reason,
-                source_path=path,
-                extracted_text=extracted_text,
+            return _persist_vision_result(
+                "parse_pdf",
+                reason,
+                path,
+                extracted_text,
                 pages_processed=len(pages),
             )
 
         extracted_text = "\n\n".join(parts)
-        return _persist_pdf_extraction_result(
-            reason=reason,
-            source_path=path,
-            extracted_text=extracted_text,
+        return _persist_vision_result(
+            "parse_pdf",
+            reason,
+            path,
+            extracted_text,
             pages_processed=len(pages),
         )
 
     return log_tool_call(parse_pdf)
 
 
-def _persist_pdf_extraction_result(
-    reason: str,
-    source_path: Path,
-    extracted_text: str,
-    pages_processed: int,
-) -> str:
-    """Persist extracted PDF markdown and return compact JSON metadata."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = f"{source_path.stem}_extracted_{timestamp}.md"
-    output_path = VISION_OUTPUT_DIR / output_filename
-    output_path.write_text(extracted_text, encoding="utf-8")
+def make_analyze_image(api_base: str, model: str) -> Callable:
+    """Return an ``analyze_image`` async function bound to the VL server.
 
-    preview = extracted_text[:500]
-    if len(extracted_text) > 500:
-        preview += "..."
+    This factory creates a closure so the tool function captures the VL server
+    URL and model name without needing them as parameters (LlamaIndex tools
+    must have plain, serialisable signatures).
 
-    return tool_success_response(
-        "parse_pdf",
-        reason,
-        {
-            "source_file": str(source_path),
-            "output_file": str(output_path),
-            "content_preview": preview,
-            "total_chars": len(extracted_text),
-            "pages_processed": pages_processed,
-        },
-    )
-
-
-def _extract_text_from_pdf(pdf_path: Path) -> str:
-    """Extract text from a PDF using pypdfium2's text extraction capabilities.
-
-    This is a fallback method when the VL model fails to process
-    multimodal input.
+    The image is loaded, validated, converted to PNG via Pillow, and
+    sent to the VL server as an OpenAI multimodal chat completion request
+    using ``httpx`` directly — no LlamaIndex LLM wrapper is involved.
 
     Args:
-        pdf_path: Absolute path to the PDF file.
+        api_base: Base URL of the OpenAI-compatible VL server, e.g.
+            ``"http://localhost:9091/v1"``.
+        model: Model name to pass in the request body, e.g.
+            ``"granite-docling-258M-Q8_0.gguf"``.
 
     Returns:
-        Extracted text content with page separators.
-
-    Raises:
-        ImportError: If pypdfium2 is not installed.
+        An async callable suitable for wrapping with
+        :class:`~llama_index.core.tools.FunctionTool`.
     """
-    try:
-        import pypdfium2 as pdfium  # type: ignore[import-untyped]
-    except ImportError as exc:
-        raise ImportError(
-            "pypdfium2 is required for PDF text extraction fallback. "
-            "Install it with: uv add pypdfium2"
-        ) from exc
 
-    pages_text: list[str] = []
-    doc = pdfium.PdfDocument(str(pdf_path))
-    try:
-        for page_index in range(len(doc)):
-            page = doc[page_index]
-            # Get text from the page
-            text = page.get_textpage().get_text_range()
-            pages_text.append(f"--- Page {page_index + 1} ---\n\n{text}")
-            logger.debug(
-                f"Extracted text from PDF page {page_index + 1}/{len(doc)} "
-                f"({len(text)} chars)"
+    async def analyze_image(
+        reason: str, file_path: str, prompt: str = ""
+    ) -> str:
+        """Analyze an image using a vision-language model.
+
+        When to use:
+            - Use this when you need to describe, analyze, or extract
+              information from image files (PNG, JPEG, WebP, GIF, BMP, TIFF).
+            - Use this with a custom prompt to target specific analysis
+              (e.g., "Describe this diagram in detail").
+            - Do NOT use this for PDF files — use parse_pdf instead.
+
+        Why:
+            Sends the image directly to a vision-language model which can
+            understand and describe visual content including diagrams,
+            screenshots, photos, charts, and other visual information.
+
+        Args:
+            reason: Why you are analyzing this image (for logging/auditing).
+            file_path: Absolute path to the image file.
+            prompt: Optional analysis instruction. Defaults to a general
+                description of the image content.
+
+        Returns:
+            JSON with source_file, output_file, content_preview, total_chars.
+
+        Important:
+            - Full analysis result is persisted to a markdown file in
+              VISION_OUTPUT_DIR.
+            - Requires a running VL server (configured at startup).
+        """
+        path = Path(file_path)
+        user_prompt = prompt or _DEFAULT_IMAGE_PROMPT
+
+        logger.info(f"Loading image: {path.name}")
+        try:
+            png_bytes = _load_image_file(path)
+        except (VisionFileNotFoundError, UnsupportedFormatError) as exc:
+            return tool_error_response(get_function_name(), reason, exc)
+
+        endpoint = api_base.rstrip("/") + "/chat/completions"
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                logger.info(f"Analysing image: {path.name}")
+                extracted_text = await _call_vl_model(
+                    client, endpoint, model, png_bytes, user_prompt
+                )
+        except _HTTP_EXCEPTIONS as e:
+            logger.error(f"VL model failed to analyze image: {e}")
+            return tool_error_response(
+                get_function_name(),
+                reason,
+                VLModelError(
+                    f"VL model request failed: {e}. "
+                    "Ensure the VL server is running."
+                ),
             )
-    finally:
-        doc.close()
 
-    return "\n\n".join(pages_text)
+        return _persist_vision_result(
+            "analyze_image", reason, path, extracted_text
+        )
+
+    return log_tool_call(analyze_image)

@@ -739,9 +739,9 @@ shell("Building", commands=[
 
 ## 14. Vision Tools
 
-**Package:** `aria.tools.vision` | **Loaded separately** in `aria.py` via `make_parse_pdf`
+**Package:** `aria.tools.vision` | **Loaded separately** in `aria.py` via `make_parse_pdf` and `make_analyze_image`
 
-PDF analysis using a vision-language model. Renders pages to PNG via `pypdfium2` (150 DPI), sends to VL server via OpenAI multimodal chat format. Falls back to text extraction if VL fails.
+PDF and image analysis using a vision-language model. PDF pages are rendered to PNG via `pypdfium2` (150 DPI); images are loaded and converted to PNG via Pillow. Both are sent to the VL server via OpenAI multimodal chat format. PDF falls back to text extraction if VL fails.
 
 ### `make_parse_pdf(api_base, model) -> Callable`
 
@@ -767,6 +767,32 @@ parse_pdf = make_parse_pdf("http://localhost:9091/v1", "granite-docling-258M-Q8_
 result = await parse_pdf("Analyzing contract", "/data/downloads/contract.pdf")
 result = await parse_pdf("Tables only", "/data/downloads/report.pdf",
                          prompt="Extract only tables as markdown.")
+```
+
+### `make_analyze_image(api_base, model) -> Callable`
+
+Factory returning async `analyze_image` closure bound to VL server.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `api_base` | `str` | VL server URL (e.g., `http://localhost:9091/v1`) |
+| `model` | `str` | Model name (e.g., `granite-docling-258M-Q8_0.gguf`) |
+
+### `analyze_image(reason, file_path, prompt="")` -- async
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `reason` | `str` | -- | Why you're analyzing |
+| `file_path` | `str` | -- | Absolute path to image (PNG, JPEG, WebP, GIF, BMP, TIFF) |
+| `prompt` | `str` | `""` | Analysis instruction (defaults to general description) |
+
+**Returns:** `source_file`, `output_file`, `content_preview`, `total_chars`. Full analysis persisted to markdown in `VISION_OUTPUT_DIR`.
+
+```python
+analyze_image = make_analyze_image("http://localhost:9091/v1", "granite-docling-258M-Q8_0.gguf")
+result = await analyze_image("Describe diagram", "/data/downloads/architecture.png")
+result = await analyze_image("Extract text", "/data/downloads/screenshot.jpg",
+                             prompt="Extract all visible text from this screenshot.")
 ```
 
 ---
@@ -840,6 +866,7 @@ graph TB
 
     subgraph Sep[Loaded Separately]
         parse_pdf_tool[parse_pdf - Vision]
+        analyze_image_tool[analyze_image - Vision]
     end
 
     subgraph Infra[Core Infrastructure]
@@ -902,3 +929,4 @@ graph TB
 | Make HTTP requests | `http_request` | SYSTEM |
 | Manage background processes | `process` | SYSTEM |
 | Extract text from PDFs | `parse_pdf` | Vision (separate) |
+| Analyze/describe images | `analyze_image` | Vision (separate) |

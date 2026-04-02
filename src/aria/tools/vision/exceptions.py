@@ -24,7 +24,10 @@ class UnsupportedFormatError(VisionError):
 
     code = "UNSUPPORTED_FORMAT"
     recoverable = False
-    how_to_fix = "Provide a PDF file. Only PDF format is currently supported."
+    how_to_fix = (
+        "Provide a PDF or image file. Supported image formats: "
+        "PNG, JPEG, WebP, GIF, BMP, TIFF."
+    )
 
 
 class VLModelError(VisionError):

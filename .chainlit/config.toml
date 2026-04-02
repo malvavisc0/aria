@@ -54,8 +54,16 @@ reaction_on_message_received = false
 # Authorize users to spontaneously upload files with messages
 [features.spontaneous_file_upload]
 enabled = true
-# Only PDF files are supported by the Docling vision-language agent.
-accept = ["application/pdf"]
+# PDF and image files supported by the vision-language agent.
+accept = [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "image/bmp",
+    "image/tiff",
+]
 max_files = 5
 max_size_mb = 50
 

@@ -13,7 +13,7 @@ from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
 from aria.tools.registry import get_tools
-from aria.tools.vision.functions import make_parse_pdf
+from aria.tools.vision.functions import make_analyze_image, make_parse_pdf
 
 
 class ChatterAgent(FunctionAgent):
@@ -50,8 +50,8 @@ def get_agent(
     """Factory function to create and return a ChatterAgent instance.
 
     Loads all tools from the centralized registry and appends the
-    ``parse_pdf`` tool (which requires VL server binding and cannot live
-    in the registry).
+    ``parse_pdf`` and ``analyze_image`` vision tools (which require VL
+    server binding and cannot live in the registry).
 
     Args:
         llm: The language model to use for generating responses.
@@ -67,6 +67,7 @@ def get_agent(
     """
 
     parse_pdf_fn = make_parse_pdf(api_base=vl_api_base, model=vl_model)
+    analyze_image_fn = make_analyze_image(api_base=vl_api_base, model=vl_model)
 
     tools = get_tools(None)  # Load all categories from registry
 
@@ -82,6 +83,22 @@ def get_agent(
                 "with a .pdf path. Provide the absolute file path and an "
                 "optional extraction prompt. Returns markdown with "
                 "--- Page N --- separators."
+            ),
+        )
+    )
+
+    # analyze_image needs VL server binding — can't be in the registry
+    tools.append(
+        FunctionTool.from_defaults(
+            async_fn=analyze_image_fn,
+            name="analyze_image",
+            description=(
+                "Analyze or describe an image file using the "
+                "vision-language model. Call this tool whenever the prompt "
+                "contains an [Uploaded files] block with an image path "
+                "(.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff). Provide "
+                "the absolute file path and an optional analysis prompt. "
+                "Returns markdown with the analysis result."
             ),
         )
     )
