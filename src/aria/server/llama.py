@@ -217,6 +217,12 @@ class LlamaCppServerManager:
             "--no-kv-offload" if LlamaCppConfig.kv_cache_offload else ""
         )
 
+        # Always clear CHAT_TEMPLATE_FILE from the inherited environment
+        # so the run-model script doesn't apply it to VL or embedding
+        # servers.  The chat server receives it as an explicit CLI
+        # argument from _build_run_model_cmd() instead.
+        env.pop("CHAT_TEMPLATE_FILE", None)
+
         return env
 
     def _wait_for_ready(
