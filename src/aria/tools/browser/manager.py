@@ -420,9 +420,9 @@ class LightpandaManager:
             content = await self._get_text_content(page)
 
             if self._is_navigation_failed(content, page.url):
-                reason = content if content else "Navigation failed"
-                logger.error(f"Navigation failed: {reason}")
-                return self._error(reason, tool=tool, reason=reason)
+                fail_reason = content if content else "Navigation failed"
+                logger.error(f"Navigation failed: {fail_reason}")
+                return self._error(fail_reason, tool=tool, reason=reason)
 
             content_path = self._persist_content(content, page.url, "open")
             title = await self._safe_title()

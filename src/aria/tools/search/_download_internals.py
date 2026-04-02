@@ -119,65 +119,64 @@ def _fetch_file(
     if custom_headers:
         headers.update(custom_headers)
 
-    client = httpx.Client(
+    with httpx.Client(
         timeout=httpx.Timeout(TIMEOUT),
         follow_redirects=True,
         headers=headers,
         verify=False,
-    )
+    ) as client:
+        for attempt in range(MAX_RETRIES):
+            try:
+                if attempt > 0:
+                    delay = min(2**attempt, 10) + random.uniform(0, 1)
+                    time.sleep(delay)
 
-    for attempt in range(MAX_RETRIES):
-        try:
-            if attempt > 0:
-                delay = min(2**attempt, 10) + random.uniform(0, 1)
-                time.sleep(delay)
+                response = client.get(url)
+                response.raise_for_status()
 
-            response = client.get(url)
-            response.raise_for_status()
+                content_length = response.headers.get("content-length")
+                if content_length:
+                    size = int(content_length)
+                    if size > max_size:
+                        raise URLDownloadError(
+                            f"File size ({size} bytes) exceeds maximum allowed size ({max_size} bytes)"
+                        )
 
-            content_length = response.headers.get("content-length")
-            if content_length:
-                size = int(content_length)
-                if size > max_size:
+                content_type = response.headers.get("content-type", "").lower()
+                content_type = content_type.split(";", 1)[0].strip()
+                filename = _extract_filename_from_response(response, url)
+
+                if _is_html_content(content_type):
+                    text_content = response.text
+                    encoded_size = len(text_content.encode("utf-8"))
+                    if encoded_size > max_size:
+                        raise URLDownloadError(
+                            f"File size ({encoded_size} bytes) exceeds maximum allowed size ({max_size} bytes)"
+                        )
+                    return text_content, content_type, filename
+
+                content = response.content
+                if len(content) > max_size:
                     raise URLDownloadError(
-                        f"File size ({size} bytes) exceeds maximum allowed size ({max_size} bytes)"
+                        f"File size ({len(content)} bytes) exceeds maximum allowed size ({max_size} bytes)"
                     )
+                return content, content_type, filename
 
-            content_type = response.headers.get("content-type", "").lower()
-            content_type = content_type.split(";", 1)[0].strip()
-            filename = _extract_filename_from_response(response, url)
-
-            if _is_html_content(content_type):
-                text_content = response.text
-                encoded_size = len(text_content.encode("utf-8"))
-                if encoded_size > max_size:
-                    raise URLDownloadError(
-                        f"File size ({encoded_size} bytes) exceeds maximum allowed size ({max_size} bytes)"
-                    )
-                return text_content, content_type, filename
-
-            content = response.content
-            if len(content) > max_size:
-                raise URLDownloadError(
-                    f"File size ({len(content)} bytes) exceeds maximum allowed size ({max_size} bytes)"
+            except httpx.TimeoutException:
+                last_error = (
+                    f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
                 )
-            return content, content_type, filename
-
-        except httpx.TimeoutException:
-            last_error = (
-                f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
-            )
-        except httpx.HTTPStatusError as exc:
-            last_error = f"HTTP error {exc.response.status_code}"
-            if exc.response.status_code in [429, 503]:
-                time.sleep(2**attempt)
-                continue
-            break
-        except URLDownloadError:
-            raise
-        except Exception as exc:
-            last_error = f"Request failed: {exc}"
-            break
+            except httpx.HTTPStatusError as exc:
+                last_error = f"HTTP error {exc.response.status_code}"
+                if exc.response.status_code in [429, 503]:
+                    time.sleep(2**attempt)
+                    continue
+                break
+            except URLDownloadError:
+                raise
+            except Exception as exc:
+                last_error = f"Request failed: {exc}"
+                break
 
     raise URLDownloadError(
         f"Failed to fetch file after {MAX_RETRIES} attempts: {last_error}"

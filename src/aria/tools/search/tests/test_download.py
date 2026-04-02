@@ -156,6 +156,10 @@ class TestGetFileFromURL:
 
         mock_client_instance = Mock()
         mock_client_instance.get.return_value = mock_response
+        mock_client_instance.__enter__ = Mock(
+            return_value=mock_client_instance
+        )
+        mock_client_instance.__exit__ = Mock(return_value=False)
         mock_client.return_value = mock_client_instance
 
         # Download file
@@ -217,6 +221,10 @@ class TestGetFileFromURL:
 
         mock_client_instance = Mock()
         mock_client_instance.get.return_value = mock_response
+        mock_client_instance.__enter__ = Mock(
+            return_value=mock_client_instance
+        )
+        mock_client_instance.__exit__ = Mock(return_value=False)
         mock_client.return_value = mock_client_instance
 
         for fmt in ["auto", "text", "html"]:
@@ -319,6 +327,8 @@ class TestFetchFile:
 
         mock_client = Mock()
         mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         content, content_type, filename = _fetch_file(
@@ -337,6 +347,8 @@ class TestFetchFile:
 
         mock_client = Mock()
         mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         custom_headers = {"Authorization": "Bearer token"}
@@ -355,6 +367,8 @@ class TestFetchFile:
 
         mock_client = Mock()
         mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         with pytest.raises(URLDownloadError, match="exceeds maximum"):
@@ -366,6 +380,8 @@ class TestFetchFile:
         """Test retry logic on timeout."""
         mock_client = Mock()
         mock_client.get.side_effect = httpx.TimeoutException("Timeout")
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         with pytest.raises(URLDownloadError, match="Failed to fetch"):
@@ -385,6 +401,8 @@ class TestFetchFile:
 
         mock_client = Mock()
         mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         with pytest.raises(URLDownloadError, match="exceeds maximum"):
@@ -401,6 +419,8 @@ class TestFetchFile:
 
         mock_client = Mock()
         mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         with pytest.raises(URLDownloadError, match="exceeds maximum"):
@@ -620,6 +640,8 @@ class TestEdgeCases:
 
         mock_client = Mock()
         mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         result = download(
@@ -643,6 +665,8 @@ class TestEdgeCases:
         """Test handling of generic exceptions."""
         mock_client = Mock()
         mock_client.get.side_effect = Exception("Unexpected error")
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
         result = download("Testing file download", "https://example.com")

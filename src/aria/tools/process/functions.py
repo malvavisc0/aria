@@ -199,8 +199,8 @@ def _action_start(
             reason=reason,
             data={
                 "error": (
-                    f"Maximum {active_count} concurrent processes. "
-                    "Stop one first."
+                    f"Maximum of {_MAX_PROCESSES} concurrent processes "
+                    f"reached ({active_count} running). Stop one first."
                 ),
             },
         )

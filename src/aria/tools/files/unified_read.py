@@ -57,12 +57,15 @@ def _count_lines_efficiently(file_path: Path) -> int:
     """Memory-efficient line counting for large files.
 
     Reads file in chunks to avoid loading entire file into memory.
+    Counts the number of lines the same way iteration over a text file
+    does: every ``\\n`` starts a new line, and a final chunk that does
+    not end with ``\\n`` still counts as its own line.
 
     Args:
         file_path: Path to the file to count lines for
 
     Returns:
-        int: Number of lines in the file
+        int: Number of lines in the file (0 for empty files)
 
     Raises:
         FileOperationError: If path is a directory or file cannot be read
@@ -73,10 +76,16 @@ def _count_lines_efficiently(file_path: Path) -> int:
         )
 
     count = 0
+    last_byte = b""
     try:
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 count += chunk.count(b"\n")
+                last_byte = chunk[-1:]
+        # If the file is non-empty and doesn't end with a newline,
+        # there is one more line that was not counted.
+        if last_byte and last_byte != b"\n":
+            count += 1
         return count
     except OSError as exc:
         raise FileOperationError(
