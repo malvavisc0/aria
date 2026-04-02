@@ -56,7 +56,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QMenuBar,
     QPlainTextEdit,
-    QProgressBar,
     QPushButton,
     QSizePolicy,
     QSpacerItem,
@@ -548,15 +547,6 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_llamacpp.addWidget(self.groupBox_LlamaAdvanced)
 
-        self.progressBar_LlamaDownload = QProgressBar(self.groupBox_LlamaCpp)
-        self.progressBar_LlamaDownload.setObjectName(
-            "progressBar_LlamaDownload"
-        )
-        self.progressBar_LlamaDownload.setVisible(False)
-        self.progressBar_LlamaDownload.setValue(0)
-
-        self.verticalLayout_llamacpp.addWidget(self.progressBar_LlamaDownload)
-
         self.plainTextEdit_LlamaOutput = QPlainTextEdit(self.groupBox_LlamaCpp)
         self.plainTextEdit_LlamaOutput.setObjectName(
             "plainTextEdit_LlamaOutput"
@@ -704,15 +694,6 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_models.addWidget(self.groupBox_ModelsAdvanced)
 
-        self.progressBar_ModelDownload = QProgressBar(self.groupBox_Models)
-        self.progressBar_ModelDownload.setObjectName(
-            "progressBar_ModelDownload"
-        )
-        self.progressBar_ModelDownload.setVisible(False)
-        self.progressBar_ModelDownload.setValue(0)
-
-        self.verticalLayout_models.addWidget(self.progressBar_ModelDownload)
-
         self.plainTextEdit_ModelOutput = QPlainTextEdit(self.groupBox_Models)
         self.plainTextEdit_ModelOutput.setObjectName(
             "plainTextEdit_ModelOutput"
@@ -858,19 +839,6 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_lightpanda.addWidget(
             self.groupBox_LightpandaAdvanced
-        )
-
-        self.progressBar_LightpandaDownload = QProgressBar(
-            self.groupBox_Lightpanda
-        )
-        self.progressBar_LightpandaDownload.setObjectName(
-            "progressBar_LightpandaDownload"
-        )
-        self.progressBar_LightpandaDownload.setVisible(False)
-        self.progressBar_LightpandaDownload.setValue(0)
-
-        self.verticalLayout_lightpanda.addWidget(
-            self.progressBar_LightpandaDownload
         )
 
         self.plainTextEdit_LightpandaOutput = QPlainTextEdit(

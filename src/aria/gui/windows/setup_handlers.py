@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import re
 import sys
+import threading
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -24,8 +25,6 @@ _ANSI_ESCAPE = re.compile(
     r"|\r"
 )
 
-_PROGRESS_RE = re.compile(r"(\d+(?:\.\d+)?)%")
-
 
 def _strip_ansi(text: str) -> str:
     """Remove ANSI/VT100 escape sequences and carriage returns."""
@@ -38,26 +37,39 @@ class _SignalStream(io.TextIOBase):
     Used to redirect ``sys.stdout`` / ``sys.stderr`` inside worker threads so
     that all console output (rich, print, loguru) is forwarded to the GUI text
     area instead of the terminal.
+
+    Thread-safe: a lock protects the internal buffer because the
+    ``sys.stdout``/``sys.stderr`` redirect is process-global, meaning
+    writes can arrive from the worker QThread, the main thread (loguru
+    sinks, Qt debug output), or internal threads spawned by libraries
+    such as ``huggingface_hub``.
     """
+
+    _LINE_SEP = re.compile(r"[\r\n]+")
 
     def __init__(self, emit_fn: Callable[[str], None]):
         super().__init__()
         self._emit = emit_fn
         self._buf = ""
+        self._lock = threading.Lock()
 
     def write(self, text: str) -> int:  # type: ignore[override]
-        self._buf += text
-        while "\n" in self._buf:
-            line, self._buf = self._buf.split("\n", 1)
-            stripped = line.rstrip()
-            if stripped:
-                self._emit(stripped)
+        with self._lock:
+            self._buf += text
+            parts = self._LINE_SEP.split(self._buf)
+            # Last element is the incomplete trailing chunk.
+            self._buf = parts[-1]
+            for part in parts[:-1]:
+                stripped = part.rstrip()
+                if stripped:
+                    self._emit(stripped)
         return len(text)
 
     def flush(self) -> None:
-        if self._buf.strip():
-            self._emit(self._buf.strip())
-            self._buf = ""
+        with self._lock:
+            if self._buf.strip():
+                self._emit(self._buf.strip())
+                self._buf = ""
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +228,6 @@ class _DownloadSlot:
         worker_attr: str,
         button,
         output,
-        progress,
         default_text: str,
         start_handler: Callable,
     ):
@@ -224,7 +235,6 @@ class _DownloadSlot:
         self.worker_attr = worker_attr
         self.button = button
         self.output = output
-        self.progress = progress
         self.default_text = default_text
         self.start_handler = start_handler
 
@@ -241,7 +251,7 @@ class SetupHandlersMixin:
     attribute of type ``Ui_MainWindow``.  It provides:
 
     - Status label population for binaries, models, and Lightpanda
-    - Generic background download with progress, cancel, and auto-refresh
+    - Generic background download with cancel and auto-refresh
     """
 
     ui: Ui_MainWindow
@@ -275,7 +285,6 @@ class SetupHandlersMixin:
                 worker_attr="_llama_dl_worker",
                 button=self.ui.pushButton_LlamaDownload,
                 output=self.ui.plainTextEdit_LlamaOutput,
-                progress=self.ui.progressBar_LlamaDownload,
                 default_text="Download Binaries",
                 start_handler=self.on_llama_download_clicked,
             ),
@@ -284,7 +293,6 @@ class SetupHandlersMixin:
                 worker_attr="_model_dl_worker",
                 button=self.ui.pushButton_ModelDownload,
                 output=self.ui.plainTextEdit_ModelOutput,
-                progress=self.ui.progressBar_ModelDownload,
                 default_text="Download Model",
                 start_handler=self.on_model_download_clicked,
             ),
@@ -293,7 +301,6 @@ class SetupHandlersMixin:
                 worker_attr="_lightpanda_dl_worker",
                 button=self.ui.pushButton_LightpandaDownload,
                 output=self.ui.plainTextEdit_LightpandaOutput,
-                progress=self.ui.progressBar_LightpandaDownload,
                 default_text="Download",
                 start_handler=self.on_lightpanda_download_clicked,
             ),
@@ -387,8 +394,6 @@ class SetupHandlersMixin:
 
         # Reset UI
         slot.output.clear()
-        slot.progress.setVisible(True)
-        slot.progress.setValue(0)
 
         # Create and wire thread
         thread = QThread()
@@ -436,7 +441,6 @@ class SetupHandlersMixin:
         slot.button.setEnabled(True)
         slot.button.clicked.disconnect()
         slot.button.clicked.connect(slot.start_handler)
-        slot.progress.setVisible(False)
 
     def _clear_dl_worker(self, key: str) -> None:
         """Clear the worker reference for a download slot."""
@@ -444,13 +448,9 @@ class SetupHandlersMixin:
         setattr(self, slot.worker_attr, None)
 
     def _on_dl_log_line(self, key: str, line: str) -> None:
-        """Append a log line and update progress bar."""
+        """Append a log line to the output text area."""
         slot = self._dl_slots[key]
         slot.output.appendPlainText(_strip_ansi(line))
-        match = _PROGRESS_RE.search(line)
-        if match:
-            pct = int(float(match.group(1)))
-            slot.progress.setValue(pct)
 
     def _on_dl_finished(self, key: str) -> None:
         """Handle download completion."""

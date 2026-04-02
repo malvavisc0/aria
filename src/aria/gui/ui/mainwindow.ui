@@ -690,16 +690,6 @@
             </widget>
            </item>
            <item>
-            <widget class="QProgressBar" name="progressBar_LlamaDownload">
-             <property name="visible">
-              <bool>false</bool>
-             </property>
-             <property name="value">
-              <number>0</number>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="QPlainTextEdit" name="plainTextEdit_LlamaOutput">
              <property name="font">
               <font>
@@ -884,16 +874,6 @@
             </widget>
            </item>
            <item>
-            <widget class="QProgressBar" name="progressBar_ModelDownload">
-             <property name="visible">
-              <bool>false</bool>
-             </property>
-             <property name="value">
-              <number>0</number>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="QPlainTextEdit" name="plainTextEdit_ModelOutput">
              <property name="font">
               <font>
@@ -1039,16 +1019,6 @@
                </widget>
               </item>
              </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QProgressBar" name="progressBar_LightpandaDownload">
-             <property name="visible">
-              <bool>false</bool>
-             </property>
-             <property name="value">
-              <number>0</number>
-             </property>
             </widget>
            </item>
            <item>

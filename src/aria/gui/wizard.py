@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import io
 import json
+import re
+import threading
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -70,24 +72,36 @@ class _DownloadWorker(QObject):
 
 
 class _WizardStream(io.TextIOBase):
-    """A writable text stream that emits each completed line via a callback."""
+    """A writable text stream that emits each completed line via a callback.
+
+    Thread-safe: a lock protects the internal buffer because the
+    ``sys.stdout``/``sys.stderr`` redirect is process-global.
+    """
+
+    _LINE_SEP = re.compile(r"[\r\n]+")
 
     def __init__(self, emit_fn):
         super().__init__()
         self._emit = emit_fn
         self._buf = ""
+        self._lock = threading.Lock()
 
     def write(self, text: str) -> int:  # type: ignore[override]
-        self._buf += text
-        while "\n" in self._buf:
-            line, self._buf = self._buf.split("\n", 1)
-            self._emit(line)
+        with self._lock:
+            self._buf += text
+            parts = self._LINE_SEP.split(self._buf)
+            self._buf = parts[-1]
+            for part in parts[:-1]:
+                stripped = part.rstrip()
+                if stripped:
+                    self._emit(stripped)
         return len(text)
 
     def flush(self) -> None:
-        if self._buf:
-            self._emit(self._buf)
-            self._buf = ""
+        with self._lock:
+            if self._buf.strip():
+                self._emit(self._buf.strip())
+                self._buf = ""
 
 
 class _EnginePage(QWizardPage):
