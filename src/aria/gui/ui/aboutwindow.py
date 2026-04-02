@@ -59,9 +59,8 @@ class Ui_AboutDialog(object):
         if not AboutDialog.objectName():
             AboutDialog.setObjectName("AboutDialog")
         AboutDialog.resize(520, 320)
-        AboutDialog.setMinimumSize(QSize(520, 320))
-        AboutDialog.setMaximumSize(QSize(520, 320))
-        AboutDialog.setSizeGripEnabled(False)
+        AboutDialog.setMinimumSize(QSize(400, 280))
+        AboutDialog.setSizeGripEnabled(True)
         self.horizontalLayoutWidget = QWidget(AboutDialog)
         self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
         self.horizontalLayoutWidget.setGeometry(QRect(9, 270, 501, 41))

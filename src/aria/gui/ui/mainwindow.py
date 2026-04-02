@@ -495,60 +495,10 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_llamacpp.addLayout(self.formLayout_llamacpp_info)
 
-        self.horizontalLayout_llamabins = QHBoxLayout()
-        self.horizontalLayout_llamabins.setObjectName(
-            "horizontalLayout_llamabins"
-        )
-        self.label_LlamaBin_cli = QLabel(self.groupBox_LlamaCpp)
-        self.label_LlamaBin_cli.setObjectName("label_LlamaBin_cli")
-
-        self.horizontalLayout_llamabins.addWidget(self.label_LlamaBin_cli)
-
-        self.label_LlamaBin_server = QLabel(self.groupBox_LlamaCpp)
-        self.label_LlamaBin_server.setObjectName("label_LlamaBin_server")
-
-        self.horizontalLayout_llamabins.addWidget(self.label_LlamaBin_server)
-
-        self.label_LlamaBin_bench = QLabel(self.groupBox_LlamaCpp)
-        self.label_LlamaBin_bench.setObjectName("label_LlamaBin_bench")
-
-        self.horizontalLayout_llamabins.addWidget(self.label_LlamaBin_bench)
-
-        self.label_LlamaBin_quantize = QLabel(self.groupBox_LlamaCpp)
-        self.label_LlamaBin_quantize.setObjectName("label_LlamaBin_quantize")
-
-        self.horizontalLayout_llamabins.addWidget(self.label_LlamaBin_quantize)
-
-        self.horizontalSpacer_llamabins = QSpacerItem(
-            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
-        )
-
-        self.horizontalLayout_llamabins.addItem(
-            self.horizontalSpacer_llamabins
-        )
-
-        self.verticalLayout_llamacpp.addLayout(self.horizontalLayout_llamabins)
-
         self.horizontalLayout_llamaDownload = QHBoxLayout()
         self.horizontalLayout_llamaDownload.setObjectName(
             "horizontalLayout_llamaDownload"
         )
-        self.label_llama_dl_version_lbl = QLabel(self.groupBox_LlamaCpp)
-        self.label_llama_dl_version_lbl.setObjectName(
-            "label_llama_dl_version_lbl"
-        )
-
-        self.horizontalLayout_llamaDownload.addWidget(
-            self.label_llama_dl_version_lbl
-        )
-
-        self.lineEdit_LlamaVersion = QLineEdit(self.groupBox_LlamaCpp)
-        self.lineEdit_LlamaVersion.setObjectName("lineEdit_LlamaVersion")
-
-        self.horizontalLayout_llamaDownload.addWidget(
-            self.lineEdit_LlamaVersion
-        )
-
         self.pushButton_LlamaDownload = QPushButton(self.groupBox_LlamaCpp)
         self.pushButton_LlamaDownload.setObjectName("pushButton_LlamaDownload")
         icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
@@ -569,6 +519,34 @@ class Ui_MainWindow(object):
         self.verticalLayout_llamacpp.addLayout(
             self.horizontalLayout_llamaDownload
         )
+
+        self.groupBox_LlamaAdvanced = QGroupBox(self.groupBox_LlamaCpp)
+        self.groupBox_LlamaAdvanced.setObjectName("groupBox_LlamaAdvanced")
+        self.groupBox_LlamaAdvanced.setCheckable(True)
+        self.groupBox_LlamaAdvanced.setChecked(False)
+        self.horizontalLayout_llamaAdvanced = QHBoxLayout(
+            self.groupBox_LlamaAdvanced
+        )
+        self.horizontalLayout_llamaAdvanced.setObjectName(
+            "horizontalLayout_llamaAdvanced"
+        )
+        self.label_llama_dl_version_lbl = QLabel(self.groupBox_LlamaAdvanced)
+        self.label_llama_dl_version_lbl.setObjectName(
+            "label_llama_dl_version_lbl"
+        )
+
+        self.horizontalLayout_llamaAdvanced.addWidget(
+            self.label_llama_dl_version_lbl
+        )
+
+        self.lineEdit_LlamaVersion = QLineEdit(self.groupBox_LlamaAdvanced)
+        self.lineEdit_LlamaVersion.setObjectName("lineEdit_LlamaVersion")
+
+        self.horizontalLayout_llamaAdvanced.addWidget(
+            self.lineEdit_LlamaVersion
+        )
+
+        self.verticalLayout_llamacpp.addWidget(self.groupBox_LlamaAdvanced)
 
         self.progressBar_LlamaDownload = QProgressBar(self.groupBox_LlamaCpp)
         self.progressBar_LlamaDownload.setObjectName(
@@ -674,24 +652,6 @@ class Ui_MainWindow(object):
             self.comboBox_ModelSelect
         )
 
-        self.label_hf_token_lbl = QLabel(self.groupBox_Models)
-        self.label_hf_token_lbl.setObjectName("label_hf_token_lbl")
-
-        self.horizontalLayout_modelDownload.addWidget(self.label_hf_token_lbl)
-
-        self.lineEdit_HFToken = QLineEdit(self.groupBox_Models)
-        self.lineEdit_HFToken.setObjectName("lineEdit_HFToken")
-        self.lineEdit_HFToken.setEchoMode(
-            QLineEdit.EchoMode.PasswordEchoOnEdit
-        )
-
-        self.horizontalLayout_modelDownload.addWidget(self.lineEdit_HFToken)
-
-        self.checkBox_ModelForce = QCheckBox(self.groupBox_Models)
-        self.checkBox_ModelForce.setObjectName("checkBox_ModelForce")
-
-        self.horizontalLayout_modelDownload.addWidget(self.checkBox_ModelForce)
-
         self.pushButton_ModelDownload = QPushButton(self.groupBox_Models)
         self.pushButton_ModelDownload.setObjectName("pushButton_ModelDownload")
         self.pushButton_ModelDownload.setIcon(icon6)
@@ -700,9 +660,49 @@ class Ui_MainWindow(object):
             self.pushButton_ModelDownload
         )
 
+        self.horizontalSpacer_modelDl = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_modelDownload.addItem(
+            self.horizontalSpacer_modelDl
+        )
+
         self.verticalLayout_models.addLayout(
             self.horizontalLayout_modelDownload
         )
+
+        self.groupBox_ModelsAdvanced = QGroupBox(self.groupBox_Models)
+        self.groupBox_ModelsAdvanced.setObjectName("groupBox_ModelsAdvanced")
+        self.groupBox_ModelsAdvanced.setCheckable(True)
+        self.groupBox_ModelsAdvanced.setChecked(False)
+        self.horizontalLayout_modelsAdvanced = QHBoxLayout(
+            self.groupBox_ModelsAdvanced
+        )
+        self.horizontalLayout_modelsAdvanced.setObjectName(
+            "horizontalLayout_modelsAdvanced"
+        )
+        self.label_hf_token_lbl = QLabel(self.groupBox_ModelsAdvanced)
+        self.label_hf_token_lbl.setObjectName("label_hf_token_lbl")
+
+        self.horizontalLayout_modelsAdvanced.addWidget(self.label_hf_token_lbl)
+
+        self.lineEdit_HFToken = QLineEdit(self.groupBox_ModelsAdvanced)
+        self.lineEdit_HFToken.setObjectName("lineEdit_HFToken")
+        self.lineEdit_HFToken.setEchoMode(
+            QLineEdit.EchoMode.PasswordEchoOnEdit
+        )
+
+        self.horizontalLayout_modelsAdvanced.addWidget(self.lineEdit_HFToken)
+
+        self.checkBox_ModelForce = QCheckBox(self.groupBox_ModelsAdvanced)
+        self.checkBox_ModelForce.setObjectName("checkBox_ModelForce")
+
+        self.horizontalLayout_modelsAdvanced.addWidget(
+            self.checkBox_ModelForce
+        )
+
+        self.verticalLayout_models.addWidget(self.groupBox_ModelsAdvanced)
 
         self.progressBar_ModelDownload = QProgressBar(self.groupBox_Models)
         self.progressBar_ModelDownload.setObjectName(
@@ -774,64 +774,20 @@ class Ui_MainWindow(object):
             1, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Version
         )
 
-        self.label_lightpanda_binarypath_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_binarypath_lbl.setObjectName(
-            "label_lightpanda_binarypath_lbl"
-        )
-
-        self.formLayout_lightpanda_status.setWidget(
-            2,
-            QFormLayout.ItemRole.LabelRole,
-            self.label_lightpanda_binarypath_lbl,
-        )
-
-        self.label_Lightpanda_BinaryPath = QLabel(self.groupBox_Lightpanda)
-        self.label_Lightpanda_BinaryPath.setObjectName(
-            "label_Lightpanda_BinaryPath"
-        )
-
-        self.formLayout_lightpanda_status.setWidget(
-            2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BinaryPath
-        )
-
         self.label_lightpanda_status_lbl = QLabel(self.groupBox_Lightpanda)
         self.label_lightpanda_status_lbl.setObjectName(
             "label_lightpanda_status_lbl"
         )
 
         self.formLayout_lightpanda_status.setWidget(
-            3, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl
+            2, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl
         )
 
         self.label_Lightpanda_Status = QLabel(self.groupBox_Lightpanda)
         self.label_Lightpanda_Status.setObjectName("label_Lightpanda_Status")
 
         self.formLayout_lightpanda_status.setWidget(
-            3, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status
-        )
-
-        self.label_lightpanda_browsertools_lbl = QLabel(
-            self.groupBox_Lightpanda
-        )
-        self.label_lightpanda_browsertools_lbl.setObjectName(
-            "label_lightpanda_browsertools_lbl"
-        )
-
-        self.formLayout_lightpanda_status.setWidget(
-            4,
-            QFormLayout.ItemRole.LabelRole,
-            self.label_lightpanda_browsertools_lbl,
-        )
-
-        self.label_Lightpanda_BrowserTools = QLabel(self.groupBox_Lightpanda)
-        self.label_Lightpanda_BrowserTools.setObjectName(
-            "label_Lightpanda_BrowserTools"
-        )
-
-        self.formLayout_lightpanda_status.setWidget(
-            4,
-            QFormLayout.ItemRole.FieldRole,
-            self.label_Lightpanda_BrowserTools,
+            2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status
         )
 
         self.verticalLayout_lightpanda.addLayout(
@@ -842,24 +798,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_lightpandaDownload.setObjectName(
             "horizontalLayout_lightpandaDownload"
         )
-        self.label_lightpanda_version_lbl_2 = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_version_lbl_2.setObjectName(
-            "label_lightpanda_version_lbl_2"
-        )
-
-        self.horizontalLayout_lightpandaDownload.addWidget(
-            self.label_lightpanda_version_lbl_2
-        )
-
-        self.lineEdit_LightpandaVersion = QLineEdit(self.groupBox_Lightpanda)
-        self.lineEdit_LightpandaVersion.setObjectName(
-            "lineEdit_LightpandaVersion"
-        )
-
-        self.horizontalLayout_lightpandaDownload.addWidget(
-            self.lineEdit_LightpandaVersion
-        )
-
         self.pushButton_LightpandaDownload = QPushButton(
             self.groupBox_Lightpanda
         )
@@ -882,6 +820,44 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_lightpanda.addLayout(
             self.horizontalLayout_lightpandaDownload
+        )
+
+        self.groupBox_LightpandaAdvanced = QGroupBox(self.groupBox_Lightpanda)
+        self.groupBox_LightpandaAdvanced.setObjectName(
+            "groupBox_LightpandaAdvanced"
+        )
+        self.groupBox_LightpandaAdvanced.setCheckable(True)
+        self.groupBox_LightpandaAdvanced.setChecked(False)
+        self.horizontalLayout_lightpandaAdvanced = QHBoxLayout(
+            self.groupBox_LightpandaAdvanced
+        )
+        self.horizontalLayout_lightpandaAdvanced.setObjectName(
+            "horizontalLayout_lightpandaAdvanced"
+        )
+        self.label_lightpanda_version_lbl_2 = QLabel(
+            self.groupBox_LightpandaAdvanced
+        )
+        self.label_lightpanda_version_lbl_2.setObjectName(
+            "label_lightpanda_version_lbl_2"
+        )
+
+        self.horizontalLayout_lightpandaAdvanced.addWidget(
+            self.label_lightpanda_version_lbl_2
+        )
+
+        self.lineEdit_LightpandaVersion = QLineEdit(
+            self.groupBox_LightpandaAdvanced
+        )
+        self.lineEdit_LightpandaVersion.setObjectName(
+            "lineEdit_LightpandaVersion"
+        )
+
+        self.horizontalLayout_lightpandaAdvanced.addWidget(
+            self.lineEdit_LightpandaVersion
+        )
+
+        self.verticalLayout_lightpanda.addWidget(
+            self.groupBox_LightpandaAdvanced
         )
 
         self.progressBar_LightpandaDownload = QProgressBar(
@@ -1496,17 +1472,11 @@ class Ui_MainWindow(object):
         self.label_LlamaVersion.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_LlamaBin_cli.setText(
-            QCoreApplication.translate("MainWindow", "llama-cli: -", None)
+        self.pushButton_LlamaDownload.setText(
+            QCoreApplication.translate("MainWindow", "Download Binaries", None)
         )
-        self.label_LlamaBin_server.setText(
-            QCoreApplication.translate("MainWindow", "llama-server: -", None)
-        )
-        self.label_LlamaBin_bench.setText(
-            QCoreApplication.translate("MainWindow", "llama-bench: -", None)
-        )
-        self.label_LlamaBin_quantize.setText(
-            QCoreApplication.translate("MainWindow", "llama-quantize: -", None)
+        self.groupBox_LlamaAdvanced.setTitle(
+            QCoreApplication.translate("MainWindow", "Advanced", None)
         )
         self.label_llama_dl_version_lbl.setText(
             QCoreApplication.translate(
@@ -1517,9 +1487,6 @@ class Ui_MainWindow(object):
             QCoreApplication.translate(
                 "MainWindow", "e.g. b4500 (leave blank for latest)", None
             )
-        )
-        self.pushButton_LlamaDownload.setText(
-            QCoreApplication.translate("MainWindow", "Download Binaries", None)
         )
         self.plainTextEdit_LlamaOutput.setPlaceholderText(
             QCoreApplication.translate(
@@ -1560,6 +1527,12 @@ class Ui_MainWindow(object):
             2, QCoreApplication.translate("MainWindow", "embeddings", None)
         )
 
+        self.pushButton_ModelDownload.setText(
+            QCoreApplication.translate("MainWindow", "Download Model", None)
+        )
+        self.groupBox_ModelsAdvanced.setTitle(
+            QCoreApplication.translate("MainWindow", "Advanced", None)
+        )
         self.label_hf_token_lbl.setText(
             QCoreApplication.translate(
                 "MainWindow", "Access Token (optional):", None
@@ -1570,9 +1543,6 @@ class Ui_MainWindow(object):
         )
         self.checkBox_ModelForce.setText(
             QCoreApplication.translate("MainWindow", "Force re-download", None)
-        )
-        self.pushButton_ModelDownload.setText(
-            QCoreApplication.translate("MainWindow", "Download Model", None)
         )
         self.plainTextEdit_ModelOutput.setPlaceholderText(
             QCoreApplication.translate(
@@ -1598,12 +1568,6 @@ class Ui_MainWindow(object):
         self.label_Lightpanda_Version.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
-        self.label_lightpanda_binarypath_lbl.setText(
-            QCoreApplication.translate("MainWindow", "Binary Path", None)
-        )
-        self.label_Lightpanda_BinaryPath.setText(
-            QCoreApplication.translate("MainWindow", "\u2014", None)
-        )
         self.label_lightpanda_status_lbl.setText(
             QCoreApplication.translate("MainWindow", "Status", None)
         )
@@ -1612,11 +1576,11 @@ class Ui_MainWindow(object):
                 "MainWindow", "\u2717 Not installed", None
             )
         )
-        self.label_lightpanda_browsertools_lbl.setText(
-            QCoreApplication.translate("MainWindow", "Browser Tools", None)
+        self.pushButton_LightpandaDownload.setText(
+            QCoreApplication.translate("MainWindow", "Download", None)
         )
-        self.label_Lightpanda_BrowserTools.setText(
-            QCoreApplication.translate("MainWindow", "Disabled", None)
+        self.groupBox_LightpandaAdvanced.setTitle(
+            QCoreApplication.translate("MainWindow", "Advanced", None)
         )
         self.label_lightpanda_version_lbl_2.setText(
             QCoreApplication.translate(
@@ -1625,9 +1589,6 @@ class Ui_MainWindow(object):
         )
         self.lineEdit_LightpandaVersion.setPlaceholderText(
             QCoreApplication.translate("MainWindow", "nightly", None)
-        )
-        self.pushButton_LightpandaDownload.setText(
-            QCoreApplication.translate("MainWindow", "Download", None)
         )
         self.plainTextEdit_LightpandaOutput.setPlaceholderText(
             QCoreApplication.translate(

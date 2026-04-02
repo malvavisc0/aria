@@ -312,21 +312,6 @@ class SetupHandlersMixin:
         self.ui.label_LlamaBinDir.setText(str(LlamaCpp.bin_path))
         self.ui.label_LlamaVersion.setText(LlamaCpp.version)
 
-        binaries = {
-            "label_LlamaBin_cli": "llama-cli",
-            "label_LlamaBin_server": "llama-server",
-            "label_LlamaBin_bench": "llama-bench",
-            "label_LlamaBin_quantize": "llama-quantize",
-        }
-        for label_name, binary in binaries.items():
-            exists = (LlamaCpp.bin_path / binary).exists()
-            icon = "✓" if exists else "✗"
-            color = "green" if exists else "red"
-            label = getattr(self.ui, label_name)
-            label.setText(
-                f'<span style="color:{color}">{icon}</span> {binary}'
-            )
-
         models_dir = LlamaCpp.models_path
         model_configs = [
             ("label_ModelChat_Status", Chat.filename, Chat.repo_id),
@@ -357,17 +342,13 @@ class SetupHandlersMixin:
 
         binary_path = Lightpanda.get_binary_path()
         if binary_path:
-            self.ui.label_Lightpanda_BinaryPath.setText(str(binary_path))
             self.ui.label_Lightpanda_Status.setText(
                 '<span style="color:green">✓ Installed</span>'
             )
-            self.ui.label_Lightpanda_BrowserTools.setText("Available")
         else:
-            self.ui.label_Lightpanda_BinaryPath.setText("—")
             self.ui.label_Lightpanda_Status.setText(
                 '<span style="color:red">✗ Not installed</span>'
             )
-            self.ui.label_Lightpanda_BrowserTools.setText("Disabled")
 
     # ------------------------------------------------------------------
     # Generic download helpers

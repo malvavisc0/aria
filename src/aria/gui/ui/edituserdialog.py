@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'edituserdialogWnlIrT.ui'
+## Form generated from reading UI file 'edituserdialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.2
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -59,8 +59,7 @@ class Ui_EditUserDialog(object):
         if not EditUserDialog.objectName():
             EditUserDialog.setObjectName("EditUserDialog")
         EditUserDialog.resize(400, 200)
-        EditUserDialog.setMinimumSize(QSize(400, 200))
-        EditUserDialog.setMaximumSize(QSize(400, 200))
+        EditUserDialog.setMinimumSize(QSize(350, 180))
         self.formLayoutWidget = QWidget(EditUserDialog)
         self.formLayoutWidget.setObjectName("formLayoutWidget")
         self.formLayoutWidget.setGeometry(QRect(10, 10, 381, 131))

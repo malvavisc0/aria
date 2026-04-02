@@ -1,0 +1,498 @@
+"""First-run setup wizard for Aria.
+
+A QWizard-based guided setup that walks new users through:
+1. Download AI Engine (llama.cpp)
+2. Download AI Model
+3. Create admin user
+4. Start server
+
+The wizard is shown automatically on first run when no users exist.
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWizard,
+    QWizardPage,
+)
+from sqlalchemy import select
+
+if TYPE_CHECKING:
+    from aria.gui.windows.main_window import MainWindow
+
+
+class _DownloadWorker(QObject):
+    """Generic background worker for wizard downloads."""
+
+    log_line = Signal(str)
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, fn, *args, **kwargs):
+        super().__init__()
+        self._fn = fn
+        self._args = args
+        self._kwargs = kwargs
+
+    def run(self):
+        import sys
+
+        stream = _WizardStream(self.log_line.emit)
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = stream  # type: ignore[assignment]
+        sys.stderr = stream  # type: ignore[assignment]
+        try:
+            self._fn(*self._args, **self._kwargs)
+            self.finished.emit()
+        except Exception as exc:
+            self.error.emit(str(exc))
+        finally:
+            stream.flush()
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+
+class _WizardStream(io.TextIOBase):
+    """A writable text stream that emits each completed line via a callback."""
+
+    def __init__(self, emit_fn):
+        super().__init__()
+        self._emit = emit_fn
+        self._buf = ""
+
+    def write(self, text: str) -> int:  # type: ignore[override]
+        self._buf += text
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            self._emit(line)
+        return len(text)
+
+    def flush(self) -> None:
+        if self._buf:
+            self._emit(self._buf)
+            self._buf = ""
+
+
+class _EnginePage(QWizardPage):
+    """Wizard page for downloading the AI engine (llama.cpp)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTitle("Download AI Engine")
+        self.setSubTitle(
+            "Aria uses llama.cpp to run AI models locally. "
+            "Download the binaries to get started."
+        )
+
+        layout = QVBoxLayout(self)
+
+        self._status_label = QLabel("Ready to download.")
+        layout.addWidget(self._status_label)
+
+        self._log_view = QPlainTextEdit()
+        self._log_view.setReadOnly(True)
+        self._log_view.setMaximumBlockCount(200)
+        self._log_view.setStyleSheet("color: #666; font-family: monospace;")
+        layout.addWidget(self._log_view)
+
+        layout.addStretch()
+
+        btn_layout = QHBoxLayout()
+        self._download_btn = QPushButton("Download AI Engine")
+        self._download_btn.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
+        )
+        self._download_btn.clicked.connect(self._start_download)
+        btn_layout.addWidget(self._download_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        self._thread: QThread | None = None
+        self._worker: _DownloadWorker | None = None
+        self._download_done = False
+
+    def _start_download(self):
+        from aria.config.api import LlamaCpp
+        from aria.scripts.llama import download_llama_cpp
+
+        self._download_btn.setEnabled(False)
+        self._status_label.setText("Downloading…")
+        self._log_view.clear()
+
+        bin_dir = LlamaCpp.bin_path
+
+        self._worker = _DownloadWorker(
+            download_llama_cpp, bin_dir=bin_dir, version=None
+        )
+        self._worker.log_line.connect(self._on_log)
+        self._worker.finished.connect(self._on_finished)
+        self._worker.error.connect(self._on_failed)
+
+        self._thread = QThread()
+        self._worker.moveToThread(self._thread)
+        self._thread.started.connect(self._worker.run)
+        self._worker.finished.connect(self._thread.quit)
+        self._worker.error.connect(self._thread.quit)
+        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.error.connect(self._worker.deleteLater)
+        self._thread.finished.connect(self._thread.deleteLater)
+        self._thread.start()
+
+    def _on_log(self, line: str):
+        self._log_view.appendPlainText(line)
+
+    def _on_finished(self):
+        self._download_done = True
+        self._download_btn.setEnabled(True)
+        self._status_label.setText("✓ AI Engine downloaded successfully!")
+        self._status_label.setStyleSheet("color: #2e7d32; font-weight: bold;")
+        self.completeChanged.emit()
+
+    def _on_failed(self, error: str):
+        self._download_btn.setEnabled(True)
+        self._status_label.setText(f"✗ Download failed: {error}")
+        self._status_label.setStyleSheet("color: #c62828; font-weight: bold;")
+
+    def isComplete(self) -> bool:
+        return self._download_done
+
+    def cleanupPage(self):
+        if self._thread is not None and self._thread.isRunning():
+            self._thread.quit()
+            self._thread.wait(3000)
+
+
+class _ModelPage(QWizardPage):
+    """Wizard page for downloading an AI model."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTitle("Download AI Model")
+        self.setSubTitle(
+            "Download a chat model to start having conversations with Aria."
+        )
+
+        layout = QVBoxLayout(self)
+
+        form = QFormLayout()
+        self._model_combo = QComboBox()
+        self._model_combo.addItems(["chat", "vl", "embeddings"])
+        form.addRow("Model type:", self._model_combo)
+        layout.addLayout(form)
+
+        self._status_label = QLabel("Ready to download.")
+        layout.addWidget(self._status_label)
+
+        self._log_view = QPlainTextEdit()
+        self._log_view.setReadOnly(True)
+        self._log_view.setMaximumBlockCount(200)
+        self._log_view.setStyleSheet("color: #666; font-family: monospace;")
+        layout.addWidget(self._log_view)
+
+        layout.addStretch()
+
+        btn_layout = QHBoxLayout()
+        self._download_btn = QPushButton("Download Model")
+        self._download_btn.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
+        )
+        self._download_btn.clicked.connect(self._start_download)
+        btn_layout.addWidget(self._download_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        self._thread: QThread | None = None
+        self._worker: _DownloadWorker | None = None
+        self._download_done = False
+
+    def _start_download(self):
+        from aria.config.api import LlamaCpp
+        from aria.config.models import Chat, Embeddings, Vision
+        from aria.scripts.gguf import download_gguf_model
+
+        self._download_btn.setEnabled(False)
+        self._status_label.setText("Downloading…")
+        self._log_view.clear()
+
+        alias = self._model_combo.currentText()
+        models_dir = LlamaCpp.models_path
+
+        downloads: list[tuple[str, str]] = []
+        if alias == "chat":
+            if not Chat.repo_id or not Chat.filename:
+                self._on_failed(
+                    "Chat model is not configured "
+                    "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                )
+                return
+            downloads.append((Chat.repo_id, Chat.filename))
+        elif alias == "vl":
+            if not Vision.repo_id or not Vision.filename:
+                self._on_failed(
+                    "Vision model is not configured "
+                    "(VL_MODEL_REPO / VL_MODEL)."
+                )
+                return
+            downloads.append((Vision.repo_id, Vision.filename))
+            if Vision.mmproj_filename:
+                downloads.append((Vision.repo_id, Vision.mmproj_filename))
+        elif alias == "embeddings":
+            if not Embeddings.repo_id or not Embeddings.filename:
+                self._on_failed(
+                    "Embeddings model is not configured "
+                    "(EMBEDDINGS_MODEL_REPO / EMBEDDINGS_MODEL)."
+                )
+                return
+            downloads.append((Embeddings.repo_id, Embeddings.filename))
+
+        def _download_all():
+            for repo_id, filename in downloads:
+                download_gguf_model(
+                    repo_id=repo_id,
+                    filename=filename,
+                    models_dir=models_dir,
+                    token=None,
+                    force=False,
+                )
+
+        self._worker = _DownloadWorker(_download_all)
+        self._worker.log_line.connect(self._on_log)
+        self._worker.finished.connect(self._on_finished)
+        self._worker.error.connect(self._on_failed)
+
+        self._thread = QThread()
+        self._worker.moveToThread(self._thread)
+        self._thread.started.connect(self._worker.run)
+        self._worker.finished.connect(self._thread.quit)
+        self._worker.error.connect(self._thread.quit)
+        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.error.connect(self._worker.deleteLater)
+        self._thread.finished.connect(self._thread.deleteLater)
+        self._thread.start()
+
+    def _on_log(self, line: str):
+        self._log_view.appendPlainText(line)
+
+    def _on_finished(self):
+        self._download_done = True
+        self._download_btn.setEnabled(True)
+        self._status_label.setText("✓ Model downloaded successfully!")
+        self._status_label.setStyleSheet("color: #2e7d32; font-weight: bold;")
+        self.completeChanged.emit()
+
+    def _on_failed(self, error: str):
+        self._download_btn.setEnabled(True)
+        self._status_label.setText(f"✗ Download failed: {error}")
+        self._status_label.setStyleSheet("color: #c62828; font-weight: bold;")
+
+    def isComplete(self) -> bool:
+        return self._download_done
+
+    def cleanupPage(self):
+        if self._thread is not None and self._thread.isRunning():
+            self._thread.quit()
+            self._thread.wait(3000)
+
+
+class _UserPage(QWizardPage):
+    """Wizard page for creating the admin user."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTitle("Create Admin User")
+        self.setSubTitle(
+            "Create your first user account to access the Aria web interface."
+        )
+
+        layout = QFormLayout(self)
+
+        self._name_edit = QLineEdit()
+        self._name_edit.setPlaceholderText("Your name")
+        layout.addRow("Name:", self._name_edit)
+
+        self._email_edit = QLineEdit()
+        self._email_edit.setPlaceholderText("you@example.com")
+        layout.addRow("E-Mail:", self._email_edit)
+
+        self._password_edit = QLineEdit()
+        self._password_edit.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        self._password_edit.setPlaceholderText("Choose a password")
+        layout.addRow("Password:", self._password_edit)
+
+        self._confirm_edit = QLineEdit()
+        self._confirm_edit.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        self._confirm_edit.setPlaceholderText("Confirm password")
+        layout.addRow("Confirm:", self._confirm_edit)
+
+        self._error_label = QLabel("")
+        self._error_label.setStyleSheet("color: #c62828;")
+        self._error_label.setWordWrap(True)
+        layout.addRow(self._error_label)
+
+        self._name_edit.textChanged.connect(self._validate)
+        self._email_edit.textChanged.connect(self._validate)
+        self._password_edit.textChanged.connect(self._validate)
+        self._confirm_edit.textChanged.connect(self._validate)
+
+    def _validate(self):
+        name = self._name_edit.text().strip()
+        email = self._email_edit.text().strip()
+        password = self._password_edit.text()
+        confirm = self._confirm_edit.text()
+
+        errors = []
+        if not name:
+            errors.append("Name is required.")
+        if not email or "@" not in email:
+            errors.append("A valid e-mail address is required.")
+        if len(password) < 6:
+            errors.append("Password must be at least 6 characters.")
+        if password != confirm:
+            errors.append("Passwords do not match.")
+
+        self._error_label.setText("\n".join(errors))
+        self.completeChanged.emit()
+
+    def isComplete(self) -> bool:
+        name = self._name_edit.text().strip()
+        email = self._email_edit.text().strip()
+        password = self._password_edit.text()
+        confirm = self._confirm_edit.text()
+
+        return (
+            bool(name)
+            and bool(email)
+            and "@" in email
+            and len(password) >= 6
+            and password == confirm
+        )
+
+    def create_user(self) -> bool:
+        """Create the user in the database.
+
+        Returns True on success, False on failure.
+        """
+        from aria.cli import get_db_session
+        from aria.db.auth import hash_password
+        from aria.db.models import User
+
+        try:
+            with get_db_session() as session:
+                existing = session.execute(
+                    select(User).where(
+                        User.identifier == self._email_edit.text().strip()
+                    )
+                ).scalar_one_or_none()
+
+                if existing:
+                    QMessageBox.warning(
+                        self,
+                        "User Exists",
+                        "A user with this email already exists.",
+                    )
+                    return False
+
+                session.add(
+                    User(
+                        id=str(uuid.uuid4()),
+                        display_name=self._name_edit.text().strip(),
+                        identifier=self._email_edit.text().strip(),
+                        metadata_=json.dumps(
+                            {"role": "admin", "created_by": "wizard"}
+                        ),
+                        password=hash_password(self._password_edit.text()),
+                        createdAt=datetime.now().isoformat() + "Z",
+                    )
+                )
+            return True
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "User Creation Failed",
+                f"Could not create user:\n{exc}",
+            )
+            return False
+
+
+class _FinishPage(QWizardPage):
+    """Final wizard page — ready to start."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTitle("All Set!")
+        self.setSubTitle(
+            "Aria is ready. Click Finish to close the wizard and "
+            "start using the application."
+        )
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            QLabel(
+                "You can start the server from the main window "
+                "using the Start button in the toolbar."
+            )
+        )
+        layout.addStretch()
+
+
+class SetupWizard(QWizard):
+    """First-run setup wizard for Aria."""
+
+    def __init__(self, parent: MainWindow | None = None):
+        super().__init__(parent)
+        self.setWindowTitle("Aria Setup Wizard")
+        self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
+        self.setMinimumSize(550, 400)
+
+        self.setPage(0, _EnginePage(self))
+        self.setPage(1, _ModelPage(self))
+        self.setPage(2, _UserPage(self))
+        self.setPage(3, _FinishPage(self))
+
+
+def should_show_wizard() -> bool:
+    """Check if the first-run wizard should be shown.
+
+    Returns True if no users exist in the database.
+    """
+    try:
+        from aria.cli import get_db_session
+        from aria.db.models import User
+
+        with get_db_session() as session:
+            users = session.execute(select(User)).scalars().all()
+            return len(users) == 0
+    except Exception:
+        return True
+
+
+def run_wizard(parent: MainWindow | None = None) -> bool:
+    """Show the setup wizard and return True if the user was created.
+
+    Returns False if the wizard was cancelled or user creation failed.
+    """
+    wizard = SetupWizard(parent)
+    result = wizard.exec()
+
+    if result == QWizard.DialogCode.Accepted:
+        user_page: _UserPage = wizard.page(2)  # type: ignore[assignment]
+        return user_page.create_user()
+
+    return False

@@ -634,66 +634,7 @@
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_llamabins">
-             <item>
-              <widget class="QLabel" name="label_LlamaBin_cli">
-               <property name="text">
-                <string>llama-cli: -</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_LlamaBin_server">
-               <property name="text">
-                <string>llama-server: -</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_LlamaBin_bench">
-               <property name="text">
-                <string>llama-bench: -</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_LlamaBin_quantize">
-               <property name="text">
-                <string>llama-quantize: -</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_llamabins">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
             <layout class="QHBoxLayout" name="horizontalLayout_llamaDownload">
-             <item>
-              <widget class="QLabel" name="label_llama_dl_version_lbl">
-               <property name="text">
-                <string>Version (optional):</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_LlamaVersion">
-               <property name="placeholderText">
-                <string>e.g. b4500 (leave blank for latest)</string>
-               </property>
-              </widget>
-             </item>
              <item>
               <widget class="QPushButton" name="pushButton_LlamaDownload">
                <property name="text">
@@ -718,6 +659,35 @@
               </spacer>
              </item>
             </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_LlamaAdvanced">
+             <property name="title">
+              <string>Advanced</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_llamaAdvanced">
+              <item>
+               <widget class="QLabel" name="label_llama_dl_version_lbl">
+                <property name="text">
+                 <string>Version (optional):</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_LlamaVersion">
+                <property name="placeholderText">
+                 <string>e.g. b4500 (leave blank for latest)</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <widget class="QProgressBar" name="progressBar_LlamaDownload">
@@ -850,30 +820,6 @@
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="label_hf_token_lbl">
-               <property name="text">
-                <string>Access Token (optional):</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_HFToken">
-               <property name="echoMode">
-                <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
-               </property>
-               <property name="placeholderText">
-                <string>Access Token</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="checkBox_ModelForce">
-               <property name="text">
-                <string>Force re-download</string>
-               </property>
-              </widget>
-             </item>
-             <item>
               <widget class="QPushButton" name="pushButton_ModelDownload">
                <property name="text">
                 <string>Download Model</string>
@@ -883,7 +829,59 @@
                </property>
               </widget>
              </item>
+             <item>
+              <spacer name="horizontalSpacer_modelDl">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
             </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_ModelsAdvanced">
+             <property name="title">
+              <string>Advanced</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_modelsAdvanced">
+              <item>
+               <widget class="QLabel" name="label_hf_token_lbl">
+                <property name="text">
+                 <string>Access Token (optional):</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_HFToken">
+                <property name="echoMode">
+                 <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
+                </property>
+                <property name="placeholderText">
+                 <string>Access Token</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkBox_ModelForce">
+                <property name="text">
+                 <string>Force re-download</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <widget class="QProgressBar" name="progressBar_ModelDownload">
@@ -972,44 +970,16 @@
               </widget>
              </item>
              <item row="2" column="0">
-              <widget class="QLabel" name="label_lightpanda_binarypath_lbl">
-               <property name="text">
-                <string>Binary Path</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QLabel" name="label_Lightpanda_BinaryPath">
-               <property name="text">
-                <string>—</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
               <widget class="QLabel" name="label_lightpanda_status_lbl">
                <property name="text">
                 <string>Status</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="1">
+             <item row="2" column="1">
               <widget class="QLabel" name="label_Lightpanda_Status">
                <property name="text">
                 <string>✗ Not installed</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_lightpanda_browsertools_lbl">
-               <property name="text">
-                <string>Browser Tools</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QLabel" name="label_Lightpanda_BrowserTools">
-               <property name="text">
-                <string>Disabled</string>
                </property>
               </widget>
              </item>
@@ -1017,20 +987,6 @@
            </item>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_lightpandaDownload">
-             <item>
-              <widget class="QLabel" name="label_lightpanda_version_lbl_2">
-               <property name="text">
-                <string>Version (optional):</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_LightpandaVersion">
-               <property name="placeholderText">
-                <string>nightly</string>
-               </property>
-              </widget>
-             </item>
              <item>
               <widget class="QPushButton" name="pushButton_LightpandaDownload">
                <property name="text">
@@ -1055,6 +1011,35 @@
               </spacer>
              </item>
             </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_LightpandaAdvanced">
+             <property name="title">
+              <string>Advanced</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_lightpandaAdvanced">
+              <item>
+               <widget class="QLabel" name="label_lightpanda_version_lbl_2">
+                <property name="text">
+                 <string>Version (optional):</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_LightpandaVersion">
+                <property name="placeholderText">
+                 <string>nightly</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <widget class="QProgressBar" name="progressBar_LightpandaDownload">

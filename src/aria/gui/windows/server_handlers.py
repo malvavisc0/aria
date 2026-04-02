@@ -6,6 +6,7 @@ for the Aria GUI application.
 
 from __future__ import annotations
 
+import time
 import webbrowser
 
 from PySide6.QtCore import QObject, QThread, QTimer, Signal
@@ -20,14 +21,18 @@ class _StopWorker(QObject):
     """Background worker that calls ServerManager.stop() off the GUI thread."""
 
     finished = Signal()
+    failed = Signal(str)
 
     def __init__(self, server_manager):
         super().__init__()
         self._server_manager = server_manager
 
     def run(self):
-        self._server_manager.stop()
-        self.finished.emit()
+        try:
+            self._server_manager.stop()
+            self.finished.emit()
+        except Exception as exc:  # pragma: no cover - defensive UI path
+            self.failed.emit(str(exc))
 
 
 class _PreflightWorker(QObject):
@@ -72,6 +77,7 @@ class ServerHandlersMixin:
         self._preflight_result = None
         self._preflight_running = False
         self._is_stopping = False  # Track stopping state for UI feedback
+        self._stopping_since: float = 0.0  # Timestamp for timeout
         self._was_healthy = False  # Track crash detection
         self._server_timer = QTimer()
         self._server_timer.timeout.connect(self._update_server_status)
@@ -233,7 +239,8 @@ class ServerHandlersMixin:
         # Disable both buttons immediately to prevent double-clicks
         self.ui.pushButton_ServiceStop.setEnabled(False)
         self.ui.pushButton_ServiceStart.setEnabled(False)
-        self._is_stopping = True  # Track that we're in stopping state
+        self._is_stopping = True
+        self._stopping_since = time.monotonic()
         self.statusBar().showMessage("Stopping Aria server\u2026")
 
         self._stop_thread = QThread()
@@ -241,14 +248,30 @@ class ServerHandlersMixin:
         self._stop_worker.moveToThread(self._stop_thread)
         self._stop_thread.started.connect(self._stop_worker.run)
         self._stop_worker.finished.connect(self._stop_thread.quit)
+        self._stop_worker.failed.connect(self._stop_thread.quit)
         self._stop_worker.finished.connect(self._stop_worker.deleteLater)
+        self._stop_worker.failed.connect(self._stop_worker.deleteLater)
         self._stop_thread.finished.connect(self._stop_thread.deleteLater)
         self._stop_thread.finished.connect(self._on_stop_finished)
+        self._stop_worker.failed.connect(self._on_stop_failed)
         self._stop_thread.start()
 
     def _on_stop_finished(self):
         """Called when the stop worker thread finishes."""
         self._is_stopping = False
+        self._stopping_since = 0.0
+        self._update_server_status()
+
+    def _on_stop_failed(self, error: str) -> None:
+        """Called when the stop worker encounters an error."""
+        self._is_stopping = False
+        self._stopping_since = 0.0
+        self.statusBar().showMessage(f"Stop failed: {error}")
+        QMessageBox.warning(
+            self,
+            "Stop Failed",
+            f"Failed to stop the server:\n{error}",
+        )
         self._update_server_status()
 
     def on_open_server(self):
@@ -298,7 +321,11 @@ class ServerHandlersMixin:
                     "Starting Aria server\u2026 this may take a few minutes."
                 )
         else:
-            crashed = self._was_healthy and not self._is_stopping
+            # Auto-reset stopping state when server is confirmed stopped
+            if self._is_stopping:
+                self._is_stopping = False
+                self._stopping_since = 0.0
+            crashed = self._was_healthy
             self._was_healthy = False
             self.ui.label_ServiceStatus.setText("Stopped")
             self.ui.label_ServiceStatus.setStyleSheet(
@@ -351,6 +378,10 @@ class ServerHandlersMixin:
             and self._preflight_result.passed
         )
         can_start = not status.running and preflight_ok
+        # Safety timeout: reset stopping state after 30 seconds
+        if self._is_stopping and time.monotonic() - self._stopping_since > 30:
+            self._is_stopping = False
+            self._stopping_since = 0.0
         if self._is_stopping:
             self.ui.pushButton_ServiceStart.setEnabled(False)
             self.ui.pushButton_ServiceStop.setEnabled(False)

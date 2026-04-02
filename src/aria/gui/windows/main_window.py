@@ -6,7 +6,14 @@ from typing import Dict, List
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QIcon, QPalette, QTextCharFormat
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWidgets import (
+    QApplication,
+    QBoxLayout,
+    QMainWindow,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
@@ -107,6 +114,14 @@ class MainWindow(
 
         self._tray_icon = TrayIcon(self)
         self._force_quit = False
+
+        # Incremental log reading state
+        self._log_file_offset: int = 0
+        self._log_filter_active: bool = False
+
+        # Responsive layout state
+        self._narrow_mode: bool = False
+        self._setup_responsive_layouts()
 
     def _connect_menu_signals(self):
         """Connect menu action signals."""
@@ -258,55 +273,48 @@ class MainWindow(
             int(fg.blue() * ratio + bg.blue() * (1 - ratio)),
         )
 
-    def load_logs(self):
-        """Load logs with color coding, search, and level filter."""
-        if not Debug.logs_path.exists():
-            self.ui.textEdit_Logs.setPlainText("Log file not found.")
-            return
-        lines = self._tail_file(Debug.logs_path)
-        self.ui.textEdit_Logs.clear()
+    def _format_log_line(self, stripped: str):
+        """Return (level, color) for a log line."""
+        if " ERROR " in stripped or stripped.startswith("ERROR"):
+            return "ERROR", QColor("#c62828")
+        if " WARNING " in stripped or stripped.startswith("WARNING"):
+            return "WARNING", QColor("#e65100")
+        if " INFO " in stripped or stripped.startswith("INFO"):
+            return "INFO", self._log_muted_color()
+        return "", self._log_text_color()
 
+    def _line_matches_filter(
+        self, stripped: str, level: str, search: str, level_filter: str
+    ) -> bool:
+        """Return True if *stripped* passes both filters."""
+        if level_filter == "ERROR" and level != "ERROR":
+            return False
+        if level_filter == "WARNING" and level not in ("ERROR", "WARNING"):
+            return False
+        if level_filter == "INFO" and level not in (
+            "ERROR",
+            "WARNING",
+            "INFO",
+        ):
+            return False
+        if search and search not in stripped.lower():
+            return False
+        return True
+
+    def _append_log_lines(self, lines: list[str]) -> None:
+        """Append filtered, color-coded lines to the log viewer."""
         search_text = self.ui.lineEdit_LogSearch.text().lower()
         level_filter = self.ui.comboBox_LogFilter.currentText()
-
-        default_color = self._log_text_color()
-        muted_color = self._log_muted_color()
 
         for line in lines:
             stripped = line.rstrip()
             if not stripped:
                 continue
-
-            # Determine log level for filtering
-            if " ERROR " in stripped or stripped.startswith("ERROR"):
-                level = "ERROR"
-                color = QColor("#c62828")
-            elif " WARNING " in stripped or stripped.startswith("WARNING"):
-                level = "WARNING"
-                color = QColor("#e65100")
-            elif " INFO " in stripped or stripped.startswith("INFO"):
-                level = "INFO"
-                color = muted_color
-            else:
-                level = ""
-                color = default_color
-
-            # Apply level filter (cumulative: WARNING includes ERROR)
-            if level_filter == "ERROR" and level != "ERROR":
-                continue
-            if level_filter == "WARNING" and level not in ("ERROR", "WARNING"):
-                continue
-            if level_filter == "INFO" and level not in (
-                "ERROR",
-                "WARNING",
-                "INFO",
+            level, color = self._format_log_line(stripped)
+            if not self._line_matches_filter(
+                stripped, level, search_text, level_filter
             ):
                 continue
-
-            # Apply search filter
-            if search_text and search_text not in stripped.lower():
-                continue
-
             fmt = QTextCharFormat()
             fmt.setForeground(color)
             cursor = self.ui.textEdit_Logs.textCursor()
@@ -316,6 +324,67 @@ class MainWindow(
         self.ui.textEdit_Logs.verticalScrollBar().setValue(
             self.ui.textEdit_Logs.verticalScrollBar().maximum()
         )
+
+    def load_logs(self):
+        """Load logs with color coding, search, and level filter.
+
+        On first call or when a search/filter is active, reads the last
+        500 lines.  During auto-refresh (no active filter), only new bytes
+        since the last read are appended — avoiding a full re-read of
+        potentially large log files.
+        """
+        if not Debug.logs_path.exists():
+            self.ui.textEdit_Logs.setPlainText("Log file not found.")
+            self._log_file_offset = 0
+            return
+
+        search_text = self.ui.lineEdit_LogSearch.text().lower()
+        level_filter = self.ui.comboBox_LogFilter.currentText()
+        has_filter = bool(search_text) or level_filter != "All"
+        filter_changed = has_filter != self._log_filter_active
+
+        if has_filter or filter_changed or self._log_file_offset == 0:
+            # Full reload: tail the file and reset offset
+            lines = self._tail_file(Debug.logs_path)
+            self.ui.textEdit_Logs.clear()
+            self._append_log_lines(lines)
+            # Track where we are in the file
+            try:
+                self._log_file_offset = Debug.logs_path.stat().st_size
+            except OSError:
+                self._log_file_offset = 0
+        else:
+            # Incremental: read only new bytes
+            try:
+                file_size = Debug.logs_path.stat().st_size
+            except OSError:
+                return
+
+            if file_size < self._log_file_offset:
+                # File was truncated/rotated — full reload
+                self._log_file_offset = 0
+                self.load_logs()
+                return
+
+            if file_size == self._log_file_offset:
+                return  # No new data
+
+            new_lines: list[str] = []
+            try:
+                with open(Debug.logs_path, "rb") as f:
+                    f.seek(self._log_file_offset)
+                    new_data = f.read()
+                    self._log_file_offset = file_size
+                if new_data:
+                    text = new_data.decode("utf-8", errors="replace")
+                    new_lines = text.splitlines()
+            except OSError:
+                return
+
+            if new_lines:
+                self._append_log_lines(new_lines)
+
+        self._log_filter_active = has_filter
 
     def load_overview(self):
         self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
@@ -374,6 +443,70 @@ class MainWindow(
             case _:
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()
+
+    def _setup_responsive_layouts(self) -> None:
+        """Wrap the Setup tab in a QScrollArea for small screens.
+
+        The Overview and Users tabs use dynamic direction switching
+        handled in ``resizeEvent``, which is sufficient for responsive
+        behaviour without scroll areas.
+        """
+        # --- Setup tab: wrap in QScrollArea (Responsive #4) ---
+        tab_setup = self.ui.tab_setup
+        old_layout = tab_setup.layout()
+        assert old_layout is not None  # guaranteed by Qt
+
+        scroll = QScrollArea(tab_setup)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        container = QWidget()
+        inner_layout = QVBoxLayout(container)
+        inner_layout.setContentsMargins(8, 8, 8, 8)
+        inner_layout.setSpacing(8)
+
+        while old_layout.count():
+            item = old_layout.takeAt(0)
+            if item is None:
+                continue
+            w = item.widget()
+            if w is not None:
+                inner_layout.addWidget(w)
+            else:
+                child_layout = item.layout()
+                if child_layout is not None:
+                    inner_layout.addLayout(child_layout)
+                else:
+                    inner_layout.addItem(item)
+
+        scroll.setWidget(container)
+
+        # Reuse the emptied layout — Qt won't accept a new layout when
+        # the old one still exists on the widget.
+        old_layout.setContentsMargins(0, 0, 0, 0)
+        old_layout.addWidget(scroll)
+
+        # Initial responsive check
+        self._narrow_mode = self.width() < 900
+        self._apply_layout_direction()
+
+    def _apply_layout_direction(self) -> None:
+        """Switch side-by-side layouts to vertical on narrow windows."""
+        direction = (
+            QBoxLayout.Direction.TopToBottom
+            if self._narrow_mode
+            else QBoxLayout.Direction.LeftToRight
+        )
+        self.ui.horizontalLayout_overview_bottom.setDirection(direction)
+        self.ui.horizontalLayout_users.setDirection(direction)
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        """Switch layouts when the window crosses the 900 px threshold."""
+        super().resizeEvent(event)
+        narrow = self.width() < 900
+        if narrow != self._narrow_mode:
+            self._narrow_mode = narrow
+            self._apply_layout_direction()
 
     def show_about_dialog(self):
         """Show the About dialog."""
