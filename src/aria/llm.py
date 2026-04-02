@@ -336,10 +336,23 @@ def get_default_memory(
     vector_db: ChromaClientAPI,
     embed_model: OpenAIEmbedding,
     thread_id: str,
-    token_limit: int = 24576,
+    token_limit: int = 65536,
     llm: OpenAILike | None = None,
 ) -> Memory:
     """Create a Memory instance backed by a per-thread ChromaDB vector store.
+
+    The memory system uses a hybrid approach with three tiers:
+
+    1. **Recent History** (80% of token_limit): Raw message text kept in
+       active buffer. When this exceeds ``token_flush_size``, older messages
+       are moved to long-term storage.
+
+    2. **Fact Extraction** (if LLM provided): Structured facts extracted
+       from flushed messages. Token-efficient way to preserve key information.
+
+    3. **Vector Memory** (20% of token_limit): Semantic search over
+       flushed messages stored in ChromaDB. Retrieves relevant context
+       based on similarity to current query.
 
     Args:
         vector_db: ChromaDB client used to get or create the thread collection.
@@ -350,13 +363,20 @@ def get_default_memory(
             filter always matches embeddings from the same thread, across
             all sessions).
         token_limit: Total token budget shared between the short-term chat
-            buffer and the vector-retrieved context. Default is 24576 to
-            utilize the embedding model's 32K context window effectively.
+            buffer and the vector-retrieved context. Must be less than
+            ``CHAT_CONTEXT_SIZE`` to leave room for system prompts, tools,
+            and model response generation. Default is 65536.
         llm: LLM instance for fact extraction in long-term memory.
             If provided, enables FactExtractionMemoryBlock.
 
     Returns:
         A configured :class:`Memory` instance.
+
+    Note:
+        The ``token_limit`` is validated during preflight checks to ensure
+        it doesn't exceed 75% of ``CHAT_CONTEXT_SIZE``. This buffer accounts
+        for system prompts (~2-4K tokens), tool definitions (~1-2K tokens),
+        and response generation space.
     """
     collection = vector_db.get_or_create_collection(thread_id)
 
@@ -401,8 +421,8 @@ def get_default_memory(
         # 80% for Recent History, 20% for Vector Results
         # This keeps more recent context in working memory
         chat_history_token_ratio=0.8,
-        # Flush 8196 tokens at a time to long-term memory
-        token_flush_size=8196,
+        # Flush 8192 tokens at a time to long-term memory
+        token_flush_size=8192,
     )
 
     return memory

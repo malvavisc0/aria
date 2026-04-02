@@ -281,6 +281,52 @@ def _check_models(checks: List[CheckResult]) -> None:
             )
 
 
+def _check_token_limit(checks: List[CheckResult]) -> None:
+    """Check that TOKEN_LIMIT is within bounds of CHAT_CONTEXT_SIZE.
+
+    The memory token limit must be smaller than the model's context window
+    to leave room for:
+        - System prompt and tool definitions
+        - User input
+        - Model response generation
+    """
+    from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.config.models import Embeddings as EmbeddingsConfig
+
+    token_limit = EmbeddingsConfig.token_limit
+    ctx_size = LlamaCppConfig.chat_context_size
+
+    # Reserve 25% of context for system prompt, tools, and response
+    # This is a conservative buffer to prevent context overflow
+    max_safe_limit = int(ctx_size * 0.75)
+
+    if token_limit > max_safe_limit:
+        checks.append(
+            CheckResult(
+                name="Token limit",
+                passed=False,
+                category="environment",
+                error=(
+                    f"TOKEN_LIMIT ({token_limit}) exceeds 75% of "
+                    f"CHAT_CONTEXT_SIZE ({ctx_size}). Max safe limit: {max_safe_limit}"
+                ),
+                hint=(
+                    "Reduce TOKEN_LIMIT in your .env file to leave room for "
+                    "system prompts and model responses"
+                ),
+            )
+        )
+    else:
+        checks.append(
+            CheckResult(
+                name="Token limit",
+                passed=True,
+                category="environment",
+                details=f"{token_limit} (max: {max_safe_limit}, ctx: {ctx_size})",
+            )
+        )
+
+
 def run_preflight_checks() -> PreflightResult:
     """Run all preflight checks required before starting the web UI.
 
@@ -292,7 +338,8 @@ def run_preflight_checks() -> PreflightResult:
         5. Chat model is downloaded
         6. VL model is downloaded
         7. Embeddings model is downloaded
-        8. Memory requirements fit available hardware
+        8. Token limit is within context bounds
+        9. Memory requirements fit available hardware
 
     Returns:
         PreflightResult with pass/fail status and all check details.
@@ -304,6 +351,7 @@ def run_preflight_checks() -> PreflightResult:
     _check_binaries(checks)
     _check_lightpanda(checks)
     _check_models(checks)
+    _check_token_limit(checks)
     _check_memory_requirements(checks)
 
     return PreflightResult(
