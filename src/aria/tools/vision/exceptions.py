@@ -35,4 +35,6 @@ class VLModelError(VisionError):
 
     code = "VL_MODEL_ERROR"
     recoverable = True
-    how_to_fix = "The VL model failed. Text-based fallback will be attempted automatically."
+    how_to_fix = (
+        "The VL model failed. Text-based fallback will be attempted automatically."
+    )

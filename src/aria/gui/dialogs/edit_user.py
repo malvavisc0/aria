@@ -53,9 +53,7 @@ class EditUserDialog(QDialog):
                         select(User).where(User.identifier == email)
                     ).scalar_one_or_none()
                     if existing_user:
-                        self.show_error(
-                            "A user with this email already exists"
-                        )
+                        self.show_error("A user with this email already exists")
                         return
 
                 user = session.execute(

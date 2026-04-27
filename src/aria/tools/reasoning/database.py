@@ -82,9 +82,7 @@ class ReasoningDatabase:
                 session.add(new_session)
 
             session.commit()
-            logger.debug(
-                f"Saved session metadata: {session_id} for agent {agent_id}"
-            )
+            logger.debug(f"Saved session metadata: {session_id} for agent {agent_id}")
 
     def load_session(self, session_id: str, agent_id: str) -> Optional[Dict]:
         """Load complete session data from database."""
@@ -154,9 +152,7 @@ class ReasoningDatabase:
                         "tool_name": ev.tool_name,
                         "reason": ev.reason,
                         "payload": (
-                            json.loads(ev.payload_json)
-                            if ev.payload_json
-                            else None
+                            json.loads(ev.payload_json) if ev.payload_json else None
                         ),
                         "timestamp": ev.timestamp.isoformat(),
                     }
@@ -172,9 +168,7 @@ class ReasoningDatabase:
                 "reflections": reflections,
                 "scratchpad": scratchpad,
                 "tool_events": tool_events,
-                "confidence_trajectory": [
-                    step["confidence"] for step in steps
-                ],
+                "confidence_trajectory": [step["confidence"] for step in steps],
             }
 
             logger.debug(f"Loaded session {session_id} for agent {agent_id}")
@@ -205,13 +199,9 @@ class ReasoningDatabase:
             session_model.updated_at = datetime.now(timezone.utc)
 
             session.commit()
-            logger.debug(
-                f"Saved step {step['id']} for session {session_internal_id}"
-            )
+            logger.debug(f"Saved step {step['id']} for session {session_internal_id}")
 
-    def save_reflection(
-        self, session_internal_id: str, reflection: Dict
-    ) -> None:
+    def save_reflection(self, session_internal_id: str, reflection: Dict) -> None:
         """Save a reflection."""
         with self.get_session() as session:
             refl_model = ReasoningReflectionModel(
@@ -267,8 +257,7 @@ class ReasoningDatabase:
 
             session.commit()
             logger.debug(
-                f"Saved scratchpad item {key} for session "
-                f"{session_internal_id}"
+                f"Saved scratchpad item {key} for session " f"{session_internal_id}"
             )
 
     def save_tool_event(
@@ -285,9 +274,7 @@ class ReasoningDatabase:
                 session_id=session_internal_id,
                 tool_name=tool_name,
                 reason=reason,
-                payload_json=(
-                    json.dumps(payload) if payload is not None else None
-                ),
+                payload_json=(json.dumps(payload) if payload is not None else None),
                 timestamp=datetime.fromisoformat(timestamp),
             )
             session.add(ev)
@@ -304,9 +291,7 @@ class ReasoningDatabase:
                 f"Saved tool event {tool_name} for session {session_internal_id}",
             )
 
-    def delete_scratchpad_item(
-        self, session_internal_id: str, key: str
-    ) -> None:
+    def delete_scratchpad_item(self, session_internal_id: str, key: str) -> None:
         """Delete a scratchpad item."""
         with self.get_session() as session:
             stmt = select(ReasoningScratchpadModel).where(
@@ -335,9 +320,7 @@ class ReasoningDatabase:
                 session.delete(item)
 
             session.commit()
-            logger.debug(
-                f"Cleared scratchpad for session {session_internal_id}"
-            )
+            logger.debug(f"Cleared scratchpad for session {session_internal_id}")
 
     def delete_session(self, session_id: str, agent_id: str) -> bool:
         """Mark session as inactive (soft delete)."""
@@ -351,9 +334,7 @@ class ReasoningDatabase:
             if session_model:
                 session_model.is_active = False
                 session.commit()
-                logger.debug(
-                    f"Deleted session {session_id} for agent {agent_id}"
-                )
+                logger.debug(f"Deleted session {session_id} for agent {agent_id}")
                 return True
 
             return False

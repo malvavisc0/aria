@@ -234,9 +234,7 @@ class TestNvidiaIntegration:
 
         for gpu in gpus:
             if gpu.total_memory > 0:
-                expected_util = round(
-                    (gpu.used_memory / gpu.total_memory * 100), 2
-                )
+                expected_util = round((gpu.used_memory / gpu.total_memory * 100), 2)
                 # Allow small variance due to rounding
                 assert abs(gpu.memory_utilization - expected_util) <= 0.1
 
@@ -288,7 +286,7 @@ def print_gpu_info():
     print(f"Total VRAM: {get_total_vram_mb()} MiB")
 
     free_vram = get_free_vram_per_gpu()
-    print(f"\nFree VRAM per GPU:")
+    print("\nFree VRAM per GPU:")
     for i, vram in enumerate(free_vram):
         print(f"  GPU {i}: {vram} MiB")
 

@@ -107,6 +107,4 @@ async def browser_click(reason: str, selector: str) -> str:
           generic tag selectors to avoid clicking the wrong element.
     """
     manager = _get_manager()
-    return await manager.click(
-        selector, tool=get_function_name(), reason=reason
-    )
+    return await manager.click(selector, tool=get_function_name(), reason=reason)

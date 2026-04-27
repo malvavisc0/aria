@@ -67,13 +67,9 @@ def detect_system_ram() -> Tuple[int, int]:
                 if "Pages free" in line:
                     pages_free = int(line.split(":")[1].strip().rstrip("."))
                 elif "Pages inactive" in line:
-                    pages_inactive = int(
-                        line.split(":")[1].strip().rstrip(".")
-                    )
+                    pages_inactive = int(line.split(":")[1].strip().rstrip("."))
 
-            available_mb = (
-                (pages_free + pages_inactive) * page_size // (1024 * 1024)
-            )
+            available_mb = (pages_free + pages_inactive) * page_size // (1024 * 1024)
             return total_mb, available_mb
 
         else:

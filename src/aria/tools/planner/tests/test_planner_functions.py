@@ -171,9 +171,7 @@ def test_reorder_steps(test_db):
         steps=["Step A", "Step B", "Step C"],
     )
     plan_id = json.loads(create_result)["data"]["result"]["plan_id"]
-    step_ids = [
-        s["id"] for s in json.loads(create_result)["data"]["result"]["steps"]
-    ]
+    step_ids = [s["id"] for s in json.loads(create_result)["data"]["result"]["steps"]]
 
     # Reverse the order
     reorder_result = plan(
@@ -184,12 +182,8 @@ def test_reorder_steps(test_db):
     )
     data = json.loads(reorder_result)
     assert data["data"]["metadata"]["success"] is True
-    assert (
-        data["data"]["result"]["reordered_steps"][0]["description"] == "Step C"
-    )
-    assert (
-        data["data"]["result"]["reordered_steps"][2]["description"] == "Step A"
-    )
+    assert data["data"]["result"]["reordered_steps"][0]["description"] == "Step C"
+    assert data["data"]["result"]["reordered_steps"][2]["description"] == "Step A"
 
 
 def test_plan_survives_reload(test_db):

@@ -10,39 +10,17 @@
 
 from PySide6.QtCore import (
     QCoreApplication,
-    QDate,
-    QDateTime,
-    QLocale,
     QMetaObject,
-    QObject,
-    QPoint,
     QRect,
     QSize,
     Qt,
-    QTime,
-    QUrl,
 )
 from PySide6.QtGui import (
     QAction,
-    QBrush,
-    QColor,
-    QConicalGradient,
-    QCursor,
     QFont,
-    QFontDatabase,
-    QGradient,
     QIcon,
-    QImage,
-    QKeySequence,
-    QLinearGradient,
-    QPainter,
-    QPalette,
-    QPixmap,
-    QRadialGradient,
-    QTransform,
 )
 from PySide6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QFormLayout,
@@ -51,8 +29,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
-    QListWidgetItem,
-    QMainWindow,
     QMenu,
     QMenuBar,
     QPlainTextEdit,
@@ -218,9 +194,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_service.addItem(self.horizontalSpacer_service)
 
         self.verticalLayout_serviceStatus = QVBoxLayout()
-        self.verticalLayout_serviceStatus.setObjectName(
-            "verticalLayout_serviceStatus"
-        )
+        self.verticalLayout_serviceStatus.setObjectName("verticalLayout_serviceStatus")
         self.label_ServiceStatus = QLabel(self.groupBox_Service)
         self.label_ServiceStatus.setObjectName("label_ServiceStatus")
         self.label_ServiceStatus.setStyleSheet(
@@ -242,21 +216,15 @@ class Ui_MainWindow(object):
         icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.UserAvailable))
         self.pushButton_ServiceOpen.setIcon(icon5)
 
-        self.verticalLayout_serviceStatus.addWidget(
-            self.pushButton_ServiceOpen
-        )
+        self.verticalLayout_serviceStatus.addWidget(self.pushButton_ServiceOpen)
 
         self.verticalSpacer_serviceStatus = QSpacerItem(
             20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
         )
 
-        self.verticalLayout_serviceStatus.addItem(
-            self.verticalSpacer_serviceStatus
-        )
+        self.verticalLayout_serviceStatus.addItem(self.verticalSpacer_serviceStatus)
 
-        self.horizontalLayout_service.addLayout(
-            self.verticalLayout_serviceStatus
-        )
+        self.horizontalLayout_service.addLayout(self.verticalLayout_serviceStatus)
 
         self.verticalLayout_overview.addWidget(self.groupBox_Service)
 
@@ -399,9 +367,7 @@ class Ui_MainWindow(object):
         )
 
         self.label_LLMEmbeddingsAPIURL = QLabel(self.groupBox_LLMAPIs)
-        self.label_LLMEmbeddingsAPIURL.setObjectName(
-            "label_LLMEmbeddingsAPIURL"
-        )
+        self.label_LLMEmbeddingsAPIURL.setObjectName("label_LLMEmbeddingsAPIURL")
 
         self.formLayout_llmapis.setWidget(
             3, QFormLayout.ItemRole.FieldRole, self.label_LLMEmbeddingsAPIURL
@@ -424,9 +390,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_overview_bottom.addWidget(self.groupBox_LLMAPIs)
 
-        self.verticalLayout_overview.addLayout(
-            self.horizontalLayout_overview_bottom
-        )
+        self.verticalLayout_overview.addLayout(self.horizontalLayout_overview_bottom)
 
         self.label_DebugLogsPath = QLabel(self.tab_overview)
         self.label_DebugLogsPath.setObjectName("label_DebugLogsPath")
@@ -435,9 +399,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_overview.addWidget(self.label_DebugLogsPath)
 
         self.label_DatabasePermissions = QLabel(self.tab_overview)
-        self.label_DatabasePermissions.setObjectName(
-            "label_DatabasePermissions"
-        )
+        self.label_DatabasePermissions.setObjectName("label_DatabasePermissions")
         self.label_DatabasePermissions.setVisible(False)
 
         self.verticalLayout_overview.addWidget(self.label_DatabasePermissions)
@@ -503,54 +465,38 @@ class Ui_MainWindow(object):
         icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
         self.pushButton_LlamaDownload.setIcon(icon6)
 
-        self.horizontalLayout_llamaDownload.addWidget(
-            self.pushButton_LlamaDownload
-        )
+        self.horizontalLayout_llamaDownload.addWidget(self.pushButton_LlamaDownload)
 
         self.horizontalSpacer_llamaDl = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_llamaDownload.addItem(
-            self.horizontalSpacer_llamaDl
-        )
+        self.horizontalLayout_llamaDownload.addItem(self.horizontalSpacer_llamaDl)
 
-        self.verticalLayout_llamacpp.addLayout(
-            self.horizontalLayout_llamaDownload
-        )
+        self.verticalLayout_llamacpp.addLayout(self.horizontalLayout_llamaDownload)
 
         self.groupBox_LlamaAdvanced = QGroupBox(self.groupBox_LlamaCpp)
         self.groupBox_LlamaAdvanced.setObjectName("groupBox_LlamaAdvanced")
         self.groupBox_LlamaAdvanced.setCheckable(True)
         self.groupBox_LlamaAdvanced.setChecked(False)
-        self.horizontalLayout_llamaAdvanced = QHBoxLayout(
-            self.groupBox_LlamaAdvanced
-        )
+        self.horizontalLayout_llamaAdvanced = QHBoxLayout(self.groupBox_LlamaAdvanced)
         self.horizontalLayout_llamaAdvanced.setObjectName(
             "horizontalLayout_llamaAdvanced"
         )
         self.label_llama_dl_version_lbl = QLabel(self.groupBox_LlamaAdvanced)
-        self.label_llama_dl_version_lbl.setObjectName(
-            "label_llama_dl_version_lbl"
-        )
+        self.label_llama_dl_version_lbl.setObjectName("label_llama_dl_version_lbl")
 
-        self.horizontalLayout_llamaAdvanced.addWidget(
-            self.label_llama_dl_version_lbl
-        )
+        self.horizontalLayout_llamaAdvanced.addWidget(self.label_llama_dl_version_lbl)
 
         self.lineEdit_LlamaVersion = QLineEdit(self.groupBox_LlamaAdvanced)
         self.lineEdit_LlamaVersion.setObjectName("lineEdit_LlamaVersion")
 
-        self.horizontalLayout_llamaAdvanced.addWidget(
-            self.lineEdit_LlamaVersion
-        )
+        self.horizontalLayout_llamaAdvanced.addWidget(self.lineEdit_LlamaVersion)
 
         self.verticalLayout_llamacpp.addWidget(self.groupBox_LlamaAdvanced)
 
         self.plainTextEdit_LlamaOutput = QPlainTextEdit(self.groupBox_LlamaCpp)
-        self.plainTextEdit_LlamaOutput.setObjectName(
-            "plainTextEdit_LlamaOutput"
-        )
+        self.plainTextEdit_LlamaOutput.setObjectName("plainTextEdit_LlamaOutput")
         font1 = QFont()
         font1.setFamilies(["Courier New"])
         font1.setPointSize(9)
@@ -609,9 +555,7 @@ class Ui_MainWindow(object):
         )
 
         self.label_ModelEmbeddings_Status = QLabel(self.groupBox_Models)
-        self.label_ModelEmbeddings_Status.setObjectName(
-            "label_ModelEmbeddings_Status"
-        )
+        self.label_ModelEmbeddings_Status.setObjectName("label_ModelEmbeddings_Status")
 
         self.formLayout_models_status.setWidget(
             2,
@@ -628,9 +572,7 @@ class Ui_MainWindow(object):
         self.label_model_select_lbl = QLabel(self.groupBox_Models)
         self.label_model_select_lbl.setObjectName("label_model_select_lbl")
 
-        self.horizontalLayout_modelDownload.addWidget(
-            self.label_model_select_lbl
-        )
+        self.horizontalLayout_modelDownload.addWidget(self.label_model_select_lbl)
 
         self.comboBox_ModelSelect = QComboBox(self.groupBox_Models)
         self.comboBox_ModelSelect.addItem("")
@@ -638,37 +580,27 @@ class Ui_MainWindow(object):
         self.comboBox_ModelSelect.addItem("")
         self.comboBox_ModelSelect.setObjectName("comboBox_ModelSelect")
 
-        self.horizontalLayout_modelDownload.addWidget(
-            self.comboBox_ModelSelect
-        )
+        self.horizontalLayout_modelDownload.addWidget(self.comboBox_ModelSelect)
 
         self.pushButton_ModelDownload = QPushButton(self.groupBox_Models)
         self.pushButton_ModelDownload.setObjectName("pushButton_ModelDownload")
         self.pushButton_ModelDownload.setIcon(icon6)
 
-        self.horizontalLayout_modelDownload.addWidget(
-            self.pushButton_ModelDownload
-        )
+        self.horizontalLayout_modelDownload.addWidget(self.pushButton_ModelDownload)
 
         self.horizontalSpacer_modelDl = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_modelDownload.addItem(
-            self.horizontalSpacer_modelDl
-        )
+        self.horizontalLayout_modelDownload.addItem(self.horizontalSpacer_modelDl)
 
-        self.verticalLayout_models.addLayout(
-            self.horizontalLayout_modelDownload
-        )
+        self.verticalLayout_models.addLayout(self.horizontalLayout_modelDownload)
 
         self.groupBox_ModelsAdvanced = QGroupBox(self.groupBox_Models)
         self.groupBox_ModelsAdvanced.setObjectName("groupBox_ModelsAdvanced")
         self.groupBox_ModelsAdvanced.setCheckable(True)
         self.groupBox_ModelsAdvanced.setChecked(False)
-        self.horizontalLayout_modelsAdvanced = QHBoxLayout(
-            self.groupBox_ModelsAdvanced
-        )
+        self.horizontalLayout_modelsAdvanced = QHBoxLayout(self.groupBox_ModelsAdvanced)
         self.horizontalLayout_modelsAdvanced.setObjectName(
             "horizontalLayout_modelsAdvanced"
         )
@@ -679,25 +611,19 @@ class Ui_MainWindow(object):
 
         self.lineEdit_HFToken = QLineEdit(self.groupBox_ModelsAdvanced)
         self.lineEdit_HFToken.setObjectName("lineEdit_HFToken")
-        self.lineEdit_HFToken.setEchoMode(
-            QLineEdit.EchoMode.PasswordEchoOnEdit
-        )
+        self.lineEdit_HFToken.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
 
         self.horizontalLayout_modelsAdvanced.addWidget(self.lineEdit_HFToken)
 
         self.checkBox_ModelForce = QCheckBox(self.groupBox_ModelsAdvanced)
         self.checkBox_ModelForce.setObjectName("checkBox_ModelForce")
 
-        self.horizontalLayout_modelsAdvanced.addWidget(
-            self.checkBox_ModelForce
-        )
+        self.horizontalLayout_modelsAdvanced.addWidget(self.checkBox_ModelForce)
 
         self.verticalLayout_models.addWidget(self.groupBox_ModelsAdvanced)
 
         self.plainTextEdit_ModelOutput = QPlainTextEdit(self.groupBox_Models)
-        self.plainTextEdit_ModelOutput.setObjectName(
-            "plainTextEdit_ModelOutput"
-        )
+        self.plainTextEdit_ModelOutput.setObjectName("plainTextEdit_ModelOutput")
         self.plainTextEdit_ModelOutput.setFont(font1)
         self.plainTextEdit_ModelOutput.setLineWrapMode(
             QPlainTextEdit.LineWrapMode.WidgetWidth
@@ -711,20 +637,14 @@ class Ui_MainWindow(object):
         self.groupBox_Lightpanda = QGroupBox(self.tab_setup)
         self.groupBox_Lightpanda.setObjectName("groupBox_Lightpanda")
         self.verticalLayout_lightpanda = QVBoxLayout(self.groupBox_Lightpanda)
-        self.verticalLayout_lightpanda.setObjectName(
-            "verticalLayout_lightpanda"
-        )
+        self.verticalLayout_lightpanda.setObjectName("verticalLayout_lightpanda")
         self.verticalLayout_lightpanda.setContentsMargins(8, 8, 8, 8)
         self.formLayout_lightpanda_status = QFormLayout()
-        self.formLayout_lightpanda_status.setObjectName(
-            "formLayout_lightpanda_status"
-        )
+        self.formLayout_lightpanda_status.setObjectName("formLayout_lightpanda_status")
         self.formLayout_lightpanda_status.setHorizontalSpacing(20)
         self.formLayout_lightpanda_status.setVerticalSpacing(6)
         self.label_lightpanda_bindir_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_bindir_lbl.setObjectName(
-            "label_lightpanda_bindir_lbl"
-        )
+        self.label_lightpanda_bindir_lbl.setObjectName("label_lightpanda_bindir_lbl")
 
         self.formLayout_lightpanda_status.setWidget(
             0, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_bindir_lbl
@@ -738,9 +658,7 @@ class Ui_MainWindow(object):
         )
 
         self.label_lightpanda_version_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_version_lbl.setObjectName(
-            "label_lightpanda_version_lbl"
-        )
+        self.label_lightpanda_version_lbl.setObjectName("label_lightpanda_version_lbl")
 
         self.formLayout_lightpanda_status.setWidget(
             1,
@@ -756,9 +674,7 @@ class Ui_MainWindow(object):
         )
 
         self.label_lightpanda_status_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_status_lbl.setObjectName(
-            "label_lightpanda_status_lbl"
-        )
+        self.label_lightpanda_status_lbl.setObjectName("label_lightpanda_status_lbl")
 
         self.formLayout_lightpanda_status.setWidget(
             2, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl
@@ -771,17 +687,13 @@ class Ui_MainWindow(object):
             2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status
         )
 
-        self.verticalLayout_lightpanda.addLayout(
-            self.formLayout_lightpanda_status
-        )
+        self.verticalLayout_lightpanda.addLayout(self.formLayout_lightpanda_status)
 
         self.horizontalLayout_lightpandaDownload = QHBoxLayout()
         self.horizontalLayout_lightpandaDownload.setObjectName(
             "horizontalLayout_lightpandaDownload"
         )
-        self.pushButton_LightpandaDownload = QPushButton(
-            self.groupBox_Lightpanda
-        )
+        self.pushButton_LightpandaDownload = QPushButton(self.groupBox_Lightpanda)
         self.pushButton_LightpandaDownload.setObjectName(
             "pushButton_LightpandaDownload"
         )
@@ -804,9 +716,7 @@ class Ui_MainWindow(object):
         )
 
         self.groupBox_LightpandaAdvanced = QGroupBox(self.groupBox_Lightpanda)
-        self.groupBox_LightpandaAdvanced.setObjectName(
-            "groupBox_LightpandaAdvanced"
-        )
+        self.groupBox_LightpandaAdvanced.setObjectName("groupBox_LightpandaAdvanced")
         self.groupBox_LightpandaAdvanced.setCheckable(True)
         self.groupBox_LightpandaAdvanced.setChecked(False)
         self.horizontalLayout_lightpandaAdvanced = QHBoxLayout(
@@ -815,9 +725,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_lightpandaAdvanced.setObjectName(
             "horizontalLayout_lightpandaAdvanced"
         )
-        self.label_lightpanda_version_lbl_2 = QLabel(
-            self.groupBox_LightpandaAdvanced
-        )
+        self.label_lightpanda_version_lbl_2 = QLabel(self.groupBox_LightpandaAdvanced)
         self.label_lightpanda_version_lbl_2.setObjectName(
             "label_lightpanda_version_lbl_2"
         )
@@ -826,24 +734,16 @@ class Ui_MainWindow(object):
             self.label_lightpanda_version_lbl_2
         )
 
-        self.lineEdit_LightpandaVersion = QLineEdit(
-            self.groupBox_LightpandaAdvanced
-        )
-        self.lineEdit_LightpandaVersion.setObjectName(
-            "lineEdit_LightpandaVersion"
-        )
+        self.lineEdit_LightpandaVersion = QLineEdit(self.groupBox_LightpandaAdvanced)
+        self.lineEdit_LightpandaVersion.setObjectName("lineEdit_LightpandaVersion")
 
         self.horizontalLayout_lightpandaAdvanced.addWidget(
             self.lineEdit_LightpandaVersion
         )
 
-        self.verticalLayout_lightpanda.addWidget(
-            self.groupBox_LightpandaAdvanced
-        )
+        self.verticalLayout_lightpanda.addWidget(self.groupBox_LightpandaAdvanced)
 
-        self.plainTextEdit_LightpandaOutput = QPlainTextEdit(
-            self.groupBox_Lightpanda
-        )
+        self.plainTextEdit_LightpandaOutput = QPlainTextEdit(self.groupBox_Lightpanda)
         self.plainTextEdit_LightpandaOutput.setObjectName(
             "plainTextEdit_LightpandaOutput"
         )
@@ -853,9 +753,7 @@ class Ui_MainWindow(object):
         )
         self.plainTextEdit_LightpandaOutput.setReadOnly(True)
 
-        self.verticalLayout_lightpanda.addWidget(
-            self.plainTextEdit_LightpandaOutput
-        )
+        self.verticalLayout_lightpanda.addWidget(self.plainTextEdit_LightpandaOutput)
 
         self.verticalLayout_setup.addWidget(self.groupBox_Lightpanda)
 
@@ -917,9 +815,7 @@ class Ui_MainWindow(object):
         self.lineEdit_UserPassword = QLineEdit(self.groupBox_CreateUser)
         self.lineEdit_UserPassword.setObjectName("lineEdit_UserPassword")
         self.lineEdit_UserPassword.setMaxLength(48)
-        self.lineEdit_UserPassword.setEchoMode(
-            QLineEdit.EchoMode.PasswordEchoOnEdit
-        )
+        self.lineEdit_UserPassword.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
 
         self.formLayout_createUser.setWidget(
             2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword
@@ -937,9 +833,7 @@ class Ui_MainWindow(object):
         )
 
         self.lineEdit_UserConfirmPassword = QLineEdit(self.groupBox_CreateUser)
-        self.lineEdit_UserConfirmPassword.setObjectName(
-            "lineEdit_UserConfirmPassword"
-        )
+        self.lineEdit_UserConfirmPassword.setObjectName("lineEdit_UserConfirmPassword")
         self.lineEdit_UserConfirmPassword.setMaxLength(48)
         self.lineEdit_UserConfirmPassword.setEchoMode(
             QLineEdit.EchoMode.PasswordEchoOnEdit
@@ -976,9 +870,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_userList.addWidget(self.listWidget_CurrentUsers)
 
         self.horizontalLayout_userButtons = QHBoxLayout()
-        self.horizontalLayout_userButtons.setObjectName(
-            "horizontalLayout_userButtons"
-        )
+        self.horizontalLayout_userButtons.setObjectName("horizontalLayout_userButtons")
         self.pushButton_EditUser = QPushButton(self.tab_users)
         self.pushButton_EditUser.setObjectName("pushButton_EditUser")
         self.pushButton_EditUser.setEnabled(False)
@@ -993,9 +885,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_userButtons.addWidget(self.pushButton_DeleteUser)
 
-        self.verticalLayout_userList.addLayout(
-            self.horizontalLayout_userButtons
-        )
+        self.verticalLayout_userList.addLayout(self.horizontalLayout_userButtons)
 
         self.horizontalLayout_users.addLayout(self.verticalLayout_userList)
 
@@ -1007,9 +897,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_logs.setObjectName("verticalLayout_logs")
         self.verticalLayout_logs.setContentsMargins(8, 8, 8, 8)
         self.horizontalLayout_logFilter = QHBoxLayout()
-        self.horizontalLayout_logFilter.setObjectName(
-            "horizontalLayout_logFilter"
-        )
+        self.horizontalLayout_logFilter.setObjectName("horizontalLayout_logFilter")
         self.lineEdit_LogSearch = QLineEdit(self.tab_logs)
         self.lineEdit_LogSearch.setObjectName("lineEdit_LogSearch")
         self.lineEdit_LogSearch.setClearButtonEnabled(True)
@@ -1040,34 +928,26 @@ class Ui_MainWindow(object):
         self.verticalLayout_logs.addWidget(self.textEdit_Logs)
 
         self.horizontalLayout_logsToolbar = QHBoxLayout()
-        self.horizontalLayout_logsToolbar.setObjectName(
-            "horizontalLayout_logsToolbar"
-        )
+        self.horizontalLayout_logsToolbar.setObjectName("horizontalLayout_logsToolbar")
         self.pushButton_AutoRefresh = QPushButton(self.tab_logs)
         self.pushButton_AutoRefresh.setObjectName("pushButton_AutoRefresh")
         icon8 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackPause))
         self.pushButton_AutoRefresh.setIcon(icon8)
 
-        self.horizontalLayout_logsToolbar.addWidget(
-            self.pushButton_AutoRefresh
-        )
+        self.horizontalLayout_logsToolbar.addWidget(self.pushButton_AutoRefresh)
 
         self.horizontalSpacer_logsToolbar = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
 
-        self.horizontalLayout_logsToolbar.addItem(
-            self.horizontalSpacer_logsToolbar
-        )
+        self.horizontalLayout_logsToolbar.addItem(self.horizontalSpacer_logsToolbar)
 
         self.pushButton_RefreshLogs = QPushButton(self.tab_logs)
         self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
         icon9 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
         self.pushButton_RefreshLogs.setIcon(icon9)
 
-        self.horizontalLayout_logsToolbar.addWidget(
-            self.pushButton_RefreshLogs
-        )
+        self.horizontalLayout_logsToolbar.addWidget(self.pushButton_RefreshLogs)
 
         self.verticalLayout_logs.addLayout(self.horizontalLayout_logsToolbar)
 
@@ -1080,9 +960,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_settings.setContentsMargins(8, 8, 8, 8)
         self.groupBox_SettingsBasic = QGroupBox(self.tab_settings)
         self.groupBox_SettingsBasic.setObjectName("groupBox_SettingsBasic")
-        self.formLayout_settingsBasic = QFormLayout(
-            self.groupBox_SettingsBasic
-        )
+        self.formLayout_settingsBasic = QFormLayout(self.groupBox_SettingsBasic)
         self.formLayout_settingsBasic.setObjectName("formLayout_settingsBasic")
         self.formLayout_settingsBasic.setHorizontalSpacing(20)
         self.formLayout_settingsBasic.setVerticalSpacing(8)
@@ -1149,17 +1027,11 @@ class Ui_MainWindow(object):
         self.verticalLayout_settings.addWidget(self.groupBox_SettingsBasic)
 
         self.groupBox_SettingsAdvanced = QGroupBox(self.tab_settings)
-        self.groupBox_SettingsAdvanced.setObjectName(
-            "groupBox_SettingsAdvanced"
-        )
+        self.groupBox_SettingsAdvanced.setObjectName("groupBox_SettingsAdvanced")
         self.groupBox_SettingsAdvanced.setCheckable(True)
         self.groupBox_SettingsAdvanced.setChecked(False)
-        self.formLayout_settingsAdvanced = QFormLayout(
-            self.groupBox_SettingsAdvanced
-        )
-        self.formLayout_settingsAdvanced.setObjectName(
-            "formLayout_settingsAdvanced"
-        )
+        self.formLayout_settingsAdvanced = QFormLayout(self.groupBox_SettingsAdvanced)
+        self.formLayout_settingsAdvanced.setObjectName("formLayout_settingsAdvanced")
         self.formLayout_settingsAdvanced.setHorizontalSpacing(20)
         self.formLayout_settingsAdvanced.setVerticalSpacing(8)
         self.formLayout_settingsAdvanced.setContentsMargins(8, 8, 8, 8)
@@ -1211,9 +1083,7 @@ class Ui_MainWindow(object):
             2, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatCtxSize
         )
 
-        self.checkBox_KVCacheOffload = QCheckBox(
-            self.groupBox_SettingsAdvanced
-        )
+        self.checkBox_KVCacheOffload = QCheckBox(self.groupBox_SettingsAdvanced)
         self.checkBox_KVCacheOffload.setObjectName("checkBox_KVCacheOffload")
         self.checkBox_KVCacheOffload.setChecked(True)
 
@@ -1228,13 +1098,9 @@ class Ui_MainWindow(object):
             "horizontalLayout_settingsButtons"
         )
         self.pushButton_SettingsRevert = QPushButton(self.tab_settings)
-        self.pushButton_SettingsRevert.setObjectName(
-            "pushButton_SettingsRevert"
-        )
+        self.pushButton_SettingsRevert.setObjectName("pushButton_SettingsRevert")
 
-        self.horizontalLayout_settingsButtons.addWidget(
-            self.pushButton_SettingsRevert
-        )
+        self.horizontalLayout_settingsButtons.addWidget(self.pushButton_SettingsRevert)
 
         self.horizontalSpacer_settingsButtons = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
@@ -1252,13 +1118,9 @@ class Ui_MainWindow(object):
         self.pushButton_SettingsSave = QPushButton(self.tab_settings)
         self.pushButton_SettingsSave.setObjectName("pushButton_SettingsSave")
 
-        self.horizontalLayout_settingsButtons.addWidget(
-            self.pushButton_SettingsSave
-        )
+        self.horizontalLayout_settingsButtons.addWidget(self.pushButton_SettingsSave)
 
-        self.verticalLayout_settings.addLayout(
-            self.horizontalLayout_settingsButtons
-        )
+        self.verticalLayout_settings.addLayout(self.horizontalLayout_settingsButtons)
 
         self.verticalSpacer_settings = QSpacerItem(
             20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
@@ -1303,18 +1165,14 @@ class Ui_MainWindow(object):
         self.actionAbout.setText(
             QCoreApplication.translate("MainWindow", "&About", None)
         )
-        self.actionQuit.setText(
-            QCoreApplication.translate("MainWindow", "&Quit", None)
-        )
+        self.actionQuit.setText(QCoreApplication.translate("MainWindow", "&Quit", None))
         # if QT_CONFIG(shortcut)
         self.actionQuit.setShortcut(
             QCoreApplication.translate("MainWindow", "Ctrl+Q", None)
         )
         # endif // QT_CONFIG(shortcut)
         self.label_title.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Aria Service Manager", None
-            )
+            QCoreApplication.translate("MainWindow", "Aria Service Manager", None)
         )
         self.pushButton_ServiceStop.setText(
             QCoreApplication.translate("MainWindow", "Stop", None)
@@ -1412,9 +1270,7 @@ class Ui_MainWindow(object):
         self.label_llm_vectordb_lbl.setText(
             QCoreApplication.translate("MainWindow", "Knowledge Base", None)
         )
-        self.label_VectorDB.setText(
-            QCoreApplication.translate("MainWindow", "-", None)
-        )
+        self.label_VectorDB.setText(QCoreApplication.translate("MainWindow", "-", None))
         self.label_DebugLogsPath.setText(
             QCoreApplication.translate("MainWindow", "-", None)
         )
@@ -1447,9 +1303,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Advanced", None)
         )
         self.label_llama_dl_version_lbl.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Version (optional):", None
-            )
+            QCoreApplication.translate("MainWindow", "Version (optional):", None)
         )
         self.lineEdit_LlamaVersion.setPlaceholderText(
             QCoreApplication.translate(
@@ -1502,9 +1356,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Advanced", None)
         )
         self.label_hf_token_lbl.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Access Token (optional):", None
-            )
+            QCoreApplication.translate("MainWindow", "Access Token (optional):", None)
         )
         self.lineEdit_HFToken.setPlaceholderText(
             QCoreApplication.translate("MainWindow", "Access Token", None)
@@ -1518,9 +1370,7 @@ class Ui_MainWindow(object):
             )
         )
         self.groupBox_Lightpanda.setTitle(
-            QCoreApplication.translate(
-                "MainWindow", "Lightpanda Browser", None
-            )
+            QCoreApplication.translate("MainWindow", "Lightpanda Browser", None)
         )
         self.label_lightpanda_bindir_lbl.setText(
             QCoreApplication.translate("MainWindow", "Install Location", None)
@@ -1529,9 +1379,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "-", None)
         )
         self.label_lightpanda_version_lbl.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Configured Version", None
-            )
+            QCoreApplication.translate("MainWindow", "Configured Version", None)
         )
         self.label_Lightpanda_Version.setText(
             QCoreApplication.translate("MainWindow", "-", None)
@@ -1540,9 +1388,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Status", None)
         )
         self.label_Lightpanda_Status.setText(
-            QCoreApplication.translate(
-                "MainWindow", "\u2717 Not installed", None
-            )
+            QCoreApplication.translate("MainWindow", "\u2717 Not installed", None)
         )
         self.pushButton_LightpandaDownload.setText(
             QCoreApplication.translate("MainWindow", "Download", None)
@@ -1551,9 +1397,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Advanced", None)
         )
         self.label_lightpanda_version_lbl_2.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Version (optional):", None
-            )
+            QCoreApplication.translate("MainWindow", "Version (optional):", None)
         )
         self.lineEdit_LightpandaVersion.setPlaceholderText(
             QCoreApplication.translate("MainWindow", "nightly", None)
@@ -1613,9 +1457,7 @@ class Ui_MainWindow(object):
         )
 
         self.pushButton_AutoRefresh.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Pause Auto-Refresh", None
-            )
+            QCoreApplication.translate("MainWindow", "Pause Auto-Refresh", None)
         )
         self.pushButton_RefreshLogs.setText(
             QCoreApplication.translate("MainWindow", "Refresh", None)
@@ -1643,9 +1485,7 @@ class Ui_MainWindow(object):
             QCoreApplication.translate("MainWindow", "Advanced", None)
         )
         self.checkBox_Debug.setText(
-            QCoreApplication.translate(
-                "MainWindow", "Enable debug logging", None
-            )
+            QCoreApplication.translate("MainWindow", "Enable debug logging", None)
         )
         self.label_ChatQuantLbl.setText(
             QCoreApplication.translate("MainWindow", "Quality / Size", None)
@@ -1695,9 +1535,7 @@ class Ui_MainWindow(object):
         )
 
         self.checkBox_KVCacheOffload.setText(
-            QCoreApplication.translate(
-                "MainWindow", "KV cache offloading (RAM)", None
-            )
+            QCoreApplication.translate("MainWindow", "KV cache offloading (RAM)", None)
         )
         # if QT_CONFIG(tooltip)
         self.checkBox_KVCacheOffload.setToolTip(
@@ -1728,8 +1566,6 @@ class Ui_MainWindow(object):
         self.menuApplication.setTitle(
             QCoreApplication.translate("MainWindow", "&File", None)
         )
-        self.menuHelp.setTitle(
-            QCoreApplication.translate("MainWindow", "&Help", None)
-        )
+        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", "&Help", None))
 
     # retranslateUi

@@ -72,9 +72,7 @@ def _get_title_type(title_type: Optional[str]) -> Optional[ImdbTitleType]:
     if title_type_lower not in VALID_TITLE_TYPES:
         valid_types = ", ".join(sorted(VALID_TITLE_TYPES.keys()))
         raise ValueError(
-            ERROR_INVALID_TITLE_TYPE.format(
-                value=title_type, valid_types=valid_types
-            )
+            ERROR_INVALID_TITLE_TYPE.format(value=title_type, valid_types=valid_types)
         )
 
     # Get the imdbinfo TitleType enum value
@@ -113,9 +111,7 @@ def _classify_error(error: Exception) -> str:
     return ERROR_UNKNOWN.format(error=str(error))
 
 
-def _imdb_tool(
-    error_not_found_msg_template: str, *, id_param: str = "imdb_id"
-):
+def _imdb_tool(error_not_found_msg_template: str, *, id_param: str = "imdb_id"):
     """Decorator for IMDB tool functions.
 
     Handles ID validation and standardized error handling.
@@ -153,9 +149,7 @@ def _imdb_tool(
                 return func(*bound.args, **bound.kwargs)
             except ValueError as e:
                 expected_not_found = _format_not_found_msg(normalized_id)
-                if "not found" in str(e).lower() or expected_not_found in str(
-                    e
-                ):
+                if "not found" in str(e).lower() or expected_not_found in str(e):
                     return tool_error_response(
                         get_function_name(),
                         reason,
@@ -299,14 +293,10 @@ def get_movie_details(reason: str, imdb_id: str) -> str:
         raise ValueError(ERROR_MOVIE_NOT_FOUND.format(imdb_id=imdb_id))
 
     # Directors: prefer movie.directors, fall back to categories
-    directors = [
-        {"imdbId": d.imdbId, "name": d.name} for d in (movie.directors or [])
-    ]
+    directors = [{"imdbId": d.imdbId, "name": d.name} for d in (movie.directors or [])]
     if not directors:
         cat_directors = (movie.categories or {}).get("director", [])
-        directors = [
-            {"imdbId": d.imdbId, "name": d.name} for d in cat_directors
-        ]
+        directors = [{"imdbId": d.imdbId, "name": d.name} for d in cat_directors]
 
     # Writers: extracted from categories
     cat_writers = (movie.categories or {}).get("writer", [])
@@ -457,9 +447,7 @@ def get_person_filmography(reason: str, person_id: str) -> str:
     filmography = get_filmography(person_id)
 
     if not filmography:
-        raise ValueError(
-            ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id=person_id)
-        )
+        raise ValueError(ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id=person_id))
 
     serialized = {}
     if isinstance(filmography, dict):

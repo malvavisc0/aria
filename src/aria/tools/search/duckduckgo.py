@@ -54,9 +54,7 @@ def duckduckgo_web_search(
                 if processed_result["title"] and processed_result["href"]:
                     results.append(processed_result)
                 else:
-                    logger.warning(
-                        f"Skipping result with missing fields: {result}"
-                    )
+                    logger.warning(f"Skipping result with missing fields: {result}")
             except (KeyError, TypeError) as field_error:
                 logger.warning(f"Skipping malformed result: {field_error}")
                 continue
@@ -71,9 +69,7 @@ def duckduckgo_web_search(
     # Create and return final response
     from aria.tools import tool_success_response
 
-    return tool_success_response(
-        get_function_name(), reason, {"results": results}
-    )
+    return tool_success_response(get_function_name(), reason, {"results": results})
 
 
 def _validate_inputs(query: str, max_results: Optional[int]) -> Optional[str]:

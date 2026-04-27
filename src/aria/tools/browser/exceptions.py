@@ -32,7 +32,9 @@ class ElementNotFoundError(BrowserError):
 
     code = "ELEMENT_NOT_FOUND"
     recoverable = True
-    how_to_fix = "Verify the CSS selector is correct and the element exists on the page."
+    how_to_fix = (
+        "Verify the CSS selector is correct and the element exists on the page."
+    )
 
 
 class PageNotOpenError(BrowserError):

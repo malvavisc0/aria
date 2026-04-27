@@ -57,26 +57,16 @@ def with_file_operation_error_handling(operation_name: str) -> Callable:
                 logger.warning(
                     f"Security validation failed for {file_identifier}: {exc}"
                 )
-                return _error_response(
-                    operation_name, file_identifier, exc, reason
-                )
+                return _error_response(operation_name, file_identifier, exc, reason)
             except FileOperationError as exc:
-                logger.error(
-                    f"File operation failed for {file_identifier}: {exc}"
-                )
-                return _error_response(
-                    operation_name, file_identifier, exc, reason
-                )
+                logger.error(f"File operation failed for {file_identifier}: {exc}")
+                return _error_response(operation_name, file_identifier, exc, reason)
             except OSError as exc:
                 logger.error(f"OS error for {file_identifier}: {exc}")
-                return _error_response(
-                    operation_name, file_identifier, exc, reason
-                )
+                return _error_response(operation_name, file_identifier, exc, reason)
             except Exception as exc:
                 logger.exception(f"Unexpected error for {file_identifier}")
-                return _error_response(
-                    operation_name, file_identifier, exc, reason
-                )
+                return _error_response(operation_name, file_identifier, exc, reason)
 
         return wrapper
 
@@ -134,26 +124,14 @@ def with_input_validation(**validation_params) -> Callable:
                 try:
                     _validate_inputs(**validate_kwargs)
                 except FileSecurityError as exc:
-                    file_identifier = validate_kwargs.get(
-                        "file_name", "unknown"
-                    )
-                    return _error_response(
-                        "input_validation", file_identifier, exc
-                    )
+                    file_identifier = validate_kwargs.get("file_name", "unknown")
+                    return _error_response("input_validation", file_identifier, exc)
                 except FileOperationError as exc:
-                    file_identifier = validate_kwargs.get(
-                        "file_name", "unknown"
-                    )
-                    return _error_response(
-                        "input_validation", file_identifier, exc
-                    )
+                    file_identifier = validate_kwargs.get("file_name", "unknown")
+                    return _error_response("input_validation", file_identifier, exc)
                 except Exception as exc:  # pragma: no cover
-                    file_identifier = validate_kwargs.get(
-                        "file_name", "unknown"
-                    )
-                    return _error_response(
-                        "input_validation", file_identifier, exc
-                    )
+                    file_identifier = validate_kwargs.get("file_name", "unknown")
+                    return _error_response("input_validation", file_identifier, exc)
 
             return func(*args, **kwargs)
 

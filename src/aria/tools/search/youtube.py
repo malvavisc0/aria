@@ -122,9 +122,7 @@ def get_youtube_video_transcription(
     if not video_id:
         error_msg = "Could not extract YouTube video ID from URL"
         logger.error(error_msg)
-        return tool_error_response(
-            get_function_name(), reason, RuntimeError(error_msg)
-        )
+        return tool_error_response(get_function_name(), reason, RuntimeError(error_msg))
 
     logger.debug(f"Extracted video ID: {video_id} from {validated_url}")
 
@@ -154,22 +152,15 @@ def get_youtube_video_transcription(
 
     except NoTranscriptFound:
         error_msg = (
-            f"No transcripts found for video {video_id}. "
-            "Video may lack captions."
+            f"No transcripts found for video {video_id}. " "Video may lack captions."
         )
         logger.warning(error_msg)
-        return tool_error_response(
-            get_function_name(), reason, RuntimeError(error_msg)
-        )
+        return tool_error_response(get_function_name(), reason, RuntimeError(error_msg))
     except TranscriptsDisabled:
         error_msg = f"Transcripts disabled for video {video_id} by uploader."
         logger.warning(error_msg)
-        return tool_error_response(
-            get_function_name(), reason, RuntimeError(error_msg)
-        )
+        return tool_error_response(get_function_name(), reason, RuntimeError(error_msg))
     except Exception as exc:
         error_msg = f"Failed to get YouTube transcription from {url}: {exc}"
         logger.error(error_msg)
-        return tool_error_response(
-            get_function_name(), reason, RuntimeError(error_msg)
-        )
+        return tool_error_response(get_function_name(), reason, RuntimeError(error_msg))

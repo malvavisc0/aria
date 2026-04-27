@@ -53,9 +53,7 @@ def _ok(reason: str, result: Dict[str, Any]) -> str:
 
 
 def _err(reason: str, message: str) -> str:
-    return tool_error_response(
-        get_function_name(), reason, RuntimeError(message)
-    )
+    return tool_error_response(get_function_name(), reason, RuntimeError(message))
 
 
 def _get_weather_text(code: Optional[int]) -> str:
@@ -107,17 +105,13 @@ def get_current_weather(reason: str, location: str) -> str:
         geo_json = geo.json()
         results = geo_json.get("results") or []
         if not results:
-            return _err(
-                reason, f"No geocoding result for location: {location_value}"
-            )
+            return _err(reason, f"No geocoding result for location: {location_value}")
 
         first = results[0]
         lat = first.get("latitude")
         lon = first.get("longitude")
         if lat is None or lon is None:
-            return _err(
-                reason, "Geocoding response missing latitude/longitude"
-            )
+            return _err(reason, "Geocoding response missing latitude/longitude")
 
         resolved_name = first.get("name") or location_value
         country = first.get("country")

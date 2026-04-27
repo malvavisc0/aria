@@ -18,15 +18,9 @@ class TestFilesPackageContract:
         # list_files: should have pattern, recursive, max_results
         sig = inspect.signature(list_files)
         params = list(sig.parameters.keys())
-        assert (
-            "pattern" in params
-        ), "list_files should have 'pattern' parameter"
-        assert (
-            "recursive" in params
-        ), "list_files should have 'recursive' parameter"
-        assert (
-            "max_results" in params
-        ), "list_files should have 'max_results' parameter"
+        assert "pattern" in params, "list_files should have 'pattern' parameter"
+        assert "recursive" in params, "list_files should have 'recursive' parameter"
+        assert "max_results" in params, "list_files should have 'max_results' parameter"
 
         # read_file: should have file_name, offset, length
         sig = inspect.signature(read_file)
@@ -42,9 +36,7 @@ class TestFilesPackageContract:
         params = list(sig.parameters.keys())
         assert "reason" in params
         assert "file_name" in params
-        assert (
-            "contents" in params
-        ), "write_file should have 'contents' parameter"
+        assert "contents" in params, "write_file should have 'contents' parameter"
         assert "mode" in params, "write_file should have 'mode' parameter"
 
         # edit_file: reason, file_name, offset, length, new_lines

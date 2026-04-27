@@ -180,9 +180,7 @@ class TestSearchImdbTitles:
         mock_result.names = []
         mock_search.return_value = mock_result
 
-        result = _response_data(
-            search_imdb_titles("Search for Matrix", "Matrix")
-        )
+        result = _response_data(search_imdb_titles("Search for Matrix", "Matrix"))
         assert "titles" in result
         assert len(result["titles"]) == 1
         assert result["titles"][0]["imdbId"] == "tt0133093"
@@ -243,9 +241,7 @@ class TestSearchImdbTitles:
         mock_search.return_value = mock_result
 
         search_imdb_titles("Search", "Matrix", title_type="movie")
-        mock_search.assert_called_once_with(
-            "Matrix", title_type=TitleType.Movies
-        )
+        mock_search.assert_called_once_with("Matrix", title_type=TitleType.Movies)
 
     @patch("aria.tools.imdb.functions.search_title")
     def test_search_exception(self, mock_search):
@@ -354,9 +350,7 @@ class TestGetMovieDetails:
         assert result["cast"][0]["characters"] == ["Neo"]
 
     @patch("aria.tools.imdb.functions.get_movie")
-    def test_get_details_director_fallback_from_categories(
-        self, mock_get_movie
-    ):
+    def test_get_details_director_fallback_from_categories(self, mock_get_movie):
         """Test directors fall back to categories when direct list is empty."""
         mock_movie = MagicMock()
         mock_movie.imdbId = "tt0133093"
@@ -470,9 +464,7 @@ class TestGetPersonFilmography:
 
         mock_get_filmography.return_value = {"director": [mock_credit]}
 
-        result = _response_data(
-            get_person_filmography("Get filmography", "nm0634240")
-        )
+        result = _response_data(get_person_filmography("Get filmography", "nm0634240"))
         assert "filmography" in result
         assert "director" in result["filmography"]
         assert result["filmography"]["director"][0]["title"] == "Oppenheimer"
@@ -486,9 +478,7 @@ class TestGetPersonFilmography:
     def test_get_filmography_not_found(self, mock_get_filmography):
         """Test get filmography when not found."""
         mock_get_filmography.return_value = None
-        err = _response_error(
-            get_person_filmography("Get filmography", "nm9999999")
-        )
+        err = _response_error(get_person_filmography("Get filmography", "nm9999999"))
         assert "No filmography found" in err
 
 
@@ -511,9 +501,7 @@ class TestGetAllSeriesEpisodes:
 
         mock_get_episodes.return_value = [mock_episode]
 
-        result = _response_data(
-            get_all_series_episodes("Get episodes", "tt0903747")
-        )
+        result = _response_data(get_all_series_episodes("Get episodes", "tt0903747"))
         assert "episodes" in result
         assert result["episode_count"] == 1
         assert result["episodes"][0]["title"] == "Pilot"
@@ -527,18 +515,14 @@ class TestGetAllSeriesEpisodes:
     def test_get_episodes_not_found(self, mock_get_episodes):
         """Test get episodes when not found."""
         mock_get_episodes.return_value = None
-        err = _response_error(
-            get_all_series_episodes("Get episodes", "tt9999999")
-        )
+        err = _response_error(get_all_series_episodes("Get episodes", "tt9999999"))
         assert "No episodes found" in err
 
     @patch("aria.tools.imdb.functions.get_all_episodes")
     def test_get_episodes_empty_list(self, mock_get_episodes):
         """Test get episodes with empty list."""
         mock_get_episodes.return_value = []
-        err = _response_error(
-            get_all_series_episodes("Get episodes", "tt9999999")
-        )
+        err = _response_error(get_all_series_episodes("Get episodes", "tt9999999"))
         assert "No episodes found" in err
 
 
@@ -648,7 +632,5 @@ class TestReasonParameter:
         mock_movie.awards = None
         mock_get_movie.return_value = mock_movie
 
-        result = _response_data(
-            get_movie_details("My reason here", "tt0133093")
-        )
+        result = _response_data(get_movie_details("My reason here", "tt0133093"))
         assert result["imdbId"] == "tt0133093"

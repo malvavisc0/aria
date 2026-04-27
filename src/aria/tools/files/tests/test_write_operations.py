@@ -5,9 +5,7 @@ from pathlib import Path
 
 from aria.tools.files import edit_file, write_file
 from aria.tools.files.write_operations import edit_file as edit_file_submodule
-from aria.tools.files.write_operations import (
-    write_file as write_file_submodule,
-)
+from aria.tools.files.write_operations import write_file as write_file_submodule
 
 
 class TestWriteOperations:

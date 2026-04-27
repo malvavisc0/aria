@@ -30,14 +30,10 @@ class ReasoningSessionModel(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
 
     # User-provided session identifier
-    session_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    session_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     # Agent identifier
-    agent_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -98,9 +94,7 @@ class ReasoningStepModel(Base):
 
     __tablename__ = "reasoning_steps"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign key to session
     session_id: Mapped[str] = mapped_column(
@@ -145,9 +139,7 @@ class ReasoningReflectionModel(Base):
 
     __tablename__ = "reasoning_reflections"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign key to session
     session_id: Mapped[str] = mapped_column(
@@ -183,9 +175,7 @@ class ReasoningScratchpadModel(Base):
 
     __tablename__ = "reasoning_scratchpad"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign key to session
     session_id: Mapped[str] = mapped_column(
@@ -214,9 +204,7 @@ class ReasoningScratchpadModel(Base):
     )
 
     # Unique constraint on session_id + key
-    __table_args__ = (
-        UniqueConstraint("session_id", "key", name="uq_session_key"),
-    )
+    __table_args__ = (UniqueConstraint("session_id", "key", name="uq_session_key"),)
 
     def __repr__(self) -> str:
         return f"<ReasoningScratchpad(id={self.id}, key={self.key})>"
@@ -227,9 +215,7 @@ class ReasoningToolEventModel(Base):
 
     __tablename__ = "reasoning_tool_events"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign key to session (internal id)
     session_id: Mapped[str] = mapped_column(

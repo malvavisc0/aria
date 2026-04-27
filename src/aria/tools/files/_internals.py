@@ -115,9 +115,7 @@ def _validate_inputs(
 
     # Validate numeric parameters
     if chunk_size > MAX_CHUNK_SIZE:
-        raise FileSecurityError(
-            f"chunk_size must be between 1 and {MAX_CHUNK_SIZE}"
-        )
+        raise FileSecurityError(f"chunk_size must be between 1 and {MAX_CHUNK_SIZE}")
 
     if offset < 0 or length < 0:
         raise FileSecurityError("Negative offset or length not allowed")
@@ -136,8 +134,7 @@ def _validate_inputs(
             line_length = len(line)
             if line_length > MAX_LINE_LENGTH:
                 raise FileSecurityError(
-                    "Line length "
-                    f"{line_length} exceeds limit: {MAX_LINE_LENGTH}"
+                    "Line length " f"{line_length} exceeds limit: {MAX_LINE_LENGTH}"
                 )
 
 
@@ -178,22 +175,15 @@ def _secure_resolve_path(
         file_path = file_path.resolve()
 
         # Check for path traversal attacks - path must be within BASE_DIR
-        if enforce_base_dir and not str(file_path).startswith(
-            str(base_dir_resolved)
-        ):
+        if enforce_base_dir and not str(file_path).startswith(str(base_dir_resolved)):
             raise FileSecurityError("Path traversal attempt detected")
 
         # Check if path is a directory
         if file_path.is_dir():
-            raise FileOperationError(
-                f"Path is a directory, not a file: {file_name}"
-            )
+            raise FileOperationError(f"Path is a directory, not a file: {file_name}")
 
         # Check file extension (only if it has an extension)
-        if (
-            file_path.suffix
-            and file_path.suffix.lower() not in ALLOWED_EXTENSIONS
-        ):
+        if file_path.suffix and file_path.suffix.lower() not in ALLOWED_EXTENSIONS:
             msg = f"File type not allowed: {file_path.suffix}"
             raise FileSecurityError(msg)
 
@@ -243,9 +233,7 @@ def _secure_resolve_dir(
         dir_path = dir_path.resolve()
 
         # Check for path traversal attacks - path must be within BASE_DIR
-        if enforce_base_dir and not str(dir_path).startswith(
-            str(base_dir_resolved)
-        ):
+        if enforce_base_dir and not str(dir_path).startswith(str(base_dir_resolved)):
             raise FileSecurityError("Path traversal attempt detected")
 
         # Check it's actually a directory if required
@@ -281,9 +269,7 @@ def _create_backup(file_path: Path) -> Optional[Path]:
         return None
 
 
-def validate_and_resolve_file(
-    file_name: str, check_exists: bool = True
-) -> Path:
+def validate_and_resolve_file(file_name: str, check_exists: bool = True) -> Path:
     """Validate inputs and resolve file path in one step.
 
     Args:

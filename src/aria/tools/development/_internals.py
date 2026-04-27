@@ -134,9 +134,7 @@ def _validate_inputs(
 
         # Check for path traversal attempts
         if ".." in filename:
-            raise PythonSecurityError(
-                "Path traversal attempt detected in filename"
-            )
+            raise PythonSecurityError("Path traversal attempt detected in filename")
 
     # Validate file_path if provided
     if file_path is not None:
@@ -148,9 +146,7 @@ def _validate_inputs(
 
         # Check for path traversal attempts
         if ".." in file_path:
-            raise PythonSecurityError(
-                "Path traversal attempt detected in file path"
-            )
+            raise PythonSecurityError("Path traversal attempt detected in file path")
 
 
 def _create_safe_globals() -> Dict[str, Any]:
@@ -402,8 +398,7 @@ def _read_file_safely(file_path: str) -> str:
             if potential_path.exists():
                 resolved_path = str(potential_path)
                 logger.debug(
-                    f"Resolved {file_path} to {resolved_path} "
-                    f"using BASE_DIR"
+                    f"Resolved {file_path} to {resolved_path} " f"using BASE_DIR"
                 )
         except Exception:
             pass

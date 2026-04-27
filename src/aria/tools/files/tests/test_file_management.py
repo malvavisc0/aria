@@ -5,12 +5,8 @@ from pathlib import Path
 
 from aria.tools.files import copy_file, delete_file, rename_file
 from aria.tools.files.file_management import copy_file as copy_file_submodule
-from aria.tools.files.file_management import (
-    delete_file as delete_file_submodule,
-)
-from aria.tools.files.file_management import (
-    rename_file as rename_file_submodule,
-)
+from aria.tools.files.file_management import delete_file as delete_file_submodule
+from aria.tools.files.file_management import rename_file as rename_file_submodule
 
 
 class TestFileManagement:

@@ -18,9 +18,7 @@ class PlanModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
 
     # Agent identifier for multi-agent isolation
-    agent_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     task: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -49,9 +47,7 @@ class PlanStepModel(Base):
 
     __tablename__ = "plan_steps"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     plan_id: Mapped[str] = mapped_column(
         String(36),
@@ -65,9 +61,7 @@ class PlanStepModel(Base):
 
     step_number: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="pending"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     result: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -80,9 +74,7 @@ class PlanStepModel(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    plan: Mapped["PlanModel"] = relationship(
-        "PlanModel", back_populates="steps"
-    )
+    plan: Mapped["PlanModel"] = relationship("PlanModel", back_populates="steps")
 
     def __repr__(self) -> str:
         return (

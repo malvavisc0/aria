@@ -1,79 +1,79 @@
-# 🧠 Welcome to Aria
+# Aria
 
-**Your Local AI Assistant with Unified Agent Intelligence**
-
-Aria is a powerful AI assistant that runs entirely on your machine. It uses a single unified agent with a comprehensive toolkit to help you with coding, research, system tasks, finance, entertainment, and more.
+**Local AI · Unified Agent · Private by Default**
 
 ---
 
-## 🛠️ What Can Aria Do?
+## Capabilities
 
-### 💬 Have a Conversation
-Just start typing! Aria will respond naturally and help with general questions.
+### Conversation
+Ask anything. Aria responds naturally and remembers context across your session.
 
-### 🐍 Write & Run Code
-```
-Write a Python script to analyze this CSV file
-Debug this function for me
-Create a web scraper for that website
-```
+### Code Execution
+Write, debug, and run code — Python, shell, and more — all sandboxed locally.
 
-### 💻 Execute Shell Commands
 ```
-What's my system info?
-List all Python processes
-Check disk usage
+Analyze this CSV file
+Debug the function in utils.py
+Write a web scraper for Hacker News
 ```
 
-### 🌐 Research the Web
+### Shell & System
 ```
-What's the latest news about AI?
-Search for documentation on FastAPI
-Get the weather forecast for Berlin
-```
-
-### 📊 Get Financial Data
-```
-What's Apple's stock price?
-Show me Tesla's market cap
-Compare AMD and NVIDIA stock performance
+Check system resource usage
+List running Docker containers
+Find large files consuming disk space
 ```
 
-### 🎬 Find Entertainment
+### Web Research
 ```
-Find movies starring Leonardo DiCaprio
-What's the rating of The Matrix?
-Show me the cast of Breaking Bad
-```
-
-### 📁 File Operations
-```
-Read the contents of config.yaml
-Search for all TODO comments in my project
-Create a new directory structure
+Summarize the latest arXiv papers on transformers
+Compare FastAPI vs Litestar documentation
+Get the weather in Berlin
 ```
 
-### 🧠 Structured Reasoning & Planning
+### Finance
 ```
-Compare the tradeoffs between microservices and monoliths
-Help me plan a database migration strategy
+What's AAPL trading at?
+Show NVDA year-to-date performance
+Compare AMD and Intel market cap
+```
+
+### Media
+```
+Find films directed by Denis Villeneuve
+What's the rating of Severance?
+Cast of The Bear season 2
+```
+
+### Files
+```
+Read config.yaml
+Search for TODO comments in the codebase
+Create a new project scaffold
+```
+
+### Reasoning
+```
+Compare microservices vs monolith — tradeoffs
+Plan a zero-downtime database migration
 Analyze this decision step by step
 ```
 
 ---
 
-## 🔒 Privacy First
+## Privacy
 
-All processing happens locally on your machine. Your conversations, files, and data never leave your computer.
-
----
-
-## 📚 Learn More
-
-- **Documentation:** Check the [`docs/`](docs/) folder for detailed guides
-- **GitHub:** [https://github.com/malvavisc0/aria](https://github.com/malvavisc0/aria)
-- **Issues:** Report bugs or request features on [GitHub Issues](https://github.com/malvavisc0/aria/issues)
+All processing runs locally. Your data never leaves your machine.
 
 ---
 
-*Ready to get started? Just type your question or request below! 👇*
+## Resources
+
+- **Docs:** [`docs/`](docs/)
+- **GitHub:** [malvavisc0/aria](https://github.com/malvavisc0/aria)
+- **Issues:** [Report a bug](https://github.com/malvavisc0/aria/issues)
+
+---
+
+*Type below to begin.*

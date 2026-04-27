@@ -180,9 +180,7 @@ class TestSearchFilesContract:
         """search_files should have 'pattern' parameter."""
         sig = inspect.signature(unified_read.search_files)
         params = list(sig.parameters.keys())
-        assert (
-            "pattern" in params
-        ), f"search_files should have 'pattern', got {params}"
+        assert "pattern" in params, f"search_files should have 'pattern', got {params}"
 
     def test_search_files_has_mode_parameter(self):
         """search_files should have 'mode' parameter."""

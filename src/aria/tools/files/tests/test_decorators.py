@@ -30,9 +30,7 @@ class TestWithFileOperationErrorHandling:
         """Test decorator converts generic Exception to error response."""
 
         @with_file_operation_error_handling("test_operation")
-        def function_that_raises_generic_exception(
-            reason: str, file_name: str
-        ):
+        def function_that_raises_generic_exception(reason: str, file_name: str):
             raise ValueError("Unexpected error")
 
         result = function_that_raises_generic_exception("test", "test.txt")
@@ -79,9 +77,7 @@ class TestWithInputValidation:
         """Test that decorator skips validation for None values."""
 
         @with_input_validation(contents=True, offset=True)
-        def function_with_optional_params(
-            file_name, contents=None, offset=None
-        ):
+        def function_with_optional_params(file_name, contents=None, offset=None):
             return f"File: {file_name}"
 
         # Should not raise error even though contents and offset are None

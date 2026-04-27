@@ -18,9 +18,7 @@ class KnowledgeEntryModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
 
     # Agent identifier for multi-agent isolation
-    agent_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     # Content key for recall
     key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)

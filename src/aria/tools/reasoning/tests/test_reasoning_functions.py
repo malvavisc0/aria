@@ -34,9 +34,7 @@ def test_db(test_tools_db):
 
 def test_start_reasoning(test_agent_id, test_db):
     """Test starting a new reasoning session."""
-    result = reasoning(
-        "Testing reason", action="start", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="start", agent_id=test_agent_id)
     assert result["status"] == "success"
     assert result["tool"] == "reasoning"
     assert result["reason"] == "Testing reason"
@@ -188,9 +186,7 @@ def test_scratchpad_with_session(test_agent_id, test_db):
 
 def test_evaluate_without_session(test_agent_id, test_db):
     """Test that evaluating without session raises error."""
-    result = reasoning(
-        "Testing reason", action="evaluate", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="evaluate", agent_id=test_agent_id)
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
@@ -205,9 +201,7 @@ def test_evaluate_with_session(test_agent_id, test_db):
         agent_id=test_agent_id,
     )
 
-    result = reasoning(
-        "Testing reason", action="evaluate", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="evaluate", agent_id=test_agent_id)
     assert result["status"] == "success"
     assert result["tool"] == "reasoning"
     assert result["data"]["steps_count"] == 1
@@ -219,9 +213,7 @@ def test_evaluate_with_session(test_agent_id, test_db):
 
 def test_summary_without_session(test_agent_id, test_db):
     """Test that getting summary without session raises error."""
-    result = reasoning(
-        "Testing reason", action="summary", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="summary", agent_id=test_agent_id)
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
@@ -236,9 +228,7 @@ def test_summary_with_session(test_agent_id, test_db):
         agent_id=test_agent_id,
     )
 
-    result = reasoning(
-        "Testing reason", action="summary", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="summary", agent_id=test_agent_id)
     assert result["status"] == "success"
     assert result["data"]["steps_count"] == 1
     assert result["data"]["action"] == "summary"
@@ -259,9 +249,7 @@ def test_end_reasoning(test_agent_id, test_db):
     assert registry.get_active_session_id(test_agent_id) is None
 
     # Verify tools fail now
-    result = reasoning(
-        "Testing reason", action="summary", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="summary", agent_id=test_agent_id)
     assert result["status"] == "error"
     assert result["error"]["code"] == "NO_ACTIVE_SESSION"
 
@@ -312,17 +300,13 @@ def test_full_workflow(test_agent_id, test_db):
     )
 
     # Evaluate
-    result = reasoning(
-        "Testing reason", action="evaluate", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="evaluate", agent_id=test_agent_id)
     assert result["status"] == "success"
     assert result["data"]["steps_count"] == 2
     assert result["data"]["reflections_count"] == 1
 
     # Get summary
-    summary = reasoning(
-        "Testing reason", action="summary", agent_id=test_agent_id
-    )
+    summary = reasoning("Testing reason", action="summary", agent_id=test_agent_id)
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 2
     assert summary["data"]["reflections_count"] == 1
@@ -366,9 +350,7 @@ def test_multi_agent_isolation(test_db):
     reasoning("Testing reason", action="end", agent_id=agent_1)
 
     # Agent 2's session should still exist
-    summary_2_after = reasoning(
-        "Testing reason", action="summary", agent_id=agent_2
-    )
+    summary_2_after = reasoning("Testing reason", action="summary", agent_id=agent_2)
     assert summary_2_after["data"]["steps_count"] == 1
 
     # Agent 1's session should be gone
@@ -407,9 +389,7 @@ def test_persistence_across_restart(test_agent_id, test_db):
     # Simulate restart boundary: registry is DB-backed (no in-memory cache)
 
     # Verify data still accessible (loaded from database)
-    summary = reasoning(
-        "Testing reason", action="summary", agent_id=test_agent_id
-    )
+    summary = reasoning("Testing reason", action="summary", agent_id=test_agent_id)
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 1
     assert summary["data"]["reflections_count"] == 1
@@ -477,9 +457,7 @@ def test_session_data_integrity(test_agent_id, test_db):
     # DB-backed lookup should still load persisted session data
 
     # Verify reasoning data is intact
-    summary = reasoning(
-        "Testing reason", action="summary", agent_id=test_agent_id
-    )
+    summary = reasoning("Testing reason", action="summary", agent_id=test_agent_id)
     assert summary["status"] == "success"
     assert summary["data"]["steps_count"] == 2
     assert summary["data"]["reflections_count"] == 1
@@ -502,8 +480,6 @@ def test_session_data_integrity(test_agent_id, test_db):
 
 def test_invalid_action(test_agent_id, test_db):
     """Test that an invalid action returns an error."""
-    result = reasoning(
-        "Testing reason", action="invalid", agent_id=test_agent_id
-    )
+    result = reasoning("Testing reason", action="invalid", agent_id=test_agent_id)
     assert result["status"] == "error"
     assert result["error"]["code"] == "INVALID_ACTION"

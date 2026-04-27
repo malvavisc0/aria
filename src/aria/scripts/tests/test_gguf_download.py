@@ -66,9 +66,7 @@ class TestGetModelPath:
 class TestIsModelDownloaded:
     """Tests for is_model_downloaded()."""
 
-    def test_returns_false_when_models_dir_does_not_exist(
-        self, tmp_path: Path
-    ):
+    def test_returns_false_when_models_dir_does_not_exist(self, tmp_path: Path):
         """Returns False when the models directory does not exist."""
         missing_dir = tmp_path / "nonexistent"
         assert is_model_downloaded("model-Q8_0.gguf", missing_dir) is False

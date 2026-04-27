@@ -80,8 +80,7 @@ def scratchpad(
             agent_id=agent_id,
             code="UNSUPPORTED_OPERATION",
             message=(
-                f"Unknown operation '{operation}'. "
-                "Supported: get, set, delete, list"
+                f"Unknown operation '{operation}'. " "Supported: get, set, delete, list"
             ),
             how_to_fix="Use one of: get, set, delete, list",
         )

@@ -121,10 +121,7 @@ async def _call_vl_model(
 
     data = response.json()
     text: str = (
-        data.get("choices", [{}])[0]
-        .get("message", {})
-        .get("content", "")
-        .strip()
+        data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
     )
     return text
 
@@ -271,8 +268,7 @@ def _load_image_file(image_path: Path) -> bytes:
         from PIL import Image
     except ImportError as exc:
         raise ImportError(
-            "Pillow is required for image loading. "
-            "Install it with: uv add pillow"
+            "Pillow is required for image loading. " "Install it with: uv add pillow"
         ) from exc
 
     if not image_path.exists():
@@ -376,9 +372,7 @@ def make_parse_pdf(api_base: str, model: str) -> Callable:
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 for i, png_bytes in enumerate(pages, start=1):
-                    logger.info(
-                        f"Analysing PDF page {i}/{len(pages)}: " f"{path.name}"
-                    )
+                    logger.info(f"Analysing PDF page {i}/{len(pages)}: " f"{path.name}")
 
                     text = await _call_vl_model(
                         client, endpoint, model, png_bytes, user_prompt
@@ -434,9 +428,7 @@ def make_analyze_image(api_base: str, model: str) -> Callable:
         :class:`~llama_index.core.tools.FunctionTool`.
     """
 
-    async def analyze_image(
-        reason: str, file_path: str, prompt: str = ""
-    ) -> str:
+    async def analyze_image(reason: str, file_path: str, prompt: str = "") -> str:
         """Analyze an image using a vision-language model.
 
         When to use:
@@ -488,13 +480,10 @@ def make_analyze_image(api_base: str, model: str) -> Callable:
                 get_function_name(),
                 reason,
                 VLModelError(
-                    f"VL model request failed: {e}. "
-                    "Ensure the VL server is running."
+                    f"VL model request failed: {e}. " "Ensure the VL server is running."
                 ),
             )
 
-        return _persist_vision_result(
-            "analyze_image", reason, path, extracted_text
-        )
+        return _persist_vision_result("analyze_image", reason, path, extracted_text)
 
     return log_tool_call(analyze_image)

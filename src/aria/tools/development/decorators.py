@@ -50,14 +50,10 @@ def with_runner_error_handling(operation_name: str) -> Callable:
             try:
                 return func(*args, **kwargs)
             except PythonSecurityError as exc:
-                logger.warning(
-                    f"Security violation in {operation_name}: {exc}"
-                )
+                logger.warning(f"Security violation in {operation_name}: {exc}")
                 return _error_response(operation_name, identifier, exc, reason)
             except PythonSyntaxValidationError as exc:
-                logger.warning(
-                    f"Syntax validation failed in {operation_name}: {exc}"
-                )
+                logger.warning(f"Syntax validation failed in {operation_name}: {exc}")
                 return _error_response(operation_name, identifier, exc, reason)
             except PythonExecutionTimeoutError as exc:
                 logger.warning(f"Execution timeout in {operation_name}: {exc}")

@@ -118,15 +118,9 @@ class ServerHandlersMixin:
         self._preflight_worker.failed.connect(self._on_preflight_failed)
         self._preflight_worker.finished.connect(self._preflight_thread.quit)
         self._preflight_worker.failed.connect(self._preflight_thread.quit)
-        self._preflight_worker.finished.connect(
-            self._preflight_worker.deleteLater
-        )
-        self._preflight_worker.failed.connect(
-            self._preflight_worker.deleteLater
-        )
-        self._preflight_thread.finished.connect(
-            self._preflight_thread.deleteLater
-        )
+        self._preflight_worker.finished.connect(self._preflight_worker.deleteLater)
+        self._preflight_worker.failed.connect(self._preflight_worker.deleteLater)
+        self._preflight_thread.finished.connect(self._preflight_thread.deleteLater)
         self._preflight_thread.start()
 
     def _on_preflight_finished(self, result) -> None:
@@ -162,8 +156,7 @@ class ServerHandlersMixin:
             self._settings_just_loaded = False
             if result.passed:
                 self.statusBar().showMessage(
-                    "Settings loaded — all checks passed. "
-                    "Server can be started.",
+                    "Settings loaded — all checks passed. " "Server can be started.",
                     5000,
                 )
             else:
@@ -296,7 +289,9 @@ class ServerHandlersMixin:
         """
         status = self._server_manager.get_status()
 
-        _BADGE_BASE = "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
+        _BADGE_BASE = (
+            "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
+        )
         if status.healthy:
             self._was_healthy = True
             self.ui.label_ServiceStatus.setText("Running")
@@ -338,8 +333,7 @@ class ServerHandlersMixin:
                     10000,
                 )
             elif (
-                self._preflight_result is not None
-                and not self._preflight_result.passed
+                self._preflight_result is not None and not self._preflight_result.passed
             ):
                 n = len(self._preflight_result.failures)
                 self.statusBar().showMessage(
@@ -349,9 +343,7 @@ class ServerHandlersMixin:
             else:
                 self.statusBar().clearMessage()
 
-        self.ui.label_ServicePID.setText(
-            str(status.pid) if status.pid else "-"
-        )
+        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
 
         url = f"http://{status.host}:{status.port}"
         self.ui.label_ServiceURL.setText(f'<a href="{url}">{url}</a>')
@@ -367,15 +359,12 @@ class ServerHandlersMixin:
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            self.ui.label_ServiceUptime.setText(
-                f"{hours}h {minutes}m {seconds}s"
-            )
+            self.ui.label_ServiceUptime.setText(f"{hours}h {minutes}m {seconds}s")
         else:
             self.ui.label_ServiceUptime.setText("-")
 
         preflight_ok = (
-            self._preflight_result is not None
-            and self._preflight_result.passed
+            self._preflight_result is not None and self._preflight_result.passed
         )
         can_start = not status.running and preflight_ok
         # Safety timeout: reset stopping state after 30 seconds
@@ -393,9 +382,7 @@ class ServerHandlersMixin:
         self.ui.pushButton_ServiceOpen.setEnabled(status.healthy)
 
         if self._preflight_running:
-            self.ui.pushButton_ServiceStart.setToolTip(
-                "Preflight checks are running…"
-            )
+            self.ui.pushButton_ServiceStart.setToolTip("Preflight checks are running…")
         elif not status.running and not preflight_ok:
             if self._preflight_result is not None:
                 failures = "\n".join(

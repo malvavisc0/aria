@@ -83,9 +83,7 @@ class TestPathValidation:
     async def test_allows_nested_object_key(self, tmp_path: Path):
         """Test that nested subdirectory keys are allowed."""
         client = LocalStorageClient(storage_path=str(tmp_path / "storage"))
-        path = client._validate_object_key(
-            "threads/abc-123/elements/image.png"
-        )
+        path = client._validate_object_key("threads/abc-123/elements/image.png")
         assert path.is_relative_to(client.storage_path)
 
     @pytest.mark.asyncio
@@ -361,10 +359,6 @@ class TestContextManager:
     @pytest.mark.asyncio
     async def test_async_context_manager(self, tmp_path: Path):
         """Test using as async context manager."""
-        async with LocalStorageClient(
-            storage_path=str(tmp_path / "storage")
-        ) as client:
-            result = await client.upload_file(
-                object_key="test.txt", data=b"Test"
-            )
+        async with LocalStorageClient(storage_path=str(tmp_path / "storage")) as client:
+            result = await client.upload_file(object_key="test.txt", data=b"Test")
             assert result["object_key"] == "test.txt"

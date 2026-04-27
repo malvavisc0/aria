@@ -56,9 +56,7 @@ class TestStorageIntegration:
     """Test suite for data layer integration with storage client."""
 
     @pytest.mark.asyncio
-    async def test_data_layer_has_storage_provider(
-        self, data_layer_with_storage
-    ):
+    async def test_data_layer_has_storage_provider(self, data_layer_with_storage):
         """Test data layer is initialized with storage provider."""
         layer, storage_client, _ = data_layer_with_storage
 
@@ -146,9 +144,7 @@ class TestStorageIntegration:
         }
 
         for object_key, data in files.items():
-            result = await storage_client.upload_file(
-                object_key=object_key, data=data
-            )
+            result = await storage_client.upload_file(object_key=object_key, data=data)
             assert result["object_key"] == object_key
 
         # Verify all files exist
@@ -225,9 +221,7 @@ class TestStorageIntegration:
         assert file_path.read_bytes() == b"updated"
 
     @pytest.mark.asyncio
-    async def test_storage_binary_and_text_files(
-        self, data_layer_with_storage
-    ):
+    async def test_storage_binary_and_text_files(self, data_layer_with_storage):
         """Test storing both binary and text files."""
         _, storage_client, storage_path = data_layer_with_storage
 
@@ -258,7 +252,5 @@ class TestStorageIntegration:
         await storage_client.close()
 
         # Should still be able to use after close (no-op for local storage)
-        result = await storage_client.upload_file(
-            object_key="test.txt", data=b"test"
-        )
+        result = await storage_client.upload_file(object_key="test.txt", data=b"test")
         assert result["object_key"] == "test.txt"

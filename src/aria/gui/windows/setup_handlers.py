@@ -91,9 +91,7 @@ class _BaseDownloadWorker(QObject):
     def run(self) -> None:
         """Execute the download. Must be overridden by subclasses."""
 
-    def _run_with_redirected_output(
-        self, fn: Callable, *args, **kwargs
-    ) -> None:
+    def _run_with_redirected_output(self, fn: Callable, *args, **kwargs) -> None:
         """Run *fn* with stdout/stderr redirected to ``log_line``."""
         stream = _SignalStream(self.log_line.emit)
         old_stdout, old_stderr = sys.stdout, sys.stderr
@@ -153,8 +151,7 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
         if self._alias == "chat":
             if not Chat.repo_id or not Chat.filename:
                 self.error.emit(
-                    "Chat model is not configured "
-                    "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
                 )
                 return
             downloads.append((Chat.repo_id, Chat.filename))
@@ -162,8 +159,7 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
         elif self._alias == "vl":
             if not Vision.repo_id or not Vision.filename:
                 self.error.emit(
-                    "Vision model is not configured "
-                    "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
                 )
                 return
             downloads.append((Vision.repo_id, Vision.filename))
@@ -261,12 +257,8 @@ class SetupHandlersMixin:
 
     def _connect_setup_signals(self) -> None:
         """Wire Setup tab button signals and initialise download slots."""
-        self.ui.pushButton_LlamaDownload.clicked.connect(
-            self.on_llama_download_clicked
-        )
-        self.ui.pushButton_ModelDownload.clicked.connect(
-            self.on_model_download_clicked
-        )
+        self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
+        self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
         self.ui.pushButton_LightpandaDownload.clicked.connect(
             self.on_lightpanda_download_clicked
         )
@@ -337,9 +329,7 @@ class SetupHandlersMixin:
             downloaded = is_model_downloaded(filename, models_dir)
             icon = "✓" if downloaded else "✗"
             color = "green" if downloaded else "red"
-            label.setText(
-                f'<span style="color:{color}">{icon}</span> {filename}'
-            )
+            label.setText(f'<span style="color:{color}">{icon}</span> {filename}')
 
         # Lightpanda status
         from aria.config.api import Lightpanda
@@ -399,9 +389,7 @@ class SetupHandlersMixin:
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.log_line.connect(
-            lambda line, k=key: self._on_dl_log_line(k, line)
-        )
+        worker.log_line.connect(lambda line, k=key: self._on_dl_log_line(k, line))
         worker.finished.connect(lambda k=key: self._on_dl_finished(k))
         worker.error.connect(lambda msg, k=key: self._on_dl_error(k, msg))
         worker.finished.connect(thread.quit)
@@ -415,9 +403,7 @@ class SetupHandlersMixin:
 
         # Switch button to Cancel mode
         slot.button.setText("Cancel")
-        slot.button.setIcon(
-            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop))
-        )
+        slot.button.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop)))
         slot.button.clicked.disconnect()
         slot.button.clicked.connect(lambda k=key: self._cancel_download(k))
         slot.button.setEnabled(True)
@@ -473,9 +459,7 @@ class SetupHandlersMixin:
         from aria.config.api import LlamaCpp
 
         version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
-        worker = _LlamaDownloadWorker(
-            bin_dir=LlamaCpp.bin_path, version=version_text
-        )
+        worker = _LlamaDownloadWorker(bin_dir=LlamaCpp.bin_path, version=version_text)
         self._start_download("llama", worker)
 
     def on_model_download_clicked(self) -> None:
@@ -483,22 +467,16 @@ class SetupHandlersMixin:
         from aria.config.huggingface import HuggingFace
 
         alias = self.ui.comboBox_ModelSelect.currentText()
-        token_text = (
-            self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
-        )
+        token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
         force = self.ui.checkBox_ModelForce.isChecked()
-        worker = _ModelDownloadWorker(
-            alias=alias, token=token_text, force=force
-        )
+        worker = _ModelDownloadWorker(alias=alias, token=token_text, force=force)
         self._start_download("model", worker)
 
     def on_lightpanda_download_clicked(self) -> None:
         """Handle Download Lightpanda button click."""
         from aria.config.api import Lightpanda
 
-        version_text = (
-            self.ui.lineEdit_LightpandaVersion.text().strip() or None
-        )
+        version_text = self.ui.lineEdit_LightpandaVersion.text().strip() or None
         worker = _LightpandaDownloadWorker(
             bin_dir=Lightpanda.get_bin_path(), version=version_text
         )

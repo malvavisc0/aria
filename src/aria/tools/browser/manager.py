@@ -139,9 +139,7 @@ class LightpandaManager:
 
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
-            self._browser = await self._playwright.chromium.connect_over_cdp(
-                cdp_url
-            )
+            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
 
             # Lightpanda workaround: ignore SSL errors
             context = await self._browser.new_context(ignore_https_errors=True)
@@ -376,9 +374,7 @@ class LightpandaManager:
             JSON string — either the result of *fn* or an error.
         """
         if not await self._ensure_page():
-            return self._error(
-                "Browser not available", tool=tool, reason=reason
-            )
+            return self._error("Browser not available", tool=tool, reason=reason)
 
         try:
             return await fn(self._page)  # type: ignore[arg-type]
@@ -386,22 +382,17 @@ class LightpandaManager:
             logger.error(f"{action_name} error: {e}")
             if not self._is_page_valid():
                 logger.warning(
-                    f"Browser crashed during {action_name}, "
-                    "attempting restart..."
+                    f"Browser crashed during {action_name}, " "attempting restart..."
                 )
                 if await self._ensure_page():
-                    return self._error(
-                        str(e), recovery=True, tool=tool, reason=reason
-                    )
+                    return self._error(str(e), recovery=True, tool=tool, reason=reason)
             return self._error(str(e), tool=tool, reason=reason)
 
     # ------------------------------------------------------------------
     # Browser actions
     # ------------------------------------------------------------------
 
-    async def navigate(
-        self, url: str, *, tool: str = "", reason: str = ""
-    ) -> str:
+    async def navigate(self, url: str, *, tool: str = "", reason: str = "") -> str:
         """Navigate to URL and return rendered content.
 
         Args:
@@ -439,9 +430,7 @@ class LightpandaManager:
             "navigate", _do_navigate, tool=tool, reason=reason
         )
 
-    async def click(
-        self, selector: str, *, tool: str = "", reason: str = ""
-    ) -> str:
+    async def click(self, selector: str, *, tool: str = "", reason: str = "") -> str:
         """Click element by CSS selector and return updated content.
 
         Args:
@@ -469,13 +458,9 @@ class LightpandaManager:
                 reason=reason,
             )
 
-        return await self._with_recovery(
-            "click", _do_click, tool=tool, reason=reason
-        )
+        return await self._with_recovery("click", _do_click, tool=tool, reason=reason)
 
-    async def get_page_content(
-        self, *, tool: str = "", reason: str = ""
-    ) -> str:
+    async def get_page_content(self, *, tool: str = "", reason: str = "") -> str:
         """Get current page content as clean text.
 
         Args:

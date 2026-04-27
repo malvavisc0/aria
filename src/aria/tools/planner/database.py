@@ -186,9 +186,7 @@ class PlannerDatabase:
             # Determine step number
             if after_step_id is None:
                 # Add at end
-                max_step_num = max(
-                    (s.step_number for s in steps_list), default=-1
-                )
+                max_step_num = max((s.step_number for s in steps_list), default=-1)
                 step_number = max_step_num + 1
             else:
                 # Find after_step_id position and shift subsequent steps
@@ -274,9 +272,7 @@ class PlannerDatabase:
             logger.debug(f"Removed step {step_id} from plan {plan_id}")
             return removed_data
 
-    def reorder_steps(
-        self, plan_id: str, step_ids: List[str]
-    ) -> Optional[List[Dict]]:
+    def reorder_steps(self, plan_id: str, step_ids: List[str]) -> Optional[List[Dict]]:
         """Reorder steps in a plan."""
         with self.get_session() as session:
             # Get plan
@@ -358,9 +354,7 @@ class PlannerDatabase:
                 for p in plans
             ]
 
-    def cleanup_old_plans(
-        self, days: int = 30, agent_id: Optional[str] = None
-    ) -> int:
+    def cleanup_old_plans(self, days: int = 30, agent_id: Optional[str] = None) -> int:
         """Permanently delete inactive plans older than specified days."""
         with self.get_session() as session:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)

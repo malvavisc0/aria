@@ -153,9 +153,7 @@ def mock_os_release_ubuntu(mock_platform_linux):
     """Mock /etc/os-release for Ubuntu."""
     with patch("builtins.open") as mock_open:
         mock_file = MagicMock()
-        mock_file.__enter__.return_value.read.return_value = (
-            MOCK_OS_RELEASE_UBUNTU
-        )
+        mock_file.__enter__.return_value.read.return_value = MOCK_OS_RELEASE_UBUNTU
         mock_open.return_value = mock_file
         yield
 
@@ -165,9 +163,7 @@ def mock_os_release_debian(mock_platform_linux):
     """Mock /etc/os-release for Debian."""
     with patch("builtins.open") as mock_open:
         mock_file = MagicMock()
-        mock_file.__enter__.return_value.read.return_value = (
-            MOCK_OS_RELEASE_DEBIAN
-        )
+        mock_file.__enter__.return_value.read.return_value = MOCK_OS_RELEASE_DEBIAN
         mock_open.return_value = mock_file
         yield
 
@@ -177,9 +173,7 @@ def mock_os_release_fedora(mock_platform_linux):
     """Mock /etc/os-release for Fedora."""
     with patch("builtins.open") as mock_open:
         mock_file = MagicMock()
-        mock_file.__enter__.return_value.read.return_value = (
-            MOCK_OS_RELEASE_FEDORA
-        )
+        mock_file.__enter__.return_value.read.return_value = MOCK_OS_RELEASE_FEDORA
         mock_open.return_value = mock_file
         yield
 
@@ -243,9 +237,7 @@ def mock_nvidia_smi_available():
     """Mock nvidia-smi as available."""
     with patch("aria.nvidia.check_nvidia_smi_available", return_value=True):
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0, stdout=MOCK_NVIDIA_SMI_GPU_LIST
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=MOCK_NVIDIA_SMI_GPU_LIST)
             yield
 
 
@@ -314,9 +306,7 @@ def temp_bin_dir(tmp_path: Path) -> Path:
 def mock_temp_dir(tmp_path: Path):
     """Mock tempfile.TemporaryDirectory to use tmp_path."""
     with patch("tempfile.TemporaryDirectory") as mock_tempdir:
-        mock_tempdir.return_value.__enter__.return_value = str(
-            tmp_path / "tmp"
-        )
+        mock_tempdir.return_value.__enter__.return_value = str(tmp_path / "tmp")
         mock_tempdir.return_value.__exit__.return_value = None
         yield tmp_path / "tmp"
 

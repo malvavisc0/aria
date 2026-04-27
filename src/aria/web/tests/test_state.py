@@ -92,9 +92,7 @@ class TestValidateInitialized:
             state.validate_initialized()
 
     @pytest.mark.parametrize("field", _REQUIRED_FIELDS)
-    def test_error_message_names_specific_missing_field(
-        self, field: str
-    ) -> None:
+    def test_error_message_names_specific_missing_field(self, field: str) -> None:
         state = _fully_initialized_state()
         object.__setattr__(state, field, None)
         with pytest.raises(AppStateNotInitializedError, match=field):
@@ -105,9 +103,7 @@ class TestValidateInitialized:
     ) -> None:
         state = _fully_initialized_state()
         object.__setattr__(state, "startup_complete", False)
-        with pytest.raises(
-            AppStateNotInitializedError, match="startup_complete"
-        ):
+        with pytest.raises(AppStateNotInitializedError, match="startup_complete"):
             state.validate_initialized()
 
     def test_error_lists_multiple_missing_fields(self) -> None:

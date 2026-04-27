@@ -92,9 +92,7 @@ def show_gpu_info():
     summary_table.add_column("Value", style="green")
 
     summary_table.add_row("GPU Count", str(len(gpus)))
-    summary_table.add_row(
-        "Driver Version", gpus[0].driver_version if gpus else "N/A"
-    )
+    summary_table.add_row("Driver Version", gpus[0].driver_version if gpus else "N/A")
     summary_table.add_row("nvidia-smi Version", get_nvidia_smi_version())
 
     console.print(summary_table)
@@ -217,9 +215,7 @@ def check_nvlink():
 def calculate_context(
     model_size: Annotated[
         int,
-        typer.Option(
-            help="Model size in MiB (default: 0 for no model loaded)"
-        ),
+        typer.Option(help="Model size in MiB (default: 0 for no model loaded)"),
     ] = 0,
     embedding: Annotated[
         bool,
@@ -280,9 +276,7 @@ def calculate_context(
     console.print(table)
     console.print(f"\n[dim]Model type: {model_type}[/dim]")
     console.print(f"[dim]Model size: {model_size} MiB[/dim]")
-    console.print(
-        f"[cyan]Recommended max context: {total_context:,} tokens[/cyan]"
-    )
+    console.print(f"[cyan]Recommended max context: {total_context:,} tokens[/cyan]")
 
 
 @app.command("info")
@@ -312,15 +306,11 @@ def system_overview():
         table.add_row("GPU Count", str(detect_gpu_count()))
 
         total_vram = get_total_vram_mb()
-        table.add_row(
-            "Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)"
-        )
+        table.add_row("Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)")
 
         has_nvlink, bond_type = detect_nvlink()
         if has_nvlink:
-            nvlink_status = (
-                f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
-            )
+            nvlink_status = f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
         else:
             nvlink_status = "[red]✗ Not available[/red]"
         table.add_row("NVLink", nvlink_status)

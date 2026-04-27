@@ -64,9 +64,7 @@ def get_session(session_id: str, agent_id: str) -> ReasoningSession:
 
     session = ReasoningSession.from_dict(session_data)
     session.set_database(db)
-    logger.debug(
-        f"Loaded session {session_id} for agent {agent_id} from database"
-    )
+    logger.debug(f"Loaded session {session_id} for agent {agent_id} from database")
     return session
 
 

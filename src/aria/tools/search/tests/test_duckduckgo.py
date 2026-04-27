@@ -26,9 +26,7 @@ def test_web_search_success():
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
 
-        result = duckduckgo_web_search(
-            "Testing web search", "elon musk", max_results=2
-        )
+        result = duckduckgo_web_search("Testing web search", "elon musk", max_results=2)
         result_dict = json.loads(result)
 
         assert result_dict["tool"] == "duckduckgo_web_search"
@@ -59,9 +57,7 @@ def test_web_search_empty_query():
 
 def test_web_search_invalid_max_results():
     """Test web search with invalid max_results"""
-    result = duckduckgo_web_search(
-        "Testing web search", "test query", max_results=-5
-    )
+    result = duckduckgo_web_search("Testing web search", "test query", max_results=-5)
     result_dict = json.loads(result)
 
     assert result_dict["tool"] == "duckduckgo_web_search"
@@ -150,9 +146,7 @@ def test_web_search_query_with_leading_trailing_whitespace():
 
 def test_web_search_zero_max_results():
     """Test web search with max_results=0"""
-    result = duckduckgo_web_search(
-        "Testing web search", "test query", max_results=0
-    )
+    result = duckduckgo_web_search("Testing web search", "test query", max_results=0)
     result_dict = json.loads(result)
 
     assert result_dict["tool"] == "duckduckgo_web_search"
@@ -162,9 +156,7 @@ def test_web_search_zero_max_results():
 
 def test_web_search_non_integer_max_results():
     """Test web search with non-integer max_results"""
-    result = duckduckgo_web_search(
-        "Testing web search", "test query", max_results="5"
-    )
+    result = duckduckgo_web_search("Testing web search", "test query", max_results="5")
     result_dict = json.loads(result)
 
     assert result_dict["tool"] == "duckduckgo_web_search"
@@ -205,9 +197,7 @@ def test_web_search_result_structure():
         mock_ddgs.return_value = mock_search_instance
         mock_search_instance.text.return_value = mock_results
 
-        result = duckduckgo_web_search(
-            "Testing web search", "test", max_results=1
-        )
+        result = duckduckgo_web_search("Testing web search", "test", max_results=1)
         result_dict = json.loads(result)
 
         assert len(result_dict["data"]["results"]) == 1
@@ -221,9 +211,7 @@ def test_web_search_result_structure():
 
 def test_web_search_json_format():
     """Test that the response is valid JSON with correct structure"""
-    mock_results = [
-        {"title": "Test", "href": "https://example.com", "body": "Body"}
-    ]
+    mock_results = [{"title": "Test", "href": "https://example.com", "body": "Body"}]
 
     with patch("aria.tools.search.duckduckgo.DDGS") as mock_ddgs:
         mock_search_instance = MagicMock()

@@ -35,9 +35,7 @@ class TestPythonRunner:
     def test_check_syntax_valid_code(self):
         """Test syntax validation with valid code"""
         code = "def foo():\n    return True\n"
-        result = python(
-            "Testing syntax validation", code=code, check_only=True
-        )
+        result = python("Testing syntax validation", code=code, check_only=True)
         data = json.loads(result)
 
         assert data["data"]["tool"] == "python"
@@ -255,9 +253,7 @@ print(f'Fibonacci(5) = {result}')
 
     def test_execute_file_nonexistent(self):
         """Test execution of non-existent file"""
-        result = python(
-            "Testing nonexistent", file="nonexistent.py", timeout=10
-        )
+        result = python("Testing nonexistent", file="nonexistent.py", timeout=10)
         data = json.loads(result)
         assert data["status"] == "error"
 

@@ -30,7 +30,7 @@ def web_search(
     query: str,
     category: Optional[str] = None,
     time_range: Optional[str] = None,
-    max_results: Optional[int] = 10,
+    max_results: Optional[int] = 5,
 ) -> str:
     """Search the web for information using the best available backend.
 
@@ -64,7 +64,7 @@ def web_search(
           to get full content.
     """
     searxng_url = _get_searxng_url()
-    max_results_value = max_results if max_results is not None else 10
+    max_results_value = max_results if max_results is not None else 5
 
     if searxng_url:
         logger.debug("Using SearXNG backend for web search")

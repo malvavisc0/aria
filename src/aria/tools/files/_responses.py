@@ -9,9 +9,7 @@ from typing import Any, Dict
 from aria.tools import get_function_name, tool_error_response, tool_response
 
 
-def file_success_response(
-    reason: str, data: Dict[str, Any], tool: str = ""
-) -> str:
+def file_success_response(reason: str, data: Dict[str, Any], tool: str = "") -> str:
     """Build standardized success response for file operations.
 
     Args:

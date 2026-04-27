@@ -130,9 +130,7 @@ class _EnginePage(QWizardPage):
 
         btn_layout = QHBoxLayout()
         self._download_btn = QPushButton("Download AI Engine")
-        self._download_btn.setIcon(
-            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
-        )
+        self._download_btn.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
         self._download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self._download_btn)
         btn_layout.addStretch()
@@ -228,9 +226,7 @@ class _ModelPage(QWizardPage):
 
         btn_layout = QHBoxLayout()
         self._download_btn = QPushButton("Download Model")
-        self._download_btn.setIcon(
-            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
-        )
+        self._download_btn.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
         self._download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self._download_btn)
         btn_layout.addStretch()
@@ -246,16 +242,12 @@ class _ModelPage(QWizardPage):
         from aria.config.models import Chat
         from aria.scripts.gguf import is_model_downloaded
 
-        if Chat.filename and is_model_downloaded(
-            Chat.filename, LlamaCpp.models_path
-        ):
+        if Chat.filename and is_model_downloaded(Chat.filename, LlamaCpp.models_path):
             self._download_done = True
             self._status_label.setText(
                 "✓ Chat model already downloaded. Click Next to continue."
             )
-            self._status_label.setStyleSheet(
-                "color: #2e7d32; font-weight: bold;"
-            )
+            self._status_label.setStyleSheet("color: #2e7d32; font-weight: bold;")
             self.completeChanged.emit()
 
     def _start_download(self):
@@ -274,16 +266,14 @@ class _ModelPage(QWizardPage):
         if alias == "chat":
             if not Chat.repo_id or not Chat.filename:
                 self._on_failed(
-                    "Chat model is not configured "
-                    "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
                 )
                 return
             downloads.append((Chat.repo_id, Chat.filename))
         elif alias == "vl":
             if not Vision.repo_id or not Vision.filename:
                 self._on_failed(
-                    "Vision model is not configured "
-                    "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
                 )
                 return
             downloads.append((Vision.repo_id, Vision.filename))
@@ -454,9 +444,7 @@ class _UserPage(QWizardPage):
                         id=str(uuid.uuid4()),
                         display_name=self._name_edit.text().strip(),
                         identifier=self._email_edit.text().strip(),
-                        metadata_=json.dumps(
-                            {"role": "admin", "created_by": "wizard"}
-                        ),
+                        metadata_=json.dumps({"role": "admin", "created_by": "wizard"}),
                         password=hash_password(self._password_edit.text()),
                         createdAt=datetime.now().isoformat() + "Z",
                     )

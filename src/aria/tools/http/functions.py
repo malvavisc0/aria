@@ -6,7 +6,11 @@ import httpx
 from loguru import logger
 
 from aria.tools import tool_response
-from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
+from aria.tools.constants import (
+    DEFAULT_TIMEOUT,
+    MAX_TIMEOUT,
+    MAX_TOOL_OUTPUT_CHARS,
+)
 from aria.tools.decorators import log_tool_call
 
 # Allowed HTTP methods
@@ -86,13 +90,21 @@ def http_request(
                 content=body,
             )
 
+        body = response.text
+        if len(body) > MAX_TOOL_OUTPUT_CHARS:
+            body = body[:MAX_TOOL_OUTPUT_CHARS] + (
+                f"\n\n[...truncated — response was "
+                f"{len(response.text):,} chars, "
+                f"limit is {MAX_TOOL_OUTPUT_CHARS:,}]"
+            )
+
         return tool_response(
             tool="http_request",
             reason=reason,
             data={
                 "status_code": response.status_code,
                 "headers": dict(response.headers),
-                "body": response.text,
+                "body": body,
                 "url": str(response.url),
             },
         )

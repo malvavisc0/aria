@@ -29,9 +29,7 @@ def temp_dir():
 def sample_files(temp_dir):
     """Create sample files for testing."""
     # Create some test files
-    (temp_dir / "test1.txt").write_text(
-        "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n"
-    )
+    (temp_dir / "test1.txt").write_text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
     (temp_dir / "test2.py").write_text("def hello():\n    print('hello')\n")
     (temp_dir / "subdir").mkdir()
     (temp_dir / "subdir" / "nested.txt").write_text("Nested content\n")

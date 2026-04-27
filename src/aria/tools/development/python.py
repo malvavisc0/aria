@@ -74,9 +74,7 @@ def python(
     if code is None and file is None:
         raise PythonSecurityError("Provide exactly one of 'code' or 'file'.")
     if code is not None and file is not None:
-        raise PythonSecurityError(
-            "Provide exactly one of 'code' or 'file', not both."
-        )
+        raise PythonSecurityError("Provide exactly one of 'code' or 'file', not both.")
 
     if check_only:
         return _python_check(reason, code, file)
@@ -110,9 +108,7 @@ def _python_check(
         )
 
     except SyntaxError as e:
-        logger.error(
-            f"Syntax error in {filename} at line {e.lineno or 0}: {e.msg}"
-        )
+        logger.error(f"Syntax error in {filename} at line {e.lineno or 0}: {e.msg}")
         return _build_response(
             operation="python",
             result={
@@ -168,9 +164,7 @@ def _python_execute(
         # Add __file__ and __dir__ for file context
         if is_file:
             safe_globals["__file__"] = os.path.abspath(filename)
-            safe_globals["__dir__"] = os.path.dirname(
-                os.path.abspath(filename)
-            )
+            safe_globals["__dir__"] = os.path.dirname(os.path.abspath(filename))
             logger.debug(f"Set __file__ to: {safe_globals['__file__']}")
 
         # Execute with output capture
@@ -240,9 +234,7 @@ def _python_execute(
         )
 
     except NameError as e:
-        logger.error(
-            f"NameError in {filename} (possible security violation): {e}"
-        )
+        logger.error(f"NameError in {filename} (possible security violation): {e}")
         tb = traceback.format_exc()
         return _build_response(
             operation="python",
@@ -301,8 +293,6 @@ def _python_execute(
 
 # Backward-compatible aliases (used by tests during transition)
 check_python_syntax = None  # Removed — use python(check_only=True)
-check_python_file_syntax = (
-    None  # Removed — use python(check_only=True, file=...)
-)
+check_python_file_syntax = None  # Removed — use python(check_only=True, file=...)
 execute_python_code = None  # Removed — use python(code=...)
 execute_python_file = None  # Removed — use python(file=...)

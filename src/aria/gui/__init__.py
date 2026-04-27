@@ -30,9 +30,7 @@ def _install_exception_hook() -> None:
         # Always log the full traceback to stderr
         _original_hook(exc_type, exc_value, exc_tb)
         # Show a user-friendly dialog (only for real exceptions)
-        if exc_type is not None and not issubclass(
-            exc_type, KeyboardInterrupt
-        ):
+        if exc_type is not None and not issubclass(exc_type, KeyboardInterrupt):
             msg = f"{exc_type.__name__}: {exc_value}"
             QMessageBox.critical(
                 None,

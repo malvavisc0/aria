@@ -151,9 +151,7 @@ class ScratchpadDatabase:
                 item.updated_at = datetime.now(timezone.utc)
 
             session.commit()
-            logger.debug(
-                f"Scratchpad cleared {count} items for agent {agent_id}"
-            )
+            logger.debug(f"Scratchpad cleared {count} items for agent {agent_id}")
             return count
 
 

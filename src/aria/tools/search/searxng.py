@@ -84,7 +84,7 @@ def searxng_web_search(
     query: str,
     category: Categories = "general",
     time_range: TimeRange = "",
-    max_results: int = 10,
+    max_results: int = 5,
 ) -> str:
     """Search the web via SearXNG and return structured JSON results.
 
@@ -130,9 +130,7 @@ def searxng_web_search(
     page_errors: list[dict[str, Any]] = []
     dropped_results = 0
     stats: SearchPageStats = {"requested": pages, "succeeded": 0, "failed": 0}
-    field_map = _CATEGORY_FIELD_MAP.get(
-        category, _CATEGORY_FIELD_MAP["general"]
-    )
+    field_map = _CATEGORY_FIELD_MAP.get(category, _CATEGORY_FIELD_MAP["general"])
 
     try:
         with httpx.Client(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
@@ -268,9 +266,7 @@ def _build_row(
     return row
 
 
-def _page_error(
-    page_number: int, error_type: str, detail: str
-) -> dict[str, Any]:
+def _page_error(page_number: int, error_type: str, detail: str) -> dict[str, Any]:
     """Build a structured per-page error payload."""
     return {
         "page": page_number,

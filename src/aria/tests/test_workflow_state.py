@@ -203,9 +203,7 @@ class TestStateReducerToolCallResult:
         """Record ``agent`` field must use the agent active at call time."""
         state = initial_workflow_state("Aria")
         state_reducer(state, _make_agent_output("Aria"))
-        state_reducer(
-            state, _make_tool_call_result("reasoning", {}, "deep thought")
-        )
+        state_reducer(state, _make_tool_call_result("reasoning", {}, "deep thought"))
         assert state["tool_calls"][0]["agent"] == "Aria"
 
     def test_returns_same_state_object(self):

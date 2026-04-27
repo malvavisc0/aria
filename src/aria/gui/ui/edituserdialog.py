@@ -10,39 +10,11 @@
 
 from PySide6.QtCore import (
     QCoreApplication,
-    QDate,
-    QDateTime,
-    QLocale,
     QMetaObject,
-    QObject,
-    QPoint,
     QRect,
     QSize,
-    Qt,
-    QTime,
-    QUrl,
-)
-from PySide6.QtGui import (
-    QBrush,
-    QColor,
-    QConicalGradient,
-    QCursor,
-    QFont,
-    QFontDatabase,
-    QGradient,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QLinearGradient,
-    QPainter,
-    QPalette,
-    QPixmap,
-    QRadialGradient,
-    QTransform,
 )
 from PySide6.QtWidgets import (
-    QApplication,
-    QDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -69,23 +41,17 @@ class Ui_EditUserDialog(object):
         self.label_Name = QLabel(self.formLayoutWidget)
         self.label_Name.setObjectName("label_Name")
 
-        self.formLayout.setWidget(
-            0, QFormLayout.ItemRole.LabelRole, self.label_Name
-        )
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_Name)
 
         self.lineEdit_Name = QLineEdit(self.formLayoutWidget)
         self.lineEdit_Name.setObjectName("lineEdit_Name")
 
-        self.formLayout.setWidget(
-            0, QFormLayout.ItemRole.FieldRole, self.lineEdit_Name
-        )
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.FieldRole, self.lineEdit_Name)
 
         self.label_Email = QLabel(self.formLayoutWidget)
         self.label_Email.setObjectName("label_Email")
 
-        self.formLayout.setWidget(
-            1, QFormLayout.ItemRole.LabelRole, self.label_Email
-        )
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_Email)
 
         self.lineEdit_Email = QLineEdit(self.formLayoutWidget)
         self.lineEdit_Email.setObjectName("lineEdit_Email")

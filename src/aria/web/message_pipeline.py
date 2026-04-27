@@ -136,14 +136,10 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning(
-                "Prompt enhancer not available, returning original prompt"
-            )
+            logger.warning("Prompt enhancer not available, returning original prompt")
             return prompt
         try:
-            response = await _state.prompt_enhancer.run(
-                user_msg=message.content
-            )
+            response = await _state.prompt_enhancer.run(user_msg=message.content)
             results: PromptEnhancementResult = response.structured_response
             prompt = results.enhanced
             logger.debug("Prompt enhancement completed successfully")
@@ -223,9 +219,9 @@ async def _stream_agent_response(
                 await maybe_remove_step(thinking_step)
                 thinking_step = None
                 current_step = None
-                content = "".join(
-                    stream_buffer
-                ).strip() or _extract_response_text(event.response)
+                content = "".join(stream_buffer).strip() or _extract_response_text(
+                    event.response
+                )
                 if content:
                     await output.stream_token(content)
                     emitted_output = True

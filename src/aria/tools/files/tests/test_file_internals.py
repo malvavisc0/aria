@@ -335,9 +335,7 @@ class TestReadLinesStreaming:
 
     def test_read_all_lines(self):
         """Test reading all lines from file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\nline3\n")
             temp_path = Path(f.name)
 
@@ -349,9 +347,7 @@ class TestReadLinesStreaming:
 
     def test_read_lines_with_offset(self):
         """Test reading lines with offset."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\nline3\n")
             temp_path = Path(f.name)
 
@@ -363,9 +359,7 @@ class TestReadLinesStreaming:
 
     def test_read_lines_with_length(self):
         """Test reading specific number of lines."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\nline3\n")
             temp_path = Path(f.name)
 
@@ -386,9 +380,7 @@ class TestModifyLinesStreaming:
 
     def test_replace_lines(self):
         """Test replacing lines in file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\nline3\n")
             temp_path = Path(f.name)
 
@@ -405,9 +397,7 @@ class TestModifyLinesStreaming:
 
     def test_insert_lines(self):
         """Test inserting lines in file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\n")
             temp_path = Path(f.name)
 
@@ -421,9 +411,7 @@ class TestModifyLinesStreaming:
 
     def test_delete_lines(self):
         """Test deleting lines from file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\nline3\n")
             temp_path = Path(f.name)
 
@@ -437,9 +425,7 @@ class TestModifyLinesStreaming:
 
     def test_append_lines_beyond_end(self):
         """Test appending lines beyond end of file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("line1\nline2\n")
             temp_path = Path(f.name)
 
@@ -453,17 +439,13 @@ class TestModifyLinesStreaming:
 
     def test_modify_lines_error_cleanup(self):
         """Test that temp file is cleaned up on error."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             temp_path = Path(f.name)
 
         temp_path.unlink()  # Delete file to cause error
 
         with pytest.raises(FileOperationError, match="Failed to modify"):
-            _modify_lines_streaming(
-                temp_path, offset=0, length=1, new_lines=["test"]
-            )
+            _modify_lines_streaming(temp_path, offset=0, length=1, new_lines=["test"])
 
 
 class TestAtomicWrite:
@@ -471,9 +453,7 @@ class TestAtomicWrite:
 
     def test_atomic_write_success(self):
         """Test successful atomic write."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             temp_path = Path(f.name)
 
         try:
@@ -494,9 +474,7 @@ class TestCreateBackup:
 
     def test_create_backup_success(self):
         """Test successful backup creation."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("original content")
             temp_path = Path(f.name)
 
@@ -516,9 +494,7 @@ class TestCreateBackup:
 
     def test_create_backup_error(self):
         """Test backup creation error handling."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             temp_path = Path(f.name)
 
         try:
@@ -554,9 +530,7 @@ class TestBuildDirectoryTree:
             (subdir / "file.txt").write_text("content")
 
             tree = _build_directory_tree(tmpdir_path, 0, 2)
-            assert any(
-                child["type"] == "directory" for child in tree["children"]
-            )
+            assert any(child["type"] == "directory" for child in tree["children"])
 
     def test_build_tree_max_depth(self):
         """Test that max depth is respected."""

@@ -77,7 +77,5 @@ class TrayIcon:
         self._action_start.setEnabled(not running)
         self._action_stop.setEnabled(running)
         self._action_open.setEnabled(healthy)
-        status = (
-            "Running" if healthy else ("Starting" if running else "Stopped")
-        )
+        status = "Running" if healthy else ("Starting" if running else "Stopped")
         self._tray.setToolTip(f"Aria — {status}")

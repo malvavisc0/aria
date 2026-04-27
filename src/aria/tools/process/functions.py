@@ -23,12 +23,8 @@ class ManagedProcess:
     """A background process with non-blocking output capture."""
 
     proc: subprocess.Popen
-    stdout_lines: deque = field(
-        default_factory=lambda: deque(maxlen=_MAX_LOG_LINES)
-    )
-    stderr_lines: deque = field(
-        default_factory=lambda: deque(maxlen=_MAX_LOG_LINES)
-    )
+    stdout_lines: deque = field(default_factory=lambda: deque(maxlen=_MAX_LOG_LINES))
+    stderr_lines: deque = field(default_factory=lambda: deque(maxlen=_MAX_LOG_LINES))
     _threads: list = field(default_factory=list)
 
     def start_capture(self) -> None:

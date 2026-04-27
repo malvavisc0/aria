@@ -10,39 +10,15 @@
 
 from PySide6.QtCore import (
     QCoreApplication,
-    QDate,
-    QDateTime,
-    QLocale,
     QMetaObject,
-    QObject,
-    QPoint,
     QRect,
     QSize,
     Qt,
-    QTime,
-    QUrl,
 )
 from PySide6.QtGui import (
-    QBrush,
-    QColor,
-    QConicalGradient,
-    QCursor,
     QFont,
-    QFontDatabase,
-    QGradient,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QLinearGradient,
-    QPainter,
-    QPalette,
-    QPixmap,
-    QRadialGradient,
-    QTransform,
 )
 from PySide6.QtWidgets import (
-    QApplication,
-    QDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -90,9 +66,7 @@ class Ui_AboutDialog(object):
         font.setPointSize(18)
         self.label_2.setFont(font)
 
-        self.formLayout.setWidget(
-            0, QFormLayout.ItemRole.LabelRole, self.label_2
-        )
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_2)
 
         self.label_Version = QLabel(self.formLayoutWidget)
         self.label_Version.setObjectName("label_Version")
@@ -100,26 +74,20 @@ class Ui_AboutDialog(object):
         font1.setPointSize(16)
         self.label_Version.setFont(font1)
 
-        self.formLayout.setWidget(
-            0, QFormLayout.ItemRole.FieldRole, self.label_Version
-        )
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_Version)
 
         self.label_3 = QLabel(self.formLayoutWidget)
         self.label_3.setObjectName("label_3")
         self.label_3.setStyleSheet("color: rgb(61, 56, 70)")
 
-        self.formLayout.setWidget(
-            1, QFormLayout.ItemRole.LabelRole, self.label_3
-        )
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_3)
 
         self.label = QLabel(self.formLayoutWidget)
         self.label.setObjectName("label")
         self.label.setTextFormat(Qt.TextFormat.RichText)
         self.label.setOpenExternalLinks(True)
 
-        self.formLayout.setWidget(
-            1, QFormLayout.ItemRole.FieldRole, self.label
-        )
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label)
 
         self.verticalLayoutWidget = QWidget(AboutDialog)
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
@@ -165,15 +133,9 @@ class Ui_AboutDialog(object):
         self.pushButton_Ok.setText(
             QCoreApplication.translate("AboutDialog", "OK", None)
         )
-        self.label_2.setText(
-            QCoreApplication.translate("AboutDialog", "Aria", None)
-        )
-        self.label_Version.setText(
-            QCoreApplication.translate("AboutDialog", "v", None)
-        )
-        self.label_3.setText(
-            QCoreApplication.translate("AboutDialog", "Source", None)
-        )
+        self.label_2.setText(QCoreApplication.translate("AboutDialog", "Aria", None))
+        self.label_Version.setText(QCoreApplication.translate("AboutDialog", "v", None))
+        self.label_3.setText(QCoreApplication.translate("AboutDialog", "Source", None))
         self.label.setText(
             QCoreApplication.translate(
                 "AboutDialog",

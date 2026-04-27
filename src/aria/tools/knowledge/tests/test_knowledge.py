@@ -79,9 +79,7 @@ class TestKnowledgeStore:
 
     def test_search_entries(self, test_db):
         """Test searching knowledge entries."""
-        knowledge(
-            "Store entry 1", action="store", key="api_key", value="abc123"
-        )
+        knowledge("Store entry 1", action="store", key="api_key", value="abc123")
         knowledge(
             "Store entry 2",
             action="store",

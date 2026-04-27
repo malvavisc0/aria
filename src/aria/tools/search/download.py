@@ -2,7 +2,7 @@
 
 from typing import Dict, Optional
 
-from html_to_markdown import convert
+from markdownify import markdownify
 
 from aria.tools import (
     get_function_name,
@@ -10,6 +10,7 @@ from aria.tools import (
     tool_error_response,
     tool_success_response,
 )
+from aria.tools.constants import MAX_TOOL_OUTPUT_CHARS
 from aria.tools.search._download_internals import (
     _fetch_file,
     _is_html_content,
@@ -108,7 +109,7 @@ def download(
         if convert_to_markdown and _is_html_content(content_type or ""):
             if isinstance(response_data, bytes):
                 response_data = response_data.decode("utf-8", errors="replace")
-            markdown_content = convert(str(response_data))
+            markdown_content = markdownify(str(response_data))
 
         file_path, metadata = _save_content_to_file(
             response_data,
@@ -121,6 +122,14 @@ def download(
 
         result_data = {"file_path": file_path, "metadata": metadata}
         if markdown_content:
+            if len(markdown_content) > MAX_TOOL_OUTPUT_CHARS:
+                markdown_content = (
+                    markdown_content[:MAX_TOOL_OUTPUT_CHARS]
+                    + f"\n\n[...truncated — content was "
+                    f"{len(markdown_content):,} chars, "
+                    f"limit is {MAX_TOOL_OUTPUT_CHARS:,}. "
+                    f"Use read_file on the saved file for full content.]"
+                )
             result_data["content"] = markdown_content
 
         return tool_success_response(

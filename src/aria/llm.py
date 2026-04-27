@@ -428,9 +428,7 @@ def get_default_memory(
     return memory
 
 
-def get_embeddings_model(
-    api_base: str, model_name: str
-) -> OpenAILikeEmbedding:
+def get_embeddings_model(api_base: str, model_name: str) -> OpenAILikeEmbedding:
     return OpenAILikeEmbedding(
         api_base=api_base,
         model_name=model_name,

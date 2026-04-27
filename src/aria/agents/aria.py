@@ -115,7 +115,7 @@ def get_agent(
         llm=llm,
         system_prompt=ChatterAgent.get_system_prompt(extras=extras),
         streaming=True,
-        verbose=True,
+        verbose=False,
     )
 
     return agent

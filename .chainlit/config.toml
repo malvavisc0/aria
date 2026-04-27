@@ -69,9 +69,9 @@ max_size_mb = 50
 
 [features.audio]
 # Enable audio features
-enabled = false
+enabled = true
 # Sample rate of the audio
-sample_rate = 24000
+sample_rate = 16000
 
 [features.mcp]
 # Enable Model Context Protocol (MCP) features
@@ -153,7 +153,7 @@ alert_style = "modern"
 logo_file_url = ""
 
 # Load assistant avatar image directly from URL.
-default_avatar_file_url = ""
+default_avatar_file_url = "/public/avatars/my_assistant.png"
 
 # Specify a custom build directory for the frontend.
 # This can be used to customize the frontend code.

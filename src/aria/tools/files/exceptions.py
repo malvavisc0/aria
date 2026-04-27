@@ -28,7 +28,9 @@ class ToolFileNotFoundError(FileOperationError):
     """File not found."""
 
     code = "FILE_NOT_FOUND"
-    how_to_fix = "Verify the file path exists. Use list_directory to check available files."
+    how_to_fix = (
+        "Verify the file path exists. Use list_directory to check available files."
+    )
 
 
 class ToolPermissionDeniedError(FileOperationError):
@@ -42,6 +44,4 @@ class PathTraversalError(FileSecurityError):
     """Path traversal attempt detected."""
 
     code = "PATH_TRAVERSAL_BLOCKED"
-    how_to_fix = (
-        "Use paths within allowed directories. Do not use '..' in paths."
-    )
+    how_to_fix = "Use paths within allowed directories. Do not use '..' in paths."

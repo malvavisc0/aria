@@ -140,9 +140,7 @@ async def test_call_vl_model_success():
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "choices": [
-            {"message": {"content": "A beautiful sunset over mountains"}}
-        ]
+        "choices": [{"message": {"content": "A beautiful sunset over mountains"}}]
     }
     mock_response.raise_for_status = MagicMock()
     mock_client.post.return_value = mock_response
@@ -184,9 +182,7 @@ async def test_call_vl_model_http_error():
 @pytest.mark.asyncio
 async def test_analyze_image_file_not_found():
     """analyze_image returns error for missing file."""
-    fn = vision_functions.make_analyze_image(
-        "http://localhost:9091/v1", "test-model"
-    )
+    fn = vision_functions.make_analyze_image("http://localhost:9091/v1", "test-model")
     result = await fn("test reason", "/tmp/nonexistent.png")
     payload = json.loads(result)
     assert payload["status"] == "error"
@@ -196,9 +192,7 @@ async def test_analyze_image_file_not_found():
 @pytest.mark.asyncio
 async def test_analyze_image_unsupported_format(tmp_path):
     """analyze_image returns error for unsupported format."""
-    fn = vision_functions.make_analyze_image(
-        "http://localhost:9091/v1", "test-model"
-    )
+    fn = vision_functions.make_analyze_image("http://localhost:9091/v1", "test-model")
     # Create a .txt file so it exists but has wrong format
     txt_file = tmp_path / "file.txt"
     txt_file.write_text("not an image")
@@ -221,9 +215,7 @@ async def test_analyze_image_success(tmp_path):
     img_path = tmp_path / "test.png"
     img.save(img_path, format="PNG")
 
-    fn = vision_functions.make_analyze_image(
-        "http://localhost:9091/v1", "test-model"
-    )
+    fn = vision_functions.make_analyze_image("http://localhost:9091/v1", "test-model")
 
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_response = MagicMock()
@@ -259,9 +251,7 @@ async def test_analyze_image_vl_failure(tmp_path):
     img_path = tmp_path / "test.png"
     img.save(img_path, format="PNG")
 
-    fn = vision_functions.make_analyze_image(
-        "http://localhost:9091/v1", "test-model"
-    )
+    fn = vision_functions.make_analyze_image("http://localhost:9091/v1", "test-model")
 
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_client.post.side_effect = httpx.ConnectError("Connection refused")

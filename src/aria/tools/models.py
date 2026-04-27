@@ -33,9 +33,7 @@ class ScratchpadItemModel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    agent_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

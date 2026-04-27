@@ -55,9 +55,7 @@ def get_data_layer_handler() -> SQLiteSQLAlchemyDataLayer:
     return _cached_data_layer
 
 
-async def auth_callback_handler(
-    username: str, password: str
-) -> cl.User | None:
+async def auth_callback_handler(username: str, password: str) -> cl.User | None:
     """Authenticate a user with username and password.
 
     Called by Chainlit during login to verify user credentials
@@ -133,8 +131,7 @@ async def on_chat_resume_handler(thread: ThreadDict) -> None:
     try:
         if not _state.is_initialized():
             logger.info(
-                "AppState not yet initialized, waiting for startup to "
-                "complete..."
+                "AppState not yet initialized, waiting for startup to " "complete..."
             )
             if not await wait_for_initialization():
                 logger.warning(

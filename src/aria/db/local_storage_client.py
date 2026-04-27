@@ -43,9 +43,7 @@ class LocalStorageClient(BaseStorageClient):
             await client.upload_file("test.txt", b"data")
     """
 
-    def __init__(
-        self, storage_path: Union[str, Path], base_url: str = "/storage"
-    ):
+    def __init__(self, storage_path: Union[str, Path], base_url: str = "/storage"):
         """Initialize local storage client.
 
         Args:
@@ -60,9 +58,7 @@ class LocalStorageClient(BaseStorageClient):
         # Create storage directory if it doesn't exist
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(
-            f"LocalStorageClient initialized: storage_path={self.storage_path}"
-        )
+        logger.info(f"LocalStorageClient initialized: storage_path={self.storage_path}")
 
     def _validate_object_key(self, object_key: str) -> Path:
         """Validate object_key and return safe absolute path.

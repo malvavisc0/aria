@@ -47,12 +47,8 @@ class ToolsDatabase:
 
     def _setup_engine(self) -> None:
         database_url = f"sqlite:///{self.db_path}"
-        self._engine = create_engine(
-            database_url, echo=False, pool_pre_ping=True
-        )
-        self._session_factory = sessionmaker(
-            bind=self._engine, expire_on_commit=False
-        )
+        self._engine = create_engine(database_url, echo=False, pool_pre_ping=True)
+        self._session_factory = sessionmaker(bind=self._engine, expire_on_commit=False)
         logger.debug(f"Tools database engine created: {database_url}")
 
     def create_tables(self) -> None:
