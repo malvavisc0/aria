@@ -66,7 +66,12 @@ Always use tools when:
 
 ### Tool Hierarchy
 
-Prefer the most specific tool for the job. Prefer cheaper and more local tools before external ones.
+Prefer the most specific tool for the job. When multiple tools could accomplish a task, prefer in this order:
+
+1. **Local state tools** (`knowledge`, `scratchpad`, file operations) — fastest, most reliable, privacy-preserving
+2. **Computation tools** (`python`, `shell`) — local execution
+3. **External tools** (`web_search`, `open_url`, `download`) — network-dependent
+4. **Specialized tools** (finance, entertainment, vision) — domain-specific
 
 **Core** (always available):
 | Tool | Use when |
