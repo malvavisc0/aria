@@ -7,13 +7,14 @@ GUI application, including llama.cpp binary downloads and GGUF model downloads.
 from __future__ import annotations
 
 import io
+import queue
 import re
 import sys
 import threading
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon
 
 from aria.gui.ui.mainwindow import Ui_MainWindow
@@ -31,12 +32,18 @@ def _strip_ansi(text: str) -> str:
     return _ANSI_ESCAPE.sub("", text)
 
 
-class _SignalStream(io.TextIOBase):
-    """A writable text stream that emits each completed line via a callback.
+class _QueueStream(io.TextIOBase):
+    """A writable text stream that queues completed lines for later polling.
 
     Used to redirect ``sys.stdout`` / ``sys.stderr`` inside worker threads so
     that all console output (rich, print, loguru) is forwarded to the GUI text
     area instead of the terminal.
+
+    Unlike the previous ``_SignalStream`` implementation, this class does
+    **not** emit PySide6 signals from the worker thread.  Instead, finished
+    lines are placed into a :class:`queue.Queue` that the main thread drains
+    on a timer.  This avoids the segfault caused by PySide6's C++ signal
+    dispatch interacting with Qt's internal mutexes from a non-GUI thread.
 
     Thread-safe: a lock protects the internal buffer because the
     ``sys.stdout``/``sys.stderr`` redirect is process-global, meaning
@@ -47,11 +54,11 @@ class _SignalStream(io.TextIOBase):
 
     _LINE_SEP = re.compile(r"[\r\n]+")
 
-    def __init__(self, emit_fn: Callable[[str], None]):
+    def __init__(self) -> None:
         super().__init__()
-        self._emit = emit_fn
         self._buf = ""
         self._lock = threading.Lock()
+        self.lines: queue.Queue[str] = queue.Queue()
 
     def write(self, text: str) -> int:  # type: ignore[override]
         with self._lock:
@@ -62,13 +69,13 @@ class _SignalStream(io.TextIOBase):
             for part in parts[:-1]:
                 stripped = part.rstrip()
                 if stripped:
-                    self._emit(stripped)
+                    self.lines.put(stripped)
         return len(text)
 
     def flush(self) -> None:
         with self._lock:
             if self._buf.strip():
-                self._emit(self._buf.strip())
+                self.lines.put(self._buf.strip())
                 self._buf = ""
 
 
@@ -78,7 +85,7 @@ class _SignalStream(io.TextIOBase):
 
 
 class _BaseDownloadWorker(QObject):
-    """Base worker that redirects stdout/stderr to the ``log_line`` signal.
+    """Base worker that redirects stdout/stderr to a queue for GUI display.
 
     Subclasses must implement :meth:`run` and call
     :meth:`_run_with_redirected_output` with the actual download callable.
@@ -86,15 +93,27 @@ class _BaseDownloadWorker(QObject):
 
     finished = Signal()
     error = Signal(str)
-    log_line = Signal(str)
+
+    # Set by the main-thread signal handlers so the drain timer can
+    # detect completion without touching Qt from the worker thread.
+    _done: bool = False
+    _error_msg: Optional[str] = None
 
     def run(self) -> None:
         """Execute the download. Must be overridden by subclasses."""
 
-    def _run_with_redirected_output(self, fn: Callable, *args, **kwargs) -> None:
-        """Run *fn* with stdout/stderr redirected to ``log_line``."""
-        stream = _SignalStream(self.log_line.emit)
+    def _run_with_redirected_output(
+        self, fn: Callable, *args, **kwargs
+    ) -> None:
+        """Run *fn* with stdout/stderr redirected to ``_stream``."""
+        stream = _QueueStream()
         old_stdout, old_stderr = sys.stdout, sys.stderr
+        # Expose stream so the main-thread timer can drain it.
+        self._stream = stream
+        # Store originals so the cancel handler can restore them if
+        # the thread is terminated before the finally-block runs.
+        self._prev_stdout = old_stdout
+        self._prev_stderr = old_stderr
         sys.stdout = stream  # type: ignore[assignment]
         sys.stderr = stream  # type: ignore[assignment]
         try:
@@ -151,7 +170,8 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
         if self._alias == "chat":
             if not Chat.repo_id or not Chat.filename:
                 self.error.emit(
-                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured "
+                    "(CHAT_MODEL_REPO / CHAT_MODEL)."
                 )
                 return
             downloads.append((Chat.repo_id, Chat.filename))
@@ -159,7 +179,8 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
         elif self._alias == "vl":
             if not Vision.repo_id or not Vision.filename:
                 self.error.emit(
-                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured "
+                    "(VL_MODEL_REPO / VL_MODEL)."
                 )
                 return
             downloads.append((Vision.repo_id, Vision.filename))
@@ -257,8 +278,12 @@ class SetupHandlersMixin:
 
     def _connect_setup_signals(self) -> None:
         """Wire Setup tab button signals and initialise download slots."""
-        self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
-        self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
+        self.ui.pushButton_LlamaDownload.clicked.connect(
+            self.on_llama_download_clicked
+        )
+        self.ui.pushButton_ModelDownload.clicked.connect(
+            self.on_model_download_clicked
+        )
         self.ui.pushButton_LightpandaDownload.clicked.connect(
             self.on_lightpanda_download_clicked
         )
@@ -329,7 +354,9 @@ class SetupHandlersMixin:
             downloaded = is_model_downloaded(filename, models_dir)
             icon = "✓" if downloaded else "✗"
             color = "green" if downloaded else "red"
-            label.setText(f'<span style="color:{color}">{icon}</span> {filename}')
+            label.setText(
+                f'<span style="color:{color}">{icon}</span> {filename}'
+            )
 
         # Lightpanda status
         from aria.config.api import Lightpanda
@@ -361,6 +388,14 @@ class SetupHandlersMixin:
                     thread.terminate()
                     thread.wait()
             setattr(self, attr, None)
+        # Restore stdout/stderr if the terminated thread had redirected them.
+        worker_attr = attr.replace("_thread", "_worker")
+        worker = getattr(self, worker_attr, None)
+        if worker is not None and hasattr(worker, "_prev_stdout"):
+            if sys.stdout is not worker._prev_stdout:
+                sys.stdout = worker._prev_stdout
+            if sys.stderr is not worker._prev_stderr:
+                sys.stderr = worker._prev_stderr
 
     def _cleanup_llama_dl_thread(self) -> None:
         self._cleanup_thread("_llama_dl_thread")
@@ -379,23 +414,37 @@ class SetupHandlersMixin:
         slot = self._dl_slots[key]
 
         # Clean up any previous download
+        self._stop_log_timer(key)
         self._cleanup_thread(slot.thread_attr)
         setattr(self, slot.worker_attr, None)
 
         # Reset UI
         slot.output.clear()
 
+        # Flag polled by the drain timer — avoids calling Qt widgets
+        # from the worker thread (AutoConnection + lambda → Direct).
+        worker._done = False
+        worker._error_msg = None
+
         # Create and wire thread
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.log_line.connect(lambda line, k=key: self._on_dl_log_line(k, line))
-        worker.finished.connect(lambda k=key: self._on_dl_finished(k))
-        worker.error.connect(lambda msg, k=key: self._on_dl_error(k, msg))
+        # finished/error only set flags; the timer does all UI work.
+        worker.finished.connect(lambda w=worker: setattr(w, "_done", True))
+
+        def _set_error(msg, w=worker):
+            w._done = True
+            w._error_msg = msg
+
+        worker.error.connect(_set_error)
         worker.finished.connect(thread.quit)
         worker.error.connect(thread.quit)
         thread.finished.connect(worker.deleteLater)
-        thread.finished.connect(lambda k=key: self._clear_dl_worker(k))
+        # NOTE: do NOT connect thread.finished to _clear_dl_worker here.
+        # The timer's _drain_log handles cleanup after detecting _done,
+        # otherwise the worker reference is cleared before the timer can
+        # see the completion flag.
 
         # Store references
         setattr(self, slot.thread_attr, thread)
@@ -403,20 +452,88 @@ class SetupHandlersMixin:
 
         # Switch button to Cancel mode
         slot.button.setText("Cancel")
-        slot.button.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop)))
+        slot.button.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop))
+        )
         slot.button.clicked.disconnect()
-        slot.button.clicked.connect(lambda k=key: self._cancel_download(k))
+        slot.button.clicked.connect(
+            lambda _checked, k=key: self._cancel_download(k)
+        )
         slot.button.setEnabled(True)
 
         thread.start()
 
+        # Start a QTimer that drains the worker's queue and — once the
+        # worker signals completion — performs all UI updates in the main
+        # thread.  No PySide6 widget/signal access from worker threads.
+        timer = QTimer()
+        timer.setInterval(100)
+        timer.timeout.connect(lambda k=key: self._drain_log(k))
+        timer.start()
+        setattr(self, f"_{key}_log_timer", timer)
+
+    def _stop_log_timer(self, key: str) -> None:
+        """Stop and remove the drain timer for a download slot."""
+        timer = getattr(self, f"_{key}_log_timer", None)
+        if timer is not None:
+            timer.stop()
+            timer.deleteLater()
+            setattr(self, f"_{key}_log_timer", None)
+
+    def _drain_log(self, key: str) -> None:
+        """Drain queued log lines from the worker and append to the widget.
+
+        When the worker signals completion (``_done`` flag), this method
+        also stops the timer, appends any error message, resets the button,
+        and refreshes the setup status — all in the main thread.
+        """
+        slot = self._dl_slots[key]
+        worker = getattr(self, slot.worker_attr, None)
+        if worker is None or not hasattr(worker, "_stream"):
+            self._stop_log_timer(key)
+            return
+        stream: _QueueStream = worker._stream
+        while not stream.lines.empty():
+            try:
+                line = stream.lines.get_nowait()
+                slot.output.appendPlainText(_strip_ansi(line))
+            except queue.Empty:
+                break
+        # If the worker has finished, wrap up — all in the main thread.
+        if worker._done:
+            # Final drain in case flush() added lines after _done was set.
+            while not stream.lines.empty():
+                try:
+                    slot.output.appendPlainText(
+                        _strip_ansi(stream.lines.get_nowait())
+                    )
+                except queue.Empty:
+                    break
+            if worker._error_msg:
+                slot.output.appendPlainText(f"ERROR: {worker._error_msg}")
+            self._stop_log_timer(key)
+            self._reset_download_button(key)
+            self.load_setup()
+            self._run_preflight()
+
     def _cancel_download(self, key: str) -> None:
         """Cancel a running download."""
+        self._stop_log_timer(key)
         slot = self._dl_slots[key]
         thread = getattr(self, slot.thread_attr, None)
+        worker = getattr(self, slot.worker_attr, None)
         if thread is not None and thread.isRunning():
             thread.terminate()
             thread.wait()
+        # Drain any remaining lines after termination.
+        if worker is not None and hasattr(worker, "_stream"):
+            self._drain_log(key)
+        # thread.terminate() skips the finally-block in
+        # _run_with_redirected_output, so restore stdout/stderr here to
+        # prevent a stale stream from receiving further writes.
+        if worker is not None and hasattr(worker, "_prev_stdout"):
+            sys.stdout = worker._prev_stdout
+            sys.stderr = worker._prev_stderr
         self._reset_download_button(key)
 
     def _reset_download_button(self, key: str) -> None:
@@ -433,19 +550,18 @@ class SetupHandlersMixin:
         slot = self._dl_slots[key]
         setattr(self, slot.worker_attr, None)
 
-    def _on_dl_log_line(self, key: str, line: str) -> None:
-        """Append a log line to the output text area."""
-        slot = self._dl_slots[key]
-        slot.output.appendPlainText(_strip_ansi(line))
-
     def _on_dl_finished(self, key: str) -> None:
         """Handle download completion."""
+        self._stop_log_timer(key)
+        self._drain_log(key)
         self._reset_download_button(key)
         self.load_setup()
         self._run_preflight()
 
     def _on_dl_error(self, key: str, message: str) -> None:
         """Handle download error."""
+        self._stop_log_timer(key)
+        self._drain_log(key)
         slot = self._dl_slots[key]
         slot.output.appendPlainText(f"ERROR: {message}")
         self._reset_download_button(key)
@@ -459,7 +575,9 @@ class SetupHandlersMixin:
         from aria.config.api import LlamaCpp
 
         version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
-        worker = _LlamaDownloadWorker(bin_dir=LlamaCpp.bin_path, version=version_text)
+        worker = _LlamaDownloadWorker(
+            bin_dir=LlamaCpp.bin_path, version=version_text
+        )
         self._start_download("llama", worker)
 
     def on_model_download_clicked(self) -> None:
@@ -467,16 +585,22 @@ class SetupHandlersMixin:
         from aria.config.huggingface import HuggingFace
 
         alias = self.ui.comboBox_ModelSelect.currentText()
-        token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        token_text = (
+            self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        )
         force = self.ui.checkBox_ModelForce.isChecked()
-        worker = _ModelDownloadWorker(alias=alias, token=token_text, force=force)
+        worker = _ModelDownloadWorker(
+            alias=alias, token=token_text, force=force
+        )
         self._start_download("model", worker)
 
     def on_lightpanda_download_clicked(self) -> None:
         """Handle Download Lightpanda button click."""
         from aria.config.api import Lightpanda
 
-        version_text = self.ui.lineEdit_LightpandaVersion.text().strip() or None
+        version_text = (
+            self.ui.lineEdit_LightpandaVersion.text().strip() or None
+        )
         worker = _LightpandaDownloadWorker(
             bin_dir=Lightpanda.get_bin_path(), version=version_text
         )

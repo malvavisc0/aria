@@ -39,7 +39,9 @@ error_console = Console(stderr=True, style="bold red", width=200)
 # GitHub repository for Lightpanda
 GITHUB_REPO = "lightpanda-io/browser"
 # Nightly releases don't have a 'latest' tag, use nightly directly
-GITHUB_RELEASE_URL = f"https://github.com/{GITHUB_REPO}/releases/download/nightly"
+GITHUB_RELEASE_URL = (
+    f"https://github.com/{GITHUB_REPO}/releases/download/nightly"
+)
 
 
 def download_lightpanda(bin_dir: Path, version: Optional[str] = None) -> Path:
@@ -93,10 +95,14 @@ def download_lightpanda(bin_dir: Path, version: Optional[str] = None) -> Path:
     # Make executable on Unix
     if platform.system() != "Windows":
         current_mode = binary_path.stat().st_mode
-        binary_path.chmod(current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        binary_path.chmod(
+            current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        )
 
     console.print(f"[green]✓[/green] Downloaded to {binary_path}")
-    console.print("[green]✓[/green] Lightpanda ready (no Chromium download needed)")
+    console.print(
+        "[green]✓[/green] Lightpanda ready (no Chromium download needed)"
+    )
 
     return binary_path
 
@@ -162,6 +168,9 @@ def _download_file(url: str, dest: Path) -> None:
     Raises:
         RuntimeError: If download fails.
     """
+    import sys
+
+    in_tty = sys.stdout.isatty()
     try:
         req = urllib.request.Request(
             url, headers={"Accept": "application/octet-stream"}
@@ -179,6 +188,7 @@ def _download_file(url: str, dest: Path) -> None:
             TransferSpeedColumn(),
             TimeRemainingColumn(),
             console=console,
+            disable=not in_tty,
         ) as progress:
             task = progress.add_task(
                 "Downloading", total=total_size if total_size > 0 else None
@@ -204,7 +214,9 @@ def _download_file(url: str, dest: Path) -> None:
                         )
 
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Failed to download from {url}: HTTP {e.code} {e.reason}")
+        raise RuntimeError(
+            f"Failed to download from {url}: HTTP {e.code} {e.reason}"
+        )
     except urllib.error.URLError as e:
         raise RuntimeError(f"Failed to download from {url}: {e.reason}")
     except Exception as e:
