@@ -8,11 +8,13 @@ aria.tools.constants.
 from aria.tools.constants import BASE_DIR
 
 # Timeout for individual browser commands (seconds)
-# Longer than network timeout since page loads can be slow
-BROWSER_COMMAND_TIMEOUT = 60
+# Long enough for slow pages but not so long that failures waste time
+BROWSER_COMMAND_TIMEOUT = 30
 
 # Default wait strategy after navigation
-DEFAULT_WAIT_STRATEGY = "networkidle"
+# "domcontentloaded" is reliable; "networkidle" fails on most modern sites
+# because analytics, CDNs, and trackers keep connections open.
+DEFAULT_WAIT_STRATEGY = "domcontentloaded"
 
 # Default CDP port for Lightpanda serve
 LIGHTPANDA_DEFAULT_PORT = 9222

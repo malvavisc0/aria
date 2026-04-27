@@ -69,7 +69,7 @@ max_size_mb = 50
 
 [features.audio]
 # Enable audio features
-enabled = true
+enabled = false
 # Sample rate of the audio
 sample_rate = 16000
 

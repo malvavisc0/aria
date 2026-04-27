@@ -37,6 +37,7 @@ from aria.tools import tool_error_response, tool_success_response
 from aria.tools.browser.constants import (
     BROWSER_COMMAND_TIMEOUT,
     BROWSER_CONTENT_DIR,
+    DEFAULT_WAIT_STRATEGY,
     LIGHTPANDA_DEFAULT_PORT,
 )
 
@@ -100,6 +101,9 @@ class LightpandaManager:
         self._playwright: Optional[Playwright] = None
         self._browser: Optional[Browser] = None
         self._page: Optional[Page] = None
+        # Serialise all page operations — Lightpanda serves a single page
+        # and concurrent navigations destroy each other's execution context.
+        self._page_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -139,7 +143,9 @@ class LightpandaManager:
 
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
-            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
+            self._browser = await self._playwright.chromium.connect_over_cdp(
+                cdp_url
+            )
 
             # Lightpanda workaround: ignore SSL errors
             context = await self._browser.new_context(ignore_https_errors=True)
@@ -192,8 +198,12 @@ class LightpandaManager:
             finally:
                 self._process = None
 
-    async def _wait_for_cdp(self, timeout: float = 10.0) -> bool:
+    async def _wait_for_cdp(self, timeout: float = 15.0) -> bool:
         """Wait for the CDP endpoint to be ready.
+
+        Polls the ``/json/version`` HTTP endpoint rather than just
+        checking that the TCP port is open.  This avoids a race where
+        the port is bound but the HTTP handler is not yet serving.
 
         Args:
             timeout: Maximum time to wait in seconds.
@@ -201,22 +211,21 @@ class LightpandaManager:
         Returns:
             True if CDP is ready, False if timeout.
         """
-        import socket
+        import urllib.request
 
+        url = f"http://127.0.0.1:{self._port}/json/version"
         loop = asyncio.get_running_loop()
         start_time = loop.time()
         while loop.time() - start_time < timeout:
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                result = sock.connect_ex(("127.0.0.1", self._port))
-                sock.close()
-                if result == 0:
-                    await asyncio.sleep(0.5)
-                    return True
+                await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: urllib.request.urlopen(url, timeout=2)
+                )
+                logger.debug("CDP endpoint is ready")
+                return True
             except Exception:
                 pass
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.3)
 
         return False
 
@@ -357,7 +366,11 @@ class LightpandaManager:
         tool: str = "",
         reason: str = "",
     ) -> str:
-        """Run *fn* with page validation and crash recovery.
+        """Run *fn* with page validation, serialisation, and crash recovery.
+
+        All page operations are serialised through ``_page_lock`` because
+        Lightpanda serves a single page — concurrent navigations destroy
+        each other's execution context.
 
         Ensures a valid page before calling *fn(page)*. If *fn* raises
         and the page has crashed, the browser is restarted and a
@@ -373,26 +386,38 @@ class LightpandaManager:
         Returns:
             JSON string — either the result of *fn* or an error.
         """
-        if not await self._ensure_page():
-            return self._error("Browser not available", tool=tool, reason=reason)
-
-        try:
-            return await fn(self._page)  # type: ignore[arg-type]
-        except Exception as e:
-            logger.error(f"{action_name} error: {e}")
-            if not self._is_page_valid():
-                logger.warning(
-                    f"Browser crashed during {action_name}, " "attempting restart..."
+        async with self._page_lock:
+            if not await self._ensure_page():
+                return self._error(
+                    "Browser not available", tool=tool, reason=reason
                 )
-                if await self._ensure_page():
-                    return self._error(str(e), recovery=True, tool=tool, reason=reason)
-            return self._error(str(e), tool=tool, reason=reason)
+
+            try:
+                return await fn(self._page)  # type: ignore[arg-type]
+            except Exception as e:
+                logger.error(f"{action_name} error: {e}")
+                if not self._is_page_valid():
+                    logger.warning(
+                        f"Browser crashed during {action_name}, "
+                        "attempting restart..."
+                    )
+                    if await self._ensure_page():
+                        return self._error(
+                            str(e), recovery=True, tool=tool, reason=reason
+                        )
+                return self._error(
+                    f"{e} — Use the download tool as a fallback.",
+                    tool=tool,
+                    reason=reason,
+                )
 
     # ------------------------------------------------------------------
     # Browser actions
     # ------------------------------------------------------------------
 
-    async def navigate(self, url: str, *, tool: str = "", reason: str = "") -> str:
+    async def navigate(
+        self, url: str, *, tool: str = "", reason: str = ""
+    ) -> str:
         """Navigate to URL and return rendered content.
 
         Args:
@@ -405,8 +430,19 @@ class LightpandaManager:
         """
 
         async def _do_navigate(page: Page) -> str:
-            await page.goto(url, timeout=BROWSER_COMMAND_TIMEOUT * 1000)
-            await page.wait_for_load_state("networkidle", timeout=10000)
+            timeout_ms = BROWSER_COMMAND_TIMEOUT * 1000
+            await page.goto(
+                url,
+                timeout=timeout_ms,
+                wait_until=DEFAULT_WAIT_STRATEGY,
+            )
+            # Explicit wait ensures the page is stable before extracting
+            # content.  Without this, Lightpanda may still be processing
+            # deferred scripts / redirects and the evaluate() call hits
+            # "Execution context was destroyed".
+            await page.wait_for_load_state(
+                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
+            )
 
             content = await self._get_text_content(page)
 
@@ -430,7 +466,9 @@ class LightpandaManager:
             "navigate", _do_navigate, tool=tool, reason=reason
         )
 
-    async def click(self, selector: str, *, tool: str = "", reason: str = "") -> str:
+    async def click(
+        self, selector: str, *, tool: str = "", reason: str = ""
+    ) -> str:
         """Click element by CSS selector and return updated content.
 
         Args:
@@ -443,8 +481,11 @@ class LightpandaManager:
         """
 
         async def _do_click(page: Page) -> str:
-            await page.click(selector, timeout=10000)
-            await page.wait_for_load_state("networkidle", timeout=10000)
+            timeout_ms = BROWSER_COMMAND_TIMEOUT * 1000
+            await page.click(selector, timeout=timeout_ms)
+            await page.wait_for_load_state(
+                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
+            )
 
             content = await self._get_text_content(page)
             content_path = self._persist_content(content, page.url, "click")
@@ -458,9 +499,13 @@ class LightpandaManager:
                 reason=reason,
             )
 
-        return await self._with_recovery("click", _do_click, tool=tool, reason=reason)
+        return await self._with_recovery(
+            "click", _do_click, tool=tool, reason=reason
+        )
 
-    async def get_page_content(self, *, tool: str = "", reason: str = "") -> str:
+    async def get_page_content(
+        self, *, tool: str = "", reason: str = ""
+    ) -> str:
         """Get current page content as clean text.
 
         Args:
@@ -519,7 +564,8 @@ class LightpandaManager:
             Cleaned text content string.
         """
         try:
-            content = await page.evaluate("""
+            content = await page.evaluate(
+                """
                 () => {
                     const clone = document.body.cloneNode(true);
                     const remove = ['script', 'style', 'noscript'];
@@ -530,7 +576,8 @@ class LightpandaManager:
                     });
                     return clone.innerText || clone.textContent || '';
                 }
-            """)
+            """
+            )
             lines = (line.strip() for line in content.splitlines())
             return "\n".join(line for line in lines if line)
 

@@ -76,14 +76,6 @@ def get_agent(
         FunctionTool.from_defaults(
             async_fn=parse_pdf_fn,
             name="parse_pdf",
-            description=(
-                "Extract structured content (text, tables, layout) from a "
-                "local PDF file using the vision-language model. Call this "
-                "tool whenever the prompt contains an [Uploaded files] block "
-                "with a .pdf path. Provide the absolute file path and an "
-                "optional extraction prompt. Returns markdown with "
-                "--- Page N --- separators."
-            ),
         )
     )
 
@@ -92,14 +84,6 @@ def get_agent(
         FunctionTool.from_defaults(
             async_fn=analyze_image_fn,
             name="analyze_image",
-            description=(
-                "Analyze or describe an image file using the "
-                "vision-language model. Call this tool whenever the prompt "
-                "contains an [Uploaded files] block with an image path "
-                "(.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff). Provide "
-                "the absolute file path and an optional analysis prompt. "
-                "Returns markdown with the analysis result."
-            ),
         )
     )
 

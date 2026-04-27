@@ -53,7 +53,7 @@ def web_search(
             files, news, videos, images.
         time_range: Optional freshness filter (SearXNG only): day,
             week, month, year.
-        max_results: Maximum results (default: 10).
+        max_results: Maximum results (default: 5).
 
     Returns:
         JSON with results[{title, href}], error if failed.
