@@ -11,10 +11,10 @@ class TestLoadAgentInstructions:
         result = load_agent_instructions("aria")
         assert "Aria" in result
 
-    def test_loads_core_rules_within_aria(self):
-        """Core rules should be embedded in aria.md."""
+    def test_loads_fundamental_principles_within_aria(self):
+        """Fundamental principles should be embedded in aria.md."""
         result = load_agent_instructions("aria")
-        assert "Core Rules" in result
+        assert "Fundamental Principles" in result
         assert "Response Style" in result
 
     def test_extras_appended(self):
@@ -50,10 +50,10 @@ class TestLoadAgentInstructions:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_prompt_enhancer_no_core_rules(self):
-        """PromptEnhancer should NOT contain core rules."""
+    def test_prompt_enhancer_no_fundamental_principles(self):
+        """PromptEnhancer should NOT contain fundamental principles."""
         result = load_agent_instructions("prompt_enhancer")
-        assert "Core Rules" not in result
+        assert "Fundamental Principles" not in result
         assert "Response Style" not in result
         assert "Prompt Enhancer" in result
 
