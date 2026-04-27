@@ -185,7 +185,10 @@ def shell(
 
         try:
             result_str = _execute_single_command(
-                reason=(f"Batch command {i+1}/{len(commands)}: " f"{display_command}"),
+                reason=(
+                    f"Batch command {i+1}/{len(commands)}: "
+                    f"{display_command}"
+                ),
                 command_name=command_name,
                 args=args,
                 timeout=cmd_timeout,
@@ -227,7 +230,7 @@ def shell(
     }
 
     logger.info(
-        "Batch execution complete: %s success, %s failures",
+        "Batch execution complete: {} success, {} failures",
         success_count,
         failure_count,
     )

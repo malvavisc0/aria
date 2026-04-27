@@ -99,7 +99,11 @@ def _execute_command_internal(
         )
         elapsed = time.time() - start_time
 
-        logger.info("Command executed with return code %s", result.returncode)
+        logger.info("Command executed with return code {}", result.returncode)
+        if result.stdout:
+            logger.info("stdout: {}", result.stdout[:2000])
+        if result.stderr:
+            logger.warning("stderr: {}", result.stderr[:2000])
         return _build_response(
             operation,
             display_command,
