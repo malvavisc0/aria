@@ -78,7 +78,7 @@ DEFAULT_EMBEDDING_PARALLEL=4
 : "${NO_MMAP:="--no-mmap"}"
 : "${MLOCK:="--mlock"}"
 : "${CONT_BATCHING:="--cont-batching"}"
-: "${NO_KV_OFFLOAD="--no-kv-offload"}"
+: "${NO_KV_OFFLOAD:=--no-kv-offload}"
 : "${LLAMA_SERVER_PATH:="llama-server"}" # Default added
 : "${MMPROJ_PATH:=""}"
 : "${EMBEDDING_MODE:=0}"
@@ -99,7 +99,6 @@ GPU_COUNT=0
 TOTAL_VRAM_MB=0
 SPLIT_MODE=""
 TENSOR_SPLIT=""
-PLATFORM=""  # nvidia, metal, cpu — auto-detected or overridden via env
 
 # -----------------------------------------------------------------------------
 # Terminal Output / Colors
@@ -176,17 +175,19 @@ print_header() {
 	local pad_right=$((inner_width - title_len - pad_left))
 
 	echo >&2
-	printf '%b%s' "$color" "$BOX_TL" >&2
+	printf '%b%s%b\n' "$color" "$BOX_TL" "$RST" >&2
+	printf '%b%s%b\n' "$color" "$BOX_H" "$RST" >&2
 	printf '%0.s─' $(seq 1 $((TERM_WIDTH - 2))) >&2
 	printf '%s%b\n' "$BOX_TR" "$RST" >&2
 
-	printf '%b%s%b' "$color" "$BOX_V" "$RST" >&2
+	printf '%b%s%b\n' "$color" "$BOX_V" "$RST" >&2
 	printf '%*s' "$((pad_left + 1))" '' >&2
-	printf '%b%b%s%b' "$BOLD" "$color" "$title" "$RST" >&2
+	printf '%b%b%s%b\n' "$BOLD" "$color" "$title" "$RST" >&2
 	printf '%*s' "$((pad_right + 1))" '' >&2
 	printf '%b%s%b\n' "$color" "$BOX_V" "$RST" >&2
 
-	printf '%b%s' "$color" "$BOX_BL" >&2
+	printf '%b%s%b\n' "$color" "$BOX_BL" "$RST" >&2
+	printf '%b%s%b\n' "$color" "$BOX_H" "$RST" >&2
 	printf '%0.s─' $(seq 1 $((TERM_WIDTH - 2))) >&2
 	printf '%s%b\n' "$BOX_BR" "$RST" >&2
 }
@@ -200,8 +201,8 @@ print_section() {
 	local remaining=$((TERM_WIDTH - title_len - 3))
 
 	echo >&2
-	printf '%b%s%s%b' "$color" "$BOX_LT" "$BOX_H" "$RST" >&2
-	printf '%b%b%s%b' "$BOLD" "$color" "$title_display" "$RST" >&2
+	printf '%b%s%s%b\n' "$color" "$BOX_LT" "$BOX_H" "$RST" >&2
+	printf '%b%b%s%b\n' "$BOLD" "$color" "$title_display" "$RST" >&2
 	printf '%b' "$color" >&2
 	printf '%0.s─' $(seq 1 "$remaining") >&2
 	printf '%b\n' "$RST" >&2
@@ -276,7 +277,7 @@ log_to_file() {
 # Check if a number is a power of 2
 is_power_of_2() {
 	local n=$1
-	[[ $n -gt 0 ]] && [[ $((n & (n - 1))) -eq 0 ]]
+	[[ $n -gt 0 ]] && (( (n & (n - 1)) == 0 ))
 }
 
 # Get next power of 2
@@ -422,7 +423,7 @@ format_size() {
 # Get logical CPU count (cross-platform)
 get_cpu_count() {
 	if [[ "$OSTYPE" == "darwin"* ]]; then
-		sysctl -n hw.logicalcpu 2>/dev/null || echo 4
+		sysctl -n hw.physicalcpu 2>/dev/null || echo 4
 	else
 		nproc 2>/dev/null || echo 4
 	fi
@@ -704,13 +705,13 @@ detect_hardware() {
 
 # Calculate safe maximum context based on available memory and platform
 calculate_max_safe_ctx() {
-	local memory_mb=$1
+	local memory_mb=0
 
 	# Apply platform-specific memory adjustment
 	case "$PLATFORM" in
 		metal)
-			# Use 70% of unified memory for context calculation
-			memory_mb=$((memory_mb * 7 / 10))
+			# Use 70% of unified memory (TOTAL_VRAM_MB) for context calculation
+			memory_mb=$((TOTAL_VRAM_MB * 7 / 10))
 			debug_log "Metal: using 70% of unified memory for context: ${memory_mb} MiB"
 			;;
 		cpu)
@@ -720,6 +721,7 @@ calculate_max_safe_ctx() {
 			;;
 		nvidia)
 			# Use full VRAM for NVIDIA
+			memory_mb=$TOTAL_VRAM_MB
 			debug_log "NVIDIA: using full VRAM for context: ${memory_mb} MiB"
 			;;
 	esac
@@ -925,7 +927,7 @@ configure_dual_gpu() {
 						# Check if ratios sum to ~1; if not, fall back to even split
 						local sum
 						sum=$(awk "BEGIN {print $ratio0 + $ratio1}")
-						if awk "BEGIN {exit ($sum >= 0.9999 && $sum <= 1.0001)}"; then
+						if ! awk "BEGIN {exit ($sum >= 0.9999 && $sum <= 1.0001)}"; then
 							# sum is outside [0.9999, 1.0001] — use fallback
 							ratio0="0.5000"
 							ratio1="0.5000"
@@ -1142,6 +1144,14 @@ validate_inputs() {
 	# Validate port
 	if ! validate_port "$PORT"; then
 		exit 1
+	fi
+
+	# Validate embedding parallel if in embedding mode
+	if [[ "$EMBEDDING_MODE" -eq 1 ]]; then
+		if ! [[ "$EMBEDDING_PARALLEL" =~ ^[0-9]+$ ]] || [[ "$EMBEDDING_PARALLEL" -lt 1 ]]; then
+			log_error "EMBEDDING_PARALLEL must be a positive integer, got: $EMBEDDING_PARALLEL"
+			return 1
+		fi
 	fi
 
 	debug_log "All validations passed"
@@ -1404,7 +1414,7 @@ build_command() {
 	# Display command in debug mode
 	if [[ "$DEBUG" -eq 1 ]]; then
 		print_section "Debug: Full Command" "$DIM"
-		printf '  %b%s%b\n' "$DIM" "${cmd_array[*]}" "$RST" >&2
+		printf '  %b%s%b\n' "$DIM" "${CMD_ARRAY[*]}" "$RST" >&2
 	fi
 
 	# Store command for execution
@@ -1517,7 +1527,7 @@ main() {
 		exit 1
 	fi
 	detect_system_ram
-	calculate_max_safe_ctx "$TOTAL_VRAM_MB"
+	calculate_max_safe_ctx
 	extract_model_metadata "$MODEL_PATH"
 	get_performance_tips "$GPU_COUNT" "$TOTAL_VRAM_MB" "$MODEL_PATH" "$REQUESTED_CTX"
 	build_command
