@@ -143,9 +143,7 @@ class LightpandaManager:
 
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
-            self._browser = await self._playwright.chromium.connect_over_cdp(
-                cdp_url
-            )
+            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
 
             # Lightpanda workaround: ignore SSL errors
             context = await self._browser.new_context(ignore_https_errors=True)
@@ -388,9 +386,7 @@ class LightpandaManager:
         """
         async with self._page_lock:
             if not await self._ensure_page():
-                return self._error(
-                    "Browser not available", tool=tool, reason=reason
-                )
+                return self._error("Browser not available", tool=tool, reason=reason)
 
             try:
                 return await fn(self._page)  # type: ignore[arg-type]
@@ -415,9 +411,7 @@ class LightpandaManager:
     # Browser actions
     # ------------------------------------------------------------------
 
-    async def navigate(
-        self, url: str, *, tool: str = "", reason: str = ""
-    ) -> str:
+    async def navigate(self, url: str, *, tool: str = "", reason: str = "") -> str:
         """Navigate to URL and return rendered content.
 
         Args:
@@ -440,9 +434,7 @@ class LightpandaManager:
             # content.  Without this, Lightpanda may still be processing
             # deferred scripts / redirects and the evaluate() call hits
             # "Execution context was destroyed".
-            await page.wait_for_load_state(
-                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
-            )
+            await page.wait_for_load_state(DEFAULT_WAIT_STRATEGY, timeout=timeout_ms)
 
             content = await self._get_text_content(page)
 
@@ -466,9 +458,7 @@ class LightpandaManager:
             "navigate", _do_navigate, tool=tool, reason=reason
         )
 
-    async def click(
-        self, selector: str, *, tool: str = "", reason: str = ""
-    ) -> str:
+    async def click(self, selector: str, *, tool: str = "", reason: str = "") -> str:
         """Click element by CSS selector and return updated content.
 
         Args:
@@ -483,9 +473,7 @@ class LightpandaManager:
         async def _do_click(page: Page) -> str:
             timeout_ms = BROWSER_COMMAND_TIMEOUT * 1000
             await page.click(selector, timeout=timeout_ms)
-            await page.wait_for_load_state(
-                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
-            )
+            await page.wait_for_load_state(DEFAULT_WAIT_STRATEGY, timeout=timeout_ms)
 
             content = await self._get_text_content(page)
             content_path = self._persist_content(content, page.url, "click")
@@ -499,13 +487,9 @@ class LightpandaManager:
                 reason=reason,
             )
 
-        return await self._with_recovery(
-            "click", _do_click, tool=tool, reason=reason
-        )
+        return await self._with_recovery("click", _do_click, tool=tool, reason=reason)
 
-    async def get_page_content(
-        self, *, tool: str = "", reason: str = ""
-    ) -> str:
+    async def get_page_content(self, *, tool: str = "", reason: str = "") -> str:
         """Get current page content as clean text.
 
         Args:
@@ -564,8 +548,7 @@ class LightpandaManager:
             Cleaned text content string.
         """
         try:
-            content = await page.evaluate(
-                """
+            content = await page.evaluate("""
                 () => {
                     const clone = document.body.cloneNode(true);
                     const remove = ['script', 'style', 'noscript'];
@@ -576,8 +559,7 @@ class LightpandaManager:
                     });
                     return clone.innerText || clone.textContent || '';
                 }
-            """
-            )
+            """)
             lines = (line.strip() for line in content.splitlines())
             return "\n".join(line for line in lines if line)
 

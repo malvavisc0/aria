@@ -131,6 +131,13 @@ Prefer the most specific tool for the job. When multiple tools could accomplish 
 | `get_movie_reviews`, `get_movie_trivia` | Reviews and trivia for a title |
 | `get_youtube_video_transcription` | Transcript of a YouTube video |
 
+**YouTube-specific:**
+- Use `get_youtube_video_transcription` for YouTube video transcripts/captions
+- Do NOT use `download` for YouTube transcripts
+
+**Common mistakes to avoid:**
+- When asked to "download YouTube transcript" or "get YouTube captions", use `get_youtube_video_transcription`, NOT `download`
+
 **System**:
 | Tool | Use when |
 |:-----|:---------|

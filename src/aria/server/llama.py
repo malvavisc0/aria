@@ -223,6 +223,11 @@ class LlamaCppServerManager:
         # argument from _build_run_model_cmd() instead.
         env.pop("CHAT_TEMPLATE_FILE", None)
 
+        # Force context: bypass the script's VRAM-based safety cap so
+        # that CHAT_CONTEXT_SIZE / VL_CONTEXT_SIZE / EMBEDDINGS_CONTEXT_SIZE
+        # from .env are honored exactly as configured.
+        env["FORCE_CONTEXT"] = "1" if LlamaCppConfig.force_context else "0"
+
         return env
 
     def _wait_for_ready(

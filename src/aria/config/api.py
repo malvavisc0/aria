@@ -20,6 +20,11 @@ class LlamaCpp:
     #   False = keep KV cache on GPU (faster, uses more VRAM)
     kv_cache_offload = get_bool_env("KV_CACHE_OFFLOAD", True)
 
+    # Force context: bypass the run-model safety cap so context sizes
+    # from .env are honored exactly.  True = always use CHAT_CONTEXT_SIZE
+    # as-is; False = let the script auto-cap based on VRAM.
+    force_context = get_bool_env("FORCE_CONTEXT", False)
+
     # Chat template file (Jinja2) for tool-calling format.
     # Resolved relative to the project root (Path.cwd())
     # Empty string = use model's built-in template.

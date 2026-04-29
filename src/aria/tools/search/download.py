@@ -65,6 +65,8 @@ def download(
           `open_url`.
         - Do NOT use this to search the web — use `web_search` first
           to find URLs.
+        - Do NOT use this for YouTube transcripts — use
+          `get_youtube_video_transcription` instead.
 
     Why:
         Provides a persistence-first download mechanism that saves files

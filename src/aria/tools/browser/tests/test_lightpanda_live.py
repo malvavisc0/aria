@@ -69,9 +69,7 @@ async def test_navigate_returns_content(manager: LightpandaManager):
 @pytest.mark.asyncio
 async def test_sequential_navigations(manager: LightpandaManager):
     """Navigate to two pages sequentially — the second replaces the first."""
-    r1 = await manager.navigate(
-        "https://example.com", tool="open_url", reason="page 1"
-    )
+    r1 = await manager.navigate("https://example.com", tool="open_url", reason="page 1")
     p1 = json.loads(r1)
     assert p1["status"] == "success"
 
@@ -82,8 +80,7 @@ async def test_sequential_navigations(manager: LightpandaManager):
     assert p2["status"] == "success"
     assert "httpbin" in p2["data"]["url"]
     print(
-        f"\n✓ sequential: page1={p1['data']['title']}, "
-        f"page2={p2['data']['title']}"
+        f"\n✓ sequential: page1={p1['data']['title']}, " f"page2={p2['data']['title']}"
     )
 
 
@@ -102,9 +99,7 @@ async def test_concurrent_navigations_are_serialised(
     With the asyncio.Lock they run one after the other and both succeed.
     """
     results = await asyncio.gather(
-        manager.navigate(
-            "https://example.com", tool="open_url", reason="concurrent A"
-        ),
+        manager.navigate("https://example.com", tool="open_url", reason="concurrent A"),
         manager.navigate(
             "https://httpbin.org/html", tool="open_url", reason="concurrent B"
         ),
@@ -178,12 +173,8 @@ async def test_navigate_then_click(manager: LightpandaManager):
 @pytest.mark.asyncio
 async def test_get_page_content(manager: LightpandaManager):
     """Navigate, then get page content without re-navigating."""
-    await manager.navigate(
-        "https://example.com", tool="open_url", reason="setup"
-    )
-    result = await manager.get_page_content(
-        tool="get_page_content", reason="read"
-    )
+    await manager.navigate("https://example.com", tool="open_url", reason="setup")
+    result = await manager.get_page_content(tool="get_page_content", reason="read")
     assert "Example Domain" in result
     print(f"\n✓ get_page_content: {len(result)} chars")
 
@@ -205,7 +196,4 @@ async def test_navigate_invalid_url(manager: LightpandaManager):
     # Should be an error, but the manager should not crash
     assert payload["status"] == "error"
     assert manager.is_running, "Manager should still be running after error"
-    print(
-        f"\n✓ invalid URL handled gracefully: "
-        f"{payload['error']['message'][:80]}"
-    )
+    print(f"\n✓ invalid URL handled gracefully: " f"{payload['error']['message'][:80]}")
