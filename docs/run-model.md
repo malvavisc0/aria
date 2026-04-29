@@ -1,26 +1,69 @@
-# `run-model` — Hardware-Optimized llama-server Launcher
+# run-model — Hardware-Optimized llama-server Launcher
 
-**Location:** [`data/bin/run-model`](../data/bin/run-model)
-**Type:** Bash script (`#!/bin/bash`, `set -eo pipefail`)
-**Purpose:** Launch one or more `llama-server` processes with automatic hardware detection, KV cache tuning, flash attention, and multi-platform support.
+A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent hardware detection, automatic resource estimation, and GPU optimization. Designed to run on **Linux (bash 4.0+)** and **macOS (with Homebrew bash 5.0+)**.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+  - [Arguments](#arguments)
+  - [Options](#options)
+  - [Environment Variables](#environment-variables)
+- [Capabilities](#capabilities)
+  - [Hardware Detection](#hardware-detection)
+  - [Context Size Management](#context-size-management)
+  - [Resource Estimation](#resource-estimation)
+  - [Dual GPU Support](#dual-gpu-support)
+  - [Multiple Modes](#multiple-modes)
+- [Webapp / Programmatic Usage](#webapp--programmatic-usage)
+  - [JSON Output](#json-output)
+  - [Dry-Run Mode](#dry-run-mode)
+  - [PID File](#pid-file)
+- [Aria Integration](#aria-integration)
+  - [Three-Server Architecture](#three-server-architecture)
+  - [Python Integration Layer](#python-integration-layer)
+  - [Environment Variable Translation](#environment-variable-translation)
+- [Platform Support](#platform-support)
+- [Examples](#examples)
+- [Exit Codes](#exit-codes)
+- [Signal Handling](#signal-handling)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## Overview
+## Prerequisites
 
-`run-model` is the central launcher for all `llama-server` instances in Aria. It wraps `llama-server` (from [llama.cpp](https://github.com/ggml-org/llama.cpp)) with:
+| Requirement | Linux | macOS |
+|-------------|-------|-------|
+| Shell | bash 4.0+ | bash 4.0+ (may need upgrade via `brew install bash`) |
+| llama-server | In PATH or via `LLAMA_SERVER_PATH` | In PATH or via `LLAMA_SERVER_PATH` |
+| Dependencies | `nvidia-smi` (GPU), `nproc`, `awk`, `od`, `strings` | `sysctl`, `system_profiler`, `vm_stat` |
 
-- **GGUF file validation** — magic number check, size check
-- **Multi-platform support** — NVIDIA GPU, Apple Silicon (Metal), or CPU-only
-- **Automatic platform detection** — NVIDIA > Metal > CPU priority
-- **Context size management** — power-of-2 enforcement, safe-context capping
-- **Resource estimation** — KV cache size, VRAM/headroom, RAM pressure warnings
-- **Dual-GPU support** — NVLink detection, proportional tensor splitting (NVIDIA only)
-- **Two operating modes** — chat (default) and embedding
-- **Signal handling** — graceful `SIGTERM`/`SIGINT` with `SIGKILL` fallback
-- **Structured terminal output** — colored, boxed sections with key-value pairs
+> **macOS Note:** The default macOS bash is version 3.2. Install a newer version:
+> ```bash
+> brew install bash
+> # Then run with: /opt/homebrew/bin/bash data/bin/run-model ... (Apple Silicon)
+> # Or:              /usr/local/bin/bash data/bin/run-model ... (Intel)
+> ```
 
-The script is invoked by the Python layer ([`src/aria/server/llama.py`](../src/aria/server/llama.py)) via `subprocess.Popen`, but can also be run directly from the command line.
+---
+
+## Quick Start
+
+```bash
+# Basic usage — launches llama-server with your model
+./data/bin/run-model /path/to/model.gguf
+
+# With custom context size and port
+./data/bin/run-model /path/to/model.gguf 32768 --port 8081
+
+# Debug mode — shows server output and full command
+./data/bin/run-model /path/to/model.gguf --debug
+
+# Use your full context size (bypass safety cap)
+./data/bin/run-model /path/to/model.gguf 131072 --force-context
+```
 
 ---
 
@@ -32,425 +75,535 @@ The script is invoked by the Python layer ([`src/aria/server/llama.py`](../src/a
 
 ### Arguments
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `model_path` | **Yes** | Path to the GGUF model file |
-| `context_size` | No | Context window size in tokens (default: `8192`) |
+| Argument | Description | Required |
+|-----------|-------------|----------|
+| `model_path` | Path to the GGUF model file | Yes |
+| `context_size` | Context size in tokens (default: `8192`, must be power of 2 or `0` for auto) | No |
 
 ### Options
 
-| Flag | Short | Description | Default |
-|------|-------|-------------|---------|
-| `--port PORT` | `-p` | Port to run the server on | `8080` |
-| `--n-gpu-layers N` | `-l` | Number of transformer layers to offload to GPU | `999` (all) |
-| `--temp TEMP` | `-t` | Sampling temperature | `0.65` |
-| `--top-p TOP_P` | | Top-p (nucleus) sampling value | `0.95` |
-| `--mmproj PATH` | `-m` | Path to multimodal projector file (vision models) | — |
-| `--embedding` | `-e` | Run in embedding mode (deterministic, no sampling) | off |
-| `--parallel N` | | Parallel embedding requests (embedding mode only) | `4` |
-| `--debug` | `-d` | Enable verbose server output to stdout | off |
-| `--log-file FILE` | `-f` | Write server output to FILE | — |
-| `--help` | `-h` | Show usage information | — |
-
-### Examples
-
-```bash
-# Basic usage — default 8192 context
-./run-model /data/models/llama-3.1-8b-q8_0.gguf
-
-# Explicit context size
-./run-model /data/models/llama-3.1-8b-q8_0.gguf 32768
-
-# Custom port and debug output
-./run-model /data/models/llama-3.1-8b-q8_0.gguf 32768 --port 8081 --debug
-
-# Vision model with mmproj
-./run-model /data/models/llava-1.6-q5_k_m.gguf 8192 --mmproj /data/models/llava-mmproj.gguf
-
-# Embedding server
-./run-model /data/models/nomic-embed-text-q8_0.gguf 4096 --embedding --port 7072
-
-# Override via environment variables
-PORT=8080 DEBUG=1 FLASH_ATTN=0 ./run-model /data/models/model.gguf 16384
-```
+| Short | Long | Description |
+|-------|------|-------------|
+| `-p` | `--port PORT` | Port to run the server on (default: `8080`) |
+| `-l` | `--n-gpu-layers N` | Number of model layers to offload to GPU (default: `999`, use `0` for CPU-only) |
+| `-t` | `--temp TEMP` | Temperature for text generation (default: `0.65`) |
+| — | `--top-p TOP_P` | Top-p sampling value (default: `0.95`) |
+| `-m` | `--mmproj PATH` | Path to mmproj file for vision (multimodal) models |
+| `-e` | `--embedding` | Run in embedding mode (deterministic, no sampling) |
+| — | `--parallel N` | Number of parallel embedding requests (default: `4`, embedding mode only) |
+| — | `--slots N` | Number of parallel slots for chat mode (default: `1`). Set >1 for concurrent requests |
+| — | `--chat-template-file F` | Jinja2 chat template file for tool-calling models |
+| — | `--force-context` | Bypass the safety cap on context size — use the exact value you specify |
+| — | `--json` | Output structured JSON on stdout (for webapps and scripts) |
+| — | `--dry-run` | Validate, compute, and show the command without launching the server |
+| — | `--pid-file FILE` | Write the server PID to FILE after launch |
+| `-d` | `--debug` | Enable debug output (shows server logs in terminal) |
+| `-f` | `--log-file FILE` | Log server output to a file instead of terminal |
+| `-h` | `--help` | Show help message and exit |
 
 ---
 
 ## Environment Variables
 
-All options can be set via environment variables. CLI flags take precedence over env vars.
+All options can be set via environment variables, enabling headless/automated usage:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | Server port |
-| `N_GPU_LAYERS` | `999` (NVIDIA) / `99` (Metal) / `0` (CPU) | GPU layers to offload |
-| `PLATFORM` | _(auto-detect)_ | Force platform: `nvidia`, `metal`, or `cpu` |
-| `DEBUG` | `0` | Enable debug output (`1`/`0`) |
-| `STRICT_POWER_OF_2` | `1` | Enforce power-of-2 context sizes (`1`/`0`) |
-| `LOG_FILE` | _(empty)_ | Path to log file |
-| `KV_CACHE_TYPE_K` | `q8_0` | KV cache quantization for keys |
-| `KV_CACHE_TYPE_V` | `q8_0` | KV cache quantization for values |
-| `TEMP` | `0.65` | Sampling temperature |
-| `TOP_P` | `0.95` | Top-p sampling value |
-| `FLASH_ATTN` | `1` | Enable flash attention (`1`/`0`) |
-| `NO_MMAP` | `--no-mmap` | Disable memory mapping (set to `""` to enable mmap) |
-| `MLOCK` | `--mlock` | Lock model in RAM (set to `""` to disable) |
-| `CONT_BATCHING` | `--cont-batching` | Enable continuous batching (set to `""` to disable) |
-| `NO_KV_OFFLOAD` | `--no-kv-offload` | Keep KV cache in RAM, not VRAM (set to `""` to offload to VRAM) |
-| `LLAMA_SERVER_PATH` | `llama-server` | Path to the `llama-server` binary |
-| `MMPROJ_PATH` | _(empty)_ | Path to mmproj file (vision models) |
-| `EMBEDDING_MODE` | `0` | Run in embedding mode (`1`/`0`) |
+| `N_GPU_LAYERS` | `999` | GPU offload layers (`0` = CPU-only) |
+| `PLATFORM` | (auto-detect) | Force platform: `nvidia`, `metal`, or `cpu` |
+| `DEBUG` | `0` | Enable debug mode (`1` or `0`) |
+| `LOG_FILE` | (none) | Path to log file |
+| `KV_CACHE_TYPE_K` | `q8_0` | KV cache quantization type for keys |
+| `KV_CACHE_TYPE_V` | `q8_0` | KV cache quantization type for values |
+| `TEMP` | `0.65` | Generation temperature |
+| `TOP_P` | `0.95` | Top-p sampling |
+| `FLASH_ATTN` | `1` | Enable flash attention (`1` or `0`) |
+| `NO_MMAP` | `--no-mmap` | Disable memory mapping (set empty to enable mmap) |
+| `MLOCK` | `--mlock` | Enable memory locking (set empty to disable) |
+| `CONT_BATCHING` | `--cont-batching` | Enable continuous batching (set empty to disable) |
+| `NO_KV_OFFLOAD` | `--no-kv-offload` | Keep KV cache in RAM instead of GPU (set empty to keep on GPU) |
+| `LLAMA_SERVER_PATH` | `llama-server` | Path to llama-server binary |
+| `MMPROJ_PATH` | (none) | Path to mmproj file for vision models |
+| `EMBEDDING_MODE` | `0` | Embedding mode (`1` or `0`) |
 | `EMBEDDING_PARALLEL` | `4` | Parallel embedding requests |
+| `CHAT_PARALLEL` | `1` | Parallel slots for chat mode (concurrent requests) |
+| `CHAT_TEMPLATE_FILE` | (none) | Path to Jinja2 chat template file |
+| `STRICT_POWER_OF_2` | `1` | Enforce power-of-2 context sizes (`1` or `0`) |
+| `FORCE_CONTEXT` | `0` | Bypass safety cap on context size (`1` or `0`) |
+| `JSON_OUTPUT` | `0` | Output structured JSON on stdout (`1` or `0`) |
+| `DRY_RUN` | `0` | Show command without launching (`1` or `0`) |
+| `PID_FILE_PATH` | (none) | Write server PID to this file |
 
-> **Note on flag-style variables:** `NO_MMAP`, `MLOCK`, `CONT_BATCHING`, and `NO_KV_OFFLOAD` hold the actual CLI flag string. To disable a feature, set the variable to an empty string (e.g. `NO_MMAP=""`). Setting to `0` or `false` will NOT disable them — the string `"0"` would be passed as a flag to `llama-server`.
+### Example with environment variables
 
----
-
-## Execution Flow
-
-```
-main()
-  ├── parse_args()          Parse CLI arguments
-  ├── print_banner()        Display ASCII art header
-  ├── validate_inputs()
-  │     ├── validate_gguf_file()    Check file exists, size > 1MB, GGUF magic number
-  │     ├── validate_context_size() Check non-negative integer, power-of-2 warning
-  │     └── validate_port()         Check range 1–65535, check if port in use
-  ├── detect_hardware()
-  │     ├── detect_compute_platform()  Auto-detect: NVIDIA > Metal > CPU
-  │     ├── detect_nvidia_gpu()        Query nvidia-smi for GPU count and VRAM
-  │     ├── detect_metal_gpu()         Detect Apple Silicon unified memory
-  │     └── detect_cpu_only()          Fallback for systems without GPU
-  ├── detect_system_ram()   Read total and available system RAM
-  ├── calculate_max_safe_ctx()  Compute safe context cap (platform-aware)
-  ├── extract_model_metadata()  Read GGUF header for architecture/quantization
-  ├── get_performance_tips()    Print platform-specific recommendations
-  ├── build_command()
-  │     ├── Cap context to MAX_SAFE_CTX if needed
-  │     ├── configure_dual_gpu()   NVLink detection, tensor split (NVIDIA only)
-  │     ├── estimate_kv_cache_mb() Estimate KV cache RAM usage
-  │     └── Assemble CMD_ARRAY
-  └── launch_server()
-        ├── init_logging()    Write startup info to LOG_FILE
-        ├── Launch llama-server in background
-        ├── Print "Server is running!" banner
-        └── wait $SERVER_PID  (blocks until server exits)
+```bash
+PORT=8080 DEBUG=1 N_GPU_LAYERS=35 ./data/bin/run-model /path/to/model.gguf 16384
 ```
 
 ---
 
-## Startup Sequence Detail
+## Capabilities
 
-### 1. GGUF Validation
+### Hardware Detection
 
-Before any hardware queries, the script validates the model file:
+The script automatically detects your compute platform and optimizes accordingly:
 
-1. **File existence** — `[[ -f "$model_path" ]]`
-2. **Minimum size** — file must be > 1 MB (rejects symlinks to nothing, empty files)
-3. **Magic number** — first 4 bytes must be `47 47 55 46` (`GGUF` in ASCII)
+1. **NVIDIA GPU** — Queries `nvidia-smi` for GPU count, VRAM, free memory, and NVLink topology
+2. **Apple Metal** — Detects Apple Silicon via `sysctl` and `uname -m`, uses unified memory architecture
+3. **CPU-only** — Falls back to CPU inference with automatic layer offloading disabled
+
+#### Platform Override
+
+Force a specific platform for testing:
+```bash
+PLATFORM=cpu ./data/bin/run-model /path/to/model.gguf    # Force CPU mode
+PLATFORM=metal ./data/bin/run-model /path/to/model.gguf  # Force Metal mode
+```
+
+### Context Size Management
+
+The script calculates a **safe maximum context size** based on available memory:
+
+| Available Memory | Safe Max Context |
+|-----------------|-----------------|
+| ≤ 8 GB | 8,192 tokens |
+| ≤ 12 GB | 16,384 tokens |
+| ≤ 16 GB | 32,768 tokens |
+| ≤ 24 GB | 65,536 tokens |
+| ≤ 32 GB | 262,144 tokens |
+| ≤ 48 GB | 524,288 tokens |
+| ≤ 96 GB | 1,048,576 tokens |
+| > 96 GB | 2,097,152 tokens |
+
+If you request a context size exceeding the safe limit, the script will **by default**:
+- Warn you about the overflow
+- Show suggested alternatives with estimated KV cache sizes
+- Automatically cap to the safe maximum
+
+#### Bypassing the safety cap
+
+If you know your hardware can handle it (e.g., you're using `--no-kv-offload=""` to keep KV cache on GPU, or using aggressive KV quantization), use `--force-context`:
 
 ```bash
-magic=$(head -c 4 "$model_path" | od -An -tx1 | tr -d ' \n')
-# Expected: "47475546"
+# Honor the exact 131072 context size from your .env
+./data/bin/run-model model.gguf 131072 --force-context
+
+# Or via environment variable
+FORCE_CONTEXT=1 ./data/bin/run-model model.gguf 131072
 ```
 
-### 2. Platform Detection
+The safety calculation is purely VRAM-size-based and does **not** account for:
+- Actual model file size (a 5 GB model has much more headroom than a 18 GB model)
+- KV cache quantization type (q4_0 uses ¼ the cache of f16)
+- Whether `--no-kv-offload` pushes KV cache to RAM
+- Actual free VRAM at launch time
 
-The script automatically detects the compute platform with priority: **NVIDIA > Metal > CPU**.
+For this reason, `--force-context` is recommended when you've profiled your specific model + hardware combination.
 
-#### NVIDIA Detection
+> **Tip:** Context sizes should be powers of 2 for optimal performance. Set `STRICT_POWER_OF_2=0` to allow non-power-of-2 values.
 
-Checks for `nvidia-smi` and queries GPU information:
+### Resource Estimation
 
-```bash
-GPU_COUNT=$(nvidia-smi -L | grep -c "GPU")
-TOTAL_VRAM_MB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | awk '{sum += $1} END {print sum}')
-```
+The script estimates and displays:
 
-#### Metal Detection (Apple Silicon)
+- **Model → VRAM:** Estimated VRAM usage (approximately equals model file size when fully offloaded)
+- **KV Cache → RAM/VRAM:** Estimated KV cache memory based on context size, model size, and quantization type
+- **System RAM:** Total and available system memory
+- **VRAM pressure:** Warnings when the model exceeds free VRAM (triggers partial offloading)
 
-Checks if running on macOS with Apple Silicon:
+#### KV Cache Estimation Formula
 
-```bash
-# Check for Apple CPU brand string or arm64 architecture
-cpu_brand=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
-if [[ "$cpu_brand" == *"Apple"* ]] || [[ "$(uname -m)" == "arm64" ]]; then
-    PLATFORM="metal"
-fi
-```
-
-On Metal, unified memory means system RAM is used as VRAM equivalent.
-
-#### CPU-Only Fallback
-
-If no GPU is detected, the script falls back to CPU-only mode:
-
-```bash
-PLATFORM="cpu"
-N_GPU_LAYERS=0  # No GPU offloading
-```
-
-### 3. Safe Context Calculation
-
-`calculate_max_safe_ctx()` maps available memory to a conservative maximum context size, with platform-specific adjustments:
-
-| Platform | Memory Used for Calculation |
-|----------|----------------------------|
-| NVIDIA | 100% of VRAM |
-| Metal | 70% of unified memory |
-| CPU | 50% of available RAM |
-
-| Memory | Max Safe Context |
-|--------|-----------------|
-| ≤ 8 GB | 8,192 |
-| ≤ 12 GB | 16,384 |
-| ≤ 16 GB | 32,768 |
-| ≤ 24 GB | 65,536 |
-| ≤ 32 GB | 262,144 |
-| ≤ 48 GB | 524,288 |
-| ≤ 96 GB | 1,048,576 |
-| > 96 GB | 2,097,152 |
-
-If the requested context exceeds `MAX_SAFE_CTX`, it is **capped** and alternatives are displayed with estimated KV cache sizes.
-
-### 4. KV Cache Estimation
-
-`estimate_kv_cache_mb()` uses an empirical formula to estimate KV cache RAM:
+KV cache size is estimated using an empirical formula calibrated against real models:
 
 ```
-kv_cache_MB ≈ ctx_tokens × model_GB × kv_mult × 0.01
+kv_cache_MB = ctx_tokens × model_GB × kv_quant_multiplier × 0.01
 ```
 
-Where `kv_mult` depends on quantization:
+Where `kv_quant_multiplier` depends on the cache type:
 
 | KV Type | Multiplier |
 |---------|-----------|
-| `f16` / `fp16` | 1.0 |
-| `q8_0` (default) | 0.5 |
-| `q5_0` / `q5_1` / `q5_k` | 0.35 |
-| `q4_0` / `q4_1` / `q4_k` | 0.25 |
+| f16 / fp16 | 1.0 |
+| q8_0 | 0.5 |
+| q5_0 / q5_1 / q5_k | 0.35 |
+| q4_0 / q4_1 / q4_k | 0.25 |
 
-**Calibration examples:**
-- 8B Q8_0 (~8 GB file), 128K ctx → ~4 GB KV cache
-- 24B Q8_0 (~25 GB file), 262K ctx → ~32 GB KV cache
-- 70B Q8_0 (~70 GB file), 32K ctx → ~10 GB KV cache
+### Dual GPU Support
 
-### 5. Dual-GPU Configuration (NVIDIA Only)
+For systems with **2 NVIDIA GPUs**, the script:
 
-When exactly 2 NVIDIA GPUs are detected, `configure_dual_gpu()` checks for NVLink:
+1. Detects NVLink connectivity via `nvidia-smi topo -m`
+2. Queries free memory on each GPU
+3. Calculates **proportional tensor split ratios** based on available VRAM
+4. Configures row-split parallelism for NVLink or layer-split otherwise
 
-```bash
-nvidia-smi topo -m | grep -q "NV"
+Example output:
+```
+  ⚡  NVLink detected (NV01) — row-split tensor parallelism
+     Tensor split: GPU0=0.6250  GPU1=0.3750
 ```
 
-**With NVLink:** Uses `--split-mode row` (tensor parallelism) with proportional `--tensor-split` based on free VRAM on each GPU:
+> For >2 GPUs, the script uses llama.cpp's default multi-GPU splitting.
+
+### Multiple Modes
+
+#### Chat Mode (default)
+
+Text generation with sampling parameters. **By default, chat mode uses 1 parallel slot** (single concurrent request). Use `--slots N` for multi-user serving:
 
 ```bash
-ratio0 = free_vram_gpu0 / (free_vram_gpu0 + free_vram_gpu1)
-ratio1 = free_vram_gpu1 / (free_vram_gpu0 + free_vram_gpu1)
+# Single user (default)
+./data/bin/run-model model.gguf --temp 0.7 --top-p 0.9
+
+# Multi-user: 4 concurrent requests
+./data/bin/run-model model.gguf --slots 4 --temp 0.7
 ```
 
-**Without NVLink:** Uses `--split-mode layer` (layer parallelism, no tensor split).
+#### Embedding Mode
+Deterministic embedding generation with parallel processing:
+```bash
+./data/bin/run-model embeddings.gguf --embedding --parallel 8 --port 7072
+```
 
-**For 1 GPU or >2 GPUs:** No split mode is set; `llama-server` handles distribution automatically.
+#### Vision Mode
+For multimodal models with vision capabilities:
+```bash
+./data/bin/run-model llava-model.gguf --mmproj mmproj-model.q8_0.gguf
+```
 
-**Note:** Dual-GPU configuration is NVIDIA-only. Metal and CPU platforms skip this step entirely.
+#### Tool-Calling Mode
+For models using custom chat templates:
+```bash
+./data/bin/run-model tool-model.gguf --chat-template-file templates/llama-3.1-tools.jinja
+```
 
 ---
 
-## Operating Modes
+## Webapp / Programmatic Usage
 
-### Chat Mode (default)
+The script is designed to be callable from webapps and automation scripts. All diagnostic output goes to **stderr**, leaving stdout clean for structured data.
 
-Standard inference mode with sampling. Adds these flags to `llama-server`:
+### JSON Output
 
-```
---temp <TEMP>
---top-p <TOP_P>
---cont-batching          (continuous batching for throughput)
---cache-type-k <K_TYPE>
---cache-type-v <V_TYPE>
---metrics                (Prometheus metrics endpoint)
---host 0.0.0.0
---port <PORT>
---no-kv-offload          (KV cache stays in RAM, not VRAM)
-[--mmproj <PATH>]        (only if MMPROJ_PATH is set)
+Use `--json` to get a structured JSON object on **stdout** after launch:
+
+```bash
+./data/bin/run-model model.gguf 131072 --force-context --json 2>/dev/null
 ```
 
-### Embedding Mode (`--embedding` / `EMBEDDING_MODE=1`)
-
-Deterministic mode for generating text embeddings. Sampling parameters (`--temp`, `--top-p`) are omitted. Adds:
-
+Output:
+```json
+{
+  "pid": 12345,
+  "port": 8080,
+  "model": "/path/to/model.gguf",
+  "platform": "nvidia",
+  "context_size": 131072,
+  "context_requested": 131072,
+  "context_capped": false,
+  "force_context": true,
+  "max_safe_context": 65536,
+  "vram_mb": 24576,
+  "ram_total_mb": 65536,
+  "ram_available_mb": 48000,
+  "gpu_count": 1,
+  "gpu_layers": 999,
+  "flash_attn": true,
+  "embedding_mode": false,
+  "chat_parallel": 1,
+  "kv_cache_type_k": "q8_0",
+  "kv_cache_type_v": "q8_0",
+  "command": "llama-server --model /path/to/model.gguf ..."
+}
 ```
---embedding
---parallel <N>           (concurrent embedding requests)
---cache-type-k <K_TYPE>
---cache-type-v <V_TYPE>
---host 0.0.0.0
---port <PORT>
+
+### Dry-Run Mode
+
+Validate configuration and see the computed command without actually launching:
+
+```bash
+./data/bin/run-model model.gguf 32768 --dry-run
+# Shows full command, resource estimates, then exits
+
+# Combine with --json for programmatic validation
+./data/bin/run-model model.gguf 32768 --dry-run --json 2>/dev/null
+# JSON output has "pid": null in dry-run mode
 ```
 
-Note: `--no-kv-offload`, `--cont-batching`, and `--metrics` are **not** added in embedding mode.
+### PID File
+
+Write the server PID to a file for external process management:
+
+```bash
+./data/bin/run-model model.gguf --pid-file /var/run/aria/llama.pid
+# External script can: kill $(cat /var/run/aria/llama.pid)
+```
 
 ---
 
-## Common Flags Passed in Both Modes
+## Aria Integration
 
+### Three-Server Architecture
+
+Aria uses `run-model` to launch three llama-server instances:
+
+| Server | Role | Default Port | Context Source |
+|--------|------|-------------|---------------|
+| **Chat** | Main LLM inference | `CHAT_OPENAI_API` port | `CHAT_CONTEXT_SIZE` |
+| **Vision/Language** | VL model for images/PDFs | `VL_OPENAI_API` port | `VL_CONTEXT_SIZE` |
+| **Embeddings** | Vector embeddings | `EMBEDDINGS_API_URL` port | `EMBEDDINGS_CONTEXT_SIZE` |
+
+### Python Integration Layer
+
+The `LlamaCppServerManager` class in `src/aria/server/llama.py` orchestrates all three servers:
+
+```python
+from aria.server.llama import LlamaCppServerManager
+
+manager = LlamaCppServerManager()
+manager.start_all()   # starts all three, waits for /health
+# ... run Chainlit ...
+manager.stop_all()    # graceful shutdown
 ```
-<llama-server-binary>
---model <MODEL_PATH>
---n-gpu-layers <N>
---ctx-size <N_CTX>
-[--split-mode row|layer]     (dual GPU only)
-[--tensor-split R0,R1]       (NVLink dual GPU only)
-[--flash-attn]               (when FLASH_ATTN=1)
-[--no-mmap]                  (when NO_MMAP is set)
-[--mlock]                    (when MLOCK is set)
---threads <cpu_count>        (logical CPU count, cross-platform)
+
+The Python layer:
+1. Reads context sizes from `.env` via `LlamaCppConfig` (`CHAT_CONTEXT_SIZE`, `VL_CONTEXT_SIZE`, `EMBEDDINGS_CONTEXT_SIZE`)
+2. Resolves model file paths from the configured models directory
+3. Builds the `run-model` command with appropriate flags
+4. Sets `LLAMA_SERVER_PATH` to the bundled llama-server binary
+5. Sets `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` for shared libraries
+6. Polls `/health` on each server until ready (120s timeout)
+7. Persists PIDs to `data/llama_servers.json`
+
+### Environment Variable Translation
+
+Some Aria `.env` variables are translated before reaching `run-model`:
+
+| `.env` Variable | Python Translation | `run-model` Receives |
+|----------------|-------------------|---------------------|
+| `KV_CACHE_OFFLOAD=true` | `NO_KV_OFFLOAD="--no-kv-offload"` | KV cache in RAM |
+| `KV_CACHE_OFFLOAD=false` | `NO_KV_OFFLOAD=""` | KV cache on GPU |
+| `CHAT_TEMPLATE_FILE=path` | Passed as `--chat-template-file` to chat server only | Only chat server gets it |
+
+> **Important:** `CHAT_TEMPLATE_FILE` is stripped from the environment by the Python layer to prevent it from leaking to VL or embedding servers. If you run `run-model` standalone with `CHAT_TEMPLATE_FILE` set in your environment, it will be applied to all modes.
+
+---
+
+## Platform Support
+
+| Platform | GPU Detection | Features |
+|----------|--------------|----------|
+| **Linux + NVIDIA** | `nvidia-smi` | Full: multi-GPU, NVLink, VRAM monitoring, tensor splitting |
+| **macOS (Apple Silicon)** | `sysctl` + `system_profiler` | Full: Metal acceleration, unified memory, 99 default GPU layers |
+| **Linux CPU-only** | — | Full: auto thread detection, RAM-based context sizing |
+| **macOS (Intel)** | — | Falls back to CPU-only mode |
+
+---
+
+## Examples
+
+### Basic Usage
+
+```bash
+# Launch with defaults (8192 context, port 8080, all GPU layers)
+./data/bin/run-model ~/models/llama-3.1-8b.q4_k_m.gguf
+
+# Specify context size
+./data/bin/run-model ~/models/llama-3.1-8b.q4_k_m.gguf 32768
+
+# Debug mode with custom port
+./data/bin/run-model ~/models/llama-3.1-8b.q4_k_m.gguf --debug --port 3000
 ```
+
+### Honoring Your .env Context Size
+
+```bash
+# Your .env says CHAT_CONTEXT_SIZE=131072, but the safety cap
+# would reduce it to 65536 on a 24GB GPU. Use --force-context:
+./data/bin/run-model model.gguf 131072 --force-context
+
+# Or from the Python layer, set FORCE_CONTEXT=1 in the environment
+```
+
+### GPU Optimization
+
+```bash
+# Force all layers to GPU (default)
+./data/bin/run-model model.gguf -l 999
+
+# Partial offload (e.g., for large models that don't fit)
+./data/bin/run-model model.gguf -l 40
+
+# CPU-only mode
+./data/bin/run-model model.gguf -l 0
+```
+
+### Multi-User Chat
+
+```bash
+# 4 parallel slots for concurrent requests (webapp scenario)
+./data/bin/run-model model.gguf --slots 4 --port 8080
+
+# Or via environment variable
+CHAT_PARALLEL=4 ./data/bin/run-model model.gguf
+```
+
+### Multi-GPU Setup
+
+```bash
+# Automatic tensor splitting (2 GPUs with NVLink)
+./data/bin/run-model large-model.gguf
+
+# Custom llama-server path
+LLAMA_SERVER_PATH=/opt/llama.cpp/build/bin/llama-server \
+  ./data/bin/run-model model.gguf
+```
+
+### Embedding Mode
+
+```bash
+# Run in embedding mode with 8 parallel requests
+./data/bin/run-model all-minilm.gguf --embedding --parallel 8 --port 7072
+```
+
+### Production / Logging
+
+```bash
+# Log to file instead of terminal
+./data/bin/run-model model.gguf -f /var/log/aria/llama-server.log
+
+# Continuous batching with metrics (default in chat mode)
+./data/bin/run-model model.gguf --port 8080 --temp 0.5
+```
+
+### Webapp Automation
+
+```bash
+# Validate configuration without launching (dry-run + JSON)
+./data/bin/run-model model.gguf 131072 --force-context --dry-run --json 2>/dev/null
+
+# Launch with JSON output and PID file for process management
+./data/bin/run-model model.gguf 131072 --force-context \
+  --json --pid-file /var/run/llama.pid \
+  -f /var/log/llama.log 2>/dev/null
+```
+
+### macOS Homebrew bash
+
+```bash
+# Install newer bash
+brew install bash
+
+# Run with Homebrew bash
+/opt/homebrew/bin/bash data/bin/run-model ~/models/model.gguf
+
+# Or add to your PATH in ~/.zshrc
+echo 'export PATH="/opt/homebrew/bin:$PATH"' >> ~/.zshrc
+```
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success (server ran and exited, or dry-run completed) |
+| `1` | Validation error (invalid model, port, context, missing binary, etc.) |
+| `130` | Received SIGINT (Ctrl+C) |
+| `143` | Received SIGTERM |
 
 ---
 
 ## Signal Handling
 
-The script registers three signal handlers:
+The script handles graceful shutdown on signals:
 
-| Signal | Handler |
-|--------|---------|
-| `EXIT` | `cleanup()` — sends `SIGTERM` to server, waits 2s, then `SIGKILL` if needed |
-| `SIGINT` (Ctrl+C) | Logs "Received SIGINT", exits with code 130 (triggering `EXIT` trap) |
-| `SIGTERM` | Logs "Received SIGTERM", exits with code 143 (triggering `EXIT` trap) |
-
-The `cleanup()` function is idempotent — it checks `kill -0 $SERVER_PID` before sending signals, so it is safe to call even if the server has already exited.
-
----
-
-## Python Integration
-
-The script is invoked by [`src/aria/server/llama.py`](../src/aria/server/llama.py) via `LlamaCppServerManager`:
-
-```python
-RUN_MODEL_SCRIPT = DataConfig.path / "bin" / "run-model"
-
-cmd = [
-    str(self.RUN_MODEL_SCRIPT),
-    str(model_path),
-    str(context_size),
-    "--port", str(port),
-    # optionally: "--embedding", "--parallel", "4"
-    # optionally: "--mmproj", str(mmproj_path)
-]
-
-env = os.environ.copy()
-env["LLAMA_SERVER_PATH"] = str(LlamaCppConfig.bin_path / "llama-server")
-
-proc = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-```
-
-The manager then polls `http://<host>:<port>/health` every 0.5 seconds for up to 120 seconds to confirm the server is ready. If `run-model` exits within the first 2 seconds (indicating a validation failure), the manager reads stderr and raises a `RuntimeError` with the actual error message.
-
-### Ports used by default
-
-| Role | Port |
-|------|------|
-| Chat server | 7070 |
-| Vision/Language server | 7071 |
-| Embeddings server | 7072 |
-
----
-
-## Context Size Guidelines
-
-Context size should ideally be a power of 2 for optimal memory alignment. The script enforces this by default (`STRICT_POWER_OF_2=1`). To allow non-power-of-2 values:
-
-```bash
-STRICT_POWER_OF_2=0 ./run-model /path/to/model.gguf 12000
-```
-
-Common context sizes and their use cases:
-
-| Context | Use Case |
-|---------|----------|
-| `4096` | Minimal, fast, low VRAM |
-| `8192` | Default, good for most tasks |
-| `16384` | Extended conversations |
-| `32768` | Long documents, code analysis |
-| `65536` | Very long context (requires ≥24 GB VRAM) |
-| `131072` | 128K context (requires ≥32 GB VRAM) |
-
----
-
-## KV Cache Quantization
-
-The KV cache quantization type controls the memory/quality tradeoff for the attention cache:
-
-| Type | Memory | Quality | Recommended For |
-|------|--------|---------|-----------------|
-| `f16` | 2× baseline | Best | High-VRAM systems, quality-critical |
-| `q8_0` | 1× baseline (default) | Excellent | General use |
-| `q5_k` | 0.7× baseline | Very good | Memory-constrained |
-| `q4_k` | 0.5× baseline | Good | Low VRAM |
-
-Set via environment variables:
-```bash
-KV_CACHE_TYPE_K=q4_k KV_CACHE_TYPE_V=q4_k ./run-model /path/to/model.gguf 65536
-```
+| Signal | Trigger | Behavior |
+|--------|---------|----------|
+| `SIGINT` | Ctrl+C | Calls `exit 130`, which triggers cleanup |
+| `SIGTERM` | `kill <PID>` | Calls `exit 143`, which triggers cleanup |
+| `EXIT` | Any exit | Sends SIGTERM to llama-server, waits 2 seconds, then SIGKILL if still running |
 
 ---
 
 ## Troubleshooting
 
-### `nvidia-smi not found`
-If you have an NVIDIA GPU, install the NVIDIA drivers. If you're on Apple Silicon or a system without NVIDIA GPU, the script will automatically fall back to Metal or CPU mode.
+### "llama-server not found"
 
-### Running on Apple Silicon (Metal)
-The script automatically detects Apple Silicon and uses Metal GPU acceleration. No additional configuration is needed. Note that:
-- Unified memory means GPU and CPU share the same RAM
-- Default `N_GPU_LAYERS` is 99 (vs 999 for NVIDIA)
-- Flash attention works on Metal
+Ensure llama-server is in your PATH or specify its location:
 
-### Running in CPU-only mode
-If no GPU is detected, the script runs in CPU-only mode:
-- `N_GPU_LAYERS` is forced to 0
-- Inference will be significantly slower than GPU
-- Consider using smaller models and Q4_K_M quantization
-
-### `Port N is already in use`
-Another process is listening on the port. Either stop it or use a different port:
 ```bash
-./run-model /path/to/model.gguf --port 8081
+LLAMA_SERVER_PATH=/path/to/llama-server ./data/bin/run-model model.gguf
 ```
 
-### `Invalid GGUF file (missing GGUF magic number)`
-The file is not a valid GGUF model. Check that the download completed successfully. GGUF files start with the bytes `47 47 55 46`.
+### "Context size exceeds safe limit"
 
-### `llama-server not found at: ...`
-The `LLAMA_SERVER_PATH` environment variable points to a non-existent or non-executable binary. Run `aria llamacpp install` to install the binaries, or set `LLAMA_SERVER_PATH` to the correct path.
+The script caps the context to prevent OOM. Options:
+- Accept the capped value (shown in output)
+- Use `--force-context` to bypass the cap (when you know your hardware can handle it)
+- Reduce the requested context size
+- Free up memory before running
 
-### `failed to mlock` warnings in server output
-The OS limits how much memory can be locked. Increase the limit:
+### "Model exceeds free VRAM"
+
+The model will be partially offloaded to RAM (slower inference). Options:
+- Use a smaller quantization (Q4_K_M instead of Q8_0)
+- Reduce `--n-gpu-layers` to control offloading
+- Reduce context size to free VRAM for KV cache
+
+### "Port already in use"
+
+Choose a different port:
+
+```bash
+./data/bin/run-model model.gguf --port 8081
+```
+
+### macOS bash version too old
+
+```bash
+brew install bash
+# Run with the Homebrew version:
+/opt/homebrew/bin/bash data/bin/run-model model.gguf
+```
+
+### GGUF validation fails
+
+The file may not be a valid GGUF model:
+- Verify the file is complete (re-download if necessary)
+- Check that it's actually a GGUF file (not a safetensors or PyTorch checkpoint)
+
+### 'failed to mlock' warnings
+
+Increase locked memory limit:
+
 ```bash
 ulimit -l unlimited
-./run-model /path/to/model.gguf
 ```
 
-### Context capped unexpectedly
-The requested context exceeds the safe limit for your VRAM. The script will display alternatives. To override the cap (at your own risk):
+Or add to `/etc/security/limits.conf`:
+```
+* hard memlock unlimited
+* soft memlock unlimited
+```
+
+### Chat mode only handles one request at a time
+
+By default, chat mode uses `--parallel 1` (single slot). To serve multiple concurrent users:
+
 ```bash
-# The cap is based on TOTAL_VRAM_MB; you cannot disable it directly,
-# but you can reduce N_GPU_LAYERS to free VRAM for the KV cache:
-N_GPU_LAYERS=32 ./run-model /path/to/model.gguf 131072
+./data/bin/run-model model.gguf --slots 4
 ```
-
-### Server exits immediately (when launched via Python)
-Check the `RuntimeError` message from `LlamaCppServerManager` — it will include the stderr output from `run-model`, which contains the specific validation error (e.g. model file not found, port in use).
 
 ---
 
-## Architecture Notes
+## File Locations
 
-- The script uses `set -euo pipefail` — any unhandled error causes immediate exit, which triggers the `EXIT` trap and graceful server shutdown.
-- All user-facing output goes to **stderr** (`>&2`). Stdout is reserved for the server process itself (or redirected to `/dev/null` / a log file).
-- The `CMD_ARRAY` pattern (bash array) is used for command construction to avoid word-splitting issues with paths containing spaces.
-- Color output is automatically disabled when stderr is not a TTY (`[[ -t 2 ]]`), making the script safe for log capture.
-- The `clear` call at startup is guarded with `[[ -t 1 ]]` to avoid clearing the terminal when launched non-interactively.
+| Item | Path |
+|------|------|
+| Script | `data/bin/run-model` |
+| Documentation | `docs/run-model.md` |
+| Default log location | `/var/log/aria/` (when using `--log-file`) |
+| Server API | `http://0.0.0.0:<PORT>/v1/chat/completions` |
+| PID state (Python) | `data/llama_servers.json` |

@@ -1,5 +1,33 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# -----------------------------------------------------------------------------
+# Cross-shell compatibility: This script requires bash (not sh). It is designed
+# to run on:
+#   - Linux: /bin/bash (bash 4.0+)
+#   - macOS: /bin/bash or /usr/local/bin/bash (Homebrew bash 5.0+)
+#   - Run with: bash run-model ...  or  ./run-model ...
+#
+# Note for zsh users: While most constructs work in zsh, this script uses bash-
+# specific features and should be run with bash explicitly if your system has
+# an older bash version (e.g., macOS default bash 3.2).
+# -----------------------------------------------------------------------------
 set -eo pipefail
+
+# Require bash 4.0+ for consistent behavior across platforms
+# macOS ships with bash 3.2 by default — prefer /usr/local/bin/bash or /opt/homebrew/bin/bash
+if [[ -z "${BASH_VERSION:-}" ]]; then
+	echo "Error: This script requires bash 4.0+. Your shell does not appear to be bash." >&2
+	echo "Usage: bash \"$0\" <model_path> [options]" >&2
+	exit 1
+fi
+
+# Check for bash 4.0+ (needed for reliable associative arrays and some features)
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+	echo "Error: This script requires bash 4.0+. Found bash ${BASH_VERSION}." >&2
+	echo "On macOS, install a newer bash with:" >&2
+	echo "  brew install bash" >&2
+	echo "Then run with: /usr/local/bin/bash $0  (Intel) or /opt/homebrew/bin/bash $0 (Apple Silicon)" >&2
+	exit 1
+fi
 
 # =============================================================================
 # run-model - Launch llama-server with GPU optimization
@@ -17,7 +45,14 @@ set -eo pipefail
 #   -t, --temp TEMP         Temperature for generation (default: 0.65)
 #   --top-p TOP_P           Top-p sampling value (default: 0.95)
 #   -m, --mmproj PATH       Path to mmproj file for vision models
+#   -e, --embedding         Run in embedding mode (deterministic, no sampling)
+#   --parallel N            Parallel embedding requests (default: 4, embedding only)
+#   --slots N               Parallel slots for chat mode (default: 1)
 #   --chat-template-file F  Jinja2 chat template file for tool-calling format
+#   --force-context         Bypass safety cap on context size
+#   --json                  Output structured JSON on stdout (programmatic use)
+#   --dry-run               Show computed command without launching
+#   --pid-file FILE         Write server PID to FILE
 #   -d, --debug             Enable debug output
 #   -f, --log-file FILE     Log output to FILE (server logs in non-debug mode)
 #   -h, --help              Show this help message
@@ -38,18 +73,34 @@ set -eo pipefail
 #   NO_KV_OFFLOAD           KV offload flag: "--no-kv-offload" = KV cache in RAM,
 #                           empty string "" = KV cache on GPU (default: --no-kv-offload)
 #   LLAMA_SERVER_PATH       Path to llama-server binary (default: llama-server)
+#   FORCE_CONTEXT           Bypass safety cap on context (1/0, default: 0)
+#   CHAT_PARALLEL           Parallel slots for chat mode (default: 1)
+#   JSON_OUTPUT             Structured JSON output (1/0, default: 0)
+#   DRY_RUN                 Show command without launching (1/0, default: 0)
+#   PID_FILE_PATH           Write server PID to this file
+#   MMPROJ_PATH             Path to mmproj file for vision models
 #
 # Examples:
 #   ./run-model /path/to/model.gguf              (uses default context size 8192)
 #   ./run-model /path/to/model.gguf 8192
 #   ./run-model /path/to/model.gguf 32768 --port 8081 --debug
 #   PORT=8080 DEBUG=1 ./run-model /path/to/model.gguf 16384
+#   ./run-model /path/to/model.gguf 131072 --force-context --json
+#   ./run-model /path/to/model.gguf --slots 4 --dry-run
 #
 # Notes:
 #   - Context size should be a power of 2 for optimal performance
 #   - Set STRICT_POWER_OF_2=1 to enforce power-of-2 context sizes
 #   - Use --debug for detailed server output to stdout
 #   - Check log file for server logs when --log-file is specified (non-debug mode)
+#   - Use --force-context to bypass the safety cap and honor your exact context size
+#   - Use --json for structured output that can be parsed by webapps/scripts
+#
+# Exit Codes:
+#   0   Success
+#   1   Validation error (bad model, port, context, etc.)
+#   130 Received SIGINT (Ctrl+C)
+#   143 Received SIGTERM
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -63,6 +114,7 @@ DEFAULT_TEMP=0.65
 DEFAULT_TOP_P=0.95
 DEFAULT_CTX_SIZE=8192
 DEFAULT_EMBEDDING_PARALLEL=4
+DEFAULT_CHAT_PARALLEL=1
 
 # Environment variable overrides
 : "${PORT:=$DEFAULT_PORT}"
@@ -85,6 +137,11 @@ DEFAULT_EMBEDDING_PARALLEL=4
 : "${EMBEDDING_PARALLEL:=$DEFAULT_EMBEDDING_PARALLEL}"
 : "${PLATFORM:=""}"  # Force platform: nvidia, metal, cpu (auto-detect if empty)
 : "${CHAT_TEMPLATE_FILE:=""}"  # Jinja2 chat template file for tool-calling format
+: "${FORCE_CONTEXT:=0}"       # Bypass safety cap on context size (1/0)
+: "${CHAT_PARALLEL:=$DEFAULT_CHAT_PARALLEL}"  # Parallel slots for chat mode
+: "${JSON_OUTPUT:=0}"         # Output structured JSON on stdout (1/0)
+: "${DRY_RUN:=0}"             # Show command without launching (1/0)
+: "${PID_FILE_PATH:=""}"      # Write server PID to this file
 
 # Global variables
 MODEL_PATH=""
@@ -113,32 +170,32 @@ fi
 
 # Color codes (only if terminal supports them)
 if [[ "$HAS_COLOR" -eq 1 ]]; then
-	RST='\033[0m'
-	BOLD='\033[1m'
-	DIM='\033[2m'
-	ITALIC='\033[3m'
-	ULINE='\033[4m'
+	RST=$'\033[0m'
+	BOLD=$'\033[1m'
+	DIM=$'\033[2m'
+	ITALIC=$'\033[3m'
+	ULINE=$'\033[4m'
 
-	RED='\033[0;31m'
-	GREEN='\033[0;32m'
-	YELLOW='\033[0;33m'
-	BLUE='\033[0;34m'
-	MAGENTA='\033[0;35m'
-	CYAN='\033[0;36m'
-	WHITE='\033[0;37m'
+	RED=$'\033[0;31m'
+	GREEN=$'\033[0;32m'
+	YELLOW=$'\033[0;33m'
+	BLUE=$'\033[0;34m'
+	MAGENTA=$'\033[0;35m'
+	CYAN=$'\033[0;36m'
+	WHITE=$'\033[0;37m'
 
-	BRED='\033[1;31m'
-	BGREEN='\033[1;32m'
-	BYELLOW='\033[1;33m'
-	BBLUE='\033[1;34m'
-	BMAGENTA='\033[1;35m'
-	BCYAN='\033[1;36m'
-	BWHITE='\033[1;37m'
+	BRED=$'\033[1;31m'
+	BGREEN=$'\033[1;32m'
+	BYELLOW=$'\033[1;33m'
+	BBLUE=$'\033[1;34m'
+	BMAGENTA=$'\033[1;35m'
+	BCYAN=$'\033[1;36m'
+	BWHITE=$'\033[1;37m'
 
-	BG_RED='\033[41m'
-	BG_GREEN='\033[42m'
-	BG_BLUE='\033[44m'
-	BG_CYAN='\033[46m'
+	BG_RED=$'\033[41m'
+	BG_GREEN=$'\033[42m'
+	BG_BLUE=$'\033[44m'
+	BG_CYAN=$'\033[46m'
 else
 	RST='' BOLD='' DIM='' ITALIC='' ULINE=''
 	RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN='' WHITE=''
@@ -175,19 +232,20 @@ print_header() {
 	local pad_right=$((inner_width - title_len - pad_left))
 
 	echo >&2
-	printf '%b%s%b\n' "$color" "$BOX_TL" "$RST" >&2
-	printf '%b%s%b\n' "$color" "$BOX_H" "$RST" >&2
+	# Top border: ╭────────────╮
+	printf '%b%s' "$color" "$BOX_TL" >&2
 	printf '%0.s─' $(seq 1 $((TERM_WIDTH - 2))) >&2
 	printf '%s%b\n' "$BOX_TR" "$RST" >&2
 
-	printf '%b%s%b\n' "$color" "$BOX_V" "$RST" >&2
-	printf '%*s' "$((pad_left + 1))" '' >&2
-	printf '%b%b%s%b\n' "$BOLD" "$color" "$title" "$RST" >&2
-	printf '%*s' "$((pad_right + 1))" '' >&2
-	printf '%b%s%b\n' "$color" "$BOX_V" "$RST" >&2
+	# Title row: │   Title   │
+	printf '%b%s%*s%b%b%s%b%*s%b%s%b\n' \
+		"$color" "$BOX_V" "$((pad_left + 1))" '' \
+		"$BOLD" "$color" "$title" "$RST" \
+		"$((pad_right + 1))" '' \
+		"$color" "$BOX_V" "$RST" >&2
 
-	printf '%b%s%b\n' "$color" "$BOX_BL" "$RST" >&2
-	printf '%b%s%b\n' "$color" "$BOX_H" "$RST" >&2
+	# Bottom border: ╰────────────╯
+	printf '%b%s' "$color" "$BOX_BL" >&2
 	printf '%0.s─' $(seq 1 $((TERM_WIDTH - 2))) >&2
 	printf '%s%b\n' "$BOX_BR" "$RST" >&2
 }
@@ -277,7 +335,7 @@ log_to_file() {
 # Check if a number is a power of 2
 is_power_of_2() {
 	local n=$1
-	[[ $n -gt 0 ]] && (( (n & (n - 1)) == 0 ))
+	[[ $n -gt 0 ]] && (( (n & (n - 1)) == 0 )) && return 0 || return 1
 }
 
 # Get next power of 2
@@ -1051,8 +1109,38 @@ parse_args() {
 				exit 1
 			fi
 			;;
-		*)
-			if [[ -z "$MODEL_PATH" ]]; then
+			--force-context)
+				FORCE_CONTEXT=1
+				shift
+				;;
+			--slots)
+				if [[ -n "$2" ]]; then
+					CHAT_PARALLEL="$2"
+					shift 2
+				else
+					log_error "Number of slots required after --slots"
+					exit 1
+				fi
+				;;
+			--json)
+				JSON_OUTPUT=1
+				shift
+				;;
+			--dry-run)
+				DRY_RUN=1
+				shift
+				;;
+			--pid-file)
+				if [[ -n "$2" ]]; then
+					PID_FILE_PATH="$2"
+					shift 2
+				else
+					log_error "File path required after --pid-file"
+					exit 1
+				fi
+				;;
+			*)
+				if [[ -z "$MODEL_PATH" ]]; then
 				MODEL_PATH="$1"
 			elif [[ -z "$REQUESTED_CTX" ]]; then
 				REQUESTED_CTX="$1"
@@ -1086,7 +1174,12 @@ ${BOLD}${BCYAN}OPTIONS${RST}
   ${GREEN}-m, --mmproj${RST} PATH       Path to mmproj file for vision models
   ${GREEN}-e, --embedding${RST}         Run in embedding mode ${DIM}(deterministic, no sampling)${RST}
   ${GREEN}--parallel${RST} N            Parallel embedding requests ${DIM}(default: 4, embedding mode only)${RST}
+  ${GREEN}--slots${RST} N              Parallel slots for chat mode ${DIM}(default: 1)${RST}
   ${GREEN}--chat-template-file${RST} F  Jinja2 chat template file for tool-calling format
+  ${GREEN}--force-context${RST}         Bypass safety cap on context size
+  ${GREEN}--json${RST}                  Output structured JSON on stdout ${DIM}(for programmatic use)${RST}
+  ${GREEN}--dry-run${RST}               Show computed command without launching
+  ${GREEN}--pid-file${RST} FILE         Write server PID to FILE
   ${GREEN}-d, --debug${RST}             Enable debug output
   ${GREEN}-f, --log-file${RST} FILE     Log output to FILE
   ${GREEN}-h, --help${RST}              Show this help message
@@ -1105,13 +1198,21 @@ ${BOLD}${BCYAN}ENVIRONMENT VARIABLES${RST}
   ${CYAN}LLAMA_SERVER_PATH${RST}       Path to llama-server binary
   ${CYAN}EMBEDDING_MODE${RST}          Run in embedding mode ${DIM}(1/0, default: 0)${RST}
   ${CYAN}EMBEDDING_PARALLEL${RST}      Parallel embedding requests ${DIM}(default: 4)${RST}
+  ${CYAN}CHAT_PARALLEL${RST}           Parallel slots for chat mode ${DIM}(default: 1)${RST}
   ${CYAN}CHAT_TEMPLATE_FILE${RST}      Jinja2 chat template file path
+  ${CYAN}FORCE_CONTEXT${RST}           Bypass safety cap on context ${DIM}(1/0, default: 0)${RST}
+  ${CYAN}JSON_OUTPUT${RST}             Structured JSON output ${DIM}(1/0, default: 0)${RST}
+  ${CYAN}DRY_RUN${RST}                 Show command, don't launch ${DIM}(1/0, default: 0)${RST}
+  ${CYAN}PID_FILE_PATH${RST}           Write server PID to file
+  ${CYAN}MMPROJ_PATH${RST}             Path to mmproj file for vision models
 
 ${BOLD}${BCYAN}EXAMPLES${RST}
   ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 8192
   ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 32768 --port 8081 --debug
   ${DIM}\$${RST} PORT=8080 DEBUG=1 $(basename "$0") /path/to/model.gguf 16384
   ${DIM}\$${RST} $(basename "$0") /path/to/embeddings.gguf 4096 --embedding --port 7072
+  ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 131072 --force-context --json
+  ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf --slots 4 --dry-run
 
 EOF
 }
@@ -1187,9 +1288,10 @@ build_command() {
 		print_kv "Context:" "auto (native)" "$CYAN" "$BWHITE"
 	else
 		N_CTX="$REQUESTED_CTX"
-		if [[ $N_CTX -gt $MAX_SAFE_CTX ]]; then
+		if [[ $N_CTX -gt $MAX_SAFE_CTX ]] && [[ "$FORCE_CONTEXT" -ne 1 ]]; then
 			log_warning "Requested context $(format_tokens "$N_CTX") exceeds safe limit ($(format_tokens "$MAX_SAFE_CTX")) for ${TOTAL_VRAM_MB} MiB VRAM"
-			log_warning "Capping to prevent OOM. Suggested alternatives:"
+			log_warning "Capping to prevent OOM. Use --force-context to bypass."
+			log_warning "Suggested alternatives:"
 
 			# Show alternatives with estimated KV cache RAM cost
 			local alt_ctx=$MAX_SAFE_CTX
@@ -1214,6 +1316,8 @@ build_command() {
 			done
 
 			N_CTX="$MAX_SAFE_CTX"
+		elif [[ $N_CTX -gt $MAX_SAFE_CTX ]] && [[ "$FORCE_CONTEXT" -eq 1 ]]; then
+			log_warning "Context $(format_tokens "$N_CTX") exceeds safe limit ($(format_tokens "$MAX_SAFE_CTX")) — forced by --force-context"
 		fi
 
 		if [[ $N_CTX -ne $REQUESTED_CTX ]]; then
@@ -1227,7 +1331,6 @@ build_command() {
 	configure_dual_gpu "$GPU_COUNT"
 
 	# KV cache settings
-	CACHE_OPTS="--cache-type-k $KV_CACHE_TYPE_K --cache-type-v $KV_CACHE_TYPE_V"
 	print_kv "KV Cache:" "$KV_CACHE_TYPE_K / $KV_CACHE_TYPE_V" "$CYAN"
 	print_kv "Flash Attn:" "$([[ "$FLASH_ATTN" -eq 1 ]] && echo "enabled" || echo "disabled")" "$CYAN"
 
@@ -1238,6 +1341,9 @@ build_command() {
 	else
 		print_kv "Temperature:" "$TEMP" "$CYAN"
 		print_kv "Top-p:" "$TOP_P" "$CYAN"
+		if [[ "$CHAT_PARALLEL" -gt 1 ]]; then
+			print_kv "Parallel slots:" "$CHAT_PARALLEL" "$CYAN"
+		fi
 	fi
 
 	print_kv "GPU Layers:" "$N_GPU_LAYERS" "$CYAN"
@@ -1367,14 +1473,20 @@ build_command() {
 		--n-gpu-layers "$N_GPU_LAYERS"
 		--ctx-size "$N_CTX"
 	)
-	[[ -n "${SPLIT_MODE:-}" ]] && cmd_array+=($SPLIT_MODE)
-	[[ -n "${TENSOR_SPLIT:-}" ]] && cmd_array+=($TENSOR_SPLIT)
+	if [[ -n "${SPLIT_MODE:-}" ]]; then
+		local -a _split_args
+		read -ra _split_args <<< "$SPLIT_MODE"
+		cmd_array+=("${_split_args[@]}")
+	fi
+	if [[ -n "${TENSOR_SPLIT:-}" ]]; then
+		local -a _tsplit_args
+		read -ra _tsplit_args <<< "$TENSOR_SPLIT"
+		cmd_array+=("${_tsplit_args[@]}")
+	fi
 	[[ "$FLASH_ATTN" -eq 1 ]] && cmd_array+=(--flash-attn on)
-	cmd_array+=(
-		${NO_MMAP:+$NO_MMAP}
-		${MLOCK:+$MLOCK}
-		--threads "$(get_cpu_count)"
-	)
+	[[ -n "${NO_MMAP:-}" ]] && cmd_array+=("$NO_MMAP")
+	[[ -n "${MLOCK:-}" ]] && cmd_array+=("$MLOCK")
+	cmd_array+=(--threads "$(get_cpu_count)")
 
 	# Mode-specific flags
 	if [[ "$EMBEDDING_MODE" -eq 1 ]]; then
@@ -1382,7 +1494,8 @@ build_command() {
 		cmd_array+=(
 			--embedding
 			--parallel "$EMBEDDING_PARALLEL"
-			$CACHE_OPTS
+			--cache-type-k "$KV_CACHE_TYPE_K"
+			--cache-type-v "$KV_CACHE_TYPE_V"
 			--host 0.0.0.0
 			--port "$PORT"
 		)
@@ -1391,13 +1504,19 @@ build_command() {
 		cmd_array+=(
 			--temp "$TEMP"
 			--top-p "$TOP_P"
-			$CONT_BATCHING
-			$CACHE_OPTS
+			--cache-type-k "$KV_CACHE_TYPE_K"
+			--cache-type-v "$KV_CACHE_TYPE_V"
 			--metrics
 			--host 0.0.0.0
 			--port "$PORT"
-			$NO_KV_OFFLOAD
 		)
+		[[ -n "${CONT_BATCHING:-}" ]] && cmd_array+=("$CONT_BATCHING")
+		[[ -n "${NO_KV_OFFLOAD:-}" ]] && cmd_array+=("$NO_KV_OFFLOAD")
+
+		# Parallel slots for chat mode (concurrent requests)
+		if [[ "$CHAT_PARALLEL" -gt 1 ]]; then
+			cmd_array+=(--parallel "$CHAT_PARALLEL")
+		fi
 
 		# Add mmproj if specified (for vision models)
 		if [[ -n "$MMPROJ_PATH" ]]; then
@@ -1411,18 +1530,64 @@ build_command() {
 		fi
 	fi
 
+	# Store command for execution
+	CMD_ARRAY=("${cmd_array[@]}")
+
 	# Display command in debug mode
 	if [[ "$DEBUG" -eq 1 ]]; then
 		print_section "Debug: Full Command" "$DIM"
 		printf '  %b%s%b\n' "$DIM" "${CMD_ARRAY[*]}" "$RST" >&2
 	fi
+}
 
-	# Store command for execution
-	CMD_ARRAY=("${cmd_array[@]}")
+# Emit structured JSON to stdout (for programmatic consumers)
+emit_json() {
+	local pid="${1:-null}"
+	local ctx_capped="false"
+	[[ "$N_CTX" -ne "$REQUESTED_CTX" ]] && ctx_capped="true"
+
+	cat <<-ENDJSON
+	{
+	  "pid": $pid,
+	  "port": $PORT,
+	  "model": "$MODEL_PATH",
+	  "platform": "$PLATFORM",
+	  "context_size": $N_CTX,
+	  "context_requested": $REQUESTED_CTX,
+	  "context_capped": $ctx_capped,
+	  "force_context": $([[ "$FORCE_CONTEXT" -eq 1 ]] && echo "true" || echo "false"),
+	  "max_safe_context": $MAX_SAFE_CTX,
+	  "vram_mb": $TOTAL_VRAM_MB,
+	  "ram_total_mb": $TOTAL_RAM_MB,
+	  "ram_available_mb": $AVAIL_RAM_MB,
+	  "gpu_count": $GPU_COUNT,
+	  "gpu_layers": $N_GPU_LAYERS,
+	  "flash_attn": $([[ "$FLASH_ATTN" -eq 1 ]] && echo "true" || echo "false"),
+	  "embedding_mode": $([[ "$EMBEDDING_MODE" -eq 1 ]] && echo "true" || echo "false"),
+	  "chat_parallel": $CHAT_PARALLEL,
+	  "kv_cache_type_k": "$KV_CACHE_TYPE_K",
+	  "kv_cache_type_v": "$KV_CACHE_TYPE_V",
+	  "command": "${CMD_ARRAY[*]}"
+	}
+	ENDJSON
 }
 
 # Launch the server
 launch_server() {
+	# Dry-run mode: show command and exit without launching
+	if [[ "$DRY_RUN" -eq 1 ]]; then
+		print_section "Dry Run" "$BYELLOW"
+		print_status "⏸" "Dry-run mode — not launching server" "$YELLOW"
+		echo >&2
+		printf '  %b%s%b\n' "$DIM" "${CMD_ARRAY[*]}" "$RST" >&2
+
+		# JSON output for dry-run
+		if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+			emit_json "null"
+		fi
+		return 0
+	fi
+
 	print_section "Launching Server" "$BGREEN"
 
 	# Initialize logging
@@ -1446,6 +1611,25 @@ launch_server() {
 		# Launch in background with redirection and CAPTURE the PID
 		"${CMD_ARRAY[@]}" >>"${LOG_FILE:-/dev/null}" 2>&1 &
 		SERVER_PID=$!
+	fi
+
+	# Write PID to file if requested
+	if [[ -n "$PID_FILE_PATH" ]]; then
+		local pid_dir
+		pid_dir=$(dirname "$PID_FILE_PATH")
+		if [[ ! -d "$pid_dir" ]]; then
+			mkdir -p "$pid_dir" 2>/dev/null || {
+				log_error "Failed to create PID file directory: $pid_dir"
+			}
+		fi
+		echo "$SERVER_PID" > "$PID_FILE_PATH" 2>/dev/null && \
+			debug_log "PID written to: $PID_FILE_PATH" || \
+			log_error "Failed to write PID file: $PID_FILE_PATH"
+	fi
+
+	# JSON output
+	if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+		emit_json "$SERVER_PID"
 	fi
 
 	# Success banner
@@ -1531,6 +1715,8 @@ main() {
 	extract_model_metadata "$MODEL_PATH"
 	get_performance_tips "$GPU_COUNT" "$TOTAL_VRAM_MB" "$MODEL_PATH" "$REQUESTED_CTX"
 	build_command
+
+	# launch_server handles dry-run internally (prints command and returns)
 	launch_server
 }
 
