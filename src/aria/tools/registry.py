@@ -5,16 +5,18 @@ to their implementations, enabling agents to load tools by category
 rather than importing individual modules.
 
 Categories:
-- core: Always-loaded tools (reasoning, plan, knowledge, scratchpad,
-         web_search, download, read_file, shell)
+- core: Always-loaded tools (reasoning, plan, scratchpad, shell)
 - files: Always-loaded file tools (read_file, write_file, edit_file,
-         file_info, list_files, search_files, copy_file, delete_file,
-         rename_file)
+         file_info, list_files, search_files, copy_file)
 - web: On-demand browser tools
 - development: On-demand python tool
 - finance: On-demand stock tools
 - entertainment: On-demand imdb tools
 - system: On-demand http_request, process
+
+Domain tools (web_search, download, weather, knowledge, finance,
+imdb, http, process, vision, browser, development) are accessed
+via CLI commands through the ``shell`` tool.
 """
 
 from typing import Callable, Dict, List, Optional
@@ -55,15 +57,15 @@ def _get_core_tools() -> List[FunctionTool]:
 
     Note: ``read_file`` lives in the *files* category to avoid
     duplicate registrations when both core and files are loaded.
+
+    Domain tools (web_search, download, weather, knowledge, finance,
+    imdb, http, process, vision, browser, development) are now
+    accessed via CLI commands through the ``shell`` tool.
     """
     tool_specs = [
         ("aria.tools.reasoning", "reasoning"),
         ("aria.tools.planner", "plan"),
-        ("aria.tools.knowledge", "knowledge"),
         ("aria.tools.scratchpad", "scratchpad"),
-        ("aria.tools.search", "web_search"),
-        ("aria.tools.search", "download"),
-        ("aria.tools.search", "get_current_weather"),
         ("aria.tools.shell", "shell"),
     ]
     return [
@@ -82,8 +84,6 @@ def _get_file_tools() -> List[FunctionTool]:
         ("aria.tools.files", "list_files"),
         ("aria.tools.files", "search_files"),
         ("aria.tools.files", "copy_file"),
-        ("aria.tools.files", "delete_file"),
-        ("aria.tools.files", "rename_file"),
     ]
     return [
         FunctionTool.from_defaults(fn=_import_function(mod, fn))
@@ -109,7 +109,9 @@ def _get_web_tools() -> List[FunctionTool]:
     tools = []
     for mod, fn in tool_specs:
         try:
-            tools.append(FunctionTool.from_defaults(async_fn=_import_function(mod, fn)))
+            tools.append(
+                FunctionTool.from_defaults(async_fn=_import_function(mod, fn))
+            )
         except (ImportError, AttributeError):
             logger.warning(f"Could not load browser tool: {mod}.{fn}")
     return tools
@@ -154,7 +156,9 @@ def _get_entertainment_tools() -> List[FunctionTool]:
     tools = []
     for mod, fn in tool_specs:
         try:
-            tools.append(FunctionTool.from_defaults(fn=_import_function(mod, fn)))
+            tools.append(
+                FunctionTool.from_defaults(fn=_import_function(mod, fn))
+            )
         except (ImportError, AttributeError):
             logger.warning(f"Could not load entertainment tool: {mod}.{fn}")
     return tools

@@ -2,15 +2,12 @@
 
 from typing import Dict, Optional
 
-from markdownify import markdownify
-
 from aria.tools import (
     get_function_name,
     log_tool_call,
     tool_error_response,
     tool_success_response,
 )
-from aria.tools.constants import MAX_TOOL_OUTPUT_CHARS
 from aria.tools.search._download_internals import (
     _fetch_file,
     _is_html_content,
@@ -83,13 +80,14 @@ def download(
             (default: False).
 
     Returns:
-        JSON with file_path, mime_type, size_bytes, and optionally
-        content (if markdown).
+        JSON with file_path and metadata about the saved artifact.
+        Content is persisted to disk and should be read explicitly from
+        the returned file paths.
 
     Important:
         - Files are saved to disk; the response contains the file path.
-        - For HTML pages, set convert_to_markdown=True to get text
-          content in the response.
+        - For HTML pages, set convert_to_markdown=True to persist a
+          markdown version alongside the saved source file.
         - Large files are rejected if they exceed max_size.
     """
     try:
@@ -106,12 +104,9 @@ def download(
             max_size=max_size_value,
         )
 
-        # Handle HTML to markdown conversion if requested
-        markdown_content = None
+        # Request markdown persistence through the save layer
         if convert_to_markdown and _is_html_content(content_type or ""):
-            if isinstance(response_data, bytes):
-                response_data = response_data.decode("utf-8", errors="replace")
-            markdown_content = markdownify(str(response_data))
+            validated_format = "markdown"
 
         file_path, metadata = _save_content_to_file(
             response_data,
@@ -123,16 +118,6 @@ def download(
         )
 
         result_data = {"file_path": file_path, "metadata": metadata}
-        if markdown_content:
-            if len(markdown_content) > MAX_TOOL_OUTPUT_CHARS:
-                markdown_content = (
-                    markdown_content[:MAX_TOOL_OUTPUT_CHARS]
-                    + f"\n\n[...truncated — content was "
-                    f"{len(markdown_content):,} chars, "
-                    f"limit is {MAX_TOOL_OUTPUT_CHARS:,}. "
-                    f"Use read_file on the saved file for full content.]"
-                )
-            result_data["content"] = markdown_content
 
         return tool_success_response(
             get_function_name(),

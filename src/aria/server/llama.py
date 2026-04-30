@@ -1,9 +1,11 @@
 """LlamaCPP inference server manager.
 
-Manages three llama-server processes required by the Aria web UI:
+Manages llama-server processes required by the Aria web UI:
   - Chat server (port 7070): launched via the bundled ``run-model`` script
-  - Vision/Language server (port 7071): launched via the bundled ``run-model`` script
   - Embeddings server (port 7072): launched via ``run-model --embedding``
+
+The VL (vision/language) server is NOT started automatically. It starts
+on-demand when the user invokes a vision command (e.g., ``aria vision pdf``).
 
 The ``run-model`` script handles GPU detection, KV cache tuning, flash attention,
 and dual-GPU configuration automatically for all servers. For embeddings, it uses
@@ -14,7 +16,7 @@ Example:
     from aria.server.llama import LlamaCppServerManager
 
     manager = LlamaCppServerManager(context_size=8192)
-    manager.start_all()   # starts all three servers, waits for /health
+    manager.start_all()   # starts chat + embeddings, waits for /health
     # ... run Chainlit ...
     manager.stop_all()    # graceful shutdown
     ```
@@ -261,31 +263,20 @@ class LlamaCppServerManager:
         return False
 
     def start_all(self) -> None:
-        """Start all three llama-server processes and wait for them to be ready.
+        """Start chat and embeddings llama-server processes.
+
+        The VL (vision/language) server is NOT started automatically.
+        It starts on-demand when the user invokes a vision command
+        (e.g., ``aria vision pdf`` or ``aria vision image``).
 
         Raises:
             RuntimeError: If any server fails to start or become ready.
         """
-        from aria.config.models import Chat, Embeddings, Vision
-        from aria.scripts.gguf import get_model_path
+        from aria.config.models import Chat, Embeddings
 
         # Resolve model paths by filename
         chat_path = self._resolve_model_path("chat", Chat.filename)
-        vl_path = self._resolve_model_path("vl", Vision.filename)
         emb_path = self._resolve_model_path("embeddings", Embeddings.filename)
-
-        # Resolve mmproj for VL model (vision projector)
-        mmproj_path: Optional[Path] = None
-        if Vision.mmproj_filename:
-            mmproj_path = get_model_path(
-                Vision.mmproj_filename, LlamaCppConfig.models_path
-            )
-            if mmproj_path is None:
-                logger.warning(
-                    f"MMPROJ file '{Vision.mmproj_filename}' not found. "
-                    f"Vision capabilities may be limited. "
-                    f"Run: aria models download --model vl"
-                )
 
         # Chat template file (only used by the chat server)
         chat_tpl = LlamaCppConfig.chat_template_file
@@ -299,15 +290,6 @@ class LlamaCppServerManager:
                 False,  # not embedding mode
                 None,  # no mmproj for chat
                 chat_tpl,  # chat template
-            ),
-            (
-                "vl",
-                vl_path,
-                Vision.get_port(),
-                LlamaCppConfig.vl_context_size,
-                False,  # not embedding mode
-                mmproj_path,  # mmproj for vision
-                None,  # no chat template
             ),
             (
                 "embeddings",
@@ -341,7 +323,9 @@ class LlamaCppServerManager:
             )
             env = self._get_env_for_run_model()
 
-            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
+            logger.info(
+                f"Starting {role} server on port {port}: {' '.join(cmd)}"
+            )
 
             proc = subprocess.Popen(
                 cmd,
@@ -359,7 +343,9 @@ class LlamaCppServerManager:
 
                 log_file = DebugConfig.logs_path.parent / f"llama-{role}.log"
                 stderr_output = (
-                    proc.stderr.read().decode("utf-8", errors="replace").strip()
+                    proc.stderr.read()
+                    .decode("utf-8", errors="replace")
+                    .strip()
                     if proc.stderr
                     else ""
                 )
@@ -378,7 +364,9 @@ class LlamaCppServerManager:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)
-                logger.error(f"{role} server failed to become ready on port {port}")
+                logger.error(
+                    f"{role} server failed to become ready on port {port}"
+                )
 
         if failed:
             self.stop_all()

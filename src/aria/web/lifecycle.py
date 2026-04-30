@@ -28,7 +28,9 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.llama import LlamaCppServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+)
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -185,7 +187,8 @@ async def _init_browser() -> None:
                 logger.info("Lightpanda browser started successfully")
             else:
                 logger.warning(
-                    "Lightpanda browser failed to start — " "browser tools disabled"
+                    "Lightpanda browser failed to start — "
+                    "browser tools disabled"
                 )
     else:
         logger.info("Lightpanda not installed — browser tools disabled")
@@ -233,13 +236,16 @@ async def on_app_startup_handler() -> None:
     """Initialize the application on startup.
 
     Called by Chainlit when the application starts. Orchestrates a
-    sequence of initialization steps with proper cleanup on failure.
-
-    Raises:
-        Exception: If any critical initialization step fails,
-            cleanup is attempted before re-raising.
+    sequence of initialization steps.  Critical infrastructure
+    (logging, storage, database) failures are fatal and trigger a
+    full rollback.  Non-critical subsystems (LLM servers, vector
+    database, browser) are best-effort: failures are logged but do
+    **not** prevent the app from starting so that core features
+    (e.g. authentication) remain available.
     """
-    global _log_sink_id, _tool_call_sink_id
+    # ------------------------------------------------------------------
+    # Phase 1 – Critical infrastructure (failure is fatal)
+    # ------------------------------------------------------------------
     try:
         from chainlit.config import FILES_DIRECTORY
 
@@ -253,7 +259,15 @@ async def on_app_startup_handler() -> None:
 
         logger.info("Initializing database...")
         _init_database()
+    except Exception as e:
+        logger.exception(f"Failed to start Aria web UI (critical): {e}")
+        await _cleanup_on_failure()
+        raise
 
+    # ------------------------------------------------------------------
+    # Phase 2 – Non-critical subsystems (failure is tolerated)
+    # ------------------------------------------------------------------
+    try:
         logger.info("Starting LlamaCpp inference servers...")
         _init_llama_servers()
 
@@ -267,14 +281,14 @@ async def on_app_startup_handler() -> None:
         _init_agent_workflows()
 
         await _init_browser()
-
-        _state.startup_complete = True
-        logger.info("Aria web UI startup complete")
-
     except Exception as e:
-        logger.exception(f"Failed to start Aria web UI: {e}")
-        await _cleanup_on_failure()
-        raise
+        logger.warning(
+            f"Non-critical subsystem failed to start: {e}. "
+            "The app will run with reduced functionality."
+        )
+
+    _state.startup_complete = True
+    logger.info("Aria web UI startup complete")
 
 
 async def on_app_shutdown_handler() -> None:

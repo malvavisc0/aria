@@ -11,10 +11,10 @@ class TestLoadAgentInstructions:
         result = load_agent_instructions("aria")
         assert "Aria" in result
 
-    def test_loads_fundamental_principles_within_aria(self):
-        """Fundamental principles should be embedded in aria.md."""
+    def test_loads_core_sections_within_aria(self):
+        """Core sections should be embedded in aria.md."""
         result = load_agent_instructions("aria")
-        assert "Fundamental Principles" in result
+        assert "Identity" in result
         assert "Response Style" in result
 
     def test_extras_appended(self):

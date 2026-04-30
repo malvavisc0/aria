@@ -88,6 +88,16 @@ aria system gpu
 
 # Configuration
 aria config show
+
+# Agent tool commands
+aria search web "query"         # Web search
+aria knowledge store "key" "v"  # Store a fact
+aria finance stock TICKER       # Stock price
+aria imdb search "title"        # Search movies/TV
+aria dev run "code"             # Execute Python
+aria vision pdf "file"          # Extract PDF
+aria worker spawn --prompt "..." # Background worker
+aria self test-tools            # Verify tools
 ```
 
 ### GUI Method
@@ -186,10 +196,12 @@ Before starting the server, Aria validates the environment:
 | Category | Checks |
 |----------|--------|
 | Environment | Required env vars (DATA_FOLDER, CHAINLIT_AUTH_SECRET, etc.) |
-| Storage | Data folder exists and is writable |
-| Binaries | llama-server binary installed |
+| Storage | Data folder exists, knowledge DB accessible |
+| Binaries | llama-server binary installed, Lightpanda (optional) |
 | Models | Chat, vision, and embedding GGUF models downloaded |
-| Hardware | GPU available, sufficient VRAM |
+| Hardware | GPU available, sufficient VRAM, memory requirements |
+| Connectivity | LLM server reachable |
+| Tools | Core + file tools load correctly (11 tools) |
 
 ### Running Preflight Manually
 
@@ -281,6 +293,8 @@ flowchart TD
 | [`src/aria/server/manager.py`](../src/aria/server/manager.py) | Server lifecycle |
 | [`src/aria/web_ui.py`](../src/aria/web_ui.py) | Chainlit application |
 | [`src/aria/gui/windows/main_window.py`](../src/aria/gui/windows/main_window.py) | GUI main window |
+| [`src/aria/cli/self_cmd.py`](../src/aria/cli/self_cmd.py) | Self-awareness CLI (test-tools) |
+| [`src/aria/agents/worker.py`](../src/aria/agents/worker.py) | Worker agent factory |
 | [`src/aria/gui/windows/server_handlers.py`](../src/aria/gui/windows/server_handlers.py) | GUI server controls |
 
 ## Troubleshooting

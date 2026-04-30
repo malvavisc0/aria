@@ -44,7 +44,9 @@ def test_error_uses_standard_envelope() -> None:
     manager = _make_manager()
 
     err_payload = json.loads(
-        manager._error("boom", recovery=True, tool="test_tool", reason="testing")
+        manager._error(
+            "boom", recovery=True, tool="test_tool", reason="testing"
+        )
     )
     assert err_payload["status"] == "error"
     assert err_payload["tool"] == "test_tool"
@@ -52,12 +54,16 @@ def test_error_uses_standard_envelope() -> None:
     assert "timestamp" in err_payload
     assert err_payload["error"]["message"] == "boom"
     assert err_payload["error"]["recoverable"] is True
-    assert err_payload["error"]["how_to_fix"] == ("Browser crashed. Restarted. Retry.")
+    assert err_payload["error"]["how_to_fix"] == (
+        "Browser crashed. Restarted. Retry."
+    )
 
 
 def test_error_without_recovery() -> None:
     manager = _make_manager()
-    payload = json.loads(manager._error("something broke", tool="t", reason="i"))
+    payload = json.loads(
+        manager._error("something broke", tool="t", reason="i")
+    )
     assert payload["status"] == "error"
     assert payload["error"]["message"] == "something broke"
     assert payload["error"]["recoverable"] is False
@@ -106,11 +112,15 @@ async def test_with_recovery_returns_recovery_error_on_crash() -> None:
     assert payload["status"] == "error"
     assert payload["error"]["message"] == "crashed"
     assert payload["error"]["recoverable"] is True
-    assert payload["error"]["how_to_fix"] == ("Browser crashed. Restarted. Retry.")
+    assert payload["error"]["how_to_fix"] == (
+        "Browser crashed. Restarted. Retry."
+    )
 
 
 @pytest.mark.asyncio
-async def test_with_recovery_returns_plain_error_when_page_still_valid() -> None:
+async def test_with_recovery_returns_plain_error_when_page_still_valid() -> (
+    None
+):
     manager = _make_manager()
     page = Mock()
     manager._page = page
@@ -213,6 +223,24 @@ async def test_get_page_content_returns_cleaned_text() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_page_content_supports_article_mode() -> None:
+    manager = _make_manager()
+    page = Mock()
+    page.evaluate = AsyncMock(
+        return_value="Headline\n\nParagraph 1\n\nParagraph 2"
+    )
+
+    manager._process = Mock()
+    manager._browser = Mock()
+    manager._page = page
+    manager._ensure_page = AsyncMock(return_value=True)
+
+    result = await manager.get_page_content(content_mode="article")
+
+    assert result == "Headline\nParagraph 1\nParagraph 2"
+
+
+@pytest.mark.asyncio
 async def test_get_page_content_falls_back_to_html_on_evaluate_error() -> None:
     manager = _make_manager()
     page = Mock()
@@ -231,11 +259,15 @@ async def test_get_page_content_falls_back_to_html_on_evaluate_error() -> None:
 
 def test_navigation_failed_on_empty_content() -> None:
     assert LightpandaManager._is_navigation_failed("", "https://example.com")
-    assert LightpandaManager._is_navigation_failed("   ", "https://example.com")
+    assert LightpandaManager._is_navigation_failed(
+        "   ", "https://example.com"
+    )
 
 
 def test_navigation_failed_on_about_blank() -> None:
-    assert LightpandaManager._is_navigation_failed("some content", "about:blank")
+    assert LightpandaManager._is_navigation_failed(
+        "some content", "about:blank"
+    )
 
 
 def test_navigation_failed_on_error_patterns() -> None:

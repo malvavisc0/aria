@@ -891,6 +891,29 @@ graph TB
 
 ---
 
+## CLI Access
+
+Domain tools are also accessible via CLI commands through the `shell` tool. This is the primary way the agent invokes domain-specific functionality.
+
+| CLI Command | Domain | Description |
+|-------------|--------|-------------|
+| `aria search web "query"` | Search | Web search |
+| `aria search fetch "url"` | Search | Fetch URL content (auto-detects file vs website) |
+| `aria search weather "city"` | Search | Weather forecast |
+| `aria search youtube "url"` | Search | YouTube transcript |
+| `aria knowledge store/recall/search` | Knowledge | Persistent knowledge store |
+| `aria finance stock/company/news` | Finance | Stock prices, company info, news |
+| `aria imdb search/movie/person/...` | Entertainment | Movie/TV database |
+| `aria web click "selector"` | Browser | Click element on current page |
+| `aria dev run "code"` | Development | Execute Python code |
+| `aria vision pdf/image "file"` | Vision | PDF parsing, image analysis |
+| `aria http request METHOD "url"` | System | HTTP requests |
+| `aria system hardware/processes` | System | Hardware info, process management |
+| `aria worker spawn/status/list` | Workers | Background worker agents |
+| `aria self test-tools` | Self | Verify tool loading |
+
+---
+
 ## Quick Reference
 
 | Task | Tool | Category |
@@ -898,10 +921,6 @@ graph TB
 | Think through a problem | `reasoning` | CORE |
 | Store working notes | `scratchpad` | CORE |
 | Create execution plan | `plan` | CORE |
-| Remember facts across sessions | `knowledge` | CORE |
-| Search the web | `web_search` | CORE |
-| Download a file | `download` | CORE |
-| Check the weather | `get_current_weather` | CORE |
 | Run shell commands | `shell` | CORE |
 | Read a file | `read_file` | FILES |
 | Write/create a file | `write_file` | FILES |
@@ -910,8 +929,6 @@ graph TB
 | List directory contents | `list_files` | FILES |
 | Search files by name/content | `search_files` | FILES |
 | Copy a file | `copy_file` | FILES |
-| Delete a file | `delete_file` | FILES |
-| Rename/move a file | `rename_file` | FILES |
 | Browse a website | `open_url` | WEB |
 | Click a web element | `browser_click` | WEB |
 | Run Python code | `python` | DEVELOPMENT |

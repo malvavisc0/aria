@@ -143,7 +143,9 @@ class LightpandaManager:
 
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
-            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
+            self._browser = await self._playwright.chromium.connect_over_cdp(
+                cdp_url
+            )
 
             # Lightpanda workaround: ignore SSL errors
             context = await self._browser.new_context(ignore_https_errors=True)
@@ -386,7 +388,9 @@ class LightpandaManager:
         """
         async with self._page_lock:
             if not await self._ensure_page():
-                return self._error("Browser not available", tool=tool, reason=reason)
+                return self._error(
+                    "Browser not available", tool=tool, reason=reason
+                )
 
             try:
                 return await fn(self._page)  # type: ignore[arg-type]
@@ -411,7 +415,14 @@ class LightpandaManager:
     # Browser actions
     # ------------------------------------------------------------------
 
-    async def navigate(self, url: str, *, tool: str = "", reason: str = "") -> str:
+    async def navigate(
+        self,
+        url: str,
+        *,
+        tool: str = "",
+        reason: str = "",
+        content_mode: str = "text",
+    ) -> str:
         """Navigate to URL and return rendered content.
 
         Args:
@@ -434,16 +445,20 @@ class LightpandaManager:
             # content.  Without this, Lightpanda may still be processing
             # deferred scripts / redirects and the evaluate() call hits
             # "Execution context was destroyed".
-            await page.wait_for_load_state(DEFAULT_WAIT_STRATEGY, timeout=timeout_ms)
+            await page.wait_for_load_state(
+                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
+            )
 
-            content = await self._get_text_content(page)
+            content = await self._get_text_content(page, mode=content_mode)
 
             if self._is_navigation_failed(content, page.url):
                 fail_reason = content if content else "Navigation failed"
                 logger.error(f"Navigation failed: {fail_reason}")
                 return self._error(fail_reason, tool=tool, reason=reason)
 
-            content_path = self._persist_content(content, page.url, "open")
+            content_path = self._persist_content(
+                content, page.url, f"open_{content_mode}"
+            )
             title = await self._safe_title()
             return self._content_response(
                 content,
@@ -458,7 +473,14 @@ class LightpandaManager:
             "navigate", _do_navigate, tool=tool, reason=reason
         )
 
-    async def click(self, selector: str, *, tool: str = "", reason: str = "") -> str:
+    async def click(
+        self,
+        selector: str,
+        *,
+        tool: str = "",
+        reason: str = "",
+        content_mode: str = "text",
+    ) -> str:
         """Click element by CSS selector and return updated content.
 
         Args:
@@ -473,10 +495,14 @@ class LightpandaManager:
         async def _do_click(page: Page) -> str:
             timeout_ms = BROWSER_COMMAND_TIMEOUT * 1000
             await page.click(selector, timeout=timeout_ms)
-            await page.wait_for_load_state(DEFAULT_WAIT_STRATEGY, timeout=timeout_ms)
+            await page.wait_for_load_state(
+                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
+            )
 
-            content = await self._get_text_content(page)
-            content_path = self._persist_content(content, page.url, "click")
+            content = await self._get_text_content(page, mode=content_mode)
+            content_path = self._persist_content(
+                content, page.url, f"click_{content_mode}"
+            )
             title = await self._safe_title()
             return self._content_response(
                 content,
@@ -487,9 +513,17 @@ class LightpandaManager:
                 reason=reason,
             )
 
-        return await self._with_recovery("click", _do_click, tool=tool, reason=reason)
+        return await self._with_recovery(
+            "click", _do_click, tool=tool, reason=reason
+        )
 
-    async def get_page_content(self, *, tool: str = "", reason: str = "") -> str:
+    async def get_page_content(
+        self,
+        *,
+        tool: str = "",
+        reason: str = "",
+        content_mode: str = "text",
+    ) -> str:
         """Get current page content as clean text.
 
         Args:
@@ -501,7 +535,7 @@ class LightpandaManager:
         """
 
         async def _do_get_content(page: Page) -> str:
-            return await self._get_text_content(page)
+            return await self._get_text_content(page, mode=content_mode)
 
         return await self._with_recovery(
             "get_page_content", _do_get_content, tool=tool, reason=reason
@@ -535,11 +569,15 @@ class LightpandaManager:
         return any(pattern in content for pattern in error_patterns)
 
     @staticmethod
-    async def _get_text_content(page: Page) -> str:
-        """Extract clean text content from the page.
+    async def _get_text_content(page: Page, mode: str = "text") -> str:
+        """Extract cleaned page text content.
+
+        Modes:
+        - ``text``: cleaned body text
+        - ``article``: attempt to extract main content only
 
         Removes script, style, and noscript elements, then collapses
-        whitespace.  Falls back to raw HTML on evaluation errors.
+        whitespace. Falls back to raw HTML on evaluation errors.
 
         Args:
             page: Playwright Page instance.
@@ -548,18 +586,74 @@ class LightpandaManager:
             Cleaned text content string.
         """
         try:
-            content = await page.evaluate("""
-                () => {
-                    const clone = document.body.cloneNode(true);
-                    const remove = ['script', 'style', 'noscript'];
-                    remove.forEach(tag => {
-                        clone.querySelectorAll(tag).forEach(
-                            el => el.remove()
-                        );
-                    });
-                    return clone.innerText || clone.textContent || '';
+            content = await page.evaluate(
+                """
+                (mode) => {
+                    const clean = (root) => {
+                        if (!root) return '';
+                        const clone = root.cloneNode(true);
+                        const remove = [
+                            'script',
+                            'style',
+                            'noscript',
+                            'nav',
+                            'footer',
+                            'aside',
+                            '[role="navigation"]',
+                            '[aria-label*="cookie" i]',
+                            '[class*="cookie" i]',
+                            '[id*="cookie" i]',
+                            '[class*="subscribe" i]',
+                            '[class*="newsletter" i]',
+                            '[class*="related" i]',
+                            '[class*="recommend" i]',
+                            '[class*="share" i]',
+                            '[class*="social" i]',
+                            '[class*="comment" i]'
+                        ];
+                        remove.forEach(sel => {
+                            clone
+                                .querySelectorAll(sel)
+                                .forEach(el => el.remove());
+                        });
+                        return clone.innerText || clone.textContent || '';
+                    };
+
+                    if (mode === 'article') {
+                        const candidates = [
+                            document.querySelector('article'),
+                            document.querySelector('main'),
+                            document.querySelector('[role="main"]'),
+                            ...Array.from(
+                                document.querySelectorAll('div, section')
+                            )
+                                .filter(el => {
+                                    const text =
+                                        el.innerText ||
+                                        el.textContent ||
+                                        '';
+                                    return text.trim().length > 1500;
+                                })
+                                .slice(0, 5)
+                        ].filter(Boolean);
+
+                        let best = null;
+                        let bestLen = 0;
+                        for (const el of candidates) {
+                            const text = clean(el);
+                            if (text.length > bestLen) {
+                                best = text;
+                                bestLen = text.length;
+                            }
+                        }
+                        if (best && best.trim()) return best;
+                    }
+
+                    return clean(document.body);
                 }
-            """)
+                """,
+                mode,
+            )
             lines = (line.strip() for line in content.splitlines())
             return "\n".join(line for line in lines if line)
 

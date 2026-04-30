@@ -22,8 +22,7 @@
 
 ## ✨ Features
 
-| 🎯 | **Unified Tool Architecture** — Centralized registry with category-based domain loading |
-|:--:|:--|
+| 🎯 | **Unified Tool Architecture** — 7 categories, 27 tools managed by a centralized registry |
 | 🖥️ | **Multiple Interfaces** — Web UI, CLI, and native PySide6 desktop GUI |
 | 🤖 | **Local LLM Support** — Run models locally with llama.cpp (auto-compile with CUDA) |
 | 🌐 | **Browser Automation** — Lightpanda headless browser with CDP/Playwright support |
@@ -31,6 +30,8 @@
 | 🌐 | **Web Research** — Search, weather, finance, and more |
 | 💻 | **Code Execution** — Safe Python sandbox and shell commands |
 | 📊 | **Knowledge & Planning** — Persistent knowledge store, structured reasoning, task planning |
+| 👷 | **Worker Agents** — Background workers for heavy tasks (research, code generation, analysis) |
+| 🔧 | **CLI Tool Commands** — Domain-specific CLI commands for search, finance, IMDb, vision, and more |
 
 ---
 
@@ -62,38 +63,37 @@ aria-gui  # Launch desktop application
 
 ## 🤖 Agent System
 
-Aria uses a **tool-first architecture** centered around one primary agent with a centralized tool registry. Tools are organized into always-loaded core capabilities and on-demand domain tools that load when needed.
+Aria uses a **tool-first architecture** centered around one primary agent with a centralized tool registry. Tools are organized into always-loaded core capabilities and on-demand domain tools that load when needed. Heavy tasks are delegated to background **worker agents**.
 
 ### How It Works
 
 ```
 User Request → Aria → Registry-selected tools → Response
+                ↓ (heavy tasks)
+            Worker Agent → Background execution → Result file
 ```
 
-Aria evaluates each request, keeps core capabilities available by default, and pulls in domain-specific tools only when the task requires them.
+Aria evaluates each request, keeps core capabilities available by default, and pulls in domain-specific tools only when the task requires them. Tasks requiring 5+ tool calls are automatically delegated to worker agents that run in the background.
 
 ---
 
 ## 🛠️ Tools
 
-Tools are organized into **14 categories** managed by a centralized registry. Core and file tools are always available; domain tools load on demand.
+Tools are organized into **7 categories** (27 tools) managed by a centralized registry. Core and file tools are always available; domain tools load on demand.
 
-| Category | Tools | Capabilities |
-|:---------|:------|:-------------|
-| 🧠 **Core** | reasoning, scratchpad, plan, knowledge | Structured thinking, planning, persistent memory |
-| 📁 **Files** | read_file, write_file, edit_file, file_info, list_files, search_files, copy_file, delete_file, rename_file | Full file management |
-| 🌐 **Search** | web_search, download | Web research, content download |
-| 🐍 **Development** | python | Code execution and validation |
-| 🌍 **Browser** | open_url, browser_click | Headless browser automation (Lightpanda) |
-| 📊 **Finance** | fetch_current_stock_price, fetch_company_information, fetch_ticker_news | Market data and analysis |
-| 🎬 **Entertainment** | 7 IMDb tools, get_youtube_video_transcription | Movie/TV data, transcripts |
-| 🖥️ **System** | shell, http_request, process | Shell commands, HTTP requests, process management |
-| 🌤️ **Utility** | get_current_weather, parse_pdf | Weather, PDF parsing |
-| 🔍 **IMDb** | search_imdb_titles, get_movie_details, get_person_details, get_person_filmography, get_all_series_episodes, get_movie_reviews, get_movie_trivia | Movie and TV database |
-| 📚 **Knowledge** | add_to_knowledge, search_knowledge, list_knowledge | Persistent knowledge store |
-| 📋 **Planner** | create_plan, update_plan, list_plans | Task planning and tracking |
-| 🔗 **HTTP** | http_request | Direct HTTP requests |
-| ⚙️ **Process** | process | Process management |
+| Category | Loading | Tools |
+|:---------|:--------|:------|
+| 🧠 **Core** | Always | reasoning, plan, scratchpad, shell |
+| 📁 **Files** | Always | read_file, write_file, edit_file, file_info, list_files, search_files, copy_file |
+| 🌍 **Browser** | On-demand | open_url, browser_click |
+| 🐍 **Development** | On-demand | python |
+| 📊 **Finance** | On-demand | fetch_current_stock_price, fetch_company_information, fetch_ticker_news |
+| 🎬 **Entertainment** | On-demand | search_imdb_titles, get_movie_details, get_person_details, get_person_filmography, get_all_series_episodes, get_movie_reviews, get_movie_trivia, get_youtube_video_transcription |
+| 🖥️ **System** | On-demand | http_request, process |
+
+Additionally, **vision tools** (`parse_pdf`, `analyze_image`) are loaded separately when the VL server is available.
+
+Domain tools are also accessible via CLI commands (e.g., `aria search web`, `aria finance stock`, `aria imdb search`).
 
 For the full inventory with parameter reference, see [`docs/tools-inventory.md`](docs/tools-inventory.md).
 
@@ -180,6 +180,29 @@ aria config api           # Show API endpoints
 
 # Health check
 aria check                # Verify installation and connectivity
+
+# Agent tool commands (CLI access to domain tools)
+aria search web "query"         # Web search
+aria search fetch "url"         # Fetch URL content (auto-detects file vs website)
+aria search weather "city"      # Weather forecast
+aria search youtube "url"       # YouTube transcript
+aria knowledge store "key" "v"  # Store a fact
+aria knowledge recall "key"     # Retrieve a fact
+aria knowledge search "query"   # Search stored facts
+aria finance stock TICKER       # Stock price
+aria finance company TICKER     # Company info
+aria finance news TICKER        # Recent news
+aria imdb search "title"        # Search movies/TV
+aria imdb movie ID              # Movie details
+aria web click "selector"       # Click browser element
+aria dev run "code"             # Execute Python code
+aria vision pdf "file"          # Extract PDF content
+aria vision image "file"        # Analyze image
+aria http request GET "url"     # HTTP request
+aria system-cmd hardware        # System hardware info
+aria worker spawn --prompt "..." # Launch background worker
+aria worker list                # List workers
+aria self test-tools            # Verify tool loading
 ```
 
 ---

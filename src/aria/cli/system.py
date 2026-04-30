@@ -1,32 +1,21 @@
 """System information commands for the Aria CLI.
 
-This module provides commands to display system information, particularly
-focused on GPU resources using the NVIDIA helpers. These commands are
-useful for diagnosing system capabilities and resource availability.
-
-Commands:
-    gpu: Display detailed GPU information
-    vram: Show VRAM usage per GPU
-    nvlink: Check NVLink connectivity status
-    context: Calculate safe context size based on available VRAM
+Provides hardware inspection (CPU, RAM, GPU, OS), VRAM diagnostics,
+NVLink status, context-size calculation, and background process management.
 
 Example:
     ```bash
-    # Show GPU details
-    aria system gpu
-
-    # Check VRAM usage
-    aria system vram
-
-    # Check NVLink status
-    aria system nvlink
-
-    # Calculate safe context size
-    aria system context --model-size 4096
+    aria system hardware        # CPU, RAM, OS, GPU summary (JSON)
+    aria system gpu             # Detailed NVIDIA GPU table
+    aria system vram            # VRAM per GPU
+    aria system context         # Safe context-size estimate
+    aria system processes list  # Background process table
     ```
 """
 
-from typing import Annotated
+import json
+import platform
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
@@ -45,7 +34,7 @@ from aria.helpers.nvidia import (
 
 app = typer.Typer(
     name="system",
-    help="System information and GPU status commands.",
+    help="Hardware inspection, GPU diagnostics, and process management.",
 )
 
 console = Console()
@@ -92,7 +81,9 @@ def show_gpu_info():
     summary_table.add_column("Value", style="green")
 
     summary_table.add_row("GPU Count", str(len(gpus)))
-    summary_table.add_row("Driver Version", gpus[0].driver_version if gpus else "N/A")
+    summary_table.add_row(
+        "Driver Version", gpus[0].driver_version if gpus else "N/A"
+    )
     summary_table.add_row("nvidia-smi Version", get_nvidia_smi_version())
 
     console.print(summary_table)
@@ -215,7 +206,9 @@ def check_nvlink():
 def calculate_context(
     model_size: Annotated[
         int,
-        typer.Option(help="Model size in MiB (default: 0 for no model loaded)"),
+        typer.Option(
+            help="Model size in MiB (default: 0 for no model loaded)"
+        ),
     ] = 0,
     embedding: Annotated[
         bool,
@@ -276,7 +269,9 @@ def calculate_context(
     console.print(table)
     console.print(f"\n[dim]Model type: {model_type}[/dim]")
     console.print(f"[dim]Model size: {model_size} MiB[/dim]")
-    console.print(f"[cyan]Recommended max context: {total_context:,} tokens[/cyan]")
+    console.print(
+        f"[cyan]Recommended max context: {total_context:,} tokens[/cyan]"
+    )
 
 
 @app.command("info")
@@ -306,11 +301,15 @@ def system_overview():
         table.add_row("GPU Count", str(detect_gpu_count()))
 
         total_vram = get_total_vram_mb()
-        table.add_row("Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)")
+        table.add_row(
+            "Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)"
+        )
 
         has_nvlink, bond_type = detect_nvlink()
         if has_nvlink:
-            nvlink_status = f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
+            nvlink_status = (
+                f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
+            )
         else:
             nvlink_status = "[red]✗ Not available[/red]"
         table.add_row("NVLink", nvlink_status)
@@ -319,3 +318,99 @@ def system_overview():
         table.add_row("GPU Count", "0")
 
     console.print(table)
+
+
+@app.command("hardware")
+def hardware_cmd():
+    """Show host hardware summary as JSON (CPU, RAM, OS, GPU).
+
+    Returns a JSON object with OS details, CPU core count, memory,
+    and detected NVIDIA GPUs. Useful for agent introspection.
+    """
+    import os
+
+    info = {
+        "os": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "version": platform.version(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+        },
+        "cpu": {
+            "physical_cores": os.cpu_count(),
+        },
+    }
+
+    # Memory info (cross-platform)
+    try:
+        import subprocess
+
+        if platform.system() == "Darwin":
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.memsize"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                total_bytes = int(result.stdout.strip())
+                info["memory"] = {
+                    "total_bytes": total_bytes,
+                    "total_gb": round(total_bytes / (1024**3), 2),
+                }
+        elif platform.system() == "Linux":
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        kb = int(line.split()[1])
+                        info["memory"] = {
+                            "total_kb": kb,
+                            "total_gb": round(kb / (1024**2), 2),
+                        }
+                        break
+    except Exception:
+        pass
+
+    # GPU info (NVIDIA)
+    try:
+        if check_nvidia_smi_available():
+            gpus = detect_gpus_with_details()
+            info["gpus"] = [
+                {
+                    "index": gpu.index,
+                    "name": gpu.name,
+                    "total_memory_mb": gpu.total_memory,
+                    "free_memory_mb": gpu.free_memory,
+                    "temperature": gpu.temperature,
+                }
+                for gpu in gpus
+            ]
+    except Exception:
+        info["gpus"] = []
+
+    typer.echo(json.dumps(info, indent=2))
+
+
+@app.command("processes")
+def processes_cmd(
+    action: str = typer.Argument(
+        "list", help="Action: start, stop, status, logs, list"
+    ),
+    name: Optional[str] = typer.Option(
+        None, "--name", "-n", help="Process name"
+    ),
+    command: Optional[str] = typer.Option(
+        None, "--command", "-c", help="Command to execute (for start)"
+    ),
+):
+    """Manage background processes (start, stop, status, logs, list)."""
+    from aria.tools.process.functions import process
+
+    result = process(
+        reason="CLI process management",
+        action=action,
+        name=name,
+        command=command,
+    )
+    typer.echo(result)

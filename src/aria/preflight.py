@@ -353,6 +353,9 @@ def run_preflight_checks() -> PreflightResult:
     _check_models(checks)
     _check_token_limit(checks)
     _check_memory_requirements(checks)
+    _check_llm_server(checks)
+    _check_knowledge_db(checks)
+    _check_tool_loading(checks)
 
     return PreflightResult(
         passed=all(c.passed for c in checks),
@@ -520,7 +523,97 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
                 name="KV cache memory",
                 passed=False,
                 category="hardware",
-                error=f"KV cache needs ~{_mb_to_gb(total_kv_mb)} but only {_mb_to_gb(avail_ram_mb)} RAM available",
+                error=(
+                    f"KV cache needs ~{_mb_to_gb(total_kv_mb)} but only "
+                    f"{_mb_to_gb(avail_ram_mb)} RAM available"
+                ),
                 hint="Reduce context size in configuration",
+            )
+        )
+
+
+def _check_llm_server(checks: List[CheckResult]) -> None:
+    """Check that the LLM server is reachable (non-blocking).
+
+    The LLM server starts *after* preflight, so this check always passes.
+    It reports connectivity status as details/warning for informational purposes.
+    """
+    try:
+        import httpx
+
+        from aria.config.models import Chat as ChatConfig
+
+        r = httpx.get(f"{ChatConfig.api_url}/models", timeout=3)
+        models = r.json().get("data", [])
+        checks.append(
+            CheckResult(
+                name="LLM server",
+                passed=True,
+                category="connectivity",
+                details=(f"{ChatConfig.api_url} " f"({len(models)} model(s))"),
+            )
+        )
+    except Exception:
+        # Non-blocking: server starts after preflight
+        checks.append(
+            CheckResult(
+                name="LLM server",
+                passed=True,
+                category="connectivity",
+                details="Not running yet (will start with server)",
+            )
+        )
+
+
+def _check_knowledge_db(checks: List[CheckResult]) -> None:
+    """Check that the knowledge database is accessible."""
+    try:
+        from aria.tools.knowledge.database import KnowledgeDatabase
+
+        KnowledgeDatabase()
+        # Simple connectivity check — the singleton
+        # initializes the DB on first access
+        checks.append(
+            CheckResult(
+                name="Knowledge DB",
+                passed=True,
+                category="storage",
+                details="SQLite accessible",
+            )
+        )
+    except Exception as e:
+        checks.append(
+            CheckResult(
+                name="Knowledge DB",
+                passed=False,
+                category="storage",
+                error=str(e),
+                hint="Check DATA_FOLDER and ARIA_DB_FILENAME in .env",
+            )
+        )
+
+
+def _check_tool_loading(checks: List[CheckResult]) -> None:
+    """Check that core + file tools load correctly."""
+    try:
+        from aria.tools.registry import CORE, FILES, get_tools
+
+        tools = get_tools([CORE, FILES])
+        checks.append(
+            CheckResult(
+                name="Tool loading",
+                passed=True,
+                category="tools",
+                details=f"{len(tools)} tools loaded",
+            )
+        )
+    except Exception as e:
+        checks.append(
+            CheckResult(
+                name="Tool loading",
+                passed=False,
+                category="tools",
+                error=str(e),
+                hint="Check tool dependencies are installed",
             )
         )

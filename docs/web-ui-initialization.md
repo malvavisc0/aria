@@ -249,13 +249,11 @@ _state.prompt_enhancer = get_prompt_enhancer_agent(llm=_state.llm)
 ```
 
 **What happens:**
-- Creates the main [`AgentWorkflow`](src/aria/llm.py:6) with multiple agents:
-  - Chatter Agent
-  - File Editor Agent
-  - Market Analyst Agent
-  - Python Developer Agent
-  - Reasoning Agent
-  - Web Researcher Agent
+- Creates the main Aria agent via [`AgentWorkflow`](src/aria/agents/aria.py) with a centralized tool registry:
+  - **Core tools** (always loaded): reasoning, plan, scratchpad, shell
+  - **File tools** (always loaded): read_file, write_file, edit_file, file_info, list_files, search_files, copy_file
+  - **Domain tools** (on-demand): browser, development, finance, entertainment, system
+- Worker agents can be spawned on-demand via `aria worker spawn` for heavy tasks
 - Creates a separate [`PromptEnhancerAgent`](src/aria/agents/prompt_enhancer.py) for prompt enhancement
 
 **Failure conditions:**

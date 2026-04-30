@@ -1,28 +1,28 @@
 """Chatter agent module.
 
 This module provides the unified Aria agent — a single conversational agent
-that handles all tasks directly using the full tool registry.
+that handles all tasks using core + file tools. Domain-specific capabilities
+(web search, finance, IMDb, etc.) are accessed via CLI commands through
+the ``shell`` tool.
 """
 
 from typing import Optional
 
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
-from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.registry import get_tools
-from aria.tools.vision.functions import make_analyze_image, make_parse_pdf
+from aria.tools.registry import CORE, FILES, get_tools
 
 
 class ChatterAgent(FunctionAgent):
     """
     The unified Aria agent.
 
-    Handles natural dialogue, general knowledge, web research, code
-    execution, financial analysis, entertainment queries, and more — all
-    through a single set of tools loaded from the centralized registry.
+    Handles natural dialogue, general knowledge, and file operations
+    directly. Domain-specific tasks (web search, finance, entertainment,
+    vision, etc.) are delegated to CLI commands via the ``shell`` tool.
     """
 
     @staticmethod
@@ -43,22 +43,20 @@ class ChatterAgent(FunctionAgent):
 
 def get_agent(
     llm: LLM,
-    vl_api_base: str,
-    vl_model: str,
+    vl_api_base: str = "",
+    vl_model: str = "",
     extras: Optional[str] = None,
 ) -> ChatterAgent:
     """Factory function to create and return a ChatterAgent instance.
 
-    Loads all tools from the centralized registry and appends the
-    ``parse_pdf`` and ``analyze_image`` vision tools (which require VL
-    server binding and cannot live in the registry).
+    Loads only core + file tools from the registry. Domain tools
+    (web, finance, imdb, http, process, vision, browser, development)
+    are accessed via CLI commands through the ``shell`` tool.
 
     Args:
         llm: The language model to use for generating responses.
-        vl_api_base: Base URL of the OpenAI-compatible VL server, e.g.
-            ``"http://localhost:9091/v1"``.
-        vl_model: Model name to pass in VL requests, e.g.
-            ``"granite-docling-258M-Q8_0.gguf"``.
+        vl_api_base: Unused (kept for API compatibility).
+        vl_model: Unused (kept for API compatibility).
         extras: Optional additional context or instructions to customize the
             agent's behavior.
 
@@ -66,26 +64,7 @@ def get_agent(
         A configured ChatterAgent instance ready for conversation.
     """
 
-    parse_pdf_fn = make_parse_pdf(api_base=vl_api_base, model=vl_model)
-    analyze_image_fn = make_analyze_image(api_base=vl_api_base, model=vl_model)
-
-    tools = get_tools(None)  # Load all categories from registry
-
-    # parse_pdf needs VL server binding — can't be in the registry
-    tools.append(
-        FunctionTool.from_defaults(
-            async_fn=parse_pdf_fn,
-            name="parse_pdf",
-        )
-    )
-
-    # analyze_image needs VL server binding — can't be in the registry
-    tools.append(
-        FunctionTool.from_defaults(
-            async_fn=analyze_image_fn,
-            name="analyze_image",
-        )
-    )
+    tools = get_tools([CORE, FILES])  # Load only core + file tools
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
 

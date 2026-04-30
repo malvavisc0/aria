@@ -43,7 +43,7 @@ def _get_manager():
 
 
 @log_tool_call
-async def open_url(reason: str, url: str) -> str:
+async def open_url(reason: str, url: str, content_mode: str = "text") -> str:
     """Open a URL in the headless browser and get page content.
 
     When to use:
@@ -62,6 +62,8 @@ async def open_url(reason: str, url: str) -> str:
     Args:
         reason: Why you are opening this URL (for logging/auditing).
         url: The URL to navigate to.
+        content_mode: Extraction mode: `text` for cleaned body text or
+            `article` for likely main-content extraction.
 
     Returns:
         JSON with URL, title, and persisted content metadata
@@ -74,11 +76,20 @@ async def open_url(reason: str, url: str) -> str:
         - Requires Lightpanda to be installed (`aria lightpanda download`).
     """
     manager = _get_manager()
-    return await manager.navigate(url, tool=get_function_name(), reason=reason)
+    return await manager.navigate(
+        url,
+        tool=get_function_name(),
+        reason=reason,
+        content_mode=content_mode,
+    )
 
 
 @log_tool_call
-async def browser_click(reason: str, selector: str) -> str:
+async def browser_click(
+    reason: str,
+    selector: str,
+    content_mode: str = "text",
+) -> str:
     """Click an element on the current page by CSS selector.
 
     When to use:
@@ -97,6 +108,7 @@ async def browser_click(reason: str, selector: str) -> str:
         reason: Why you are clicking this element (for logging/auditing).
         selector: CSS selector for the element, e.g. 'button.accept',
             'a[href="/next"]', '#submit-button'.
+        content_mode: Extraction mode for the updated page content.
 
     Returns:
         JSON with updated page content metadata after the click.
@@ -107,4 +119,9 @@ async def browser_click(reason: str, selector: str) -> str:
           generic tag selectors to avoid clicking the wrong element.
     """
     manager = _get_manager()
-    return await manager.click(selector, tool=get_function_name(), reason=reason)
+    return await manager.click(
+        selector,
+        tool=get_function_name(),
+        reason=reason,
+        content_mode=content_mode,
+    )

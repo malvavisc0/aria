@@ -32,22 +32,39 @@ from sqlalchemy import text
 
 from aria.cli import (
     config,
+)
+from aria.cli import dev as dev_cli
+from aria.cli import finance as finance_cli
+from aria.cli import (
     get_db_session,
+)
+from aria.cli import http_cmd as http_cli
+from aria.cli import imdb as imdb_cli
+from aria.cli import knowledge as knowledge_cli
+from aria.cli import (
     lightpanda,
     llamacpp,
     models,
+)
+from aria.cli import search as search_cli
+from aria.cli import self_cmd as self_cli
+from aria.cli import (
     server,
     system,
     users,
 )
+from aria.cli import vision as vision_cli
+from aria.cli import web as web_cli
+from aria.cli import worker as worker_cli
 from aria.config import DEBUG
 
 app = typer.Typer(
     name="aria",
     help=(
-        "Aria - AI Assistant Management CLI\n\n"
-        "Manage users, configuration, and system resources "
-        "for the Aria AI assistant."
+        "Aria - local AI assistant CLI\n\n"
+        "Operational interface for Aria agents, workers, browsing, "
+        "knowledge, models, and system management. Many commands return "
+        "JSON metadata and saved artifact paths for safe follow-up reads."
     ),
     rich_markup_mode="rich",
     add_completion=False,
@@ -59,6 +76,17 @@ app.add_typer(models.app, name="models")
 app.add_typer(config.app, name="config")
 app.add_typer(server.app, name="server")
 app.add_typer(system.app, name="system")
+# CLI tool architecture
+app.add_typer(search_cli.app, name="search")
+app.add_typer(knowledge_cli.app, name="knowledge")
+app.add_typer(finance_cli.app, name="finance")
+app.add_typer(imdb_cli.app, name="imdb")
+app.add_typer(web_cli.app, name="web")
+app.add_typer(dev_cli.app, name="dev")
+app.add_typer(http_cli.app, name="http")
+app.add_typer(vision_cli.app, name="vision")
+app.add_typer(worker_cli.app, name="worker")
+app.add_typer(self_cli.app, name="self")
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -101,28 +129,33 @@ COMMAND_GROUPS = [
     {
         "title": "Quick Start",
         "commands": [
-            ("check", "Verify system is ready"),
+            ("check", "Run preflight checks"),
         ],
     },
     {
-        "title": "Management",
+        "title": "Infrastructure",
         "commands": [
-            ("users", "User accounts (list, add, delete)"),
-            ("models", "GGUF models (download, list)"),
-            ("llamacpp", "Binaries (download, status)"),
+            ("users", "Manage user accounts"),
+            ("models", "Download and list GGUF models"),
+            ("llamacpp", "Install llama.cpp binaries"),
+            ("server", "Start or stop the web UI"),
+            ("config", "Show settings, paths, and keys"),
+            ("system", "Hardware, GPU, VRAM, processes"),
         ],
     },
     {
-        "title": "Configuration",
+        "title": "Agent Tools",
         "commands": [
-            ("config", "View settings and paths"),
-            ("system", "GPU, VRAM, hardware info"),
-        ],
-    },
-    {
-        "title": "Server",
-        "commands": [
-            ("server", "Start/stop web UI"),
+            ("search", "Web search, fetch URLs, weather"),
+            ("knowledge", "Store and recall persistent facts"),
+            ("finance", "Stock prices, company info, news"),
+            ("imdb", "Movies, TV shows, people"),
+            ("web", "Click elements on the current page"),
+            ("dev", "Execute Python code"),
+            ("http", "Make API requests (persisted)"),
+            ("vision", "Analyze PDFs and images (VL model)"),
+            ("worker", "Spawn and manage background agents"),
+            ("self", "Introspect tool availability"),
         ],
     },
 ]
@@ -144,7 +177,13 @@ def main(ctx: typer.Context):
                 console.print(f"   [cyan]aria {cmd}[/cyan]  {desc}")
             console.print()
 
-        console.print("[dim]Run 'aria <command> --help' for detailed usage.[/dim]")
+        console.print(
+            "[dim]Run 'aria <command> --help' for detailed usage.[/dim]"
+        )
+        console.print(
+            "[dim]Common agent flow: search/fetch -> inspect saved "
+            "artifact -> verify -> answer.[/dim]"
+        )
 
 
 # Category display configuration
@@ -154,6 +193,8 @@ CATEGORY_CONFIG = {
     "binaries": {"icon": "⚙️ ", "label": "Binaries"},
     "models": {"icon": "🧠", "label": "Models"},
     "hardware": {"icon": "🖥️ ", "label": "Hardware"},
+    "connectivity": {"icon": "🌐", "label": "Connectivity"},
+    "tools": {"icon": "🔧", "label": "Tools"},
 }
 
 
@@ -177,7 +218,9 @@ def _print_category(category: str, checks: list) -> tuple[int, int]:
     Returns:
         Tuple of (passed_count, failed_count) for this category.
     """
-    config = CATEGORY_CONFIG.get(category, {"icon": "•", "label": category.title()})
+    config = CATEGORY_CONFIG.get(
+        category, {"icon": "•", "label": category.title()}
+    )
     passed = sum(1 for c in checks if c.passed)
     failed = len(checks) - passed
 
@@ -194,7 +237,9 @@ def _print_category(category: str, checks: list) -> tuple[int, int]:
             details = f" [dim]({check.details})[/dim]" if check.details else ""
             console.print(f"   [green]✓[/green] {check.name}{details}")
         else:
-            console.print(f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]")
+            console.print(
+                f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]"
+            )
             if check.hint:
                 console.print(f"      [dim]→ {check.hint}[/dim]")
 
@@ -207,7 +252,9 @@ def _print_summary_panel(total_passed: int, total_failed: int, hints: list):
     total = total_passed + total_failed
 
     if total_failed == 0:
-        content = f"[green]✅ All {total} checks passed - System ready![/green]"
+        content = (
+            f"[green]✅ All {total} checks passed - System ready![/green]"
+        )
         style = "green"
     else:
         plural = "s" if total_failed > 1 else ""

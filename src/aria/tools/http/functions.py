@@ -1,6 +1,8 @@
 """HTTP request tool for making API calls."""
 
+from pathlib import Path
 from typing import Dict, Optional
+from uuid import uuid4
 
 import httpx
 from loguru import logger
@@ -9,9 +11,23 @@ from aria.tools import tool_response
 from aria.tools.constants import (
     DEFAULT_TIMEOUT,
     MAX_TIMEOUT,
-    MAX_TOOL_OUTPUT_CHARS,
 )
 from aria.tools.decorators import log_tool_call
+
+HTTP_OUTPUT_DIR = Path("data/http")
+HTTP_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _persist_http_body(response: httpx.Response) -> tuple[str, int, str]:
+    content_type = (
+        response.headers.get("content-type", "").split(";", 1)[0].strip()
+    )
+    suffix = ".json" if "json" in content_type else ".txt"
+    file_path = HTTP_OUTPUT_DIR / f"response_{uuid4().hex}{suffix}"
+    body_text = response.text
+    file_path.write_text(body_text, encoding="utf-8")
+    return str(file_path), len(body_text), content_type or "text/plain"
+
 
 # Allowed HTTP methods
 _ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
@@ -52,8 +68,8 @@ def http_request(
         timeout: Timeout in seconds (default: 30, max: 300).
 
     Returns:
-        JSON with status_code, headers, body, url. Never raises —
-        errors are returned in the response data.
+        JSON with status_code, headers, final url, and a saved body file.
+        Response content is persisted to disk rather than returned inline.
 
     Important:
         - This tool never raises exceptions; errors are returned as JSON.
@@ -90,13 +106,7 @@ def http_request(
                 content=body,
             )
 
-        body = response.text
-        if len(body) > MAX_TOOL_OUTPUT_CHARS:
-            body = body[:MAX_TOOL_OUTPUT_CHARS] + (
-                f"\n\n[...truncated — response was "
-                f"{len(response.text):,} chars, "
-                f"limit is {MAX_TOOL_OUTPUT_CHARS:,}]"
-            )
+        body_file, body_size, content_type = _persist_http_body(response)
 
         return tool_response(
             tool="http_request",
@@ -104,8 +114,10 @@ def http_request(
             data={
                 "status_code": response.status_code,
                 "headers": dict(response.headers),
-                "body": body,
                 "url": str(response.url),
+                "body_file": body_file,
+                "body_size": body_size,
+                "content_type": content_type,
             },
         )
 

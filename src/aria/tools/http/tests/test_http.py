@@ -13,7 +13,9 @@ class TestHttpRequest:
 
     def test_invalid_method(self):
         """Test that invalid HTTP method is rejected."""
-        result = http_request("Test", method="INVALID", url="http://example.com")
+        result = http_request(
+            "Test", method="INVALID", url="http://example.com"
+        )
         data = json.loads(result)
         assert "error" in data["data"]
         assert "not allowed" in data["data"]["error"]
@@ -33,10 +35,14 @@ class TestHttpRequest:
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        result = http_request("Fetch API", method="GET", url="http://example.com/api")
+        result = http_request(
+            "Fetch API", method="GET", url="http://example.com/api"
+        )
         data = json.loads(result)
         assert data["data"]["status_code"] == 200
-        assert data["data"]["body"] == '{"result": "ok"}'
+        assert data["data"]["content_type"] == "application/json"
+        assert data["data"]["body_size"] == len('{"result": "ok"}')
+        assert data["data"]["body_file"].endswith(".json")
 
     @patch("aria.tools.http.functions.httpx.Client")
     def test_timeout_error(self, mock_client_cls):
@@ -58,7 +64,9 @@ class TestHttpRequest:
         """Test connection error handling."""
         mock_client_cls.side_effect = httpx.ConnectError("refused")
 
-        result = http_request("Connect test", method="GET", url="http://example.com")
+        result = http_request(
+            "Connect test", method="GET", url="http://example.com"
+        )
         data = json.loads(result)
         assert "error" in data["data"]
         assert "connection" in data["data"]["error"].lower()

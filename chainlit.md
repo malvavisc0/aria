@@ -1,79 +1,22 @@
 # Aria
 
-**Local AI · Unified Agent · Private by Default**
+**Local AI assistant — private, capable, extensible.**
 
 ---
 
-## Capabilities
+Ask me anything. I can search the web, read and write files, run code, look up stocks or movies, manage background tasks, and more — all running locally on your machine.
 
-### Conversation
-Ask anything. Aria responds naturally and remembers context across your session.
-
-### Code Execution
-Write, debug, and run code — Python, shell, and more — all sandboxed locally.
+### Things you can try
 
 ```
-Analyze this CSV file
-Debug the function in utils.py
-Write a web scraper for Hacker News
-```
-
-### Shell & System
-```
-Check system resource usage
-List running Docker containers
-Find large files consuming disk space
-```
-
-### Web Research
-```
-Summarize the latest arXiv papers on transformers
-Compare FastAPI vs Litestar documentation
-Get the weather in Berlin
-```
-
-### Finance
-```
+Summarize this PDF
 What's AAPL trading at?
-Show NVDA year-to-date performance
-Compare AMD and Intel market cap
-```
-
-### Media
-```
-Find films directed by Denis Villeneuve
-What's the rating of Severance?
-Cast of The Bear season 2
-```
-
-### Files
-```
-Read config.yaml
-Search for TODO comments in the codebase
-Create a new project scaffold
-```
-
-### Reasoning
-```
-Compare microservices vs monolith — tradeoffs
-Plan a zero-downtime database migration
-Analyze this decision step by step
+Search for recent news about Rust 2025
+Compare these two config files
+Write a Python script that...
+Plan a database migration strategy
 ```
 
 ---
 
-## Privacy
-
-All processing runs locally. Your data never leaves your machine.
-
----
-
-## Resources
-
-- **Docs:** [`docs/`](docs/)
-- **GitHub:** [malvavisc0/aria](https://github.com/malvavisc0/aria)
-- **Issues:** [Report a bug](https://github.com/malvavisc0/aria/issues)
-
----
-
-*Type below to begin.*
+Everything stays on your machine. No cloud. No telemetry.
