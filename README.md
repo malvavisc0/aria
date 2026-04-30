@@ -22,16 +22,18 @@
 
 ## ✨ Features
 
-| 🎯 | **Unified Tool Architecture** — 7 categories, 27 tools managed by a centralized registry |
-| 🖥️ | **Multiple Interfaces** — Web UI, CLI, and native PySide6 desktop GUI |
-| 🤖 | **Local LLM Support** — Run models locally with llama.cpp (auto-compile with CUDA) |
-| 🌐 | **Browser Automation** — Lightpanda headless browser with CDP/Playwright support |
-| 🔒 | **Privacy First** — Your data stays on your machine |
-| 🌐 | **Web Research** — Search, weather, finance, and more |
-| 💻 | **Code Execution** — Safe Python sandbox and shell commands |
-| 📊 | **Knowledge & Planning** — Persistent knowledge store, structured reasoning, task planning |
-| 👷 | **Worker Agents** — Background workers for heavy tasks (research, code generation, analysis) |
-| 🔧 | **CLI Tool Commands** — Domain-specific CLI commands for search, finance, IMDb, vision, and more |
+| | Feature | Description |
+|:--|:--------|:------------|
+| 🎯 | **Unified Tool Architecture** | 7 categories, 27 tools managed by a centralized registry |
+| 🖥️ | **Multiple Interfaces** | Web UI, CLI, and native PySide6 desktop GUI |
+| 🤖 | **Local LLM Support** | Run models locally with llama.cpp (auto-compile with CUDA) |
+| 🌐 | **Browser Automation** | Lightpanda headless browser with CDP/Playwright support |
+| 🔒 | **Privacy First** | Your data stays on your machine |
+| 🌐 | **Web Research** | Search, weather, finance, and more |
+| 💻 | **Code Execution** | Safe Python sandbox and shell commands |
+| 📊 | **Knowledge & Planning** | Persistent knowledge store, structured reasoning, task planning |
+| 👷 | **Worker Agents** | Background workers for heavy tasks (research, code generation, analysis) |
+| 🔧 | **CLI Tool Commands** | Domain-specific CLI commands for search, finance, IMDb, vision, and more |
 
 ---
 
