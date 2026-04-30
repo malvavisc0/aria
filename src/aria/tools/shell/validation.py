@@ -1,18 +1,21 @@
 """Command validation logic for shell execution tools.
 
 This module provides security validation functions for shell commands,
-including blocked command detection, shell operator detection, and
-working directory validation.
+including blocked command detection and working directory validation.
 """
 
+import re
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from aria.tools.shell.constants import BASE_DIR, BLOCKED_COMMANDS
 from aria.tools.shell.exceptions import (
     CommandBlockedError,
     WorkingDirectoryError,
 )
+
+# Shell operators that separate pipeline/command segments
+_SHELL_OPERATORS = re.compile(r"\s*(?:\|{1,2}|&&|;)\s*")
 
 
 def _extract_command_name(command: str) -> str:
@@ -25,21 +28,48 @@ def _extract_command_name(command: str) -> str:
         The first word (command name), or empty string if blank.
     """
     stripped = command.strip()
-    return stripped.split()[0] if stripped else ""
+    # Strip leading env assignments like VAR=val cmd ...
+    parts = stripped.split()
+    for i, part in enumerate(parts):
+        if "=" not in part:
+            return part
+    return ""
+
+
+def _extract_all_command_names(command: str) -> List[str]:
+    """Extract command names from all segments of a shell pipeline.
+
+    Splits on shell operators (|, ||, &&, ;) and extracts the first
+    token of each segment, skipping env var assignments.
+
+    Args:
+        command: The full command string (may contain pipes/chains).
+
+    Returns:
+        List of command names found in each segment.
+    """
+    segments = _SHELL_OPERATORS.split(command)
+    names = []
+    for segment in segments:
+        parts = segment.strip().split()
+        for part in parts:
+            if "=" not in part:
+                names.append(part)
+                break
+    return names
 
 
 def _is_blocked_command(command: str) -> bool:
-    """Check if a command name is in the blocked list.
+    """Check if any command in a pipeline is in the blocked list.
 
     Args:
-        command: The full command string.
+        command: The full command string (may contain pipes/chains).
 
     Returns:
-        True if the base command name is blocked, False otherwise.
+        True if any command name is blocked, False otherwise.
     """
-    cmd_name = _extract_command_name(command)
-
-    return cmd_name in BLOCKED_COMMANDS
+    cmd_names = _extract_all_command_names(command)
+    return any(name in BLOCKED_COMMANDS for name in cmd_names)
 
 
 def _validate_command(command: str) -> None:
@@ -49,8 +79,7 @@ def _validate_command(command: str) -> None:
         command: The shell command to validate.
 
     Raises:
-        CommandBlockedError: If the command is blocked or contains
-            shell operators that could bypass the blocked list.
+        CommandBlockedError: If the command contains a blocked command.
         ValueError: If the command is empty or too long.
     """
     if not command or not command.strip():
@@ -83,10 +112,14 @@ def _validate_working_dir(working_dir: Optional[str]) -> Path:
     try:
         path = Path(working_dir).resolve()
     except (OSError, ValueError) as exc:
-        raise WorkingDirectoryError(f"Invalid working directory path: {exc}") from exc
+        raise WorkingDirectoryError(
+            f"Invalid working directory path: {exc}"
+        ) from exc
 
     if not path.exists():
-        raise WorkingDirectoryError(f"Working directory does not exist: {working_dir}")
+        raise WorkingDirectoryError(
+            f"Working directory does not exist: {working_dir}"
+        )
     if not path.is_dir():
         raise WorkingDirectoryError(
             f"Working directory is not a directory: {working_dir}"

@@ -9,7 +9,11 @@ import pytest
 from aria.tools.shell import shell
 from aria.tools.shell.constants import IS_WINDOWS
 from aria.tools.shell.exceptions import CommandBlockedError
-from aria.tools.shell.validation import _is_blocked_command, _validate_command
+from aria.tools.shell.validation import (
+    _extract_all_command_names,
+    _is_blocked_command,
+    _validate_command,
+)
 
 
 class TestValidateCommand:
@@ -30,47 +34,84 @@ class TestValidateCommand:
         with pytest.raises(ValueError, match="too long"):
             _validate_command("a" * 10001)
 
-    def test_blocked_command_raises_error(self):
-        """Test that a blocked command raises CommandBlockedError."""
+    def test_blocked_command_dd(self):
+        """Test that dd is blocked."""
         with pytest.raises(CommandBlockedError, match="blocked"):
-            _validate_command("sudo rm -rf /")
+            _validate_command("dd if=/dev/zero of=/dev/sda")
 
     def test_blocked_command_shutdown(self):
         """Test that shutdown is blocked."""
         with pytest.raises(CommandBlockedError):
             _validate_command("shutdown -h now")
 
+    def test_blocked_command_in_pipe(self):
+        """Test that blocked commands are detected in pipelines."""
+        with pytest.raises(CommandBlockedError):
+            _validate_command("echo hello | dd of=/dev/null")
+
     def test_valid_command_passes(self):
         """Test that a valid command passes validation."""
         _validate_command("echo hello")  # Should not raise
 
-    def test_is_blocked_command_detects_sudo(self):
-        """Test _is_blocked_command detects sudo."""
-        assert _is_blocked_command("sudo apt install foo") is True
+    def test_previously_blocked_commands_now_allowed(self):
+        """Test that commands only dangerous with root are now allowed."""
+        # These should NOT raise
+        _validate_command("chmod 755 myfile")
+        _validate_command("chown user:group myfile")
+        _validate_command("ifconfig")
+        _validate_command("mount")
+        _validate_command("sudo echo hello")  # sudo removed from blocklist
+
+    def test_is_blocked_command_detects_dd(self):
+        """Test _is_blocked_command detects dd."""
+        assert _is_blocked_command("dd if=/dev/zero of=/dev/sda") is True
 
     def test_is_blocked_command_allows_echo(self):
         """Test _is_blocked_command allows echo."""
         assert _is_blocked_command("echo hello") is False
 
+    def test_is_blocked_command_allows_chmod(self):
+        """Test _is_blocked_command allows chmod (no longer blocked)."""
+        assert _is_blocked_command("chmod 755 file") is False
+
+    def test_extract_all_command_names_simple(self):
+        """Test extracting command name from simple command."""
+        names = _extract_all_command_names("git status")
+        assert names == ["git"]
+
+    def test_extract_all_command_names_pipe(self):
+        """Test extracting command names from piped commands."""
+        names = _extract_all_command_names("cat file | grep pattern")
+        assert names == ["cat", "grep"]
+
+    def test_extract_all_command_names_chain(self):
+        """Test extracting command names from chained commands."""
+        names = _extract_all_command_names("make && make install")
+        assert names == ["make", "make"]
+
+    def test_extract_all_command_names_env_prefix(self):
+        """Test extracting command name with env var prefix."""
+        names = _extract_all_command_names("FOO=bar git status")
+        assert names == ["git"]
+
 
 class TestShellSingleCommand:
-    """Tests for shell function with a single command (batch format)."""
+    """Tests for shell function with a single command."""
 
     def _get_result_data(self, result: str) -> dict:
         """Parse result and return the first command's data dict."""
         data = json.loads(result)
-        # shell() always returns batch format: data["results"][0]["data"]
         return data["data"]["results"][0]["data"]
 
     def _get_result_envelope(self, result: str) -> dict:
         """Parse result and return the top-level envelope."""
         return json.loads(result)
 
-    def test_execute_simple_command(self):
-        """Test executing a simple echo command."""
+    def test_execute_simple_string_command(self):
+        """Test executing a simple command string."""
         result = shell(
             reason="Test echo command",
-            commands={"command_name": "echo", "args": ["hello"]},
+            commands="echo hello",
             timeout=5,
         )
         envelope = self._get_result_envelope(result)
@@ -81,14 +122,23 @@ class TestShellSingleCommand:
         assert "hello" in cmd_data["stdout"]
         assert cmd_data["timed_out"] is False
 
+    def test_execute_dict_command(self):
+        """Test executing a command via dict format."""
+        result = shell(
+            reason="Test echo command",
+            commands={"command": "echo hello"},
+            timeout=5,
+        )
+        cmd_data = self._get_result_data(result)
+
+        assert cmd_data["return_code"] == 0
+        assert "hello" in cmd_data["stdout"]
+
     def test_execute_command_with_timeout(self):
         """Test command execution with custom timeout."""
         result = shell(
             reason="Test sleep command",
-            commands={
-                "command_name": "python",
-                "args": ["-c", "import time; time.sleep(0.1)"],
-            },
+            commands="python3 -c 'import time; time.sleep(0.1)'",
             timeout=5,
         )
         cmd_data = self._get_result_data(result)
@@ -100,10 +150,7 @@ class TestShellSingleCommand:
         with tempfile.TemporaryDirectory() as tmpdir:
             result = shell(
                 reason="Test ls in temp dir",
-                commands={
-                    "command_name": "ls" if not IS_WINDOWS else "dir",
-                    "args": [],
-                },
+                commands="ls",
                 timeout=5,
                 working_dir=tmpdir,
             )
@@ -112,29 +159,11 @@ class TestShellSingleCommand:
             assert cmd_data["return_code"] == 0
             assert tmpdir in cmd_data["working_dir"]
 
-    def test_execute_command_treats_shell_operators_as_literal_args(self):
-        """Test that shell operators in args are treated as literal text."""
-        result = shell(
-            reason="Test literal args",
-            commands={
-                "command_name": "echo",
-                "args": ["hello | world"],
-            },
-            timeout=5,
-        )
-        cmd_data = self._get_result_data(result)
-
-        assert cmd_data["return_code"] == 0
-        assert "hello | world" in cmd_data["stdout"]
-
     def test_execute_command_timeout(self):
         """Test command execution timeout."""
         result = shell(
             reason="Test timeout",
-            commands={
-                "command_name": "python",
-                "args": ["-c", "import time; time.sleep(10)"],
-            },
+            commands="python3 -c 'import time; time.sleep(10)'",
             timeout=1,
         )
         cmd_data = self._get_result_data(result)
@@ -145,10 +174,7 @@ class TestShellSingleCommand:
         """Test command execution with non-zero exit code."""
         result = shell(
             reason="Test error handling",
-            commands={
-                "command_name": "python",
-                "args": ["-c", "import sys; sys.exit(1)"],
-            },
+            commands="python3 -c 'import sys; sys.exit(1)'",
             timeout=5,
         )
         cmd_data = self._get_result_data(result)
@@ -159,7 +185,7 @@ class TestShellSingleCommand:
         """Test that executing a blocked command returns an error result."""
         result = shell(
             reason="Test blocked command",
-            commands={"command_name": "shutdown", "args": []},
+            commands="shutdown -h now",
             timeout=5,
         )
         data = json.loads(result)
@@ -172,7 +198,7 @@ class TestShellSingleCommand:
         """Test that response includes timestamp at top level."""
         result = shell(
             reason="Test metadata",
-            commands={"command_name": "echo", "args": ["test"]},
+            commands="echo test",
             timeout=5,
         )
         envelope = self._get_result_envelope(result)
@@ -183,7 +209,7 @@ class TestShellSingleCommand:
         """Test that response includes platform info."""
         result = shell(
             reason="Test platform in response",
-            commands={"command_name": "echo", "args": ["test"]},
+            commands="echo test",
             timeout=5,
         )
         cmd_data = self._get_result_data(result)
@@ -197,12 +223,10 @@ class TestShellSingleCommand:
             test_file = Path(tmpdir) / "test.txt"
             test_file.write_text("test content")
 
+            cmd = f"cat {test_file}" if not IS_WINDOWS else f"type {test_file}"
             result = shell(
                 reason="Test cat command",
-                commands={
-                    "command_name": "cat" if not IS_WINDOWS else "type",
-                    "args": [str(test_file)],
-                },
+                commands=cmd,
                 timeout=5,
             )
             cmd_data = self._get_result_data(result)
@@ -211,36 +235,21 @@ class TestShellSingleCommand:
             assert "test content" in cmd_data["stdout"]
 
     def test_execute_command_not_found_returns_127(self):
-        """Test that a whitelisted but missing command returns 127."""
-        # vm_stat is in the safe list but only exists on macOS
-        if not IS_WINDOWS:
-            result = shell(
-                reason="Test command not found",
-                commands={"command_name": "vm_stat", "args": []},
-                timeout=5,
-            )
-            cmd_data = self._get_result_data(result)
-            # On Linux, vm_stat won't be found
-            # On macOS, it will succeed — both are valid outcomes
-            assert cmd_data["return_code"] in [0, 127]
-
-    def test_legacy_command_string_format(self):
-        """Test legacy command string format (shlex split)."""
+        """Test that a missing command returns 127."""
         result = shell(
-            reason="Test legacy format",
-            commands={"command": "echo hello world"},
+            reason="Test command not found",
+            commands="nonexistent_command_xyz",
             timeout=5,
         )
         cmd_data = self._get_result_data(result)
 
-        assert cmd_data["return_code"] == 0
-        assert "hello world" in cmd_data["stdout"]
+        assert cmd_data["return_code"] != 0
 
     def test_single_command_has_batch_metadata(self):
-        """Test that single dict input returns batch metadata."""
+        """Test that single string input returns batch metadata."""
         result = shell(
             reason="Test batch metadata for single",
-            commands={"command_name": "echo", "args": ["test"]},
+            commands="echo test",
             timeout=5,
         )
         data = json.loads(result)
@@ -250,16 +259,64 @@ class TestShellSingleCommand:
         assert data["data"]["stopped_early"] is False
         assert len(data["data"]["results"]) == 1
 
+    def test_shell_pipe(self):
+        """Test that shell pipes work."""
+        result = shell(
+            reason="Test pipe",
+            commands="echo hello world | tr '[:lower:]' '[:upper:]'",
+            timeout=5,
+        )
+        cmd_data = self._get_result_data(result)
+
+        assert cmd_data["return_code"] == 0
+        assert "HELLO WORLD" in cmd_data["stdout"]
+
+    def test_shell_redirect(self):
+        """Test that shell redirects work."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outfile = Path(tmpdir) / "output.txt"
+            result = shell(
+                reason="Test redirect",
+                commands=f"echo hello > {outfile}",
+                timeout=5,
+            )
+            cmd_data = self._get_result_data(result)
+
+            assert cmd_data["return_code"] == 0
+            assert outfile.read_text().strip() == "hello"
+
+    def test_shell_env_variable(self):
+        """Test that environment variable expansion works."""
+        result = shell(
+            reason="Test env var",
+            commands="echo $HOME",
+            timeout=5,
+        )
+        cmd_data = self._get_result_data(result)
+
+        assert cmd_data["return_code"] == 0
+        assert len(cmd_data["stdout"].strip()) > 0
+
+    def test_shell_chaining(self):
+        """Test that command chaining with && works."""
+        result = shell(
+            reason="Test chaining",
+            commands="echo first && echo second",
+            timeout=5,
+        )
+        cmd_data = self._get_result_data(result)
+
+        assert cmd_data["return_code"] == 0
+        assert "first" in cmd_data["stdout"]
+        assert "second" in cmd_data["stdout"]
+
 
 class TestShellBatch:
     """Tests for shell function with multiple commands."""
 
-    def test_execute_batch_success(self):
-        """Test executing a batch of successful commands."""
-        commands = [
-            {"command": "echo hello"},
-            {"command": "echo world"},
-        ]
+    def test_execute_batch_with_strings(self):
+        """Test executing a batch of string commands."""
+        commands = ["echo hello", "echo world"]
         result = shell(
             reason="Test batch execution",
             commands=commands,
@@ -272,12 +329,28 @@ class TestShellBatch:
         assert data["data"]["failure_count"] == 0
         assert data["data"]["stopped_early"] is False
 
+    def test_execute_batch_with_dicts(self):
+        """Test executing a batch of dict commands."""
+        commands = [
+            {"command": "echo hello"},
+            {"command": "echo world"},
+        ]
+        result = shell(
+            reason="Test batch execution",
+            commands=commands,
+            stop_on_error=True,
+        )
+        data = json.loads(result)
+
+        assert data["data"]["success_count"] == 2
+        assert data["data"]["failure_count"] == 0
+
     def test_execute_batch_with_error(self):
         """Test executing a batch with one failing command."""
         commands = [
-            {"command": "echo hello"},
-            {"command": "exit 1"},
-            {"command": "echo world"},
+            "echo hello",
+            "exit 1",
+            "echo world",
         ]
         result = shell(
             reason="Test batch with error",
@@ -309,7 +382,7 @@ class TestShellBatch:
 
     def test_execute_batch_has_timestamp(self):
         """Test that batch response includes timestamp."""
-        commands = [{"command": "echo test"}]
+        commands = ["echo test"]
         result = shell(
             reason="Test batch metadata",
             commands=commands,

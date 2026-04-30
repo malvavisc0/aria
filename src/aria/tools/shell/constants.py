@@ -41,38 +41,16 @@ MAX_OUTPUT_SIZE = (
 MAX_LINE_LENGTH = 10000
 
 BLOCKED_COMMANDS = [
+    # System shutdown/reboot — works without root on many desktop systems
     "shutdown",
     "reboot",
     "halt",
     "poweroff",
-    "useradd",
-    "userdel",
-    "passwd",
-    "usermod",
-    "iptables",
-    "netsh",
-    "route",
-    "ifconfig",
-    "format",
-    "fdisk",
-    "diskpart",
+    # Raw disk operations — can destroy data on accessible devices
     "mkfs",
-    "sudo",
-    "su",
-    "runas",
-    "doas",
-    "chmod",
-    "chown",
-    "icacls",
     "dd",
     "shred",
     "wipe",
-    "reg",
-    "regedit",
-    "sc",
-    "net",
-    "mount",
-    "umount",
 ]
 
 BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Data.path))).resolve()

@@ -14,6 +14,7 @@ from aria.tools.shell.exceptions import (
     WorkingDirectoryError,
 )
 from aria.tools.shell.validation import (
+    _extract_all_command_names,
     _extract_command_name,
     _is_blocked_command,
     _validate_command,
@@ -48,23 +49,70 @@ class TestExtractCommandName:
 class TestIsBlockedCommand:
     """Tests for _is_blocked_command function."""
 
-    def test_sudo_blocked(self):
-        """Test that sudo is blocked."""
-        assert _is_blocked_command("sudo rm -rf /") is True
+    def test_dd_blocked(self):
+        """Test that dd is blocked."""
+        assert _is_blocked_command("dd if=/dev/zero of=/dev/sda") is True
 
     def test_shutdown_blocked(self):
         """Test that shutdown is blocked."""
         assert _is_blocked_command("shutdown -h now") is True
 
-    def test_chmod_blocked(self):
-        """Test that chmod is blocked."""
-        assert _is_blocked_command("chmod 777 /") is True
+    def test_wipe_blocked(self):
+        """Test that wipe is blocked."""
+        assert _is_blocked_command("wipe /dev/sda") is True
+
+    def test_sudo_not_blocked(self):
+        """Test that sudo is no longer blocked (harmless without root)."""
+        assert _is_blocked_command("sudo rm -rf /") is False
+
+    def test_chmod_not_blocked(self):
+        """Test that chmod is no longer blocked (harmless without root)."""
+        assert _is_blocked_command("chmod 777 /") is False
+
+    def test_blocked_command_in_pipe(self):
+        """Test that blocked commands are detected in pipelines."""
+        assert _is_blocked_command("echo hello | dd of=/dev/null") is True
 
     def test_safe_command_not_blocked(self):
         """Test that safe commands are not blocked."""
         assert _is_blocked_command("ls -la") is False
         assert _is_blocked_command("git status") is False
         assert _is_blocked_command("cat file.txt") is False
+        assert _is_blocked_command("chmod 755 file") is False
+        assert _is_blocked_command("ifconfig") is False
+
+
+class TestExtractAllCommandNames:
+    """Tests for _extract_all_command_names function."""
+
+    def test_simple_command(self):
+        """Test extracting from simple command."""
+        assert _extract_all_command_names("git status") == ["git"]
+
+    def test_pipe(self):
+        """Test extracting from piped commands."""
+        result = _extract_all_command_names("cat file | grep pattern")
+        assert result == ["cat", "grep"]
+
+    def test_and_chain(self):
+        """Test extracting from && chained commands."""
+        result = _extract_all_command_names("make && make install")
+        assert result == ["make", "make"]
+
+    def test_or_chain(self):
+        """Test extracting from || chained commands."""
+        result = _extract_all_command_names("cmd1 || cmd2")
+        assert result == ["cmd1", "cmd2"]
+
+    def test_semicolon(self):
+        """Test extracting from semicolon-separated commands."""
+        result = _extract_all_command_names("echo a; echo b")
+        assert result == ["echo", "echo"]
+
+    def test_env_prefix(self):
+        """Test extracting with env var prefix."""
+        result = _extract_all_command_names("FOO=bar git status")
+        assert result == ["git"]
 
 
 class TestValidateCommand:
@@ -85,15 +133,24 @@ class TestValidateCommand:
         with pytest.raises(ValueError, match="too long"):
             _validate_command("a" * 10001)
 
-    def test_blocked_command_raises_error(self):
-        """Test that a blocked command raises CommandBlockedError."""
+    def test_blocked_command_dd_raises_error(self):
+        """Test that dd raises CommandBlockedError."""
         with pytest.raises(CommandBlockedError, match="blocked"):
-            _validate_command("sudo rm -rf /")
+            _validate_command("dd if=/dev/zero of=/dev/sda")
 
     def test_blocked_command_shutdown(self):
         """Test that shutdown is blocked."""
         with pytest.raises(CommandBlockedError):
             _validate_command("shutdown -h now")
+
+    def test_blocked_command_in_pipe_raises_error(self):
+        """Test that blocked commands in pipeline raise error."""
+        with pytest.raises(CommandBlockedError):
+            _validate_command("echo hello | dd of=/dev/null")
+
+    def test_sudo_not_blocked(self):
+        """Test that sudo no longer raises (removed from blocklist)."""
+        _validate_command("sudo echo hello")  # Should not raise
 
     def test_valid_command_passes(self):
         """Test that valid commands pass validation."""
@@ -101,6 +158,8 @@ class TestValidateCommand:
         _validate_command("ls -la")
         _validate_command("git status")
         _validate_command("cat file.txt")
+        _validate_command("chmod 755 file")
+        _validate_command("pip install requests")
 
 
 class TestValidateWorkingDir:

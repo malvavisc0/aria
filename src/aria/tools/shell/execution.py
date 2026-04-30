@@ -76,9 +76,11 @@ def _execute_command_internal(
         operation: The operation name (e.g. ``execute_command``).
         display_command: Human-readable command for response payload.
         run_target: Command passed to ``subprocess.run``.
+            When ``shell=True`` this should be a string.
+            When ``shell=False`` this should be a list of strings.
         working_dir: Resolved working directory.
         timeout: Timeout in seconds.
-        shell: Whether to execute via shell.
+        shell: Whether to execute via the system shell.
         env: Optional environment variables passed to subprocess.
 
     Returns:
