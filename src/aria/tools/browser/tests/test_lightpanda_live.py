@@ -69,7 +69,9 @@ async def test_navigate_returns_content(manager: LightpandaManager):
 @pytest.mark.asyncio
 async def test_sequential_navigations(manager: LightpandaManager):
     """Navigate to two pages sequentially — the second replaces the first."""
-    r1 = await manager.navigate("https://example.com", tool="open_url", reason="page 1")
+    r1 = await manager.navigate(
+        "https://example.com", tool="open_url", reason="page 1"
+    )
     p1 = json.loads(r1)
     assert p1["status"] == "success"
 
@@ -80,7 +82,8 @@ async def test_sequential_navigations(manager: LightpandaManager):
     assert p2["status"] == "success"
     assert "httpbin" in p2["data"]["url"]
     print(
-        f"\n✓ sequential: page1={p1['data']['title']}, " f"page2={p2['data']['title']}"
+        f"\n✓ sequential: page1={p1['data']['title']}, "
+        f"page2={p2['data']['title']}"
     )
 
 
@@ -99,7 +102,9 @@ async def test_concurrent_navigations_are_serialised(
     With the asyncio.Lock they run one after the other and both succeed.
     """
     results = await asyncio.gather(
-        manager.navigate("https://example.com", tool="open_url", reason="concurrent A"),
+        manager.navigate(
+            "https://example.com", tool="open_url", reason="concurrent A"
+        ),
         manager.navigate(
             "https://httpbin.org/html", tool="open_url", reason="concurrent B"
         ),
@@ -150,18 +155,19 @@ async def test_three_concurrent_navigations(manager: LightpandaManager):
 
 @pytest.mark.asyncio
 async def test_navigate_then_click(manager: LightpandaManager):
-    """Navigate to example.com and click the 'More information' link."""
+    """Navigate to httpbin.org/links/3 and click the first link."""
     r1 = await manager.navigate(
-        "https://example.com", tool="open_url", reason="before click"
+        "https://httpbin.org/links/3", tool="open_url", reason="before click"
     )
     assert json.loads(r1)["status"] == "success"
 
     r2 = await manager.click(
-        "a", tool="browser_click", reason="clicking More info link"
+        "a", tool="browser_click", reason="clicking first link"
     )
     p2 = json.loads(r2)
-    # After clicking, we should have navigated to iana.org
+    # After clicking, we should have navigated to /links/3/0
     assert p2["status"] == "success"
+    assert "httpbin.org" in p2["data"]["url"]
     print(f"\n✓ click: landed on {p2['data']['url']}")
 
 
@@ -173,8 +179,12 @@ async def test_navigate_then_click(manager: LightpandaManager):
 @pytest.mark.asyncio
 async def test_get_page_content(manager: LightpandaManager):
     """Navigate, then get page content without re-navigating."""
-    await manager.navigate("https://example.com", tool="open_url", reason="setup")
-    result = await manager.get_page_content(tool="get_page_content", reason="read")
+    await manager.navigate(
+        "https://example.com", tool="open_url", reason="setup"
+    )
+    result = await manager.get_page_content(
+        tool="get_page_content", reason="read"
+    )
     assert "Example Domain" in result
     print(f"\n✓ get_page_content: {len(result)} chars")
 
@@ -196,4 +206,7 @@ async def test_navigate_invalid_url(manager: LightpandaManager):
     # Should be an error, but the manager should not crash
     assert payload["status"] == "error"
     assert manager.is_running, "Manager should still be running after error"
-    print(f"\n✓ invalid URL handled gracefully: " f"{payload['error']['message'][:80]}")
+    print(
+        f"\n✓ invalid URL handled gracefully: "
+        f"{payload['error']['message'][:80]}"
+    )
