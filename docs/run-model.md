@@ -1,34 +1,63 @@
 # run-model — Hardware-Optimized llama-server Launcher
 
-A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent hardware detection, automatic resource estimation, and GPU optimization. Designed to run on **Linux (bash 4.0+)** and **macOS (with Homebrew bash 5.0+)**.
+A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent hardware detection, automatic resource estimation, and GPU optimization. Designed to run on **Linux (bash 4.0+)** and **macOS (with Homebrew bash 4.0+)**.
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-  - [Arguments](#arguments)
-  - [Options](#options)
+- [run-model — Hardware-Optimized llama-server Launcher](#run-model--hardware-optimized-llama-server-launcher)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#quick-start)
+  - [Usage](#usage)
+    - [Arguments](#arguments)
+    - [Options](#options)
   - [Environment Variables](#environment-variables)
-- [Capabilities](#capabilities)
-  - [Hardware Detection](#hardware-detection)
-  - [Context Size Management](#context-size-management)
-  - [Resource Estimation](#resource-estimation)
-  - [Dual GPU Support](#dual-gpu-support)
-  - [Multiple Modes](#multiple-modes)
-- [Webapp / Programmatic Usage](#webapp--programmatic-usage)
-  - [JSON Output](#json-output)
-  - [Dry-Run Mode](#dry-run-mode)
-  - [PID File](#pid-file)
-- [Aria Integration](#aria-integration)
-  - [Three-Server Architecture](#three-server-architecture)
-  - [Python Integration Layer](#python-integration-layer)
-  - [Environment Variable Translation](#environment-variable-translation)
-- [Platform Support](#platform-support)
-- [Examples](#examples)
-- [Exit Codes](#exit-codes)
-- [Signal Handling](#signal-handling)
-- [Troubleshooting](#troubleshooting)
+    - [Example with environment variables](#example-with-environment-variables)
+  - [Capabilities](#capabilities)
+    - [Hardware Detection](#hardware-detection)
+      - [Platform Override](#platform-override)
+    - [Context Size Management](#context-size-management)
+      - [Bypassing the safety cap](#bypassing-the-safety-cap)
+    - [Resource Estimation](#resource-estimation)
+      - [KV Cache Estimation Formula](#kv-cache-estimation-formula)
+    - [Model Metadata Extraction](#model-metadata-extraction)
+    - [Dual GPU Support](#dual-gpu-support)
+    - [Multiple Modes](#multiple-modes)
+      - [Chat Mode (default)](#chat-mode-default)
+      - [Embedding Mode](#embedding-mode)
+      - [Vision Mode](#vision-mode)
+      - [Tool-Calling Mode](#tool-calling-mode)
+  - [Webapp / Programmatic Usage](#webapp--programmatic-usage)
+    - [JSON Output](#json-output)
+    - [Dry-Run Mode](#dry-run-mode)
+    - [PID File](#pid-file)
+  - [Aria Integration](#aria-integration)
+    - [Three-Server Architecture](#three-server-architecture)
+    - [Python Integration Layer](#python-integration-layer)
+    - [Environment Variable Translation](#environment-variable-translation)
+  - [Platform Support](#platform-support)
+  - [Examples](#examples)
+    - [Basic Usage](#basic-usage)
+    - [Honoring Your .env Context Size](#honoring-your-env-context-size)
+    - [GPU Optimization](#gpu-optimization)
+    - [Multi-User Chat](#multi-user-chat)
+    - [Multi-GPU Setup](#multi-gpu-setup)
+    - [Embedding Mode](#embedding-mode-1)
+    - [Production / Logging](#production--logging)
+    - [Webapp Automation](#webapp-automation)
+    - [macOS Homebrew bash](#macos-homebrew-bash)
+  - [Exit Codes](#exit-codes)
+  - [Signal Handling](#signal-handling)
+  - [Troubleshooting](#troubleshooting)
+    - ["llama-server not found"](#llama-server-not-found)
+    - ["Context size exceeds safe limit"](#context-size-exceeds-safe-limit)
+    - ["Model exceeds free VRAM"](#model-exceeds-free-vram)
+    - ["Port already in use"](#port-already-in-use)
+    - [macOS bash version too old](#macos-bash-version-too-old)
+    - [GGUF validation fails](#gguf-validation-fails)
+    - ['failed to mlock' warnings](#failed-to-mlock-warnings)
+    - [Chat mode only handles one request at a time](#chat-mode-only-handles-one-request-at-a-time)
+  - [File Locations](#file-locations)
 
 ---
 
@@ -38,7 +67,7 @@ A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent ha
 |-------------|-------|-------|
 | Shell | bash 4.0+ | bash 4.0+ (may need upgrade via `brew install bash`) |
 | llama-server | In PATH or via `LLAMA_SERVER_PATH` | In PATH or via `LLAMA_SERVER_PATH` |
-| Dependencies | `nvidia-smi` (GPU), `nproc`, `awk`, `od`, `strings` | `sysctl`, `system_profiler`, `vm_stat` |
+| Dependencies | `nvidia-smi` (GPU), `nproc`, `awk`, `od`, `strings`, `lsof` or `ss` | `sysctl`, `system_profiler`, `vm_stat`, `lsof` |
 
 > **macOS Note:** The default macOS bash is version 3.2. Install a newer version:
 > ```bash
@@ -228,6 +257,15 @@ Where `kv_quant_multiplier` depends on the cache type:
 | q8_0 | 0.5 |
 | q5_0 / q5_1 / q5_k | 0.35 |
 | q4_0 / q4_1 / q4_k | 0.25 |
+
+### Model Metadata Extraction
+
+The script automatically detects and displays model metadata by parsing the GGUF header (first 1MB):
+
+- **Architecture:** LLaMA, Mistral, Gemma, Phi, Falcon, Qwen
+- **Quantization:** Q4_K_M, Q5_K_M, Q8_0, Q2_K, Q3_K, Q6_K
+
+This information is shown during startup alongside the model file name and size.
 
 ### Dual GPU Support
 
