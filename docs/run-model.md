@@ -25,6 +25,7 @@ A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent ha
     - [Multiple Modes](#multiple-modes)
       - [Chat Mode (default)](#chat-mode-default)
       - [Embedding Mode](#embedding-mode)
+      - [Reranking Mode](#reranking-mode)
       - [Vision Mode](#vision-mode)
       - [Tool-Calling Mode](#tool-calling-mode)
   - [Webapp / Programmatic Usage](#webapp--programmatic-usage)
@@ -32,7 +33,7 @@ A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent ha
     - [Dry-Run Mode](#dry-run-mode)
     - [PID File](#pid-file)
   - [Aria Integration](#aria-integration)
-    - [Three-Server Architecture](#three-server-architecture)
+    - [Multi-Server Architecture](#multi-server-architecture)
     - [Python Integration Layer](#python-integration-layer)
     - [Environment Variable Translation](#environment-variable-translation)
   - [Platform Support](#platform-support)
@@ -119,7 +120,8 @@ A powerful bash script that wraps `llama-server` (llama.cpp) with intelligent ha
 | — | `--top-p TOP_P` | Top-p sampling value (default: `0.95`) |
 | `-m` | `--mmproj PATH` | Path to mmproj file for vision (multimodal) models |
 | `-e` | `--embedding` | Run in embedding mode (deterministic, no sampling) |
-| — | `--parallel N` | Number of parallel embedding requests (default: `4`, embedding mode only) |
+| `-R` | `--reranking` | Run in reranking mode (deterministic, no sampling) |
+| — | `--parallel N` | Number of parallel requests (default: `4`, embedding/reranking only) |
 | — | `--slots N` | Number of parallel slots for chat mode (default: `1`). Set >1 for concurrent requests |
 | — | `--chat-template-file F` | Jinja2 chat template file for tool-calling models |
 | — | `--force-context` | Bypass the safety cap on context size — use the exact value you specify |
@@ -155,7 +157,9 @@ All options can be set via environment variables, enabling headless/automated us
 | `LLAMA_SERVER_PATH` | `llama-server` | Path to llama-server binary |
 | `MMPROJ_PATH` | (none) | Path to mmproj file for vision models |
 | `EMBEDDING_MODE` | `0` | Embedding mode (`1` or `0`) |
-| `EMBEDDING_PARALLEL` | `4` | Parallel embedding requests |
+| `RERANK_MODE` | `0` | Reranking mode (`1` or `0`) |
+| `EMBEDDING_PARALLEL` | `4` | Parallel requests (embedding/reranking) |
+| `RERANK_CONTEXT_SIZE` | `4096` | Context size for rerank server |
 | `CHAT_PARALLEL` | `1` | Parallel slots for chat mode (concurrent requests) |
 | `CHAT_TEMPLATE_FILE` | (none) | Path to Jinja2 chat template file |
 | `STRICT_POWER_OF_2` | `1` | Enforce power-of-2 context sizes (`1` or `0`) |
@@ -304,6 +308,14 @@ Deterministic embedding generation with parallel processing:
 ./data/bin/run-model embeddings.gguf --embedding --parallel 8 --port 7072
 ```
 
+#### Reranking Mode
+Deterministic reranking for search result re-scoring with parallel processing:
+```bash
+./data/bin/run-model reranker.gguf --reranking --parallel 4 --port 7073
+```
+
+Reranking mode uses the `--reranking` flag (analogous to `--embedding`) which exposes a `/v1/rerank` API endpoint. Like embedding mode, it is deterministic with no sampling parameters. Common rerank models include `bge-reranker-v2-m3` and `jina-reranker-v2-base-multilingual`.
+
 #### Vision Mode
 For multimodal models with vision capabilities:
 ```bash
@@ -349,6 +361,7 @@ Output:
   "gpu_layers": 999,
   "flash_attn": true,
   "embedding_mode": false,
+  "rerank_mode": false,
   "chat_parallel": 1,
   "kv_cache_type_k": "q8_0",
   "kv_cache_type_v": "q8_0",
@@ -382,15 +395,16 @@ Write the server PID to a file for external process management:
 
 ## Aria Integration
 
-### Three-Server Architecture
+### Multi-Server Architecture
 
-Aria uses `run-model` to launch three llama-server instances:
+Aria uses `run-model` to launch up to four llama-server instances:
 
 | Server | Role | Default Port | Context Source |
 |--------|------|-------------|---------------|
 | **Chat** | Main LLM inference | `CHAT_OPENAI_API` port | `CHAT_CONTEXT_SIZE` |
 | **Vision/Language** | VL model for images/PDFs | `VL_OPENAI_API` port | `VL_CONTEXT_SIZE` |
 | **Embeddings** | Vector embeddings | `EMBEDDINGS_API_URL` port | `EMBEDDINGS_CONTEXT_SIZE` |
+| **Rerank** | Search re-ranking | `RERANK_API_URL` port | `RERANK_CONTEXT_SIZE` |
 
 ### Python Integration Layer
 
@@ -406,8 +420,7 @@ manager.stop_all()    # graceful shutdown
 ```
 
 The Python layer:
-1. Reads context sizes from `.env` via `LlamaCppConfig` (`CHAT_CONTEXT_SIZE`, `VL_CONTEXT_SIZE`, `EMBEDDINGS_CONTEXT_SIZE`)
-2. Resolves model file paths from the configured models directory
+1. Reads context sizes from `.env` via `LlamaCppConfig` (`CHAT_CONTEXT_SIZE`, `VL_CONTEXT_SIZE`, `EMBEDDINGS_CONTEXT_SIZE`, `RERANK_CONTEXT_SIZE`)
 3. Builds the `run-model` command with appropriate flags
 4. Sets `LLAMA_SERVER_PATH` to the bundled llama-server binary
 5. Sets `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` for shared libraries

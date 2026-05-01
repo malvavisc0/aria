@@ -3,6 +3,7 @@
 Manages llama-server processes required by the Aria web UI:
   - Chat server (port 7070): launched via the bundled ``run-model`` script
   - Embeddings server (port 7072): launched via ``run-model --embedding``
+  - Rerank server (port 7073): launched via ``run-model --reranking``
 
 The VL (vision/language) server is NOT started automatically. It starts
 on-demand when the user invokes a vision command (e.g., ``aria vision pdf``).
@@ -10,13 +11,14 @@ on-demand when the user invokes a vision command (e.g., ``aria vision pdf``).
 The ``run-model`` script handles GPU detection, KV cache tuning, flash attention,
 and dual-GPU configuration automatically for all servers. For embeddings, it uses
 the ``--embedding`` flag for deterministic output and ``--parallel`` for batch processing.
+For reranking, it uses the ``--reranking`` flag similarly.
 
 Example:
     ```python
     from aria.server.llama import LlamaCppServerManager
 
     manager = LlamaCppServerManager(context_size=8192)
-    manager.start_all()   # starts chat + embeddings, waits for /health
+    manager.start_all()   # starts chat + embeddings + rerank, waits for /health
     # ... run Chainlit ...
     manager.stop_all()    # graceful shutdown
     ```
@@ -44,12 +46,14 @@ from aria.server.process_utils import (
 
 
 class LlamaCppServerManager:
-    """Manages the llama-server processes for chat, VL, and embeddings.
+    """Manages the llama-server processes for chat, VL, embeddings, and rerank.
 
     All servers are launched via the bundled ``data/bin/run-model`` script
     which handles GPU detection, KV cache tuning, and flash attention.
 
     The embeddings server uses ``--embedding`` flag for deterministic output
+    and ``--parallel`` for batch processing.
+    The rerank server uses ``--reranking`` flag for deterministic reranking
     and ``--parallel`` for batch processing.
 
     Process state is persisted to ``data/llama_servers.json`` so the manager
@@ -59,6 +63,7 @@ class LlamaCppServerManager:
         - chat_context_size: Context for chat server
         - vl_context_size: Context for VL server
         - embeddings_context_size: Context for embeddings server
+        - rerank_context_size: Context for rerank server
 
     Args:
         gpu_layers: Number of GPU layers (default 999 = all layers on GPU).
@@ -136,6 +141,7 @@ class LlamaCppServerManager:
         mmproj_path: Optional[Path] = None,
         embedding_mode: bool = False,
         chat_template_file: Optional[Path] = None,
+        reranking_mode: bool = False,
     ) -> list[str]:
         """Build command to launch a server via run-model script.
 
@@ -143,13 +149,22 @@ class LlamaCppServerManager:
             model_path: Path to the GGUF model file.
             context_size: Context size in tokens.
             port: Port to run the server on.
-            role: Server role name (chat/vl/embeddings), used for log file naming.
+            role: Server role name (chat/vl/embeddings/rerank), used for log file naming.
             mmproj_path: Optional path to mmproj file for vision models.
             embedding_mode: If True, run in embedding mode (deterministic).
             chat_template_file: Optional path to a Jinja2 chat template
                 file.  Passed as ``--chat-template-file`` to
                 llama-server (chat mode only).
+            reranking_mode: If True, run in reranking mode (deterministic).
+
+        Raises:
+            ValueError: If both embedding_mode and reranking_mode are True.
         """
+        if embedding_mode and reranking_mode:
+            raise ValueError(
+                "embedding_mode and reranking_mode are mutually exclusive"
+            )
+
         from aria.config.folders import Debug as DebugConfig
 
         log_file = DebugConfig.logs_path.parent / f"llama-{role}.log"
@@ -168,12 +183,16 @@ class LlamaCppServerManager:
             cmd.append("--embedding")
             cmd.extend(["--parallel", str(self.EMBEDDINGS_PARALLEL)])
 
+        if reranking_mode:
+            cmd.append("--reranking")
+            cmd.extend(["--parallel", str(self.EMBEDDINGS_PARALLEL)])
+
         if mmproj_path:
             cmd.extend(["--mmproj", str(mmproj_path)])
 
         # Chat template is only valid for chat mode — never for
-        # embedding servers which have no chat/tool-call handling.
-        if chat_template_file and not embedding_mode:
+        # embedding or reranking servers which have no chat/tool-call handling.
+        if chat_template_file and not embedding_mode and not reranking_mode:
             cmd.extend(
                 [
                     "--chat-template-file",
@@ -263,16 +282,19 @@ class LlamaCppServerManager:
         return False
 
     def start_all(self) -> None:
-        """Start chat and embeddings llama-server processes.
+        """Start chat, embeddings, and rerank llama-server processes.
 
         The VL (vision/language) server is NOT started automatically.
         It starts on-demand when the user invokes a vision command
         (e.g., ``aria vision pdf`` or ``aria vision image``).
 
+        The rerank server is only started if a rerank model is configured
+        (i.e., ``RERANK_MODEL_FILE`` is set in the environment).
+
         Raises:
             RuntimeError: If any server fails to start or become ready.
         """
-        from aria.config.models import Chat, Embeddings
+        from aria.config.models import Chat, Embeddings, Rerank
 
         # Resolve model paths by filename
         chat_path = self._resolve_model_path("chat", Chat.filename)
@@ -290,6 +312,7 @@ class LlamaCppServerManager:
                 False,  # not embedding mode
                 None,  # no mmproj for chat
                 chat_tpl,  # chat template
+                False,  # not reranking mode
             ),
             (
                 "embeddings",
@@ -299,8 +322,32 @@ class LlamaCppServerManager:
                 True,  # embedding mode
                 None,  # no mmproj for embeddings
                 None,  # no chat template
+                False,  # not reranking mode
             ),
         ]
+
+        # Start rerank server if configured
+        if Rerank.filename:
+            try:
+                rerank_path = self._resolve_model_path(
+                    "rerank", Rerank.filename
+                )
+                servers.append(
+                    (
+                        "rerank",
+                        rerank_path,
+                        Rerank.get_port(),
+                        LlamaCppConfig.rerank_context_size,
+                        False,  # not embedding mode
+                        None,  # no mmproj for rerank
+                        None,  # no chat template
+                        True,  # reranking mode
+                    )
+                )
+            except RuntimeError:
+                logger.warning(
+                    "Rerank model configured but not found — skipping rerank server"
+                )
 
         # Start all processes
         for (
@@ -311,6 +358,7 @@ class LlamaCppServerManager:
             embedding_mode,
             mmproj,
             tpl_file,
+            reranking_mode,
         ) in servers:
             cmd = self._build_run_model_cmd(
                 model_path,
@@ -320,6 +368,7 @@ class LlamaCppServerManager:
                 mmproj,
                 embedding_mode,
                 tpl_file,
+                reranking_mode,
             )
             env = self._get_env_for_run_model()
 
@@ -360,7 +409,7 @@ class LlamaCppServerManager:
 
         # Wait for all servers to become ready
         failed = []
-        for role, _, port, _, _, _, _ in servers:
+        for role, _, port, _, _, _, _, _ in servers:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)

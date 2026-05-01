@@ -1,6 +1,16 @@
+import random
 import urllib.parse
 
 from aria.config import get_optional_env, get_required_env
+
+
+def _random_user_port() -> int:
+    """Generate a random port in the user/dynamic range (49152–65535).
+
+    Used as a last-resort fallback when the configured API URL has no
+    explicit port (e.g. bare hostname without :PORT).
+    """
+    return random.randint(49152, 65535)
 
 
 class Chat:
@@ -12,7 +22,7 @@ class Chat:
 
     @classmethod
     def get_port(cls) -> int:
-        return urllib.parse.urlparse(cls.api_url).port or 9090
+        return urllib.parse.urlparse(cls.api_url).port or _random_user_port()
 
 
 class Embeddings:
@@ -25,7 +35,19 @@ class Embeddings:
 
     @classmethod
     def get_port(cls) -> int:
-        return urllib.parse.urlparse(cls.api_url).port or 9092
+        return urllib.parse.urlparse(cls.api_url).port or _random_user_port()
+
+
+class Rerank:
+    api_url = get_optional_env("RERANK_API_URL", "http://0.0.0.0:7073")
+    model = get_optional_env("RERANK_MODEL", "")
+    repo_id = get_optional_env("RERANK_MODEL_REPO", "")
+    filename = get_optional_env("RERANK_MODEL_FILE", "")
+    quantization = get_optional_env("RERANK_MODEL_TYPE", "Q8_0")
+
+    @classmethod
+    def get_port(cls) -> int:
+        return urllib.parse.urlparse(cls.api_url).port or _random_user_port()
 
 
 class Vision:
@@ -38,4 +60,4 @@ class Vision:
 
     @classmethod
     def get_port(cls) -> int:
-        return urllib.parse.urlparse(cls.api_url).port or 9091
+        return urllib.parse.urlparse(cls.api_url).port or _random_user_port()

@@ -46,7 +46,8 @@ fi
 #   --top-p TOP_P           Top-p sampling value (default: 0.95)
 #   -m, --mmproj PATH       Path to mmproj file for vision models
 #   -e, --embedding         Run in embedding mode (deterministic, no sampling)
-#   --parallel N            Parallel embedding requests (default: 4, embedding only)
+#   -R, --reranking         Run in reranking mode (deterministic, no sampling)
+#   --parallel N            Parallel requests (default: 4, embedding/reranking only)
 #   --slots N               Parallel slots for chat mode (default: 1)
 #   --chat-template-file F  Jinja2 chat template file for tool-calling format
 #   --force-context         Bypass safety cap on context size
@@ -73,6 +74,7 @@ fi
 #   NO_KV_OFFLOAD           KV offload flag: "--no-kv-offload" = KV cache in RAM,
 #                           empty string "" = KV cache on GPU (default: --no-kv-offload)
 #   LLAMA_SERVER_PATH       Path to llama-server binary (default: llama-server)
+#   RERANK_MODE             Run in reranking mode (1/0, default: 0)
 #   FORCE_CONTEXT           Bypass safety cap on context (1/0, default: 0)
 #   CHAT_PARALLEL           Parallel slots for chat mode (default: 1)
 #   JSON_OUTPUT             Structured JSON output (1/0, default: 0)
@@ -86,6 +88,7 @@ fi
 #   ./run-model /path/to/model.gguf 32768 --port 8081 --debug
 #   PORT=8080 DEBUG=1 ./run-model /path/to/model.gguf 16384
 #   ./run-model /path/to/model.gguf 131072 --force-context --json
+#   ./run-model /path/to/model.gguf --reranking --port 7073
 #   ./run-model /path/to/model.gguf --slots 4 --dry-run
 #
 # Notes:
@@ -134,6 +137,7 @@ DEFAULT_CHAT_PARALLEL=1
 : "${LLAMA_SERVER_PATH:="llama-server"}" # Default added
 : "${MMPROJ_PATH:=""}"
 : "${EMBEDDING_MODE:=0}"
+: "${RERANK_MODE:=0}"
 : "${EMBEDDING_PARALLEL:=$DEFAULT_EMBEDDING_PARALLEL}"
 : "${PLATFORM:=""}"  # Force platform: nvidia, metal, cpu (auto-detect if empty)
 : "${CHAT_TEMPLATE_FILE:=""}"  # Jinja2 chat template file for tool-calling format
@@ -1037,6 +1041,10 @@ parse_args() {
 			EMBEDDING_MODE=1
 			shift
 			;;
+		-R | --reranking)
+			RERANK_MODE=1
+			shift
+			;;
 		--parallel)
 			if [[ -n "$2" ]]; then
 				EMBEDDING_PARALLEL="$2"
@@ -1173,7 +1181,8 @@ ${BOLD}${BCYAN}OPTIONS${RST}
   ${GREEN}--top-p${RST} TOP_P           Top-p sampling value ${DIM}(default: 0.95)${RST}
   ${GREEN}-m, --mmproj${RST} PATH       Path to mmproj file for vision models
   ${GREEN}-e, --embedding${RST}         Run in embedding mode ${DIM}(deterministic, no sampling)${RST}
-  ${GREEN}--parallel${RST} N            Parallel embedding requests ${DIM}(default: 4, embedding mode only)${RST}
+  ${GREEN}-R, --reranking${RST}         Run in reranking mode ${DIM}(deterministic, no sampling)${RST}
+  ${GREEN}--parallel${RST} N            Parallel requests ${DIM}(default: 4, embedding/reranking only)${RST}
   ${GREEN}--slots${RST} N              Parallel slots for chat mode ${DIM}(default: 1)${RST}
   ${GREEN}--chat-template-file${RST} F  Jinja2 chat template file for tool-calling format
   ${GREEN}--force-context${RST}         Bypass safety cap on context size
@@ -1197,7 +1206,8 @@ ${BOLD}${BCYAN}ENVIRONMENT VARIABLES${RST}
   ${CYAN}FLASH_ATTN${RST}              Flash attention ${DIM}(1/0, default: 1)${RST}
   ${CYAN}LLAMA_SERVER_PATH${RST}       Path to llama-server binary
   ${CYAN}EMBEDDING_MODE${RST}          Run in embedding mode ${DIM}(1/0, default: 0)${RST}
-  ${CYAN}EMBEDDING_PARALLEL${RST}      Parallel embedding requests ${DIM}(default: 4)${RST}
+  ${CYAN}RERANK_MODE${RST}             Run in reranking mode ${DIM}(1/0, default: 0)${RST}
+  ${CYAN}EMBEDDING_PARALLEL${RST}      Parallel requests ${DIM}(default: 4)${RST}
   ${CYAN}CHAT_PARALLEL${RST}           Parallel slots for chat mode ${DIM}(default: 1)${RST}
   ${CYAN}CHAT_TEMPLATE_FILE${RST}      Jinja2 chat template file path
   ${CYAN}FORCE_CONTEXT${RST}           Bypass safety cap on context ${DIM}(1/0, default: 0)${RST}
@@ -1211,6 +1221,7 @@ ${BOLD}${BCYAN}EXAMPLES${RST}
   ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 32768 --port 8081 --debug
   ${DIM}\$${RST} PORT=8080 DEBUG=1 $(basename "$0") /path/to/model.gguf 16384
   ${DIM}\$${RST} $(basename "$0") /path/to/embeddings.gguf 4096 --embedding --port 7072
+  ${DIM}\$${RST} $(basename "$0") /path/to/reranker.gguf 4096 --reranking --port 7073
   ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf 131072 --force-context --json
   ${DIM}\$${RST} $(basename "$0") /path/to/model.gguf --slots 4 --dry-run
 
@@ -1247,12 +1258,18 @@ validate_inputs() {
 		exit 1
 	fi
 
-	# Validate embedding parallel if in embedding mode
-	if [[ "$EMBEDDING_MODE" -eq 1 ]]; then
+	# Validate embedding parallel if in embedding or reranking mode
+	if [[ "$EMBEDDING_MODE" -eq 1 ]] || [[ "$RERANK_MODE" -eq 1 ]]; then
 		if ! [[ "$EMBEDDING_PARALLEL" =~ ^[0-9]+$ ]] || [[ "$EMBEDDING_PARALLEL" -lt 1 ]]; then
 			log_error "EMBEDDING_PARALLEL must be a positive integer, got: $EMBEDDING_PARALLEL"
 			return 1
 		fi
+	fi
+
+	# Embedding and reranking modes are mutually exclusive
+	if [[ "$EMBEDDING_MODE" -eq 1 ]] && [[ "$RERANK_MODE" -eq 1 ]]; then
+		log_error "Cannot use --embedding and --reranking together"
+		exit 1
 	fi
 
 	debug_log "All validations passed"
@@ -1268,6 +1285,9 @@ init_logging() {
 		log_to_file "GPU layers: $N_GPU_LAYERS"
 		if [[ "$EMBEDDING_MODE" -eq 1 ]]; then
 			log_to_file "Mode: embedding"
+			log_to_file "Parallel: $EMBEDDING_PARALLEL"
+		elif [[ "$RERANK_MODE" -eq 1 ]]; then
+			log_to_file "Mode: reranking"
 			log_to_file "Parallel: $EMBEDDING_PARALLEL"
 		else
 			log_to_file "Temperature: $TEMP"
@@ -1337,6 +1357,9 @@ build_command() {
 	# Mode-specific display
 	if [[ "$EMBEDDING_MODE" -eq 1 ]]; then
 		print_kv "Mode:" "embedding (deterministic)" "$CYAN" "$BMAGENTA"
+		print_kv "Parallel:" "$EMBEDDING_PARALLEL" "$CYAN"
+	elif [[ "$RERANK_MODE" -eq 1 ]]; then
+		print_kv "Mode:" "reranking (deterministic)" "$CYAN" "$BMAGENTA"
 		print_kv "Parallel:" "$EMBEDDING_PARALLEL" "$CYAN"
 	else
 		print_kv "Temperature:" "$TEMP" "$CYAN"
@@ -1499,6 +1522,16 @@ build_command() {
 			--host 0.0.0.0
 			--port "$PORT"
 		)
+	elif [[ "$RERANK_MODE" -eq 1 ]]; then
+		# Reranking mode: deterministic, no sampling, parallel processing
+		cmd_array+=(
+			--reranking
+			--parallel "$EMBEDDING_PARALLEL"
+			--cache-type-k "$KV_CACHE_TYPE_K"
+			--cache-type-v "$KV_CACHE_TYPE_V"
+			--host 0.0.0.0
+			--port "$PORT"
+		)
 	else
 		# Chat mode: sampling, continuous batching, metrics
 		cmd_array+=(
@@ -1564,6 +1597,7 @@ emit_json() {
 	  "gpu_layers": $N_GPU_LAYERS,
 	  "flash_attn": $([[ "$FLASH_ATTN" -eq 1 ]] && echo "true" || echo "false"),
 	  "embedding_mode": $([[ "$EMBEDDING_MODE" -eq 1 ]] && echo "true" || echo "false"),
+	  "rerank_mode": $([[ "$RERANK_MODE" -eq 1 ]] && echo "true" || echo "false"),
 	  "chat_parallel": $CHAT_PARALLEL,
 	  "kv_cache_type_k": "$KV_CACHE_TYPE_K",
 	  "kv_cache_type_v": "$KV_CACHE_TYPE_V",
