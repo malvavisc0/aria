@@ -13,7 +13,6 @@ from loguru import logger
 from aria.tools import get_function_name, tool_response
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
 from aria.tools.decorators import log_tool_call
-from aria.tools.shell.constants import CURRENT_OS
 from aria.tools.shell.execution import _execute_command_internal
 from aria.tools.shell.validation import (
     _validate_command,

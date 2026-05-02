@@ -15,7 +15,6 @@ from typing import Optional
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
 from aria.config.folders import Data, Storage
 from aria.server.process_utils import (
@@ -172,7 +171,9 @@ def status(
         raise typer.Exit(1)
 
     audit = load_state(path)
-    if audit.get("status") == "running" and not is_process_running(audit.get("pid", 0)):
+    if audit.get("status") == "running" and not is_process_running(
+        audit.get("pid", 0)
+    ):
         audit["status"] = "zombie"
         save_state(path, audit)
 

@@ -6,7 +6,6 @@ automatic URL classification.
 """
 
 import asyncio
-import json
 from typing import Optional
 
 import typer
