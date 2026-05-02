@@ -1,22 +1,17 @@
 """Tool registry for categorized tool loading.
 
-Provides a centralized registry that maps tool categories
-to their implementations, enabling agents to load tools by category
-rather than importing individual modules.
-
 Categories:
-- core: Always-loaded tools (reasoning, plan, scratchpad, shell)
-- files: Always-loaded file tools (read_file, write_file, edit_file,
+- core_lite: Aria agent tools (reasoning, shell)
+- files_lite: Aria agent file tools (read_file, write_file, edit_file,
+              list_files, search_files)
+- core: Worker tools (reasoning, plan, scratchpad, shell)
+- files: Worker file tools (read_file, write_file, edit_file,
          file_info, list_files, search_files, copy_file)
 - web: On-demand browser tools
 - development: On-demand python tool
 - finance: On-demand stock tools
 - entertainment: On-demand imdb tools
 - system: On-demand http_request, process
-
-Domain tools (web_search, download, weather, knowledge, finance,
-imdb, http, process, vision, browser, development) are accessed
-via CLI commands through the ``shell`` tool.
 """
 
 from typing import Callable, Dict, List, Optional
@@ -25,6 +20,8 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger
 
 # Tool categories
+CORE_LITE = "core_lite"
+FILES_LITE = "files_lite"
 CORE = "core"
 FILES = "files"
 WEB = "web"
@@ -52,16 +49,35 @@ def _import_function(module_path: str, function_name: str) -> Callable:
     return getattr(module, function_name)
 
 
+def _get_core_lite_tools() -> List[FunctionTool]:
+    """Aria agent core tools: reasoning + shell only."""
+    tool_specs = [
+        ("aria.tools.reasoning", "reasoning"),
+        ("aria.tools.shell", "shell"),
+    ]
+    return [
+        FunctionTool.from_defaults(fn=_import_function(mod, fn))
+        for mod, fn in tool_specs
+    ]
+
+
+def _get_file_lite_tools() -> List[FunctionTool]:
+    """Aria agent file tools: no file_info or copy_file."""
+    tool_specs = [
+        ("aria.tools.files", "read_file"),
+        ("aria.tools.files", "write_file"),
+        ("aria.tools.files", "edit_file"),
+        ("aria.tools.files", "list_files"),
+        ("aria.tools.files", "search_files"),
+    ]
+    return [
+        FunctionTool.from_defaults(fn=_import_function(mod, fn))
+        for mod, fn in tool_specs
+    ]
+
+
 def _get_core_tools() -> List[FunctionTool]:
-    """Get always-loaded core tools.
-
-    Note: ``read_file`` lives in the *files* category to avoid
-    duplicate registrations when both core and files are loaded.
-
-    Domain tools (web_search, download, weather, knowledge, finance,
-    imdb, http, process, vision, browser, development) are now
-    accessed via CLI commands through the ``shell`` tool.
-    """
+    """Worker core tools: reasoning, plan, scratchpad, shell."""
     tool_specs = [
         ("aria.tools.reasoning", "reasoning"),
         ("aria.tools.planner", "plan"),
@@ -75,7 +91,7 @@ def _get_core_tools() -> List[FunctionTool]:
 
 
 def _get_file_tools() -> List[FunctionTool]:
-    """Get always-loaded file tools."""
+    """Worker file tools: full set including file_info and copy_file."""
     tool_specs = [
         ("aria.tools.files", "read_file"),
         ("aria.tools.files", "write_file"),
@@ -177,6 +193,8 @@ def _get_system_tools() -> List[FunctionTool]:
 
 
 _CATEGORY_LOADERS: Dict[str, Callable[[], List[FunctionTool]]] = {
+    CORE_LITE: _get_core_lite_tools,
+    FILES_LITE: _get_file_lite_tools,
     CORE: _get_core_tools,
     FILES: _get_file_tools,
     WEB: _get_web_tools,

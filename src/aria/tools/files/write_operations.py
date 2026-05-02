@@ -129,36 +129,16 @@ def write_file(
     contents: str,
     mode: str = "overwrite",
 ) -> str:
-    """Write or append content to a file with atomic writes.
-
-    When to use:
-        - Use this to create new files or completely replace existing ones
-          (mode="overwrite").
-        - Use this to add content to the end of an existing file
-          (mode="append").
-        - Do NOT use this for surgical line-level edits — use `edit_file`.
-        - Do NOT use this to copy files — use `copy_file`.
-
-    Why:
-        Atomic writes (write to temp file, then rename) prevent data
-        corruption if the process crashes mid-write. Parent directories
-        are auto-created so you never need to mkdir first.
+    """Write or append to a file (atomic, dirs auto-created, backup on overwrite).
 
     Args:
-        reason: Why you're writing (for logging/auditing).
-        file_name: Absolute path to the file.
+        reason: Why (logging).
+        file_name: File path.
         contents: Content to write.
-        mode: "overwrite" to create/replace, "append" to add to end
-            (default: "overwrite").
+        mode: overwrite|append (default: overwrite).
 
     Returns:
-        JSON with mode-specific metrics:
-        - overwrite: bytes_written, lines_written, created, backup_created
-        - append: bytes_appended, new_total_lines, new_file_size
-
-    Important:
-        - Overwrite mode creates a backup of the existing file first.
-        - Parent directories are created automatically if they don't exist.
+        JSON with bytes_written/appended, lines, created, backup_created.
     """
     if mode not in ("overwrite", "append"):
         raise FileOperationError(
@@ -252,39 +232,20 @@ def edit_file(
     length: int = 0,
     new_lines: Optional[List[str]] = None,
 ) -> str:
-    """Edit lines in a file: insert, replace, or delete specific lines.
+    """Edit specific lines in a file (backup always created).
 
-    When to use:
-        - Use this for surgical, line-level modifications to existing files.
-        - Use this to insert new lines at a specific position
-          (length=0, new_lines provided).
-        - Use this to replace a range of lines (length>0, new_lines provided).
-        - Use this to delete a range of lines (length>0, new_lines=None).
-        - Do NOT use this to create new files — use `write_file`.
-        - Do NOT use this to append to a file — use `write_file` with
-          mode="append".
-
-    Why:
-        Line-level edits are more precise and safer than rewriting entire
-        files. A backup is always created before modifications.
+    Operation: length=0+new_lines→insert; length>0+new_lines→replace;
+    length>0+new_lines=None→delete.
 
     Args:
-        reason: Why you're editing (for logging/auditing).
-        file_name: Absolute path to the file.
-        offset: 0-indexed starting line number.
-        length: Number of lines to replace/delete (0 = insert only).
-        new_lines: List of lines to insert/replace with
-            (None = delete only).
+        reason: Why (logging).
+        file_name: File path.
+        offset: 0-indexed start line.
+        length: Lines to replace/delete (0=insert only).
+        new_lines: Lines to insert/replace (None=delete).
 
     Returns:
-        JSON with operation, offset, length, lines_affected,
-        old_total_lines, new_total_lines, backup_created.
-
-    Important:
-        - A backup is always created before any modification.
-        - Operation is determined by the combination of length and new_lines:
-          length=0 + new_lines → insert; length>0 + new_lines → replace;
-          length>0 + new_lines=None → delete.
+        JSON with operation, offset, lines_affected, old/new total_lines.
     """
     # Determine operation type
     if length == 0 and new_lines is not None:
@@ -300,7 +261,8 @@ def edit_file(
         )
 
     logger.info(
-        f"Editing file {file_name}: {operation} " f"(offset={offset}, length={length})"
+        f"Editing file {file_name}: {operation} "
+        f"(offset={offset}, length={length})"
     )
 
     # Resolve path

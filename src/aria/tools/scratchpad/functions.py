@@ -22,46 +22,19 @@ def scratchpad(
     operation: str = "get",
     agent_id: str = _DEFAULT_AGENT_ID,
 ) -> Dict[str, Any]:
-    """Ephemeral key-value scratchpad for working memory.
+    """Ephemeral key-value working memory (SQLite-backed).
 
-    When to use:
-        - Use this to store intermediate results, calculations, or
-          notes within a task (e.g., "analysis_v1": "Option A: 8/10").
-        - Use this to pass data between reasoning steps or across
-          tool calls within the same task.
-        - Use this to save partial progress that you'll reference
-          later in the conversation.
-        - Do NOT use this for long-term facts that must survive
-          across conversations — use `knowledge` instead.
-        - Do NOT use this for structured execution plans — use `plan`.
-
-    Why:
-        Scratchpad is lightweight working memory that persists across
-        reasoning sessions but is designed for ephemeral data. It's
-        independent of reasoning sessions — no need to call reasoning
-        first.
-
-    Operations:
-        - "get": Retrieve a stored value by key.
-        - "set": Store a value (requires value parameter).
-        - "delete": Remove a key (use key="all" to clear everything).
-        - "list": Show all stored keys and values.
+    Operations: get, set, delete, list. Use key="all" to clear all.
 
     Args:
-        reason: Why you're using the scratchpad (for logging/auditing).
-        key: The key to operate on (ignored for "list" operation).
-        value: Value to store (required for "set" operation).
-        operation: One of "get", "set", "delete", "list"
-            (default: "get").
-        agent_id: Agent identifier (auto-set, do not provide).
+        reason: Why (logging).
+        key: Key to operate on (ignored for list).
+        value: Value to store (required for set).
+        operation: get|set|delete|list (default: get).
+        agent_id: Auto-set, do not provide.
 
     Returns:
-        Operation result with the stored/retrieved value.
-
-    Important:
-        - Data is persisted to SQLite and survives server restarts,
-          but is designed for ephemeral use within a task.
-        - Use key="all" with operation="delete" to clear all entries.
+        Operation result with stored/retrieved value.
     """
     operation = operation.lower().strip()
     now = utc_timestamp()
@@ -80,7 +53,8 @@ def scratchpad(
             agent_id=agent_id,
             code="UNSUPPORTED_OPERATION",
             message=(
-                f"Unknown operation '{operation}'. " "Supported: get, set, delete, list"
+                f"Unknown operation '{operation}'. "
+                "Supported: get, set, delete, list"
             ),
             how_to_fix="Use one of: get, set, delete, list",
         )

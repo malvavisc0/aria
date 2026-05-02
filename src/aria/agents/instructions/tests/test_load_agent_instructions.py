@@ -20,8 +20,8 @@ class TestLoadAgentInstructions:
         """Shared and role-specific sections should load for Aria."""
         result = load_agent_instructions("aria")
         assert "Core Rules" in result
-        assert "Identity" in result
-        assert "Response Style" in result
+        assert "Rules" in result  # Aria-specific section
+        assert "Delegation" in result  # Aria-specific section
 
     def test_extras_appended(self):
         """Extras should appear in the output."""
@@ -106,4 +106,4 @@ class TestLoadAgentInstructions:
         """Empty list should load no base sections."""
         result = load_agent_instructions("aria", base_sections=[])
         assert "Core Rules" not in result
-        assert "Identity" in result  # agent-specific still loads
+        assert "Delegation" in result  # agent-specific still loads

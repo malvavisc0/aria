@@ -336,99 +336,66 @@ def get_default_memory(
     vector_db: ChromaClientAPI,
     embed_model: OpenAIEmbedding,
     thread_id: str,
-    token_limit: int = 65536,
+    token_limit: int = 32768,
     llm: OpenAILike | None = None,
 ) -> Memory:
     """Create a Memory instance backed by a per-thread ChromaDB vector store.
 
-    The memory system uses a hybrid approach with three tiers:
-
-    1. **Recent History** (80% of token_limit): Raw message text kept in
-       active buffer. When this exceeds ``token_flush_size``, older messages
-       are moved to long-term storage.
-
-    2. **Fact Extraction** (if LLM provided): Structured facts extracted
-       from flushed messages. Token-efficient way to preserve key information.
-
-    3. **Vector Memory** (20% of token_limit): Semantic search over
-       flushed messages stored in ChromaDB. Retrieves relevant context
-       based on similarity to current query.
+    Uses a hybrid approach: recent history buffer (80%) + vector retrieval
+    (20%). Older messages are flushed to long-term storage when the buffer
+    fills up.
 
     Args:
-        vector_db: ChromaDB client used to get or create the thread collection.
-        embed_model: Embedding model for encoding queries and documents.
-        thread_id: Unique thread identifier; used as both the ChromaDB
-            collection name (for vector store isolation) and the LlamaIndex
-            ``Memory.session_id`` (so the ``VectorMemoryBlock`` metadata
-            filter always matches embeddings from the same thread, across
-            all sessions).
-        token_limit: Total token budget shared between the short-term chat
-            buffer and the vector-retrieved context. Must be less than
-            ``CHAT_CONTEXT_SIZE`` to leave room for system prompts, tools,
-            and model response generation. Default is 65536.
-        llm: LLM instance for fact extraction in long-term memory.
-            If provided, enables FactExtractionMemoryBlock.
+        vector_db: ChromaDB client for the thread collection.
+        embed_model: Embedding model for semantic search.
+        thread_id: Thread ID used as ChromaDB collection name and session ID.
+        token_limit: Total token budget for history + vector context.
+            Default 32768 — leaves room for system prompt and tool schemas.
+        llm: If provided, enables fact extraction from flushed messages.
 
     Returns:
         A configured :class:`Memory` instance.
-
-    Note:
-        The ``token_limit`` is validated during preflight checks to ensure
-        it doesn't exceed 75% of ``CHAT_CONTEXT_SIZE``. This buffer accounts
-        for system prompts (~2-4K tokens), tool definitions (~1-2K tokens),
-        and response generation space.
     """
     collection = vector_db.get_or_create_collection(thread_id)
 
-    # Build memory blocks list
     memory_blocks: list = []
 
-    # Add fact extraction block if LLM is provided
     if llm is not None:
         memory_blocks.append(
             FactExtractionMemoryBlock(
                 name="extracted_facts",
                 llm=llm,
-                # Extract up to 50 facts from flushed messages
-                max_facts=50,
-                # Priority 1: can be disabled if token budget is exceeded
+                max_facts=20,
                 priority=1,
             )
         )
 
-    # Add vector memory block for semantic search
     memory_blocks.append(
         VectorMemoryBlock(
             name="vector_memory",
             vector_store=ChromaVectorStore(chroma_collection=collection),
             embed_model=embed_model,
-            # Retrieve top 5 similar messages (increased from 3)
-            similarity_top_k=5,
-            # Include more context from previous messages
-            retrieval_context_window=10,
-            # Priority 2: lower priority than fact extraction
+            similarity_top_k=3,
+            retrieval_context_window=5,
             priority=2,
         )
     )
 
     memory = Memory.from_defaults(
         session_id=thread_id,
-        # Insert retrieved memory as system prompts
         insert_method=InsertMethod.SYSTEM,
         memory_blocks=memory_blocks,
-        # Total tokens for (Recent History + Vector Results)
         token_limit=token_limit,
-        # 80% for Recent History, 20% for Vector Results
-        # This keeps more recent context in working memory
         chat_history_token_ratio=0.8,
-        # Flush 8192 tokens at a time to long-term memory
-        token_flush_size=8192,
+        token_flush_size=4096,
     )
 
     return memory
 
 
-def get_embeddings_model(api_base: str, model_name: str) -> OpenAILikeEmbedding:
+def get_embeddings_model(
+    api_base: str, model_name: str
+) -> OpenAILikeEmbedding:
     return OpenAILikeEmbedding(
         api_base=api_base,
         model_name=model_name,

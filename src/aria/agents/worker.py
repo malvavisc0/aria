@@ -1,8 +1,9 @@
-"""Worker agent — same capabilities as Aria, runs headlessly in background.
+"""Worker agent — runs headlessly in background with full tool set.
 
-The WorkerAgent is a FunctionAgent configured with the same core + file
-tools as Aria but with worker-specific instructions that mandate
-autonomous execution and forbid sub-worker spawning.
+The WorkerAgent is a FunctionAgent configured with the full core + file
+tool set (reasoning, plan, scratchpad, shell + all file tools) and
+worker-specific instructions that mandate autonomous execution and
+forbid sub-worker spawning.
 """
 
 from typing import Optional
@@ -41,7 +42,7 @@ def get_worker_agent(
     extras: Optional[str] = None,
     output_dir: Optional[str] = None,
 ) -> WorkerAgent:
-    """Create a WorkerAgent with same tools as Aria (minus worker spawning)."""
+    """Create a WorkerAgent with full tool set (plan, scratchpad included)."""
     from aria.tools.registry import CORE, FILES
 
     tools = get_tools([CORE, FILES])

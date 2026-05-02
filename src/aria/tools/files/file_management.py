@@ -29,32 +29,16 @@ def copy_file(
     destination: str,
     overwrite: Optional[bool] = False,
 ) -> str:
-    """
-    Copy a file to a new location.
-
-    When to use:
-        - Use this to duplicate a file (e.g., create a backup before
-          editing).
-        - Use this to copy a file to a different directory.
-        - Do NOT use this to move/rename files — use `rename_file`.
-
-    Why:
-        Copying preserves the original file while creating a duplicate,
-        which is safer than move operations when you need to keep both.
+    """Copy a file to a new location (dirs auto-created).
 
     Args:
-        reason: Why you're copying (for logging/auditing).
-        source: Absolute path to the source file.
-        destination: Absolute path to the destination.
-        overwrite: If True, overwrite existing destination
-            (default: False).
+        reason: Why (logging).
+        source: Source file path.
+        destination: Destination path.
+        overwrite: Overwrite if exists (default: False).
 
     Returns:
         JSON with source, destination, bytes_copied, success.
-
-    Important:
-        - Destination parent directories are created automatically.
-        - Returns an error if destination exists and overwrite=False.
     """
     logger.info(f"Copying file from {source} to {destination}")
 

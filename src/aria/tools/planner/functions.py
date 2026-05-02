@@ -111,7 +111,9 @@ def _serialize_plan(plan: Plan) -> dict[str, object]:
     """Serialize a plan for tool responses."""
     completed = sum(1 for s in plan.steps if s.status == StepStatus.COMPLETED)
     failed = sum(1 for s in plan.steps if s.status == StepStatus.FAILED)
-    in_progress = sum(1 for s in plan.steps if s.status == StepStatus.IN_PROGRESS)
+    in_progress = sum(
+        1 for s in plan.steps if s.status == StepStatus.IN_PROGRESS
+    )
     pending = sum(1 for s in plan.steps if s.status == StepStatus.PENDING)
 
     return {
@@ -305,7 +307,8 @@ def _action_update(
                 tool="plan",
                 reason=reason,
                 message=(
-                    f"Invalid status '{status}'. " f"Valid values: {valid_statuses}"
+                    f"Invalid status '{status}'. "
+                    f"Valid values: {valid_statuses}"
                 ),
                 metadata={
                     "timestamp": timestamp,
@@ -317,7 +320,9 @@ def _action_update(
 
         # Update in database
         db = registry.get_db()
-        success = db.update_step(execution_id, step_id, new_status.value, result)
+        success = db.update_step(
+            execution_id, step_id, new_status.value, result
+        )
 
         if not success:
             return _err(
@@ -393,7 +398,9 @@ def _action_add(
         step_id = str(uuid.uuid4())
 
         db = registry.get_db()
-        step_data = db.add_step(execution_id, step_id, description, after_step_id)
+        step_data = db.add_step(
+            execution_id, step_id, description, after_step_id
+        )
 
         if step_data is None:
             return _err(
@@ -545,7 +552,9 @@ def _action_replace(
 
         # Update in database
         db = registry.get_db()
-        success = db.update_step(execution_id, step_id, description=description)
+        success = db.update_step(
+            execution_id, step_id, description=description
+        )
 
         if not success:
             return _err(
@@ -736,65 +745,26 @@ def plan(
     execution_id: Optional[str] = None,
     agent_id: str = "default",
 ) -> str:
-    """
-    Create and manage structured execution plans with ordered steps.
+    """Create and manage ordered execution plans (SQLite-backed).
 
-    When to use:
-        - Use this for multi-step tasks that need progress tracking
-          (e.g., deploy workflows, data pipelines, refactoring plans).
-        - Use this to break down complex tasks into ordered steps and
-          track their completion status.
-        - Do NOT use this for single-action tasks — just perform the
-          action directly.
-        - Do NOT use this for free-form notes — use `scratchpad` or
-          `knowledge`.
-
-    Why:
-        Execution plans provide structured task management with
-        persistent storage (SQLite). Steps can be added, removed,
-        reordered, and updated as the plan evolves.
-
-    Actions:
-        - "create": Create a new plan (returns execution_id).
-        - "get": Retrieve current plan status.
-        - "update": Update a step's status
-            (pending, in_progress, completed, failed).
-        - "add": Add a new step after a specified step or at the end.
-        - "remove": Remove a step from the plan.
-        - "replace": Replace a step's description.
-        - "reorder": Reorder steps by providing a new order of step IDs.
-
-    Typical workflow:
-        1. create → 2. update (mark in_progress)
-           → 3. update (mark completed/failed)
-           → repeat for each step
+    Actions: create, get, update, add, remove, replace, reorder.
 
     Args:
-        reason: What you're doing and why (for logging/auditing).
-        action: One of: create, get, update, add, remove, replace,
-            reorder.
-        task: Overall task description (required for "create").
-        steps: List of step descriptions in execution order
-            (required for "create").
-        step_id: ID of the step to update/remove/replace.
-        status: New status for "update": pending, in_progress,
-            completed, failed.
-        result: Optional result message for "update".
-        description: Step description for "add" or "replace".
-        after_step_id: ID of step to insert after for "add".
-        step_ids: New order of step IDs for "reorder".
-        execution_id: Plan ID (returned by create, required for
-            all other actions).
-        agent_id: Agent identifier for multi-agent isolation
-            (default: "default").
+        reason: Why (logging).
+        action: create|get|update|add|remove|replace|reorder.
+        task: Task description (required for create).
+        steps: Ordered step descriptions (required for create).
+        step_id: Step ID for update/remove/replace.
+        status: pending|in_progress|completed|failed (for update).
+        result: Result message for update.
+        description: Step description for add/replace.
+        after_step_id: Insert after this step ID (for add).
+        step_ids: New step order (for reorder).
+        execution_id: Plan ID from create; required for all others.
+        agent_id: Agent isolation key (default: "default").
 
     Returns:
-        JSON with plan data, step info, and progress metadata.
-
-    Important:
-        - Plans are persisted to SQLite and survive restarts.
-        - Always save the execution_id from "create" — you need it
-          for all subsequent actions.
+        JSON with plan data, step info, progress.
     """
     action = action.lower().strip()
 

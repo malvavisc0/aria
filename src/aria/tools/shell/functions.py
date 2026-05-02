@@ -110,42 +110,19 @@ def shell(
     timeout: Optional[int] = None,
     working_dir: Optional[str] = None,
 ) -> str:
-    """Execute shell commands with timeout and basic security constraints.
-
-    When to use:
-        - Run system commands: git, pip, npm, pytest, docker, etc.
-        - Use shell features: pipes (|), redirects (>), chaining (&&).
-        - Interact with the OS: file system, package management, etc.
-        - Do NOT use for Python code execution — use the ``python`` tool.
-        - Do NOT use for long-running background processes — use the
-          ``process`` tool.
+    """Execute shell commands with timeout and security constraints.
 
     Args:
-        reason: Why you're executing (for logging/auditing).
-        commands: One of:
-        - A command string: ``"git status"``
-        - A list of strings: ``["git status", "git push"]``
-        - A dict: ``{"command": "git status", "timeout": 10}``
-        - A list of dicts with options per command.
-            Each dict may contain:
-                - ``command``: The command string to execute.
-                - ``timeout``: Per-command timeout in seconds.
-                - ``working_dir``: Per-command working directory.
-                - ``continue_on_error``: Continue batch if this fails.
-        stop_on_error: Stop batch on first failure (default: True).
-        timeout: Default timeout in seconds for all commands
-            (default: 30, max: 300).
-        working_dir: Default working directory for all commands.
+        reason: Why (logging).
+        commands: str | list[str] | dict | list[dict].
+            Dict keys: command, timeout, working_dir, continue_on_error.
+        stop_on_error: Stop on first failure (default: True).
+        timeout: Default timeout seconds (default: 30, max: 300).
+        working_dir: Default working directory.
 
     Returns:
-        JSON with results[] containing stdout, stderr, return_code,
-        execution_time, timed_out per command.
-
-    Important:
-        - Blocked commands: shutdown, reboot, halt, poweroff, mkfs,
-          dd, shred, wipe.
-        - Commands run via the system shell — pipes, redirects,
-          env vars, and chaining all work.
+        JSON with results[] per command: stdout, stderr, return_code,
+        execution_time, timed_out.
     """
     normalized = _normalize_commands(commands)
 

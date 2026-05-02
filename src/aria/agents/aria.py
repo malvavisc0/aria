@@ -13,7 +13,7 @@ from llama_index.core.llms import LLM
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.registry import CORE, FILES, get_tools
+from aria.tools.registry import CORE_LITE, FILES_LITE, get_tools
 
 
 class ChatterAgent(FunctionAgent):
@@ -64,7 +64,7 @@ def get_agent(
         A configured ChatterAgent instance ready for conversation.
     """
 
-    tools = get_tools([CORE, FILES])  # Load only core + file tools
+    tools = get_tools([CORE_LITE, FILES_LITE])  # Lean tool set for Aria
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
 

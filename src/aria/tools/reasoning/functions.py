@@ -97,62 +97,23 @@ def reasoning(
     on_step: Optional[int] = None,
     agent_id: str = _DEFAULT_AGENT_ID,
 ) -> Dict[str, Any]:
-    """
-    Structured reasoning tool for systematic analysis and decision-making.
+    """Structured reasoning: start → step → reflect → evaluate → end.
 
-    When to use:
-        - Use this to work through complex, multi-faceted problems
-          where a single answer isn't sufficient (e.g., comparing
-          architectural options, debugging root causes).
-        - Use this when you want to make your thinking transparent
-          and reviewable.
-        - Use this to reduce bias by explicitly reflecting on your
-          reasoning process.
-        - Do NOT use this for simple factual lookups — answer directly.
-        - Do NOT use this for task tracking — use `plan`.
-
-    Why:
-        Structured reasoning with explicit steps, evidence, and
-        self-reflection produces better outcomes than unstructured
-        thinking. The session model lets you build up an argument
-        incrementally and evaluate its quality.
-
-    Actions:
-        - "start": Begin a new reasoning session (always first).
-        - "step": Add a reasoning step with your analysis.
-        - "reflect": Add meta-cognitive reflection on your thinking.
-        - "evaluate": Score the quality of your reasoning.
-        - "summary": Review your progress so far.
-        - "end": Close the session when done.
-
-    Typical workflow:
-        1. start → 2. step (multiple) → 3. reflect → 4. evaluate
-           → 5. end
+    Actions: start, step, reflect, evaluate, summary, end.
 
     Args:
-        reason: What you're doing and why (for logging/auditing).
-        action: One of: start, step, reflect, evaluate, summary, end.
-        content: The reasoning content (required for "step" and
-            "reflect").
-        cognitive_mode: Type of thinking for "step": planning,
-            analysis, evaluation, synthesis, creative, reflection
-            (default: "analysis").
-        reasoning_type: Logical approach for "step": deductive,
-            inductive, abductive, causal, probabilistic, analogical
-            (default: "deductive").
-        evidence: Optional list of evidence supporting a "step".
-        confidence: Confidence level 0.0-1.0 for "step"
-            (default: 0.65).
-        on_step: Step number this reflection refers to (for
-            "reflect").
-        agent_id: Agent identifier (auto-set, do not provide).
+        reason: Why (logging).
+        action: start|step|reflect|evaluate|summary|end.
+        content: Reasoning content (required for step/reflect).
+        cognitive_mode: planning|analysis|evaluation|synthesis|creative|reflection.
+        reasoning_type: deductive|inductive|abductive|causal|probabilistic|analogical.
+        evidence: Supporting evidence list for a step.
+        confidence: 0.0–1.0 (default: 0.65).
+        on_step: Step number for reflect action.
+        agent_id: Auto-set, do not provide.
 
     Returns:
-        Action-specific result with session status and data.
-
-    Important:
-        - One active session per agent at a time (auto-managed).
-        - Sessions are persisted to SQLite and survive restarts.
+        Action result with session status.
     """
     action = action.lower().strip()
 
@@ -319,7 +280,9 @@ def _action_reflect(
             agent_id=agent_id,
             session_id=None,
             code="MISSING_CONTENT",
-            message=("The 'content' parameter is required for 'reflect' action."),
+            message=(
+                "The 'content' parameter is required for 'reflect' action."
+            ),
             how_to_fix="Provide the 'content' parameter with your reflection.",
             recoverable=True,
         )
@@ -462,7 +425,9 @@ def _action_end(reason: str, agent_id: str) -> Dict[str, Any]:
         )
     except Exception:
         # Ending should still succeed even if session can't be loaded.
-        logger.debug(f"Could not persist reasoning end tool event for {session_id}")
+        logger.debug(
+            f"Could not persist reasoning end tool event for {session_id}"
+        )
 
     # Mark inactive in persistence store
     registry.get_db().delete_session(session_id, agent_id)
