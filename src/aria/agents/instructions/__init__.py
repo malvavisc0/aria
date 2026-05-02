@@ -5,13 +5,25 @@ to reduce code duplication and ensure consistent behavior.
 """
 
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
+
+INSTRUCTIONS_DIR = Path(__file__).parent
+BASE_SECTIONS_DIR = INSTRUCTIONS_DIR / "base"
+
+# All available base section names, in load order.
+ALL_BASE_SECTIONS: List[str] = [
+    "core",
+    "tools",
+    "evidence",
+    "failure",
+]
 
 
 def load_agent_instructions(
     agent_name: str,
     extras: Optional[str] = None,
     variables: Optional[Dict[str, str]] = None,
+    base_sections: Optional[List[str]] = None,
 ) -> str:
     """Load agent instructions from a markdown file.
 
@@ -27,6 +39,10 @@ def load_agent_instructions(
         variables: Optional mapping used for ``{{KEY}}`` template
             substitution in loaded instruction content.
             Defaults to None.
+        base_sections: Which modular base sections to include.
+            Each entry must be a name from ``ALL_BASE_SECTIONS``
+            (e.g. ``["core", "tools"]``).
+            ``None`` loads every section (backward-compatible default).
 
     Returns:
         The system prompt as a string.
@@ -34,12 +50,28 @@ def load_agent_instructions(
     Example:
         >>> prompt = load_agent_instructions("aria", "Focus on brevity")
         >>> prompt = load_agent_instructions("prompt_enhancer")
+        >>> prompt = load_agent_instructions(
+        ...     "worker", base_sections=["core", "tools"]
+        ... )
     """
-    instructions_dir = Path(__file__).parent
     parts = []
 
-    instructions_path = instructions_dir / f"{agent_name}.md"
+    instructions_path = INSTRUCTIONS_DIR / f"{agent_name}.md"
     if instructions_path.exists():
+        if agent_name != "base":
+            sections_to_load = (
+                base_sections
+                if base_sections is not None
+                else ALL_BASE_SECTIONS
+            )
+            for section in sections_to_load:
+                section_path = BASE_SECTIONS_DIR / f"{section}.md"
+                if section_path.exists():
+                    with open(
+                        section_path, mode="r", encoding="utf-8"
+                    ) as file:
+                        parts.append(file.read())
+
         with open(instructions_path, mode="r", encoding="utf-8") as file:
             parts.append(file.read())
 

@@ -23,7 +23,11 @@ class WorkerAgent(FunctionAgent):
         extras: Optional[str] = None,
         output_dir: Optional[str] = None,
     ) -> str:
-        base = load_agent_instructions(agent_name="worker", extras=extras)
+        base = load_agent_instructions(
+            agent_name="worker",
+            extras=extras,
+            base_sections=["core", "tools", "failure"],
+        )
         if output_dir:
             base += (
                 f"\n\n## Output Directory\n"

@@ -51,7 +51,11 @@ class PromptEnhancerAgent(FunctionAgent):
         Returns:
             str: The complete system prompt with guidelines and best practices
         """
-        return load_agent_instructions("prompt_enhancer", extras)
+        return load_agent_instructions(
+            "prompt_enhancer",
+            extras,
+            base_sections=["core"],
+        )
 
 
 def get_agent(
