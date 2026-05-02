@@ -1,10 +1,12 @@
-"""Self-awareness CLI — test-tools.
+"""Self-awareness CLI — introspection commands.
 
 Provides introspection commands that Aria can run on herself
-to verify tool availability.
+to verify tool availability and locate her own code.
 """
 
 import json
+import sys
+from pathlib import Path
 
 import typer
 
@@ -66,6 +68,34 @@ def test_tools():
                 "categories_total": len(results),
                 "tools_available": total_tools,
                 "details": results,
+            },
+            indent=2,
+        )
+    )
+
+
+@app.command("path")
+def show_path():
+    """Show the filesystem paths of Aria's code and Python runtime.
+
+    Returns JSON with the aria package directory and the Python
+    interpreter currently running her code.
+
+    Example:
+        ```bash
+        aria self path
+        ```
+    """
+    import aria
+
+    package_dir = str(Path(aria.__file__).resolve().parent)
+    python_bin = sys.executable
+
+    typer.echo(
+        json.dumps(
+            {
+                "package_dir": package_dir,
+                "python_bin": python_bin,
             },
             indent=2,
         )
