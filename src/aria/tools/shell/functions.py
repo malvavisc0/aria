@@ -156,8 +156,7 @@ def shell(
         try:
             result_str = _run_shell_command(
                 reason=(
-                    f"Batch command {i + 1}/{len(normalized)}: "
-                    f"{display_command}"
+                    f"Batch command {i + 1}/{len(normalized)}: " f"{display_command}"
                 ),
                 command=cmd_str,
                 timeout=cmd_timeout,

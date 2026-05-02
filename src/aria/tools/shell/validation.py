@@ -112,14 +112,10 @@ def _validate_working_dir(working_dir: Optional[str]) -> Path:
     try:
         path = Path(working_dir).resolve()
     except (OSError, ValueError) as exc:
-        raise WorkingDirectoryError(
-            f"Invalid working directory path: {exc}"
-        ) from exc
+        raise WorkingDirectoryError(f"Invalid working directory path: {exc}") from exc
 
     if not path.exists():
-        raise WorkingDirectoryError(
-            f"Working directory does not exist: {working_dir}"
-        )
+        raise WorkingDirectoryError(f"Working directory does not exist: {working_dir}")
     if not path.is_dir():
         raise WorkingDirectoryError(
             f"Working directory is not a directory: {working_dir}"

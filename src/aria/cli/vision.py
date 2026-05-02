@@ -57,9 +57,7 @@ def _start_vl_server() -> bool:
         from aria.config.models import Vision as VisionConfig
         from aria.scripts.gguf import get_model_path
 
-        model_path = get_model_path(
-            VisionConfig.filename, LlamaCppConfig.models_path
-        )
+        model_path = get_model_path(VisionConfig.filename, LlamaCppConfig.models_path)
         if model_path is None:
             return False
 
@@ -89,9 +87,7 @@ def _start_vl_server() -> bool:
         )
 
         # Wait for the server to become ready
-        return manager._wait_for_ready(
-            "0.0.0.0", VisionConfig.get_port(), timeout=60.0
-        )
+        return manager._wait_for_ready("0.0.0.0", VisionConfig.get_port(), timeout=60.0)
     except Exception:
         return False
 
@@ -105,8 +101,7 @@ def _ensure_vl_ready() -> str | None:
             {
                 "error": "vision_not_installed",
                 "message": (
-                    "Vision model not installed. "
-                    "Download with the command below."
+                    "Vision model not installed. " "Download with the command below."
                 ),
                 "install_command": (
                     f"aria models download "
@@ -131,9 +126,7 @@ def _ensure_vl_ready() -> str | None:
 @app.command("pdf")
 def pdf_cmd(
     file: str = typer.Argument(..., help="Path to the PDF file"),
-    prompt: str = typer.Option(
-        "", "--prompt", "-p", help="Custom extraction prompt"
-    ),
+    prompt: str = typer.Option("", "--prompt", "-p", help="Custom extraction prompt"),
 ):
     """Extract content from a PDF using the vision-language model.
 
@@ -148,9 +141,7 @@ def pdf_cmd(
     from aria.config.models import Vision as VisionConfig
     from aria.tools.vision.functions import make_parse_pdf
 
-    parse_pdf = make_parse_pdf(
-        api_base=VisionConfig.api_url, model=VisionConfig.model
-    )
+    parse_pdf = make_parse_pdf(api_base=VisionConfig.api_url, model=VisionConfig.model)
     result = asyncio.run(
         parse_pdf(reason="CLI PDF extraction", file_path=file, prompt=prompt)
     )
@@ -160,9 +151,7 @@ def pdf_cmd(
 @app.command("image")
 def image_cmd(
     file: str = typer.Argument(..., help="Path to the image file"),
-    prompt: str = typer.Option(
-        "", "--prompt", "-p", help="Custom analysis prompt"
-    ),
+    prompt: str = typer.Option("", "--prompt", "-p", help="Custom analysis prompt"),
 ):
     """Analyze an image using the vision-language model.
 
@@ -181,8 +170,6 @@ def image_cmd(
         api_base=VisionConfig.api_url, model=VisionConfig.model
     )
     result = asyncio.run(
-        analyze_image(
-            reason="CLI image analysis", file_path=file, prompt=prompt
-        )
+        analyze_image(reason="CLI image analysis", file_path=file, prompt=prompt)
     )
     typer.echo(result)

@@ -12,16 +12,12 @@ app = typer.Typer(
 
 @app.command("stock")
 def stock_cmd(
-    ticker: str = typer.Argument(
-        ..., help="Stock symbol (e.g. AAPL, BTC-USD)"
-    ),
+    ticker: str = typer.Argument(..., help="Stock symbol (e.g. AAPL, BTC-USD)"),
 ):
     """Fetch current stock/crypto price."""
     from aria.tools.search import fetch_current_stock_price
 
-    result = fetch_current_stock_price(
-        reason="CLI stock price lookup", ticker=ticker
-    )
+    result = fetch_current_stock_price(reason="CLI stock price lookup", ticker=ticker)
     typer.echo(result)
 
 
@@ -32,9 +28,7 @@ def company_cmd(
     """Fetch company fundamentals and metadata."""
     from aria.tools.search import fetch_company_information
 
-    result = fetch_company_information(
-        reason="CLI company info lookup", ticker=ticker
-    )
+    result = fetch_company_information(reason="CLI company info lookup", ticker=ticker)
     typer.echo(result)
 
 

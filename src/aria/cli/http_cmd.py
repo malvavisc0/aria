@@ -18,9 +18,7 @@ app = typer.Typer(
 
 @app.command("request")
 def http_cmd(
-    method: str = typer.Argument(
-        ..., help="HTTP method (GET, POST, PUT, etc.)"
-    ),
+    method: str = typer.Argument(..., help="HTTP method (GET, POST, PUT, etc.)"),
     url: str = typer.Argument(..., help="URL to request"),
     headers: Optional[str] = typer.Option(
         None, "--headers", "-H", help="JSON string of headers"

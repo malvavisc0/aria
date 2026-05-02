@@ -261,8 +261,7 @@ def edit_file(
         )
 
     logger.info(
-        f"Editing file {file_name}: {operation} "
-        f"(offset={offset}, length={length})"
+        f"Editing file {file_name}: {operation} " f"(offset={offset}, length={length})"
     )
 
     # Resolve path

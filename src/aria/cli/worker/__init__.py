@@ -172,9 +172,7 @@ def status(
         raise typer.Exit(1)
 
     audit = load_state(path)
-    if audit.get("status") == "running" and not is_process_running(
-        audit.get("pid", 0)
-    ):
+    if audit.get("status") == "running" and not is_process_running(audit.get("pid", 0)):
         audit["status"] = "zombie"
         save_state(path, audit)
 

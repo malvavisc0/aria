@@ -111,9 +111,7 @@ def _serialize_plan(plan: Plan) -> dict[str, object]:
     """Serialize a plan for tool responses."""
     completed = sum(1 for s in plan.steps if s.status == StepStatus.COMPLETED)
     failed = sum(1 for s in plan.steps if s.status == StepStatus.FAILED)
-    in_progress = sum(
-        1 for s in plan.steps if s.status == StepStatus.IN_PROGRESS
-    )
+    in_progress = sum(1 for s in plan.steps if s.status == StepStatus.IN_PROGRESS)
     pending = sum(1 for s in plan.steps if s.status == StepStatus.PENDING)
 
     return {
@@ -307,8 +305,7 @@ def _action_update(
                 tool="plan",
                 reason=reason,
                 message=(
-                    f"Invalid status '{status}'. "
-                    f"Valid values: {valid_statuses}"
+                    f"Invalid status '{status}'. " f"Valid values: {valid_statuses}"
                 ),
                 metadata={
                     "timestamp": timestamp,
@@ -320,9 +317,7 @@ def _action_update(
 
         # Update in database
         db = registry.get_db()
-        success = db.update_step(
-            execution_id, step_id, new_status.value, result
-        )
+        success = db.update_step(execution_id, step_id, new_status.value, result)
 
         if not success:
             return _err(
@@ -398,9 +393,7 @@ def _action_add(
         step_id = str(uuid.uuid4())
 
         db = registry.get_db()
-        step_data = db.add_step(
-            execution_id, step_id, description, after_step_id
-        )
+        step_data = db.add_step(execution_id, step_id, description, after_step_id)
 
         if step_data is None:
             return _err(
@@ -552,9 +545,7 @@ def _action_replace(
 
         # Update in database
         db = registry.get_db()
-        success = db.update_step(
-            execution_id, step_id, description=description
-        )
+        success = db.update_step(execution_id, step_id, description=description)
 
         if not success:
             return _err(

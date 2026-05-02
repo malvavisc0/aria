@@ -106,23 +106,16 @@ def classify_url(url: str, timeout: float = 5.0) -> URLType:
         with httpx.Client(timeout=timeout, follow_redirects=True) as client:
             resp = client.head(url)
             content_type = (
-                resp.headers.get("content-type", "")
-                .lower()
-                .split(";")[0]
-                .strip()
+                resp.headers.get("content-type", "").lower().split(";")[0].strip()
             )
 
             if any(content_type.startswith(ft) for ft in _FILE_CONTENT_TYPES):
                 return URLType.FILE
-            if any(
-                content_type.startswith(wt) for wt in _WEBSITE_CONTENT_TYPES
-            ):
+            if any(content_type.startswith(wt) for wt in _WEBSITE_CONTENT_TYPES):
                 return URLType.WEBSITE
 
             # Binary content types → file
-            if content_type.startswith(
-                ("image/", "audio/", "video/", "application/")
-            ):
+            if content_type.startswith(("image/", "audio/", "video/", "application/")):
                 return URLType.FILE
     except (httpx.TimeoutException, httpx.ConnectError, Exception):
         pass  # Fall through to default

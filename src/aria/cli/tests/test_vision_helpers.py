@@ -31,9 +31,7 @@ class TestIsVisionModelAvailable:
 
     def test_model_not_available_when_no_repo(self):
         """Should return False when repo_id is empty."""
-        with patch.dict(
-            "os.environ", {"VL_MODEL_REPO": "", "VL_MODEL": "model.gguf"}
-        ):
+        with patch.dict("os.environ", {"VL_MODEL_REPO": "", "VL_MODEL": "model.gguf"}):
             result = _is_vision_model_available()
             # Should return False or handle gracefully
             assert isinstance(result, bool)

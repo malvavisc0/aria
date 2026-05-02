@@ -60,16 +60,12 @@ def load_agent_instructions(
     if instructions_path.exists():
         if agent_name != "base":
             sections_to_load = (
-                base_sections
-                if base_sections is not None
-                else ALL_BASE_SECTIONS
+                base_sections if base_sections is not None else ALL_BASE_SECTIONS
             )
             for section in sections_to_load:
                 section_path = BASE_SECTIONS_DIR / f"{section}.md"
                 if section_path.exists():
-                    with open(
-                        section_path, mode="r", encoding="utf-8"
-                    ) as file:
+                    with open(section_path, mode="r", encoding="utf-8") as file:
                         parts.append(file.read())
 
         with open(instructions_path, mode="r", encoding="utf-8") as file:

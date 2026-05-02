@@ -66,9 +66,7 @@ def fetch_cmd(
     url_type = classify_url(url)
 
     if url_type == URLType.FILE:
-        result = _download(
-            reason="CLI fetch (auto-classified as file)", url=url
-        )
+        result = _download(reason="CLI fetch (auto-classified as file)", url=url)
     else:
         # Website — use browser for rendered content
         from aria.tools.browser.functions import open_url as _open_url
@@ -90,9 +88,7 @@ def weather_cmd(
     """Get current weather conditions."""
     from aria.tools.search import get_current_weather
 
-    result = get_current_weather(
-        reason="CLI weather lookup", location=location
-    )
+    result = get_current_weather(reason="CLI weather lookup", location=location)
     typer.echo(result)
 
 
@@ -112,9 +108,7 @@ def youtube_cmd(
     """
     from aria.tools.search import get_youtube_video_transcription
 
-    lang_list = (
-        [l.strip() for l in languages.split(",")] if languages else None
-    )
+    lang_list = [l.strip() for l in languages.split(",")] if languages else None
     result = get_youtube_video_transcription(
         reason="CLI YouTube transcript",
         url=url,

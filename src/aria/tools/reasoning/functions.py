@@ -280,9 +280,7 @@ def _action_reflect(
             agent_id=agent_id,
             session_id=None,
             code="MISSING_CONTENT",
-            message=(
-                "The 'content' parameter is required for 'reflect' action."
-            ),
+            message=("The 'content' parameter is required for 'reflect' action."),
             how_to_fix="Provide the 'content' parameter with your reflection.",
             recoverable=True,
         )
@@ -425,9 +423,7 @@ def _action_end(reason: str, agent_id: str) -> Dict[str, Any]:
         )
     except Exception:
         # Ending should still succeed even if session can't be loaded.
-        logger.debug(
-            f"Could not persist reasoning end tool event for {session_id}"
-        )
+        logger.debug(f"Could not persist reasoning end tool event for {session_id}")
 
     # Mark inactive in persistence store
     registry.get_db().delete_session(session_id, agent_id)

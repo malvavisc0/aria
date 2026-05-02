@@ -19,9 +19,7 @@ HTTP_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _persist_http_body(response: httpx.Response) -> tuple[str, int, str]:
-    content_type = (
-        response.headers.get("content-type", "").split(";", 1)[0].strip()
-    )
+    content_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
     suffix = ".json" if "json" in content_type else ".txt"
     file_path = HTTP_OUTPUT_DIR / f"response_{uuid4().hex}{suffix}"
     body_text = response.text

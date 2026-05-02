@@ -44,10 +44,7 @@ class TestClassifyUrlByExtension:
 
     def test_extension_with_query_params(self):
         """Extension detection should work with query parameters."""
-        assert (
-            classify_url("https://example.com/file.pdf?token=abc")
-            == URLType.FILE
-        )
+        assert classify_url("https://example.com/file.pdf?token=abc") == URLType.FILE
 
     def test_extension_at_end_of_path(self):
         """Extension must be at the end of the path (before query)."""
@@ -237,9 +234,7 @@ class TestClassifyUrlEdgeCases:
 
     def test_url_with_no_path(self):
         """URL with no path should fall through to HEAD request."""
-        with patch(
-            "aria.tools.search._url_classifier.httpx.Client"
-        ) as mock_cls:
+        with patch("aria.tools.search._url_classifier.httpx.Client") as mock_cls:
             mock_resp = MagicMock()
             mock_resp.headers = {"content-type": "text/html"}
 
@@ -259,9 +254,7 @@ class TestClassifyUrlEdgeCases:
 
     def test_extension_takes_priority_over_head(self):
         """Extension match should return immediately without HEAD request."""
-        with patch(
-            "aria.tools.search._url_classifier.httpx.Client"
-        ) as mock_cls:
+        with patch("aria.tools.search._url_classifier.httpx.Client") as mock_cls:
             result = classify_url("https://example.com/file.pdf")
             assert result == URLType.FILE
             # HEAD request should NOT have been made

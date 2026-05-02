@@ -161,9 +161,7 @@ class LlamaCppServerManager:
             ValueError: If both embedding_mode and reranking_mode are True.
         """
         if embedding_mode and reranking_mode:
-            raise ValueError(
-                "embedding_mode and reranking_mode are mutually exclusive"
-            )
+            raise ValueError("embedding_mode and reranking_mode are mutually exclusive")
 
         from aria.config.folders import Debug as DebugConfig
 
@@ -329,9 +327,7 @@ class LlamaCppServerManager:
         # Start rerank server if configured
         if Rerank.filename:
             try:
-                rerank_path = self._resolve_model_path(
-                    "rerank", Rerank.filename
-                )
+                rerank_path = self._resolve_model_path("rerank", Rerank.filename)
                 servers.append(
                     (
                         "rerank",
@@ -372,9 +368,7 @@ class LlamaCppServerManager:
             )
             env = self._get_env_for_run_model()
 
-            logger.info(
-                f"Starting {role} server on port {port}: {' '.join(cmd)}"
-            )
+            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
 
             proc = subprocess.Popen(
                 cmd,
@@ -392,9 +386,7 @@ class LlamaCppServerManager:
 
                 log_file = DebugConfig.logs_path.parent / f"llama-{role}.log"
                 stderr_output = (
-                    proc.stderr.read()
-                    .decode("utf-8", errors="replace")
-                    .strip()
+                    proc.stderr.read().decode("utf-8", errors="replace").strip()
                     if proc.stderr
                     else ""
                 )
@@ -413,9 +405,7 @@ class LlamaCppServerManager:
             logger.info(f"Waiting for {role} server on port {port}...")
             if not self._wait_for_ready(self._host, port):
                 failed.append(role)
-                logger.error(
-                    f"{role} server failed to become ready on port {port}"
-                )
+                logger.error(f"{role} server failed to become ready on port {port}")
 
         if failed:
             self.stop_all()

@@ -35,24 +35,18 @@ def movie_cmd(
     """Get comprehensive details for a movie or TV series."""
     from aria.tools.imdb.functions import get_movie_details
 
-    result = get_movie_details(
-        reason="CLI IMDb movie details", imdb_id=imdb_id
-    )
+    result = get_movie_details(reason="CLI IMDb movie details", imdb_id=imdb_id)
     typer.echo(result)
 
 
 @app.command("person")
 def person_cmd(
-    person_id: str = typer.Argument(
-        ..., help="IMDb person ID (e.g. nm0000206)"
-    ),
+    person_id: str = typer.Argument(..., help="IMDb person ID (e.g. nm0000206)"),
 ):
     """Get details about an actor, director, or crew member."""
     from aria.tools.imdb.functions import get_person_details
 
-    result = get_person_details(
-        reason="CLI IMDb person details", person_id=person_id
-    )
+    result = get_person_details(reason="CLI IMDb person details", person_id=person_id)
     typer.echo(result)
 
 
@@ -63,9 +57,7 @@ def filmography_cmd(
     """Get complete filmography for a person."""
     from aria.tools.imdb.functions import get_person_filmography
 
-    result = get_person_filmography(
-        reason="CLI IMDb filmography", person_id=person_id
-    )
+    result = get_person_filmography(reason="CLI IMDb filmography", person_id=person_id)
     typer.echo(result)
 
 
@@ -76,9 +68,7 @@ def episodes_cmd(
     """Get all episodes for a TV series."""
     from aria.tools.imdb.functions import get_all_series_episodes
 
-    result = get_all_series_episodes(
-        reason="CLI IMDb episodes", imdb_id=imdb_id
-    )
+    result = get_all_series_episodes(reason="CLI IMDb episodes", imdb_id=imdb_id)
     typer.echo(result)
 
 

@@ -13,9 +13,7 @@ app = typer.Typer(
 @app.command("run")
 def run_cmd(
     code: str = typer.Argument(..., help="Python code to execute"),
-    timeout: int = typer.Option(
-        30, "--timeout", "-t", help="Timeout in seconds"
-    ),
+    timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
 ):
     """Execute Python code in a sandboxed environment."""
     from aria.tools.development.python import python

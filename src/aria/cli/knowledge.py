@@ -52,9 +52,7 @@ def recall_cmd(
 @app.command("search")
 def search_cmd(
     query: str = typer.Argument(..., help="Search query"),
-    max_results: int = typer.Option(
-        10, "--max-results", "-n", help="Maximum results"
-    ),
+    max_results: int = typer.Option(10, "--max-results", "-n", help="Maximum results"),
 ):
     """Search stored knowledge entries."""
     from aria.tools.knowledge.functions import knowledge
@@ -73,9 +71,7 @@ def list_cmd(
     tags: Optional[List[str]] = typer.Option(
         None, "--tags", "-t", help="Filter by tags"
     ),
-    max_results: int = typer.Option(
-        10, "--max-results", "-n", help="Maximum results"
-    ),
+    max_results: int = typer.Option(10, "--max-results", "-n", help="Maximum results"),
 ):
     """List all stored knowledge entries."""
     from aria.tools.knowledge.functions import knowledge
