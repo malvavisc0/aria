@@ -74,6 +74,12 @@ def spawn(
         "-i",
         help="Optional extra instructions. Avoid vague additions; the worker should not need follow-up questions.",
     ),
+    thread_id: Optional[str] = typer.Option(
+        None,
+        "--thread-id",
+        "-t",
+        help="Conversation thread ID that spawned this worker, for session-scoped tracking.",
+    ),
 ):
     """Spawn a background worker agent.
 
@@ -94,6 +100,10 @@ def spawn(
         prompt,
         "--output-dir",
         str(out_dir),
+        "--reason",
+        reason,
+        "--expected",
+        expected,
     ]
     if instructions:
         cmd.extend(["--instructions", instructions])
@@ -105,6 +115,7 @@ def spawn(
         stderr=subprocess.STDOUT,
         start_new_session=True,
     )
+    log_handle.close()  # safe: OS dup'd the fd into the child process
 
     # Write audit
     WORKERS_DIR.mkdir(parents=True, exist_ok=True)
@@ -114,6 +125,7 @@ def spawn(
         "status": "running",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
+        "thread_id": thread_id,
         "prompt": prompt,
         "reason": reason,
         "expected_results": expected,
@@ -138,8 +150,15 @@ def spawn(
 
 
 @app.command("list")
-def list_workers():
-    """List all workers."""
+def list_workers(
+    thread_id: Optional[str] = typer.Option(
+        None,
+        "--thread-id",
+        "-t",
+        help="Filter workers by originating conversation thread ID.",
+    ),
+):
+    """List all workers, optionally filtered by thread ID."""
     if not WORKERS_DIR.exists():
         typer.echo(json.dumps({"workers": []}))
         return
@@ -148,6 +167,9 @@ def list_workers():
     for f in sorted(WORKERS_DIR.glob("worker_*.json")):
         audit = load_state(f)
         if not audit:
+            continue
+        # Filter by thread_id if provided
+        if thread_id and audit.get("thread_id") != thread_id:
             continue
         # Detect zombies
         if audit.get("status") == "running" and not is_process_running(

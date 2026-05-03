@@ -35,6 +35,7 @@ async def _run(args):
 
     from aria.agents.worker import get_worker_agent
     from aria.config.models import Chat as ChatConfig
+    from aria.config.models import Embeddings as EmbeddingsConfig
     from aria.llm import get_chat_llm, get_instructions_extras
 
     worker_id = args.worker_id
@@ -44,16 +45,26 @@ async def _run(args):
     logger.add(str(log_file), rotation="10 MB", level="DEBUG")
     logger.info(f"Worker {worker_id} starting (PID {os.getpid()})")
 
-    _update_audit(worker_id, {"started_at": datetime.now(timezone.utc).isoformat()})
+    _update_audit(
+        worker_id, {"started_at": datetime.now(timezone.utc).isoformat()}
+    )
 
     try:
         llm = get_chat_llm(api_base=ChatConfig.api_url)
         extras = get_instructions_extras(agent_name="worker")
-        agent = get_worker_agent(llm=llm, extras=extras, output_dir=str(output_dir))
+        agent = get_worker_agent(
+            llm=llm, extras=extras, output_dir=str(output_dir)
+        )
 
-        memory = Memory.from_defaults(session_id=worker_id, token_limit=8192)
+        memory = Memory.from_defaults(
+            session_id=worker_id, token_limit=EmbeddingsConfig.token_limit
+        )
 
         prompt = args.prompt
+        if args.reason:
+            prompt += f"\n\nReason for delegation: {args.reason}"
+        if args.expected:
+            prompt += f"\n\nExpected deliverable: {args.expected}"
         if args.instructions:
             prompt += f"\n\nAdditional instructions: {args.instructions}"
 
@@ -120,6 +131,8 @@ def main():
     parser.add_argument("--worker-id", required=True)
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--reason", default=None)
+    parser.add_argument("--expected", default=None)
     parser.add_argument("--instructions", default=None)
     asyncio.run(_run(parser.parse_args()))
 
