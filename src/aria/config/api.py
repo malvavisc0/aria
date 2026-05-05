@@ -1,30 +1,56 @@
 from pathlib import Path
 from typing import Optional
 
-from aria.config import get_bool_env, get_optional_env, get_required_env
+from aria.config import get_optional_env
 from aria.config.folders import Data
 
 
-class LlamaCpp:
-    bin_path = Data.path / Path(get_required_env("LLAMA_CPP_BIN_DIR"))
-    version = get_required_env("LLAMA_CPP_VERSION")
-    models_path = Data.path / Path(get_required_env("GGUF_MODELS_DIR"))
+class Vllm:
+    """Configuration for the vLLM inference engine.
+
+    All settings are driven by environment variables with sensible defaults.
+    Models are loaded directly from HuggingFace Hub (safetensors) — no GGUF
+    files or llama.cpp binaries are required.
+
+    ``gpu_memory_utilization`` defaults to ``None``, which triggers
+    automatic calculation at server launch time based on detected VRAM,
+    model weight size, and a 10 % headroom.  Set the
+    ``ARIA_VLLM_GPU_MEMORY_UTILIZATION`` env var to a float (e.g.
+    ``0.85``) to override the auto-calculation.
+    """
+
+    # --- vLLM engine settings ---
+    # None = auto-calculate at launch; set a float to override.
+    gpu_memory_utilization: Optional[float] = (
+        float(v)
+        if (v := get_optional_env("ARIA_VLLM_GPU_MEMORY_UTILIZATION", ""))
+        else None
+    )
+    quantization: Optional[str] = (
+        get_optional_env("ARIA_VLLM_QUANT", "") or None
+    )
+    tensor_parallel_size: int = int(get_optional_env("ARIA_VLLM_TP_SIZE", "1"))
+    dtype: str = get_optional_env("ARIA_VLLM_DTYPE", "auto")
+    kv_cache_dtype: str = get_optional_env("ARIA_VLLM_KV_CACHE_DTYPE", "auto")
+    api_key: str = get_optional_env("ARIA_VLLM_API_KEY", "sk-aria")
+    tool_call_parser: str = get_optional_env(
+        "ARIA_VLLM_TOOL_CALL_PARSER", "qwen3_coder"
+    )
+    reasoning_parser: str = get_optional_env(
+        "ARIA_VLLM_REASONING_PARSER", "qwen3"
+    )
 
     # Context sizes for each model type
-    chat_context_size = int(get_optional_env("CHAT_CONTEXT_SIZE", "65536"))
-    vl_context_size = int(get_optional_env("VL_CONTEXT_SIZE", "8192"))
-    embeddings_context_size = int(get_optional_env("EMBEDDINGS_CONTEXT_SIZE", "8192"))
-    rerank_context_size = int(get_optional_env("RERANK_CONTEXT_SIZE", "4096"))
-
-    # KV cache location:
-    #   True  = offload KV cache to system RAM (slower, saves VRAM)
-    #   False = keep KV cache on GPU (faster, uses more VRAM)
-    kv_cache_offload = get_bool_env("KV_CACHE_OFFLOAD", True)
-
-    # Force context: bypass the run-model safety cap so context sizes
-    # from .env are honored exactly.  True = always use CHAT_CONTEXT_SIZE
-    # as-is; False = let the script auto-cap based on VRAM.
-    force_context = get_bool_env("FORCE_CONTEXT", False)
+    # Use int(v) if v is non-empty, otherwise fall back to default
+    chat_context_size = (
+        int(v) if (v := get_optional_env("CHAT_CONTEXT_SIZE", "")) else 65536
+    )
+    vl_context_size = (
+        int(v) if (v := get_optional_env("VL_CONTEXT_SIZE", "")) else 8192
+    )
+    rerank_context_size = (
+        int(v) if (v := get_optional_env("RERANK_CONTEXT_SIZE", "")) else 4096
+    )
 
     # Chat template file (Jinja2) for tool-calling format.
     # Resolved relative to the project root (Path.cwd())

@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "sentence-transformers",
     "chainlit",
     "chromadb",
     "ddgs",
@@ -33,10 +34,24 @@ dependencies = [
     "typer",
     "yfinance",
     "youtube-transcript-api",
+    "llama-index-embeddings-huggingface>=0.7.0",
 ]
 
 [project.optional-dependencies]
-gui = ["pyside6"]
+gui = [
+    "pyside6",
+] # GUI dependencies — required for aria-gui and standalone AppImage/.exe builds
+vllm = ["vllm>=0.20.0"]
+finetune = [
+    "torch",
+    "transformers",
+    "peft",
+    "trl",
+    "bitsandbytes",
+    "accelerate",
+    "datasets",
+    "gptqmodel",
+]
 
 [project.scripts]
 aria = "aria:main"
@@ -80,4 +95,8 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "@(abc\\.)?abstractmethod",
-] # GUI dependencies — required for aria-gui and standalone AppImage/.exe builds
+]
+
+[tool.uv]
+link-mode = "copy"
+no-build-isolation-package = ["gptqmodel"]

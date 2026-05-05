@@ -81,11 +81,15 @@ def detect_gpus_with_details(log_errors: bool = False) -> List[GPUMetadata]:
 
             # Calculate memory utilization percentage (rounded to 2 decimals)
             memory_util = (
-                round((used_mem / total_mem * 100), 2) if total_mem > 0 else 0.0
+                round((used_mem / total_mem * 100), 2)
+                if total_mem > 0
+                else 0.0
             )
 
             # Helper function to safely parse numeric values with unit suffixes
-            def parse_numeric(value: str, suffixes: Optional[List[str]] = None) -> int:
+            def parse_numeric(
+                value: str, suffixes: Optional[List[str]] = None
+            ) -> int:
                 """Parse numeric value, optionally removing unit suffixes."""
                 if not value:
                     return 0
@@ -169,7 +173,9 @@ def detect_gpu_count() -> int:
         )
         # Filter empty lines to get accurate count
         lines = [
-            line.strip() for line in result.stdout.strip().split("\n") if line.strip()
+            line.strip()
+            for line in result.stdout.strip().split("\n")
+            if line.strip()
         ]
         return len(lines)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -203,7 +209,9 @@ def get_total_vram_mb() -> int:
         )
         # Filter empty lines before processing
         vram_values = [
-            vram.strip() for vram in result.stdout.strip().split("\n") if vram.strip()
+            vram.strip()
+            for vram in result.stdout.strip().split("\n")
+            if vram.strip()
         ]
         total_vram = sum(int(vram) for vram in vram_values)
         return total_vram
@@ -366,6 +374,34 @@ def check_nvidia_smi_available() -> bool:
         return False
 
 
+def get_cuda_version() -> str:
+    """Get the CUDA version from nvidia-smi.
+
+    Parses the CUDA version from ``nvidia-smi --version`` output.
+
+    Returns:
+        CUDA version string (e.g. ``"13.2"``, ``"12.4"``), or ``""``
+        if unavailable.
+
+    Example:
+        ```python
+        cuda = get_cuda_version()
+        # "13.2"
+        ```
+    """
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--version"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        match = re.search(r"CUDA Version\s*:\s*(\d+\.\d+)", result.stdout)
+        return match.group(1) if match else ""
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
+
+
 def get_nvidia_smi_version() -> str:
     """
     Get the version of nvidia-smi installed on the system.
@@ -520,3 +556,150 @@ def calculate_max_safe_context(
 
     # Ensure we return at least the minimum context
     return max(MIN_CONTEXT, context_size)
+
+
+def calculate_gpu_memory_utilization(
+    total_vram_mb: int,
+    model_path: str = "",
+    context_size: int = 65536,
+    kv_cache_dtype: str = "auto",
+    safety_factor: float = 1.20,
+    headroom_mb: int = 1024,
+    vllm_overhead_mb: int = 512,
+) -> float:
+    """Calculate the optimal ``gpu_memory_utilization`` fraction for vLLM.
+
+    Instead of using a percentage of total VRAM (which wastes memory on large
+    GPUs), this function estimates the **actual memory needs** based on model
+    weight size, KV cache requirements for the target context length, and
+    fixed overhead.
+
+    The formula is::
+
+        kv_cache    = model_weights × (context_size / 32768) × kv_dtype_factor
+        needed      = (model_weights + kv_cache + overhead + headroom) × safety
+        utilization = needed / total_vram
+
+    Where ``kv_dtype_factor`` is 0.5 for fp8 KV cache, 1.0 otherwise.
+
+    This means a small model on a large GPU gets a low utilization (e.g. 0.45
+    on a 33 GiB GPU with an 8B INT4 model at 128k context), instead of always
+    reserving ~90 %.
+
+    Args:
+        total_vram_mb: Total GPU VRAM in MiB (from ``get_total_vram_mb()``).
+        model_path: Local path to the model directory.  Used to estimate
+            model weight size from disk.
+        context_size: Target maximum sequence length (from
+            ``CHAT_CONTEXT_SIZE``).  Directly scales KV cache estimate.
+        kv_cache_dtype: KV cache data type (``"auto"``, ``"fp8"``, etc.).
+            ``"fp8"`` halves the KV cache memory footprint.
+        safety_factor: Multiplier for the total memory estimate to account
+            for activation memory, fragmentation, and batch processing.
+            Default ``1.20`` (20 % safety margin).
+        headroom_mb: Fixed VRAM reserved for the OS, display, and thermal
+            headroom.  Default 1024 MiB (1 GiB).
+        vllm_overhead_mb: Fixed overhead for vLLM CUDA kernels, buffers,
+            and scratch memory.  Default 512 MiB.
+
+    Returns:
+        Float in [0.50, 0.95] suitable for ``--gpu-memory-utilization``.
+        Returns ``0.85`` as a safe fallback when inputs are insufficient.
+
+    Example::
+
+        >>> # 8 GB GPU, 8B INT4 model (~4 GiB), 128k context, fp8 KV
+        >>> calculate_gpu_memory_utilization(8192, "/path/to/8b-int4", 131072, "fp8")
+        0.90
+
+        >>> # 33 GB GPU, same model
+        >>> calculate_gpu_memory_utilization(34120, "/path/to/8b-int4", 131072, "fp8")
+        0.50
+
+        >>> # 33 GB GPU, 32k context
+        >>> calculate_gpu_memory_utilization(34120, "/path/to/8b-int4", 32768, "fp8")
+        0.50
+    """
+    from pathlib import Path
+
+    from aria.helpers.memory import get_model_file_size
+
+    MIN_UTILIZATION = 0.50
+    MAX_UTILIZATION = 0.95
+    FALLBACK = 0.85
+    DEFAULT_MODEL_SIZE_MB = 4096  # Assume ~4 GiB if model path is unknown
+
+    # Guard: if VRAM detection failed, return a safe fallback
+    if total_vram_mb <= 0:
+        logger.warning(
+            "Cannot auto-calculate gpu_memory_utilization: "
+            "VRAM detection returned 0. Using fallback={}.",
+            FALLBACK,
+        )
+        return FALLBACK
+
+    # --- Step 1: Estimate model weight size ---
+    model_size_mb = 0
+    if model_path:
+        model_size_mb = get_model_file_size(Path(model_path))
+
+    if model_size_mb <= 0:
+        logger.info(
+            "Model path '{path}' not found on disk; using default "
+            "weight estimate of {default} MiB.",
+            path=model_path or "(empty)",
+            default=DEFAULT_MODEL_SIZE_MB,
+        )
+        model_size_mb = DEFAULT_MODEL_SIZE_MB
+
+    # --- Step 2: Estimate KV cache size ---
+    # Heuristic: KV cache scales linearly with context size and model size.
+    #   fp8 KV:  half the footprint of auto/fp16
+    #   Reference: 32k context baseline (factor = 1.0 at 32k)
+    kv_dtype_factor = 0.5 if kv_cache_dtype == "fp8" else 1.0
+    context_factor = context_size / 32768
+    kv_cache_mb = int(model_size_mb * context_factor * kv_dtype_factor)
+
+    # --- Step 3: Compute total memory needed ---
+    raw_needed_mb = (
+        model_size_mb + kv_cache_mb + vllm_overhead_mb + headroom_mb
+    )
+    needed_mb = int(raw_needed_mb * safety_factor)
+
+    # --- Step 4: Calculate utilization ---
+    utilization = needed_mb / total_vram_mb
+
+    # Clamp to safe bounds
+    utilization = max(
+        MIN_UTILIZATION, min(MAX_UTILIZATION, round(utilization, 2))
+    )
+
+    # --- Step 5: Log the reasoning ---
+    logger.info(
+        "Auto-calculated gpu_memory_utilization={util:.2f}\n"
+        "  VRAM total:        {vram:>8,} MiB\n"
+        "  Model weights:     {model:>8,} MiB\n"
+        "  KV cache estimate: {kv:>8,} MiB  "
+        "(ctx={ctx:,}, dtype={kv_dtype}, factor={kv_factor})\n"
+        "  vLLM overhead:     {over:>8,} MiB\n"
+        "  Headroom:          {head:>8,} MiB\n"
+        "  Raw needed:        {raw:>8,} MiB\n"
+        "  With safety (×{sf}): {needed:>8,} MiB\n"
+        "  → vLLM will use    {used:>8,} MiB ({pct:.0f}% of VRAM)",
+        util=utilization,
+        vram=total_vram_mb,
+        model=model_size_mb,
+        kv=kv_cache_mb,
+        ctx=context_size,
+        kv_dtype=kv_cache_dtype,
+        kv_factor=kv_dtype_factor,
+        over=vllm_overhead_mb,
+        head=headroom_mb,
+        raw=raw_needed_mb,
+        sf=safety_factor,
+        needed=needed_mb,
+        used=int(total_vram_mb * utilization),
+        pct=utilization * 100,
+    )
+
+    return utilization

@@ -125,3 +125,26 @@ async def browser_click(
         reason=reason,
         content_mode=content_mode,
     )
+
+
+@log_tool_call
+async def browser_close(reason: str) -> str:
+    """Close the current browser page.
+
+    When to use:
+        - Use this after you're done interacting with a page that was
+          opened with `open_url`.
+        - Closes the current page by navigating to about:blank. The
+          browser itself stays running for future use.
+
+    Args:
+        reason: Why you are closing the page (for logging/auditing).
+
+    Returns:
+        JSON confirming the page was closed.
+    """
+    manager = _get_manager()
+    return await manager.close_page(
+        tool=get_function_name(),
+        reason=reason,
+    )

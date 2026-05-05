@@ -8,6 +8,7 @@ install command.
 
 import asyncio
 import json
+import sys
 
 import typer
 
@@ -17,17 +18,24 @@ app = typer.Typer(
 
 
 def _is_vision_model_available() -> bool:
-    """Check if the VL model files exist on disk."""
+    """Check if the VL model is available (configured and downloaded)."""
     try:
         from aria.config.models import Vision as VisionConfig
 
-        if not VisionConfig.repo_id or not VisionConfig.filename:
+        if not VisionConfig.model_path:
             return False
 
-        from aria.config.api import LlamaCpp
+        from pathlib import Path
 
-        model_path = LlamaCpp.models_path / VisionConfig.filename
-        return model_path.exists()
+        path = Path(VisionConfig.model_path)
+        if path.is_absolute():
+            return path.exists() and path.is_dir()
+
+        # For HF repo IDs, check cache
+        from huggingface_hub import try_to_load_from_cache
+
+        cached = try_to_load_from_cache(VisionConfig.model_path, "config.json")
+        return cached is not None and cached != "None"
     except Exception:
         return False
 
@@ -47,49 +55,60 @@ def _is_vl_server_running() -> bool:
 
 
 def _start_vl_server() -> bool:
-    """Start the VL server on-demand by launching the run-model script."""
+    """Start the VL server on-demand by launching vLLM directly."""
     try:
         import subprocess
 
-        from aria.config.api import LlamaCpp as LlamaCppConfig
+        from aria.config.api import Vllm as VllmConfig
         from aria.config.models import Vision as VisionConfig
-        from aria.scripts.gguf import get_model_path
 
-        model_path = get_model_path(
-            VisionConfig.filename, LlamaCppConfig.models_path
-        )
-        if model_path is None:
+        if not VisionConfig.model_path:
             return False
 
-        mmproj_path = None
-        if VisionConfig.mmproj_filename:
-            mmproj_path = get_model_path(
-                VisionConfig.mmproj_filename, LlamaCppConfig.models_path
-            )
+        cmd = [
+            sys.executable,
+            "-m",
+            "vllm.entrypoints.openai.api_server",
+            "--model",
+            VisionConfig.model_path,
+            "--port",
+            str(VisionConfig.get_port()),
+            "--host",
+            "0.0.0.0",
+            "--dtype",
+            VllmConfig.dtype,
+            "--gpu-memory-utilization",
+            str(VllmConfig.gpu_memory_utilization),
+            "--api-key",
+            "sk-aria",
+        ]
 
-        from aria.server.llama import LlamaCppServerManager
+        if VllmConfig.quantization:
+            cmd.extend(["--quantization", VllmConfig.quantization])
 
-        manager = LlamaCppServerManager()
-        cmd = manager._build_run_model_cmd(
-            model_path=model_path,
-            context_size=LlamaCppConfig.vl_context_size,
-            port=VisionConfig.get_port(),
-            role="vl",
-            mmproj_path=mmproj_path,
-        )
-        env = manager._get_env_for_run_model()
-
-        subprocess.Popen(
+        proc = subprocess.Popen(
             cmd,
-            env=env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
 
         # Wait for the server to become ready
-        return manager._wait_for_ready(
-            "0.0.0.0", VisionConfig.get_port(), timeout=60.0
-        )
+        import time
+        from urllib.error import URLError
+        from urllib.request import urlopen
+
+        deadline = time.time() + 300  # 5 min timeout for model loading
+        while time.time() < deadline:
+            try:
+                url = f"http://0.0.0.0:{VisionConfig.get_port()}/health"
+                with urlopen(url, timeout=2) as resp:
+                    if resp.status == 200:
+                        return True
+            except (URLError, OSError):
+                pass
+            time.sleep(1.0)
+
+        return False
     except Exception:
         return False
 
@@ -106,11 +125,7 @@ def _ensure_vl_ready() -> str | None:
                     "Vision model not installed. "
                     "Download with the command below."
                 ),
-                "install_command": (
-                    f"aria models download "
-                    f"--repo {VisionConfig.repo_id} "
-                    f"--filename {VisionConfig.filename}"
-                ),
+                "install_command": (f"aria models download --model vl"),
             }
         )
 

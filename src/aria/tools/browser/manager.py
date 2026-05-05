@@ -143,7 +143,9 @@ class LightpandaManager:
 
             self._playwright = await async_playwright().start()
             cdp_url = f"http://127.0.0.1:{self._port}"
-            self._browser = await self._playwright.chromium.connect_over_cdp(cdp_url)
+            self._browser = await self._playwright.chromium.connect_over_cdp(
+                cdp_url
+            )
 
             # Lightpanda workaround: ignore SSL errors
             context = await self._browser.new_context(ignore_https_errors=True)
@@ -386,7 +388,9 @@ class LightpandaManager:
         """
         async with self._page_lock:
             if not await self._ensure_page():
-                return self._error("Browser not available", tool=tool, reason=reason)
+                return self._error(
+                    "Browser not available", tool=tool, reason=reason
+                )
 
             try:
                 return await fn(self._page)  # type: ignore[arg-type]
@@ -441,7 +445,9 @@ class LightpandaManager:
             # content.  Without this, Lightpanda may still be processing
             # deferred scripts / redirects and the evaluate() call hits
             # "Execution context was destroyed".
-            await page.wait_for_load_state(DEFAULT_WAIT_STRATEGY, timeout=timeout_ms)
+            await page.wait_for_load_state(
+                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
+            )
 
             content = await self._get_text_content(page, mode=content_mode)
 
@@ -489,7 +495,9 @@ class LightpandaManager:
         async def _do_click(page: Page) -> str:
             timeout_ms = BROWSER_COMMAND_TIMEOUT * 1000
             await page.click(selector, timeout=timeout_ms)
-            await page.wait_for_load_state(DEFAULT_WAIT_STRATEGY, timeout=timeout_ms)
+            await page.wait_for_load_state(
+                DEFAULT_WAIT_STRATEGY, timeout=timeout_ms
+            )
 
             content = await self._get_text_content(page, mode=content_mode)
             content_path = self._persist_content(
@@ -505,7 +513,48 @@ class LightpandaManager:
                 reason=reason,
             )
 
-        return await self._with_recovery("click", _do_click, tool=tool, reason=reason)
+        return await self._with_recovery(
+            "click", _do_click, tool=tool, reason=reason
+        )
+
+    async def close_page(
+        self,
+        *,
+        tool: str = "",
+        reason: str = "",
+    ) -> str:
+        """Close the current page by navigating to about:blank.
+
+        Lightpanda is a single-page browser, so "closing" means
+        navigating to a blank page. The browser stays running.
+
+        Args:
+            tool: Tool name for the response envelope.
+            reason: Agent reason for the response envelope.
+
+        Returns:
+            JSON string confirming the page was closed.
+        """
+
+        async def _do_close(page: Page) -> str:
+            timeout_ms = BROWSER_COMMAND_TIMEOUT * 1000
+            await page.goto(
+                "about:blank",
+                timeout=timeout_ms,
+                wait_until="commit",
+            )
+            return self._success(
+                {
+                    "status": "closed",
+                    "message": "Page closed (navigated to about:blank)",
+                },
+                tool=tool,
+                reason=reason,
+            )
+
+        return await self._with_recovery(
+            "close_page", _do_close, tool=tool, reason=reason
+        )
 
     async def get_page_content(
         self,

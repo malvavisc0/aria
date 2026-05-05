@@ -4,9 +4,9 @@ Verifies that all required dependencies are in place before starting
 the Chainlit web server:
   - Required environment variables are set
   - Data folder exists
-  - llama-server binary installed
-  - run-model script exists
-  - All three GGUF models (chat, vl, embeddings) downloaded
+  - vLLM is installed (Python package)
+  - All required models are configured (chat, embeddings)
+  - Model paths exist (local dirs or HF snapshots)
 
 Example:
     ```python
@@ -30,7 +30,7 @@ class CheckResult:
     """Result of a single preflight check.
 
     Attributes:
-        name: Short name of the check (e.g. "llama-server binary").
+        name: Short name of the check (e.g. "vLLM package").
         passed: True if the check passed, False otherwise.
         category: Group for display (environment, storage, binaries, models, hardware).
         error: Human-readable description of what is missing (if failed).
@@ -84,16 +84,13 @@ REQUIRED_ENV_VARS = [
     "ARIA_DB_FILENAME",
     "LOCAL_STORAGE_PATH",
     "CHROMADB_PERSISTENT_PATH",
-    "LLAMA_CPP_BIN_DIR",
-    "LLAMA_CPP_VERSION",
-    "GGUF_MODELS_DIR",
+    "CHAT_MODEL",
+    "CHAT_MODEL_PATH",
+    "EMBED_MODEL_PATH",
     "CHAT_OPENAI_API",
     "MAX_ITERATIONS",
-    "TOKEN_LIMIT",
-    "EMBEDDINGS_API_URL",
+    "TOKEN_LIMIT_RATIO",
     "EMBEDDINGS_MODEL",
-    "VL_OPENAI_API",
-    "VL_MODEL",
     "CHAINLIT_AUTH_SECRET",
 ]
 
@@ -154,53 +151,27 @@ def _check_data_folder(checks: List[CheckResult]) -> None:
 
 
 def _check_binaries(checks: List[CheckResult]) -> None:
-    """Check that required binaries exist."""
-    from aria.config.api import LlamaCpp as LlamaCppConfig
-    from aria.config.folders import Data
+    """Check that vLLM is installed."""
+    from aria.scripts.vllm import get_vllm_version, is_vllm_installed
 
-    bin_path = LlamaCppConfig.bin_path
-
-    # Check llama-server
-    llama_server = bin_path / "llama-server"
-    if llama_server.exists():
+    if is_vllm_installed():
+        version = get_vllm_version()
         checks.append(
             CheckResult(
-                name="llama-server",
+                name="vLLM",
                 passed=True,
                 category="binaries",
-                details="installed",
+                details=f"v{version}",
             )
         )
     else:
         checks.append(
             CheckResult(
-                name="llama-server",
+                name="vLLM",
                 passed=False,
                 category="binaries",
-                error=f"not found at {llama_server}",
-                hint="Run: aria llamacpp download",
-            )
-        )
-
-    # Check run-model script
-    run_model = Data.path / "bin" / "run-model"
-    if run_model.exists():
-        checks.append(
-            CheckResult(
-                name="run-model script",
-                passed=True,
-                category="binaries",
-                details="ready",
-            )
-        )
-    else:
-        checks.append(
-            CheckResult(
-                name="run-model script",
-                passed=False,
-                category="binaries",
-                error=f"not found at {run_model}",
-                hint="Ensure data/bin directory contains the run-model script",
+                error="vLLM is not installed",
+                hint="Run: aria vllm install",
             )
         )
 
@@ -233,40 +204,70 @@ def _check_lightpanda(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_models(checks: List[CheckResult]) -> None:
-    """Check that all required GGUF models are downloaded."""
-    from aria.config.api import LlamaCpp as LlamaCppConfig
-    from aria.config.models import Chat, Embeddings, Vision
-    from aria.scripts.gguf import is_model_downloaded
+def _check_model_exists(model_path: str) -> bool:
+    """Check if a model directory exists under DATA_FOLDER/models/.
 
-    models_dir = LlamaCppConfig.models_path
+    All models must reside under DATA_FOLDER/models/. Only local
+    directory existence is checked — HF cache is not used.
+
+    Args:
+        model_path: Resolved absolute path to the model directory.
+
+    Returns:
+        True if the model directory exists locally.
+    """
+    from pathlib import Path
+
+    if not model_path:
+        return False
+    path = Path(model_path)
+    return path.is_absolute() and path.exists() and path.is_dir()
+
+
+def _check_models(checks: List[CheckResult]) -> None:
+    """Check that all required models are configured and downloaded."""
+    from aria.config.models import Chat, Embeddings, Vision
+
     model_checks = [
-        ("chat", Chat.filename),
-        ("vl", Vision.filename),
-        ("embeddings", Embeddings.filename),
+        ("chat", Chat.model_path, True),  # required
+        ("embeddings", Embeddings.model_path, True),  # required
+        ("vl", Vision.model_path, False),  # optional
     ]
 
-    for alias, filename in model_checks:
+    for alias, model_path, required in model_checks:
         display_name = f"{alias} model"
-        if not filename:
-            checks.append(
-                CheckResult(
-                    name=display_name,
-                    passed=False,
-                    category="models",
-                    error="not configured (env var not set)",
-                    hint="Set the corresponding env var in your .env file",
+        if not model_path:
+            if required:
+                checks.append(
+                    CheckResult(
+                        name=display_name,
+                        passed=False,
+                        category="models",
+                        error="not configured (env var not set)",
+                        hint=(
+                            "Set the corresponding env var in your .env file "
+                            f"(e.g. {alias.upper()}_MODEL_PATH)"
+                        ),
+                    )
                 )
-            )
+            else:
+                checks.append(
+                    CheckResult(
+                        name=display_name,
+                        passed=True,
+                        category="models",
+                        details="not configured (optional)",
+                    )
+                )
             continue
 
-        if is_model_downloaded(filename, models_dir):
+        if _check_model_exists(model_path):
             checks.append(
                 CheckResult(
                     name=display_name,
                     passed=True,
                     category="models",
-                    details=filename,
+                    details=model_path,
                 )
             )
         else:
@@ -275,44 +276,43 @@ def _check_models(checks: List[CheckResult]) -> None:
                     name=display_name,
                     passed=False,
                     category="models",
-                    error=f"not downloaded ({filename})",
+                    error=f"not downloaded ({model_path})",
                     hint=f"Run: aria models download --model {alias}",
                 )
             )
 
 
 def _check_token_limit(checks: List[CheckResult]) -> None:
-    """Check that TOKEN_LIMIT is within bounds of CHAT_CONTEXT_SIZE.
+    """Check that TOKEN_LIMIT_RATIO is within safe bounds.
 
-    The memory token limit must be smaller than the model's context window
-    to leave room for:
-        - System prompt and tool definitions
-        - User input
-        - Model response generation
+    The memory token limit (TOKEN_LIMIT_RATIO × CHAT_CONTEXT_SIZE) must
+    leave room for system prompt, tool definitions, user input, and model
+    response generation.
     """
-    from aria.config.api import LlamaCpp as LlamaCppConfig
+    from aria.config.api import Vllm as VllmConfig
     from aria.config.models import Embeddings as EmbeddingsConfig
 
     token_limit = EmbeddingsConfig.token_limit
-    ctx_size = LlamaCppConfig.chat_context_size
+    ratio = EmbeddingsConfig.token_limit_ratio
+    ctx_size = VllmConfig.chat_context_size
 
-    # Reserve 25% of context for system prompt, tools, and response
-    # This is a conservative buffer to prevent context overflow
-    max_safe_limit = int(ctx_size * 0.75)
+    # Reserve 10% of context for system prompt, tools, and response
+    max_safe_ratio = 0.90
 
-    if token_limit > max_safe_limit:
+    if ratio > max_safe_ratio:
         checks.append(
             CheckResult(
                 name="Token limit",
                 passed=False,
                 category="environment",
                 error=(
-                    f"TOKEN_LIMIT ({token_limit}) exceeds 75% of "
-                    f"CHAT_CONTEXT_SIZE ({ctx_size}). Max safe limit: {max_safe_limit}"
+                    f"TOKEN_LIMIT_RATIO ({ratio:.0%}) exceeds safe limit "
+                    f"({max_safe_ratio:.0%}) of CHAT_CONTEXT_SIZE ({ctx_size}). "
+                    f"Max safe token limit: {int(ctx_size * max_safe_ratio)}"
                 ),
                 hint=(
-                    "Reduce TOKEN_LIMIT in your .env file to leave room for "
-                    "system prompts and model responses"
+                    "Reduce TOKEN_LIMIT_RATIO in your .env file to leave room "
+                    "for system prompts and model responses"
                 ),
             )
         )
@@ -322,7 +322,7 @@ def _check_token_limit(checks: List[CheckResult]) -> None:
                 name="Token limit",
                 passed=True,
                 category="environment",
-                details=f"{token_limit} (max: {max_safe_limit}, ctx: {ctx_size})",
+                details=f"{token_limit} ({ratio:.0%} of {ctx_size})",
             )
         )
 
@@ -333,13 +333,15 @@ def run_preflight_checks() -> PreflightResult:
     Checks performed (all run before returning so every failure is reported):
         1. All required environment variables are set
         2. Data folder exists
-        3. llama-server binary exists
-        4. run-model script exists
-        5. Chat model is downloaded
-        6. VL model is downloaded
-        7. Embeddings model is downloaded
-        8. Token limit is within context bounds
-        9. Memory requirements fit available hardware
+        3. vLLM is installed
+        4. Chat model is configured and downloaded
+        5. Embeddings model is configured and downloaded
+        6. VL model status (optional)
+        7. Token limit is within context bounds
+        8. Memory requirements fit available hardware
+        9. LLM server connectivity (informational)
+       10. Knowledge database access
+       11. Tool loading
 
     Returns:
         PreflightResult with pass/fail status and all check details.
@@ -384,7 +386,6 @@ def _detect_compute_platform() -> str:
         import subprocess
 
         try:
-            # Check if running on Apple Silicon
             arch = subprocess.check_output(
                 ["uname", "-m"], stderr=subprocess.DEVNULL
             ).decode()
@@ -405,11 +406,7 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
         - Metal: Use unified memory (system RAM)
         - CPU: Only check system RAM
     """
-    from aria.helpers.memory import (
-        detect_system_ram,
-        get_total_kv_cache_mb,
-        get_total_model_size_mb,
-    )
+    from aria.helpers.memory import detect_system_ram
     from aria.helpers.nvidia import get_free_vram_per_gpu, get_total_vram_mb
 
     def _mb_to_gb(mb: int) -> str:
@@ -432,7 +429,6 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
 
     # Platform-specific checks
     if platform_type == "nvidia":
-        # Check GPU VRAM for NVIDIA
         total_vram = get_total_vram_mb()
         free_vram = get_free_vram_per_gpu()
         if total_vram > 0:
@@ -446,88 +442,24 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
                 )
             )
     elif platform_type == "metal":
-        # Metal uses unified memory
         if total_ram_mb > 0:
             checks.append(
                 CheckResult(
                     name="Unified Memory",
                     passed=True,
                     category="hardware",
-                    details=f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)",
+                    details=(
+                        f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"
+                    ),
                 )
             )
     else:
-        # CPU-only mode
         checks.append(
             CheckResult(
                 name="Compute Platform",
                 passed=True,
                 category="hardware",
                 details="CPU-only mode (no GPU acceleration)",
-            )
-        )
-
-    # Get total model size for memory check
-    total_model_mb = get_total_model_size_mb()
-    if total_model_mb == 0:
-        return  # Models not downloaded, skip remaining checks
-
-    # Platform-specific memory checks
-    if platform_type == "nvidia":
-        # Check GPU VRAM fits models
-        free_vram = get_free_vram_per_gpu()
-        if free_vram:
-            total_free_vram = sum(free_vram)
-            if total_model_mb > total_free_vram:
-                checks.append(
-                    CheckResult(
-                        name="Model memory",
-                        passed=False,
-                        category="hardware",
-                        error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(total_free_vram)} VRAM available",
-                        hint="Use smaller quantization or split models across GPUs",
-                    )
-                )
-    elif platform_type == "metal":
-        # Metal: check unified memory (use 70% of total RAM as safe limit)
-        safe_memory_mb = int(total_ram_mb * 0.7)
-        if total_model_mb > safe_memory_mb:
-            checks.append(
-                CheckResult(
-                    name="Model memory",
-                    passed=False,
-                    category="hardware",
-                    error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(safe_memory_mb)} safe unified memory available",
-                    hint="Use smaller quantization or close other applications",
-                )
-            )
-    else:
-        # CPU-only: check available RAM (use 50% as safe limit)
-        safe_memory_mb = int(avail_ram_mb * 0.5) if avail_ram_mb > 0 else 0
-        if safe_memory_mb > 0 and total_model_mb > safe_memory_mb:
-            checks.append(
-                CheckResult(
-                    name="Model memory",
-                    passed=False,
-                    category="hardware",
-                    error=f"Models need {_mb_to_gb(total_model_mb)} but only {_mb_to_gb(safe_memory_mb)} RAM available for CPU inference",
-                    hint="Use smaller quantization or add more RAM",
-                )
-            )
-
-    # Check system RAM for KV cache (all platforms)
-    total_kv_mb = get_total_kv_cache_mb()
-    if avail_ram_mb > 0 and total_kv_mb > avail_ram_mb * 0.5:
-        checks.append(
-            CheckResult(
-                name="KV cache memory",
-                passed=False,
-                category="hardware",
-                error=(
-                    f"KV cache needs ~{_mb_to_gb(total_kv_mb)} but only "
-                    f"{_mb_to_gb(avail_ram_mb)} RAM available"
-                ),
-                hint="Reduce context size in configuration",
             )
         )
 
@@ -550,7 +482,7 @@ def _check_llm_server(checks: List[CheckResult]) -> None:
                 name="LLM server",
                 passed=True,
                 category="connectivity",
-                details=(f"{ChatConfig.api_url} " f"({len(models)} model(s))"),
+                details=(f"{ChatConfig.api_url} ({len(models)} model(s))"),
             )
         )
     except Exception:
@@ -571,8 +503,6 @@ def _check_knowledge_db(checks: List[CheckResult]) -> None:
         from aria.tools.knowledge.database import KnowledgeDatabase
 
         KnowledgeDatabase()
-        # Simple connectivity check — the singleton
-        # initializes the DB on first access
         checks.append(
             CheckResult(
                 name="Knowledge DB",

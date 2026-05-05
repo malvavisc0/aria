@@ -154,7 +154,6 @@ html[data-theme="light"] .cl-message,
 body[data-theme="light"] .cl-message {
   border: 1px solid hsl(var(--border));
   border-radius: 5px !important;
-  /* design.md rounded.md */
   box-shadow: none;
   background: hsl(var(--card));
   padding: 1rem 1.25rem;

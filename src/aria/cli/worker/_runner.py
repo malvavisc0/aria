@@ -50,7 +50,7 @@ async def _run(args):
     )
 
     try:
-        llm = get_chat_llm(api_base=ChatConfig.api_url)
+        llm = get_chat_llm(api_base=ChatConfig.api_url, model=ChatConfig.model)
         extras = get_instructions_extras(agent_name="worker")
         agent = get_worker_agent(
             llm=llm, extras=extras, output_dir=str(output_dir)

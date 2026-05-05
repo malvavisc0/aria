@@ -102,7 +102,9 @@ class _BaseDownloadWorker(QObject):
     def run(self) -> None:
         """Execute the download. Must be overridden by subclasses."""
 
-    def _run_with_redirected_output(self, fn: Callable, *args, **kwargs) -> None:
+    def _run_with_redirected_output(
+        self, fn: Callable, *args, **kwargs
+    ) -> None:
         """Run *fn* with stdout/stderr redirected to ``_stream``."""
         stream = _QueueStream()
         old_stdout, old_stderr = sys.stdout, sys.stderr
@@ -125,26 +127,17 @@ class _BaseDownloadWorker(QObject):
             sys.stderr = old_stderr
 
 
-class _LlamaDownloadWorker(_BaseDownloadWorker):
-    """Worker that downloads llama.cpp binaries in a background thread."""
-
-    def __init__(self, bin_dir: Path, version: Optional[str] = None):
-        super().__init__()
-        self._bin_dir = bin_dir
-        self._version = version
+class _VllmInstallWorker(_BaseDownloadWorker):
+    """Worker that installs vLLM in a background thread."""
 
     def run(self) -> None:
-        from aria.scripts.llama import download_llama_cpp
+        from aria.scripts.vllm import install_vllm
 
-        self._run_with_redirected_output(
-            download_llama_cpp,
-            bin_dir=self._bin_dir,
-            version=self._version,
-        )
+        self._run_with_redirected_output(install_vllm)
 
 
 class _ModelDownloadWorker(_BaseDownloadWorker):
-    """Worker that downloads a GGUF model in a background thread."""
+    """Worker that downloads a model snapshot in a background thread."""
 
     def __init__(
         self,
@@ -158,53 +151,41 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
         self._force = force
 
     def run(self) -> None:
-        from aria.config.api import LlamaCpp
-        from aria.config.models import Chat, Embeddings, Vision
-        from aria.scripts.gguf import download_gguf_model
+        from huggingface_hub import snapshot_download
 
-        models_dir = LlamaCpp.models_path
-        downloads: list[tuple[str, str]] = []
+        from aria.config.models import Chat, Embeddings, Rerank, Vision
 
+        model_path = None
         if self._alias == "chat":
-            if not Chat.repo_id or not Chat.filename:
+            model_path = Chat.model_path
+            if not model_path:
                 self.error.emit(
-                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured (CHAT_MODEL_PATH)."
                 )
                 return
-            downloads.append((Chat.repo_id, Chat.filename))
-
         elif self._alias == "vl":
-            if not Vision.repo_id or not Vision.filename:
+            model_path = Vision.model_path
+            if not model_path:
                 self.error.emit(
-                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured (VL_MODEL_PATH)."
                 )
                 return
-            downloads.append((Vision.repo_id, Vision.filename))
-            if Vision.mmproj_filename:
-                downloads.append((Vision.repo_id, Vision.mmproj_filename))
-
         elif self._alias == "embeddings":
-            if not Embeddings.repo_id or not Embeddings.filename:
+            model_path = Embeddings.model_path
+            if not model_path:
                 self.error.emit(
-                    "Embeddings model is not configured "
-                    "(EMBEDDINGS_MODEL_REPO / EMBEDDINGS_MODEL)."
+                    "Embeddings model is not configured (EMBED_MODEL_PATH)."
                 )
                 return
-            downloads.append((Embeddings.repo_id, Embeddings.filename))
-
         else:
             self.error.emit(f"Unknown model alias: {self._alias!r}")
             return
 
         def _download_all():
-            for repo_id, filename in downloads:
-                download_gguf_model(
-                    repo_id=repo_id,
-                    filename=filename,
-                    models_dir=models_dir,
-                    token=self._token,
-                    force=self._force,
-                )
+            kwargs: dict = {"repo_id": model_path, "token": self._token}
+            if self._force:
+                kwargs["force_download"] = True
+            snapshot_download(**kwargs)
 
         self._run_with_redirected_output(_download_all)
 
@@ -274,28 +255,32 @@ class SetupHandlersMixin:
 
     def _connect_setup_signals(self) -> None:
         """Wire Setup tab button signals and initialise download slots."""
-        self.ui.pushButton_LlamaDownload.clicked.connect(self.on_llama_download_clicked)
-        self.ui.pushButton_ModelDownload.clicked.connect(self.on_model_download_clicked)
+        self.ui.pushButton_VllmInstall.clicked.connect(
+            self.on_vllm_install_clicked
+        )
+        self.ui.pushButton_ModelDownload.clicked.connect(
+            self.on_model_download_clicked
+        )
         self.ui.pushButton_LightpandaDownload.clicked.connect(
             self.on_lightpanda_download_clicked
         )
 
         # Thread / worker attribute handles (kept for closeEvent compat)
-        self._llama_dl_thread: Optional[QThread] = None
-        self._llama_dl_worker: Optional[_LlamaDownloadWorker] = None
+        self._vllm_dl_thread: Optional[QThread] = None
+        self._vllm_dl_worker: Optional[_VllmInstallWorker] = None
         self._model_dl_thread: Optional[QThread] = None
         self._model_dl_worker: Optional[_ModelDownloadWorker] = None
         self._lightpanda_dl_thread: Optional[QThread] = None
         self._lightpanda_dl_worker: Optional[_LightpandaDownloadWorker] = None
 
         self._dl_slots: dict[str, _DownloadSlot] = {
-            "llama": _DownloadSlot(
-                thread_attr="_llama_dl_thread",
-                worker_attr="_llama_dl_worker",
-                button=self.ui.pushButton_LlamaDownload,
-                output=self.ui.plainTextEdit_LlamaOutput,
-                default_text="Download Binaries",
-                start_handler=self.on_llama_download_clicked,
+            "vllm": _DownloadSlot(
+                thread_attr="_vllm_dl_thread",
+                worker_attr="_vllm_dl_worker",
+                button=self.ui.pushButton_VllmInstall,
+                output=self.ui.plainTextEdit_VllmOutput,
+                default_text="Install vLLM",
+                start_handler=self.on_vllm_install_clicked,
             ),
             "model": _DownloadSlot(
                 thread_attr="_model_dl_thread",
@@ -321,32 +306,52 @@ class SetupHandlersMixin:
 
     def load_setup(self) -> None:
         """Populate all Setup tab status labels from current config."""
-        from aria.config.api import LlamaCpp
+        from pathlib import Path
+
         from aria.config.models import Chat, Embeddings, Vision
-        from aria.scripts.gguf import is_model_downloaded
+        from aria.scripts.vllm import get_vllm_version, is_vllm_installed
 
-        self.ui.label_LlamaBinDir.setText(str(LlamaCpp.bin_path))
-        self.ui.label_LlamaVersion.setText(LlamaCpp.version)
+        # vLLM status
+        if is_vllm_installed():
+            ver = get_vllm_version()
+            self.ui.label_VllmVersion.setText(
+                f'<span style="color:green">✓</span> vLLM {ver}'
+            )
+        else:
+            self.ui.label_VllmVersion.setText(
+                '<span style="color:red">✗</span> Not installed'
+            )
 
-        models_dir = LlamaCpp.models_path
+        def _check_model(model_path: str) -> bool:
+            if not model_path:
+                return False
+            p = Path(model_path)
+            if p.is_absolute():
+                return p.exists() and p.is_dir()
+            from huggingface_hub import try_to_load_from_cache
+
+            try:
+                cached = try_to_load_from_cache(model_path, "config.json")
+                return cached is not None and cached != "None"
+            except Exception:
+                return False
+
         model_configs = [
-            ("label_ModelChat_Status", Chat.filename, Chat.repo_id),
-            ("label_ModelVL_Status", Vision.filename, Vision.repo_id),
-            (
-                "label_ModelEmbeddings_Status",
-                Embeddings.filename,
-                Embeddings.repo_id,
-            ),
+            ("label_ModelChat_Status", Chat.model_path),
+            ("label_ModelVL_Status", Vision.model_path),
+            ("label_ModelEmbeddings_Status", Embeddings.model_path),
         ]
-        for label_name, filename, repo_id in model_configs:
+        for label_name, model_path in model_configs:
             label = getattr(self.ui, label_name)
-            if not filename or not repo_id:
+            if not model_path:
                 label.setText("not configured")
                 continue
-            downloaded = is_model_downloaded(filename, models_dir)
+            downloaded = _check_model(model_path)
             icon = "✓" if downloaded else "✗"
             color = "green" if downloaded else "red"
-            label.setText(f'<span style="color:{color}">{icon}</span> {filename}')
+            label.setText(
+                f'<span style="color:{color}">{icon}</span> {model_path}'
+            )
 
         # Lightpanda status
         from aria.config.api import Lightpanda
@@ -387,9 +392,9 @@ class SetupHandlersMixin:
             if sys.stderr is not worker._prev_stderr:
                 sys.stderr = worker._prev_stderr
 
-    def _cleanup_llama_dl_thread(self) -> None:
-        self._cleanup_thread("_llama_dl_thread")
-        self._llama_dl_worker = None
+    def _cleanup_vllm_dl_thread(self) -> None:
+        self._cleanup_thread("_vllm_dl_thread")
+        self._vllm_dl_worker = None
 
     def _cleanup_model_dl_thread(self) -> None:
         self._cleanup_thread("_model_dl_thread")
@@ -442,9 +447,13 @@ class SetupHandlersMixin:
 
         # Switch button to Cancel mode
         slot.button.setText("Cancel")
-        slot.button.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop)))
+        slot.button.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ProcessStop))
+        )
         slot.button.clicked.disconnect()
-        slot.button.clicked.connect(lambda _checked, k=key: self._cancel_download(k))
+        slot.button.clicked.connect(
+            lambda _checked, k=key: self._cancel_download(k)
+        )
         slot.button.setEnabled(True)
 
         thread.start()
@@ -490,7 +499,9 @@ class SetupHandlersMixin:
             # Final drain in case flush() added lines after _done was set.
             while not stream.lines.empty():
                 try:
-                    slot.output.appendPlainText(_strip_ansi(stream.lines.get_nowait()))
+                    slot.output.appendPlainText(
+                        _strip_ansi(stream.lines.get_nowait())
+                    )
                 except queue.Empty:
                     break
             if worker._error_msg:
@@ -554,29 +565,32 @@ class SetupHandlersMixin:
     # Per-download click handlers (thin wrappers)
     # ------------------------------------------------------------------
 
-    def on_llama_download_clicked(self) -> None:
-        """Handle Download Binaries button click."""
-        from aria.config.api import LlamaCpp
-
-        version_text = self.ui.lineEdit_LlamaVersion.text().strip() or None
-        worker = _LlamaDownloadWorker(bin_dir=LlamaCpp.bin_path, version=version_text)
-        self._start_download("llama", worker)
+    def on_vllm_install_clicked(self) -> None:
+        """Handle Install vLLM button click."""
+        worker = _VllmInstallWorker()
+        self._start_download("vllm", worker)
 
     def on_model_download_clicked(self) -> None:
         """Handle Download Model button click."""
         from aria.config.huggingface import HuggingFace
 
         alias = self.ui.comboBox_ModelSelect.currentText()
-        token_text = self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        token_text = (
+            self.ui.lineEdit_HFToken.text().strip() or HuggingFace.token
+        )
         force = self.ui.checkBox_ModelForce.isChecked()
-        worker = _ModelDownloadWorker(alias=alias, token=token_text, force=force)
+        worker = _ModelDownloadWorker(
+            alias=alias, token=token_text, force=force
+        )
         self._start_download("model", worker)
 
     def on_lightpanda_download_clicked(self) -> None:
         """Handle Download Lightpanda button click."""
         from aria.config.api import Lightpanda
 
-        version_text = self.ui.lineEdit_LightpandaVersion.text().strip() or None
+        version_text = (
+            self.ui.lineEdit_LightpandaVersion.text().strip() or None
+        )
         worker = _LightpandaDownloadWorker(
             bin_dir=Lightpanda.get_bin_path(), version=version_text
         )

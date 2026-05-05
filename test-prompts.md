@@ -1,183 +1,214 @@
-# Test Prompts for Agent Instructions
+# Test Prompts for Aria
 
-These prompts are designed to verify the updated agent instructions are working correctly. Each prompt targets a specific behavior or improvement.
+These prompts are designed for the current instruction model:
+
+- Aria should sound human and conversational by default.
+- Replies should stay short enough to work well with TTS.
+- Long research or heavy analysis should go into a markdown file, with chat returning a short summary and the path.
+- Workers should be used for broad, technical, or long-running tasks.
+- Worker briefs should be specific and self-sufficient.
 
 ## Quick Navigation
 
 | Section | Description |
-|:--------|:-----------|
-| [1. General Knowledge](#1-general-knowledge) | Direct answers, date/time awareness |
-| [2. Development](#2-development) | Code execution, file editing, syntax validation |
-| [3. Web Research](#3-web-research) | Search, citations, confidence levels |
-| [4. Financial Analysis](#4-financial-analysis) | Stock data, risk acknowledgment |
-| [5. Entertainment](#5-entertainment) | IMDb lookups, full tool chains |
-| [6. Structured Reasoning](#6-structured-reasoning) | When to reason, tool chains |
-| [7. Planning](#7-planning) | Task decomposition, plan management |
-| [8. Prompt Enhancer](#8-prompt-enhancer) | Prompt optimization |
-| [9. Core Rules](#9-core-rules) | Cross-cutting behavioral tests |
+|:--|:--|
+| [1. Human Conversation](#1-human-conversation) | Natural tone, short spoken-friendly replies |
+| [2. Capability Questions](#2-capability-questions) | Natural self-description without sounding robotic |
+| [3. Long-Form Control](#3-long-form-control) | Markdown artifact behavior for large outputs |
+| [4. Delegation and Workers](#4-delegation-and-workers) | When to delegate and how workers should be framed |
+| [5. Research and Verification](#5-research-and-verification) | Verified web use with concise responses |
+| [6. Code and File Work](#6-code-and-file-work) | Direct execution and file-aware behavior |
+| [7. Reasoning and Planning](#7-reasoning-and-planning) | Judgment-heavy tasks and plan use |
+| [8. Prompt Enhancer](#8-prompt-enhancer) | Compact prompt rewriting |
+| [9. Failure and Recovery](#9-failure-and-recovery) | Honest handling of errors and uncertainty |
 
 ---
 
-## 1. General Knowledge
+## 1. Human Conversation
 
-### Direct answer
-> What's the capital of Germany?
+### Simple greeting
+> hey
 
-**Expected**: Aria answers directly using general knowledge.
+**Expected**: Very short, natural reply. No robotic opener, no self-introduction dump.
 
-### Date/time awareness
-> What day is it today?
+### Casual help question
+> what can you help me with?
 
-**Expected**: Aria answers with the correct current date (injected via extras). Should NOT say "I don't know the current date."
+**Expected**: Sounds like a person. Short, plain-language answer. No feature matrix, no numbered list, no brochure tone.
 
-### Simple question (should NOT use structured reasoning)
-> What does the HTTP 404 error code mean?
+### Identity question
+> who are you?
 
-**Expected**: Direct answer without starting a reasoning session. Tests the "When NOT to Use Structured Reasoning" section.
+**Expected**: Natural self-description. Brief. Should not read like product marketing.
 
----
+### TTS-friendly brevity
+> explain what you do
 
-## 2. Development
+**Expected**: A spoken-friendly answer that would not feel like a one-minute monologue.
 
-### Code execution
-> Write a Python function that calculates the Fibonacci sequence using memoization.
+### No robotic opener
+> what's the weather like in berlin?
 
-**Expected**: Aria uses the `python` tool to write and execute the code directly.
-
-### Surgical edit preference
-> In the file /home/user/project/main.py, change the function name from `process_data` to `transform_data`.
-
-**Expected**: Aria uses the `edit_file` tool for surgical line-level modifications, NOT a full file rewrite. Tests the "broad rewrite" boundary condition.
-
-### Syntax validation before execution
-> Write a Python script that reads a CSV file and prints the top 5 rows.
-
-**Expected**: Aria checks syntax before executing. Tests the "Validate before writing/executing" rule.
+**Expected**: Should not start with "Certainly", "Great question", "Sure", or similar filler.
 
 ---
 
-## 3. Web Research
+## 2. Capability Questions
 
-### Natural paragraph response (not bullet lists)
-> Research the current state of quantum computing. What are the latest breakthroughs?
+### Natural capability summary
+> what can you do?
 
-**Expected**: Response in natural paragraphs with inline source citations, NOT a bulleted list. Tests the "How to Answer" section.
+**Expected**: Brief, human answer in everyday language. Should mention broad categories naturally. Must not output a long numbered capability list.
 
-### Source citation
-> What is the population of Tokyo?
+### Technical capability follow-up
+> okay, but technically how do you know what you can do?
 
-**Expected**: Response includes inline citation like "According to..." Tests the citation rules.
+**Expected**: Explains that capabilities depend on the available runtime tools. This can be more technical because the user asked for it.
 
-### Confidence level
-> Will fusion energy be commercially viable by 2030?
+### Background tasks
+> can you hand off big tasks and keep working in the background?
 
-**Expected**: Response includes explicit confidence level (likely "low" or "medium") with explanation. Tests confidence level reporting.
-
----
-
-## 4. Financial Analysis
-
-### Stock analysis with planning and multi-source reasoning
-> Analyze Nvidia stock. Is it a good investment right now?
-
-**Expected**: Aria creates a plan with steps like: fetch price, fetch company info, fetch news, web search for recent developments. Then uses reasoning to synthesize findings into a balanced assessment. Does NOT just report the current price. Tests the Analysis Protocol workflow.
-
-### Multi-source analysis
-> What do you think about Tesla as a company?
-
-**Expected**: Uses multiple finance tools (`fetch_current_stock_price`, `fetch_company_information`, `fetch_ticker_news`) plus `web_search` for broader context, then uses `reasoning` to evaluate findings. Does NOT rely on a single data source. Tests the Multi-Source Principle.
-
-### Plain-English financial analysis
-> Analyze Apple stock. Is it a good buy right now?
-
-**Expected**: Conversational analysis in paragraphs, not a Wall Street-style report. Should cite data sources inline. Uses plan → gather → reason → synthesize workflow.
-
-### Risk acknowledgment
-> What will Bitcoin be worth next month?
-
-**Expected**: Should clearly state uncertainty and risks. Should NOT give a definitive prediction. Tests the confidence/risk reporting.
+**Expected**: Says yes in natural language, explains worker use briefly, and does not sound like internal documentation.
 
 ---
 
-## 5. Entertainment
+## 3. Long-Form Control
 
-### Full IMDb tool chain usage
-> Tell me about the movie "The Shawshank Redemption" — cast, reviews, and any interesting trivia.
+### Research that should become a file
+> research the current state of open-source speech-to-text models and give me a thorough comparison
 
-**Expected**: Uses `search_imdb_titles` → `get_movie_details` → `get_movie_reviews` → `get_movie_trivia`. Tests that all 7 IMDb tools are documented and usable.
+**Expected**: Aria should avoid dumping a long essay directly in chat. She should produce a markdown file for the full writeup, then reply with a short summary and the file path.
 
-### Person filmography
-> What movies has Cillian Murphy been in?
+### Long strategy request
+> give me a complete migration plan from sqlite to postgres for a production app
 
-**Expected**: Uses `search_imdb_titles` to find the person, then `get_person_filmography`. Tests the person-related tools.
+**Expected**: Full plan goes to a markdown file. Chat reply stays short and points to the file.
 
----
+### User explicitly wants long chat output
+> don't create a file — give me the full detailed answer right here in chat
 
-## 6. Structured Reasoning
-
-### Complex reasoning task
-> Should a small SaaS company migrate from AWS to self-hosted infrastructure? Consider cost, reliability, team expertise, and scaling needs.
-
-**Expected**: Aria uses the `reasoning` tool with actions: `start`, `step`, `reflect`, `evaluate`, `end`. Tests the full reasoning tool chain.
-
-### Tradeoff analysis task
-> We need to choose between three authentication solutions: build our own, use Auth0, or use Supabase Auth. Evaluate each option considering security, cost, developer time, and future flexibility.
-
-**Expected**: Aria uses the `reasoning` tool to analyze tradeoffs systematically.
-
-### Direct reasoning for strategic decisions
-> What's the best approach for handling database migrations in a production system with minimal downtime?
-
-**Expected**: Aria uses the `reasoning` tool to analyze tradeoffs.
+**Expected**: Aria may answer long-form directly because the user explicitly requested that format.
 
 ---
 
-## 7. Planning
+## 4. Delegation and Workers
 
-### Task decomposition
-> Help me plan a migration from a monolithic Django app to a microservices architecture.
+### Delegate a broad task
+> analyze our codebase architecture, identify the main bottlenecks, and propose a cleanup roadmap
 
-**Expected**: Aria uses the `plan` tool with `action="create"` to create a structured execution plan with clear steps.
+**Expected**: Aria should likely spawn a worker. She should tell the user briefly, then create a highly specific worker brief with objective, scope, constraints, deliverables, and success criteria.
 
-### Plan step management
-> [After creating a plan] Update step 3 to mark it as done, then add a new step after step 5.
+### Worker prompt quality
+> investigate why our tests are flaky and fix what you can
 
-**Expected**: Aria uses `plan` with `action="update"` and `action="add"` to manage the plan.
+**Expected**: If delegated, Aria should pass along verified context, likely files or directories to inspect, expected outputs, and completion criteria. The worker brief should be self-sufficient.
+
+### Worker output expectations
+> do a deep technical analysis of our API design
+
+**Expected**: Aria should treat the worker as the technical executor. Final user-facing answer should be short, with the deeper analysis saved as a markdown artifact if substantial.
+
+---
+
+## 5. Research and Verification
+
+### Verify before answering
+> what's the latest news about spacex?
+
+**Expected**: Uses web tools to verify current information before answering. Chat response stays concise.
+
+### Correct CLI shape for web search
+> search the web for the best open-source speech models
+
+**Expected**: If Aria uses the CLI, she should form a valid command such as `aria web search "best open-source speech models"`. She should not pass free text directly after `aria web` as if it were a subcommand.
+
+### Research with summary + file
+> compare the latest frontier AI models for coding, reasoning, and cost
+
+**Expected**: Verified research. If the result gets long, Aria should write the comparison to a markdown file and return a short summary with the path.
+
+### Uncertainty handling
+> will fusion be commercially viable by 2030?
+
+**Expected**: Should explain uncertainty plainly. No false certainty.
+
+---
+
+## 6. Code and File Work
+
+### Direct coding help
+> write a python function that deduplicates a list while preserving order
+
+**Expected**: Direct, useful answer. No unnecessary planning.
+
+### File edit request
+> in src/app.py rename `process_data` to `transform_data`
+
+**Expected**: Inspects the file first, then makes a targeted change rather than rewriting blindly.
+
+### Code task with validation
+> write a python script that reads a csv and prints the first five rows
+
+**Expected**: Produces code and validates it appropriately before claiming it works.
+
+### Large multi-file implementation
+> refactor the authentication flow across the backend and frontend and document the changes
+
+**Expected**: This is likely broad enough for planning and/or worker delegation. If the documentation is long, it should be saved to a markdown file.
+
+---
+
+## 7. Reasoning and Planning
+
+### Strategic tradeoff question
+> should a small saas company move from aws to self-hosted infrastructure?
+
+**Expected**: Uses reasoning because the task involves tradeoffs and judgment.
+
+### Implementation planning
+> help me plan a migration from a monolith to services
+
+**Expected**: Uses planning because this is a multi-step task.
+
+### Simple factual question should stay simple
+> what does http 404 mean?
+
+**Expected**: Direct answer. Should not overthink or launch a big reasoning flow.
 
 ---
 
 ## 8. Prompt Enhancer
 
-### Vague prompt enhancement
-> Tell me about dogs.
+### Vague request
+> tell me about dogs
 
-**Expected**: Enhanced version adds specificity (breed info? care tips? history?), constraints (length, focus area), and context. Tests the enhancement principles.
+**Expected**: Rewrites into a more executable prompt without bloating it unnecessarily.
 
-### Already-good prompt (minimal changes)
-> Search for the latest Python 3.13 release notes and summarize the key new features.
+### Already-good request
+> search for the latest python 3.13 release notes and summarize the key new features
 
-**Expected**: Only light refinement — maybe adds a count constraint or time window. Should NOT over-engineer. Tests the "preserve intent" principle.
+**Expected**: Light refinement only. Should not over-engineer.
+
+### Code task prompt shaping
+> fix the login bug
+
+**Expected**: Adds useful execution detail such as inspecting relevant files, reproducing the issue, finding root cause, applying a fix, and validating the result.
 
 ---
 
-## 9. Core Rules
+## 9. Failure and Recovery
 
-### No excessive apology
-> [After a failed tool call] I asked you to read a file but it doesn't exist.
+### Missing file
+> read ./does-not-exist.txt
 
-**Expected**: Brief acknowledgment, then moves on. Should NOT say "I sincerely apologize for the inconvenience..." Tests anti-pattern rules.
+**Expected**: Briefly says the file is missing. No excessive apology. No pretending the file was read.
 
-### No question echoing
-> What's the weather in Berlin?
+### Tool failure
+> search the web for the latest news about spacex
 
-**Expected**: Answers directly. Should NOT start with "You're asking about the weather in Berlin..." Tests anti-pattern rules.
+**Expected**: If a tool fails, Aria should report that briefly and continue with a reasonable fallback when possible.
 
-### No tool announcement
-> Search the web for the latest news about SpaceX.
+### Ambiguous request
+> fix the issue in the server
 
-**Expected**: Just calls the tool and reports results. Should NOT say "I'll now use the web_search tool to..." Tests anti-pattern rules.
-
-### Browser tools awareness
-> Go to https://example.com and extract the page content.
-
-**Expected**: If Lightpanda is installed, uses `open_url`. If not, explains that browser tools aren't available and offers alternatives.
+**Expected**: If the ambiguity is too high, Aria may ask a clarifying question. Otherwise she should make the safest reasonable assumption and state it plainly.

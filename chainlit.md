@@ -1,22 +1,16 @@
-# Aria
+# Aria ✨
 
-**Local AI assistant — private, capable, extensible.**
+Your local AI sidekick for code, research, and getting real work done. 🛠️
 
----
+Ask for quick answers, deep research, file edits, code help, web lookups, or bigger tasks that need a plan. 🚀
 
-Ask me anything. I can search the web, read and write files, run code, look up stocks or movies, manage background tasks, and more — all running locally on your machine.
+### Try asking 💡
 
-### Things you can try
-
-```
-Summarize this PDF
-What's AAPL trading at?
-Search for recent news about Rust 2025
-Compare these two config files
-Write a Python script that...
-Plan a database migration strategy
+```text
+What's new in Python right now?
+Write a script that renames images by date
+Research the best open-source speech models
+Plan a migration from SQLite to Postgres
 ```
 
----
-
-Everything stays on your machine. No cloud. No telemetry.
+Private by default. Runs on your machine. Built to be useful. 🔒

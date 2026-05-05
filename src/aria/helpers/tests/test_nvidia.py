@@ -7,6 +7,7 @@ import pytest
 
 from aria.helpers.nvidia import (
     GPUMetadata,
+    calculate_gpu_memory_utilization,
     check_gpu_memory_usage,
     check_nvidia_smi_available,
     detect_gpu_count,
@@ -75,9 +76,7 @@ GPU1    NV2      X
 
 Bonded"""
 
-MOCK_VERSION_OUTPUT = (
-    """NVIDIA-SMI 535.104.05    Driver Version: 535.104.05    CUDA Version: 12.2"""
-)
+MOCK_VERSION_OUTPUT = """NVIDIA-SMI 535.104.05    Driver Version: 535.104.05    CUDA Version: 12.2"""
 
 MOCK_VERSION_OUTPUT_ALT = """NVIDIA-SMI 525.85.12
 Driver Version: 525.85.12
@@ -157,19 +156,25 @@ class TestDetectGpuCount:
     def test_single_gpu(self):
         """Test detection of single GPU."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_LIST_SINGLE)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_LIST_SINGLE
+            )
             assert detect_gpu_count() == 1
 
     def test_dual_gpu(self):
         """Test detection of two GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_LIST_DUAL)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_LIST_DUAL
+            )
             assert detect_gpu_count() == 2
 
     def test_quad_gpu(self):
         """Test detection of four GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_LIST_QUAD)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_LIST_QUAD
+            )
             assert detect_gpu_count() == 4
 
     def test_no_gpus_empty_output(self):
@@ -219,19 +224,25 @@ class TestGetTotalVramMb:
     def test_single_gpu_vram(self):
         """Test VRAM calculation for single GPU."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_TOTAL_SINGLE)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VRAM_TOTAL_SINGLE
+            )
             assert get_total_vram_mb() == 24576
 
     def test_dual_gpu_vram(self):
         """Test VRAM calculation for two GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_TOTAL_DUAL)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VRAM_TOTAL_DUAL
+            )
             assert get_total_vram_mb() == 49152  # 24576 * 2
 
     def test_quad_gpu_vram(self):
         """Test VRAM calculation for four GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_TOTAL_QUAD)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VRAM_TOTAL_QUAD
+            )
             assert get_total_vram_mb() == 98304  # 24576 * 4
 
     def test_empty_output(self):
@@ -263,14 +274,18 @@ class TestGetTotalVramMb:
     def test_mixed_valid_invalid_values(self):
         """Test handling of mixed valid and invalid values."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="24576\ninvalid\n16384")
+            mock_run.return_value = Mock(
+                returncode=0, stdout="24576\ninvalid\n16384"
+            )
             # Should fail on first invalid value
             assert get_total_vram_mb() == 0
 
     def test_vram_with_empty_lines(self):
         """Test that empty lines are filtered correctly."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="24576\n\n24576\n")
+            mock_run.return_value = Mock(
+                returncode=0, stdout="24576\n\n24576\n"
+            )
             assert get_total_vram_mb() == 49152
 
 
@@ -385,7 +400,9 @@ class TestCheckGpuMemoryUsage:
     def test_malformed_output_too_many_values(self):
         """Test handling of malformed output with too many values."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="12288, 24576, 8192")
+            mock_run.return_value = Mock(
+                returncode=0, stdout="12288, 24576, 8192"
+            )
             assert check_gpu_memory_usage(0, 50.0) is False
 
     def test_full_memory_usage(self):
@@ -416,7 +433,9 @@ class TestGetFreeVramPerGpu:
     def test_dual_gpu_free_vram(self):
         """Test free VRAM for two GPUs."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VRAM_FREE_DUAL)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VRAM_FREE_DUAL
+            )
             result = get_free_vram_per_gpu()
             assert result == [20480, 22528]
 
@@ -436,7 +455,9 @@ class TestGetFreeVramPerGpu:
     def test_output_with_empty_lines(self):
         """Test that empty lines are filtered correctly."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="20480\n\n22528\n")
+            mock_run.return_value = Mock(
+                returncode=0, stdout="20480\n\n22528\n"
+            )
             result = get_free_vram_per_gpu()
             assert result == [20480, 22528]
 
@@ -561,7 +582,9 @@ class TestCheckNvidiaSmiAvailable:
     def test_nvidia_smi_available(self):
         """Test when nvidia-smi is available."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VERSION_OUTPUT)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VERSION_OUTPUT
+            )
             assert check_nvidia_smi_available() is True
 
     def test_nvidia_smi_not_found(self):
@@ -598,21 +621,27 @@ class TestGetNvidiaSmiVersion:
     def test_version_standard_format(self):
         """Test parsing of standard version format."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VERSION_OUTPUT)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VERSION_OUTPUT
+            )
             version = get_nvidia_smi_version()
             assert version == "535.104.05"
 
     def test_version_alternative_format(self):
         """Test parsing of alternative version format."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_VERSION_OUTPUT_ALT)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_VERSION_OUTPUT_ALT
+            )
             version = get_nvidia_smi_version()
             assert version == "525.85.12"
 
     def test_version_two_part(self):
         """Test parsing of two-part version number."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="NVIDIA-SMI 535.104")
+            mock_run.return_value = Mock(
+                returncode=0, stdout="NVIDIA-SMI 535.104"
+            )
             version = get_nvidia_smi_version()
             assert version == "535.104"
 
@@ -675,7 +704,9 @@ class TestDetectGpusWithDetails:
     def test_single_gpu_with_details(self):
         """Test detection of single GPU with full details."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
+            )
             gpus = detect_gpus_with_details()
 
             assert len(gpus) == 1
@@ -700,7 +731,9 @@ class TestDetectGpusWithDetails:
     def test_dual_gpu_with_details(self):
         """Test detection of two GPUs with different states."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_DUAL)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_DUAL
+            )
             gpus = detect_gpus_with_details()
 
             assert len(gpus) == 2
@@ -832,15 +865,15 @@ class TestDetectGpusWithDetails:
         """Test memory utilization percentage calculation."""
         with patch("subprocess.run") as mock_run:
             # 12288 / 24576 = 50%
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
+            )
             gpus = detect_gpus_with_details()
             assert gpus[0].memory_utilization == 50.0
 
     def test_zero_total_memory(self):
         """Test handling of zero total memory (edge case)."""
-        mock_data = (
-            """0, GPU, UUID, 0, 0, 0, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
-        )
+        mock_data = """0, GPU, UUID, 0, 0, 0, Default, 535.104.05, 350, 280, 65, 45, Enabled"""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout=mock_data)
             gpus = detect_gpus_with_details()
@@ -851,7 +884,9 @@ class TestDetectGpusWithDetails:
     def test_pydantic_model_validation(self):
         """Test that GPUMetadata model validates correctly."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE)
+            mock_run.return_value = Mock(
+                returncode=0, stdout=MOCK_GPU_DETAILS_SINGLE
+            )
             gpus = detect_gpus_with_details()
 
             gpu = gpus[0]
@@ -883,6 +918,202 @@ class TestDetectGpusWithDetails:
             assert gpus[0].total_memory == 24576
             assert gpus[0].used_memory == 12288
             assert gpus[0].free_memory == 12288
+
+
+# ============================================================================
+# Tests for calculate_gpu_memory_utilization()
+# ============================================================================
+
+
+class TestCalculateGpuMemoryUtilization:
+    """Test suite for calculate_gpu_memory_utilization function.
+
+    The function now uses a needs-based formula:
+        kv_cache = model_size × (context_size / 32768) × kv_dtype_factor
+        needed   = (model_weights + kv_cache + overhead + headroom) × safety
+        utilization = needed / total_vram
+    """
+
+    def test_8gb_gpu_small_context(self):
+        """Test 8 GB GPU, default model (4096 MiB), 32k context, auto KV.
+
+        model=4096, kv=4096×1.0×1.0=4096, overhead=512, headroom=1024
+        raw=9728, needed=9728×1.2=11673
+        utilization=11673/8192 → clamped to 0.95
+        """
+        result = calculate_gpu_memory_utilization(8192, context_size=32768)
+        assert 0.90 <= result <= 0.95
+
+    def test_8gb_gpu_large_context_fp8(self):
+        """Test 8 GB GPU, default model, 128k context, fp8 KV.
+
+        model=4096, kv=4096×4×0.5=8192, overhead=512, headroom=1024
+        raw=13824, needed=13824×1.2=16588
+        utilization=16588/8192 → clamped to 0.95
+        """
+        result = calculate_gpu_memory_utilization(
+            8192, context_size=131072, kv_cache_dtype="fp8"
+        )
+        assert 0.90 <= result <= 0.95
+
+    def test_33gb_gpu_128k_fp8(self):
+        """Test 33 GB GPU, default model, 128k context, fp8 KV.
+
+        model=4096, kv=4096×4×0.5=8192, overhead=512, headroom=1024
+        raw=13824, needed=13824×1.2=16588
+        utilization=16588/34120 ≈ 0.49 → clamped to 0.50
+        """
+        result = calculate_gpu_memory_utilization(
+            34120, context_size=131072, kv_cache_dtype="fp8"
+        )
+        assert result == 0.50
+
+    def test_33gb_gpu_32k_fp8(self):
+        """Test 33 GB GPU, default model, 32k context, fp8 KV.
+
+        model=4096, kv=4096×1×0.5=2048, overhead=512, headroom=1024
+        raw=7680, needed=7680×1.2=9216
+        utilization=9216/34120 ≈ 0.27 → clamped to 0.50
+        """
+        result = calculate_gpu_memory_utilization(
+            34120, context_size=32768, kv_cache_dtype="fp8"
+        )
+        assert result == 0.50
+
+    def test_24gb_gpu_128k_fp8(self):
+        """Test 24 GB GPU, default model, 128k context, fp8 KV.
+
+        model=4096, kv=4096×4×0.5=8192, overhead=512, headroom=1024
+        raw=13824, needed=13824×1.2=16588
+        utilization=16588/24576 ≈ 0.67
+        """
+        result = calculate_gpu_memory_utilization(
+            24576, context_size=131072, kv_cache_dtype="fp8"
+        )
+        assert 0.60 <= result <= 0.75
+
+    def test_large_gpu_low_utilization(self):
+        """Test that a large GPU with a small model gets low utilization.
+
+        48 GB GPU, 32k context, fp8 KV:
+        model=4096, kv=2048, overhead=512, headroom=1024
+        raw=7680, needed=9216
+        utilization=9216/49152 ≈ 0.19 → clamped to 0.50
+        """
+        result = calculate_gpu_memory_utilization(
+            49152, context_size=32768, kv_cache_dtype="fp8"
+        )
+        assert result == 0.50
+
+    def test_custom_safety_factor(self):
+        """Test with a custom safety factor (1.50 = 50% margin)."""
+        result = calculate_gpu_memory_utilization(
+            34120,
+            context_size=131072,
+            kv_cache_dtype="fp8",
+            safety_factor=1.50,
+        )
+        # raw=13824, needed=13824×1.5=20736
+        # utilization=20736/34120 ≈ 0.61
+        assert 0.55 <= result <= 0.70
+
+    def test_custom_overhead(self):
+        """Test with a custom vLLM overhead."""
+        result = calculate_gpu_memory_utilization(
+            34120,
+            context_size=131072,
+            kv_cache_dtype="fp8",
+            vllm_overhead_mb=2048,
+        )
+        # model=4096, kv=8192, overhead=2048, headroom=1024
+        # raw=15360, needed=15360×1.2=18432
+        # utilization=18432/34120 ≈ 0.54
+        assert 0.50 <= result <= 0.60
+
+    def test_fp8_halves_kv_cache(self):
+        """Test that fp8 KV cache produces lower utilization than auto."""
+        result_fp8 = calculate_gpu_memory_utilization(
+            24576, context_size=65536, kv_cache_dtype="fp8"
+        )
+        result_auto = calculate_gpu_memory_utilization(
+            24576, context_size=65536, kv_cache_dtype="auto"
+        )
+        assert result_fp8 < result_auto
+
+    def test_larger_context_increases_utilization(self):
+        """Test that larger context size increases utilization."""
+        result_32k = calculate_gpu_memory_utilization(
+            24576, context_size=32768, kv_cache_dtype="fp8"
+        )
+        result_128k = calculate_gpu_memory_utilization(
+            24576, context_size=131072, kv_cache_dtype="fp8"
+        )
+        assert result_128k > result_32k
+
+    def test_zero_vram_returns_fallback(self):
+        """Test that zero VRAM returns the fallback value."""
+        result = calculate_gpu_memory_utilization(0)
+        assert result == 0.85
+
+    def test_negative_vram_returns_fallback(self):
+        """Test that negative VRAM returns the fallback value."""
+        result = calculate_gpu_memory_utilization(-1000)
+        assert result == 0.85
+
+    def test_tiny_gpu_clamped_to_maximum(self):
+        """Test that a tiny GPU with a large model is clamped to max utilization.
+
+        The default model (4096 MiB) is larger than the GPU (1024 MiB),
+        so utilization exceeds 1.0 and clamps to 0.95.
+        """
+        result = calculate_gpu_memory_utilization(
+            1024, context_size=32768, kv_cache_dtype="fp8"
+        )
+        assert result == 0.95
+
+    def test_huge_gpu_with_huge_context(self):
+        """Test 96 GB GPU with 512k context — should fit comfortably.
+
+        model=4096, kv=4096×16×0.5=32768, overhead=512, headroom=1024
+        raw=38400, needed=38400×1.2=46080
+        utilization=46080/98304 ≈ 0.47 → clamped to 0.50
+        """
+        result = calculate_gpu_memory_utilization(
+            98304, context_size=524288, kv_cache_dtype="fp8"
+        )
+        assert 0.50 <= result <= 0.55
+
+    def test_result_is_float(self):
+        """Test that the return type is float."""
+        result = calculate_gpu_memory_utilization(8192)
+        assert isinstance(result, float)
+
+    def test_result_in_valid_range(self):
+        """Test that the result is always in [0.50, 0.95]."""
+        for vram in [
+            256,
+            512,
+            1024,
+            2048,
+            4096,
+            8192,
+            12288,
+            16384,
+            24576,
+            49152,
+        ]:
+            result = calculate_gpu_memory_utilization(vram, context_size=32768)
+            assert (
+                0.50 <= result <= 0.95
+            ), f"VRAM={vram} MiB → utilization={result} outside [0.50, 0.95]"
+
+    def test_no_model_path_uses_default(self):
+        """Test that missing model path uses default 4096 MiB estimate."""
+        result = calculate_gpu_memory_utilization(
+            8192, model_path="", context_size=32768
+        )
+        # Should still produce a valid result using 4096 MiB default
+        assert 0.50 <= result <= 0.95
 
 
 # ============================================================================

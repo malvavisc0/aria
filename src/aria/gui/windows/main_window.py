@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
-from aria.config.models import Chat, Embeddings, Vision
+from aria.config.models import Chat, Vision
 from aria.gui.dialogs import AboutDialog
 from aria.gui.tray import TrayIcon
 from aria.gui.ui.mainwindow import Ui_MainWindow
@@ -137,7 +137,9 @@ class MainWindow(
         """Connect tab-related signals."""
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
         self.ui.pushButton_RefreshLogs.clicked.connect(self.load_logs)
-        self.ui.pushButton_AutoRefresh.clicked.connect(self.toggle_auto_refresh)
+        self.ui.pushButton_AutoRefresh.clicked.connect(
+            self.toggle_auto_refresh
+        )
         self.ui.lineEdit_LogSearch.textChanged.connect(self.load_logs)
         self.ui.comboBox_LogFilter.currentTextChanged.connect(self.load_logs)
 
@@ -146,14 +148,24 @@ class MainWindow(
 
     def _connect_user_management_signals(self):
         """Connect user management button signals."""
-        self.ui.pushButton_CreateUser.clicked.connect(self.on_create_user_clicked)
+        self.ui.pushButton_CreateUser.clicked.connect(
+            self.on_create_user_clicked
+        )
         self.ui.pushButton_EditUser.clicked.connect(self.on_edit_user_clicked)
-        self.ui.pushButton_DeleteUser.clicked.connect(self.on_delete_user_clicked)
+        self.ui.pushButton_DeleteUser.clicked.connect(
+            self.on_delete_user_clicked
+        )
 
         self.ui.pushButton_CreateUser.setEnabled(False)
-        self.ui.lineEdit_UserName.textChanged.connect(self.validate_create_fields)
-        self.ui.lineEdit_UserEmail.textChanged.connect(self.validate_create_fields)
-        self.ui.lineEdit_UserPassword.textChanged.connect(self.validate_create_fields)
+        self.ui.lineEdit_UserName.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserEmail.textChanged.connect(
+            self.validate_create_fields
+        )
+        self.ui.lineEdit_UserPassword.textChanged.connect(
+            self.validate_create_fields
+        )
         self.ui.lineEdit_UserPassword.textChanged.connect(
             self._update_password_strength
         )
@@ -377,12 +389,16 @@ class MainWindow(
     def load_overview(self):
         self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
 
-        self.ui.label_DatabaseLocation.setText(str(SQLite.file_path.absolute()))
+        self.ui.label_DatabaseLocation.setText(
+            str(SQLite.file_path.absolute())
+        )
         db_exists = SQLite.file_path.exists()
         if db_exists:
             self.ui.label_DatabaseFileExists.setText("Yes")
             self.ui.label_DatabaseSize.setText(human_size(SQLite.file_path))
-            permissions = "+".join(friendly_permissions(SQLite.file_path)["Owner"])
+            permissions = "+".join(
+                friendly_permissions(SQLite.file_path)["Owner"]
+            )
             self.ui.label_DatabasePermissions.setText(permissions)
         else:
             self.ui.label_DatabaseFileExists.setText("No")
@@ -395,7 +411,6 @@ class MainWindow(
         self.ui.label_LLMVisionAPIURL.setText(
             f'<a href="{Vision.api_url}">{Vision.api_url}</a>'
         )
-        self.ui.label_LLMEmbeddingsAPIURL.setText(Embeddings.api_url)
         self.ui.label_VectorDB.setText(str(ChromaDB.db_path.absolute()))
 
     def on_tab_changed(self, index: int):

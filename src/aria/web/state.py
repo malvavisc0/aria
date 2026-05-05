@@ -15,13 +15,13 @@ from typing import Any
 
 from chromadb.api import ClientAPI
 from llama_index.core.agent.workflow import AgentWorkflow
-from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from pydantic import BaseModel
 from sqlalchemy import Engine
 
 from aria.agents.prompt_enhancer import PromptEnhancerAgent
-from aria.server.llama import LlamaCppServerManager
+from aria.server.vllm import VllmServerManager
 
 ROOT_MESSAGE_TYPES = ["user_message", "assistant_message"]
 
@@ -33,7 +33,9 @@ class AppStateNotInitializedError(RuntimeError):
     before the startup handler has completed initialization.
     """
 
-    def __init__(self, message: str = "AppState is not fully initialized") -> None:
+    def __init__(
+        self, message: str = "AppState is not fully initialized"
+    ) -> None:
         super().__init__(message)
 
 
@@ -64,11 +66,11 @@ class AppState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     llm: OpenAILike | None = None
-    embeddings: OpenAIEmbedding | None = None
+    embeddings: BaseEmbedding | None = None
     vector_db: ClientAPI | None = None
     agents_workflow: AgentWorkflow | None = None
     prompt_enhancer: PromptEnhancerAgent | None = None
-    llama_manager: LlamaCppServerManager | None = None
+    vllm_manager: VllmServerManager | None = None
     browser_manager: Any = None
     db_engine: Engine | None = None
     startup_complete: bool = False
@@ -90,7 +92,9 @@ class AppState(BaseModel):
             missing = [f for f in _REQUIRED_FIELDS if getattr(self, f) is None]
             if not self.startup_complete:
                 missing.append("startup_complete")
-            raise AppStateNotInitializedError(f"Not initialized: {', '.join(missing)}")
+            raise AppStateNotInitializedError(
+                f"Not initialized: {', '.join(missing)}"
+            )
 
 
 # NOTE: _state is a mutable singleton accessed from multiple async coroutines.

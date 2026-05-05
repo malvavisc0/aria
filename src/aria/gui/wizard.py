@@ -109,10 +109,10 @@ class _EnginePage(QWizardPage):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setTitle("Download AI Engine")
+        self.setTitle("Install AI Engine")
         self.setSubTitle(
-            "Aria uses llama.cpp to run AI models locally. "
-            "Download the binaries to get started."
+            "Aria uses vLLM to run AI models locally. "
+            "Install the vLLM package to get started."
         )
 
         layout = QVBoxLayout(self)
@@ -129,8 +129,10 @@ class _EnginePage(QWizardPage):
         layout.addStretch()
 
         btn_layout = QHBoxLayout()
-        self._download_btn = QPushButton("Download AI Engine")
-        self._download_btn.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
+        self._download_btn = QPushButton("Install vLLM")
+        self._download_btn.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
+        )
         self._download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self._download_btn)
         btn_layout.addStretch()
@@ -141,18 +143,13 @@ class _EnginePage(QWizardPage):
         self._download_done = False
 
     def _start_download(self):
-        from aria.config.api import LlamaCpp
-        from aria.scripts.llama import download_llama_cpp
+        from aria.scripts.vllm import install_vllm
 
         self._download_btn.setEnabled(False)
-        self._status_label.setText("Downloading…")
+        self._status_label.setText("Installing…")
         self._log_view.clear()
 
-        bin_dir = LlamaCpp.bin_path
-
-        self._worker = _DownloadWorker(
-            download_llama_cpp, bin_dir=bin_dir, version=None
-        )
+        self._worker = _DownloadWorker(install_vllm)
         self._worker.log_line.connect(self._on_log)
         self._worker.finished.connect(self._on_finished)
         self._worker.error.connect(self._on_failed)
@@ -173,7 +170,7 @@ class _EnginePage(QWizardPage):
     def _on_finished(self):
         self._download_done = True
         self._download_btn.setEnabled(True)
-        self._status_label.setText("✓ AI Engine downloaded successfully!")
+        self._status_label.setText("✓ vLLM installed successfully!")
         self._status_label.setStyleSheet("color: #2e7d32; font-weight: bold;")
         self.completeChanged.emit()
 
@@ -226,7 +223,9 @@ class _ModelPage(QWizardPage):
 
         btn_layout = QHBoxLayout()
         self._download_btn = QPushButton("Download Model")
-        self._download_btn.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
+        self._download_btn.setIcon(
+            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
+        )
         self._download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self._download_btn)
         btn_layout.addStretch()
@@ -238,65 +237,69 @@ class _ModelPage(QWizardPage):
 
     def initializePage(self):
         """Auto-detect already-downloaded models and mark step as done."""
-        from aria.config.api import LlamaCpp
-        from aria.config.models import Chat
-        from aria.scripts.gguf import is_model_downloaded
+        from pathlib import Path
 
-        if Chat.filename and is_model_downloaded(Chat.filename, LlamaCpp.models_path):
-            self._download_done = True
-            self._status_label.setText(
-                "✓ Chat model already downloaded. Click Next to continue."
-            )
-            self._status_label.setStyleSheet("color: #2e7d32; font-weight: bold;")
-            self.completeChanged.emit()
+        from aria.config.models import Chat
+
+        if Chat.model_path:
+            path = Path(Chat.model_path)
+            exists = path.is_absolute() and path.exists() and path.is_dir()
+            if not exists:
+                from huggingface_hub import try_to_load_from_cache
+
+                try:
+                    cached = try_to_load_from_cache(
+                        Chat.model_path, "config.json"
+                    )
+                    exists = cached is not None and cached != "None"
+                except Exception:
+                    exists = False
+            if exists:
+                self._download_done = True
+                self._status_label.setText(
+                    "✓ Chat model already available. Click Next to continue."
+                )
+                self._status_label.setStyleSheet(
+                    "color: #2e7d32; font-weight: bold;"
+                )
+                self.completeChanged.emit()
 
     def _start_download(self):
-        from aria.config.api import LlamaCpp
+        from huggingface_hub import snapshot_download
+
         from aria.config.models import Chat, Embeddings, Vision
-        from aria.scripts.gguf import download_gguf_model
 
         self._download_btn.setEnabled(False)
         self._status_label.setText("Downloading…")
         self._log_view.clear()
 
         alias = self._model_combo.currentText()
-        models_dir = LlamaCpp.models_path
 
-        downloads: list[tuple[str, str]] = []
+        model_path = None
         if alias == "chat":
-            if not Chat.repo_id or not Chat.filename:
+            model_path = Chat.model_path
+            if not model_path:
                 self._on_failed(
-                    "Chat model is not configured " "(CHAT_MODEL_REPO / CHAT_MODEL)."
+                    "Chat model is not configured (CHAT_MODEL_PATH)."
                 )
                 return
-            downloads.append((Chat.repo_id, Chat.filename))
         elif alias == "vl":
-            if not Vision.repo_id or not Vision.filename:
+            model_path = Vision.model_path
+            if not model_path:
                 self._on_failed(
-                    "Vision model is not configured " "(VL_MODEL_REPO / VL_MODEL)."
+                    "Vision model is not configured (VL_MODEL_PATH)."
                 )
                 return
-            downloads.append((Vision.repo_id, Vision.filename))
-            if Vision.mmproj_filename:
-                downloads.append((Vision.repo_id, Vision.mmproj_filename))
         elif alias == "embeddings":
-            if not Embeddings.repo_id or not Embeddings.filename:
+            model_path = Embeddings.model_path
+            if not model_path:
                 self._on_failed(
-                    "Embeddings model is not configured "
-                    "(EMBEDDINGS_MODEL_REPO / EMBEDDINGS_MODEL)."
+                    "Embeddings model is not configured (EMBED_MODEL_PATH)."
                 )
                 return
-            downloads.append((Embeddings.repo_id, Embeddings.filename))
 
         def _download_all():
-            for repo_id, filename in downloads:
-                download_gguf_model(
-                    repo_id=repo_id,
-                    filename=filename,
-                    models_dir=models_dir,
-                    token=None,
-                    force=False,
-                )
+            snapshot_download(repo_id=model_path, token=None)
 
         self._worker = _DownloadWorker(_download_all)
         self._worker.log_line.connect(self._on_log)
@@ -444,7 +447,9 @@ class _UserPage(QWizardPage):
                         id=str(uuid.uuid4()),
                         display_name=self._name_edit.text().strip(),
                         identifier=self._email_edit.text().strip(),
-                        metadata_=json.dumps({"role": "admin", "created_by": "wizard"}),
+                        metadata_=json.dumps(
+                            {"role": "admin", "created_by": "wizard"}
+                        ),
                         password=hash_password(self._password_edit.text()),
                         createdAt=datetime.now().isoformat() + "Z",
                     )

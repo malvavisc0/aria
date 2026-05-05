@@ -11,14 +11,14 @@ from llama_index.core.agent.workflow import (
     ToolCall,
     ToolCallResult,
 )
+from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.memory import (
     FactExtractionMemoryBlock,
     InsertMethod,
     Memory,
     VectorMemoryBlock,
 )
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.embeddings.openai_like import OpenAILikeEmbedding
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from typing_extensions import TypedDict
@@ -277,24 +277,25 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     return "\n".join(lines)
 
 
-def get_chat_llm(api_base: str) -> OpenAILike:
+def get_chat_llm(
+    api_base: str, model: str = "", api_key: str = "sk-aria"
+) -> OpenAILike:
     """Create the chat LLM client used by the application.
 
     Args:
         api_base: Base URL for the OpenAI-compatible API.
+        model: Model name to send in API requests (e.g. ``"Lucy-128k-gguf"``).
+        api_key: API key sent in ``Authorization: Bearer`` header.
+            Must match the ``--api-key`` used to start the vLLM server.
 
     Returns:
         An :class:`OpenAILike` LLM instance configured to talk to
         ``api_base``.
-
-    Notes:
-        The application supplies a dummy API key here because some
-        OpenAI-compatible servers require the header to be present even when
-        authentication is handled elsewhere (e.g., via a reverse proxy).
     """
     llm = OpenAILike(
         api_base=api_base,
-        api_key="sk-dummy",
+        model=model,
+        api_key=api_key,
         is_chat_model=True,
         is_function_calling_model=True,
     )
@@ -334,7 +335,7 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
 
 def get_default_memory(
     vector_db: ChromaClientAPI,
-    embed_model: OpenAIEmbedding,
+    embed_model: BaseEmbedding,
     thread_id: str,
     token_limit: int = 32768,
     llm: OpenAILike | None = None,
@@ -376,10 +377,12 @@ def get_default_memory(
             vector_store=ChromaVectorStore(chroma_collection=collection),
             embed_model=embed_model,
             similarity_top_k=3,
-            retrieval_context_window=5,
+            retrieval_context_window=2,
             priority=2,
         )
     )
+
+    from aria.config.models import Embeddings as EmbeddingsConfig
 
     memory = Memory.from_defaults(
         session_id=thread_id,
@@ -387,14 +390,32 @@ def get_default_memory(
         memory_blocks=memory_blocks,
         token_limit=token_limit,
         chat_history_token_ratio=0.8,
-        token_flush_size=4096,
+        token_flush_size=EmbeddingsConfig.context_size,
     )
 
     return memory
 
 
-def get_embeddings_model(api_base: str, model_name: str) -> OpenAILikeEmbedding:
-    return OpenAILikeEmbedding(
-        api_base=api_base,
+def get_embeddings_model(
+    model_name: str,
+    device: str = "cpu",
+) -> HuggingFaceEmbedding:
+    """Create the embeddings model used by the application.
+
+    Loads the model in-process via HuggingFace transformers — no separate
+    embedding server required.  The native tokenizer handles truncation
+    automatically, so long inputs (e.g. tool outputs) never crash the
+    embedding call.
+
+    Args:
+        model_name: HuggingFace model ID or local path.
+        device: Device to run on (``"cpu"`` or ``"cuda"``).
+
+    Returns:
+        A :class:`HuggingFaceEmbedding` instance.
+    """
+    return HuggingFaceEmbedding(
         model_name=model_name,
+        device=device,
+        trust_remote_code=True,
     )

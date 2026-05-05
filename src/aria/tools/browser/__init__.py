@@ -21,9 +21,10 @@ Example:
     ```
 """
 
-from aria.tools.browser.functions import browser_click, open_url
+from aria.tools.browser.functions import browser_click, browser_close, open_url
 
 __all__ = [
     "open_url",
     "browser_click",
+    "browser_close",
 ]

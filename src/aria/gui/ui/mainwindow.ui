@@ -484,23 +484,6 @@
               </widget>
              </item>
              <item row="3" column="0">
-              <widget class="QLabel" name="label_llm_embeddings_lbl">
-               <property name="styleSheet">
-                <string notr="true">color: #888;</string>
-               </property>
-               <property name="text">
-                <string>Embeddings</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QLabel" name="label_LLMEmbeddingsAPIURL">
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
               <widget class="QLabel" name="label_llm_vectordb_lbl">
                <property name="styleSheet">
                 <string notr="true">color: #888;</string>
@@ -510,7 +493,7 @@
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="3" column="1">
               <widget class="QLabel" name="label_VectorDB">
                <property name="text">
                 <string>-</string>
@@ -578,11 +561,11 @@
          <number>8</number>
         </property>
         <item>
-         <widget class="QGroupBox" name="groupBox_LlamaCpp">
+         <widget class="QGroupBox" name="groupBox_Vllm">
           <property name="title">
            <string>AI Engine</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_llamacpp">
+          <layout class="QVBoxLayout" name="verticalLayout_vllm">
            <property name="leftMargin">
             <number>8</number>
            </property>
@@ -596,7 +579,7 @@
             <number>8</number>
            </property>
            <item>
-            <layout class="QFormLayout" name="formLayout_llamacpp_info">
+            <layout class="QFormLayout" name="formLayout_vllm_info">
              <property name="horizontalSpacing">
               <number>20</number>
              </property>
@@ -604,41 +587,27 @@
               <number>6</number>
              </property>
              <item row="0" column="0">
-              <widget class="QLabel" name="label_llama_bindir_lbl">
-               <property name="text">
-                <string>Install Location</string>
+              <widget class="QLabel" name="label_vllm_status_lbl">
+                <property name="text">
+                 <string>Status</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QLabel" name="label_LlamaBinDir">
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_llama_version_lbl">
-               <property name="text">
-                <string>Version</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="label_LlamaVersion">
-               <property name="text">
-                <string>-</string>
+              <widget class="QLabel" name="label_VllmVersion">
+                <property name="text">
+                 <string>-</string>
                </property>
               </widget>
              </item>
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_llamaDownload">
-             <item>
-              <widget class="QPushButton" name="pushButton_LlamaDownload">
-               <property name="text">
-                <string>Download Binaries</string>
+             <layout class="QHBoxLayout" name="horizontalLayout_vllmInstall">
+              <item>
+               <widget class="QPushButton" name="pushButton_VllmInstall">
+                <property name="text">
+                 <string>Install vLLM</string>
                </property>
                <property name="icon">
                 <iconset theme="QIcon::ThemeIcon::GoDown"/>
@@ -646,7 +615,7 @@
               </widget>
              </item>
              <item>
-              <spacer name="horizontalSpacer_llamaDl">
+               <spacer name="horizontalSpacer_vllmDl">
                <property name="orientation">
                 <enum>Qt::Orientation::Horizontal</enum>
                </property>
@@ -661,36 +630,9 @@
             </layout>
            </item>
            <item>
-            <widget class="QGroupBox" name="groupBox_LlamaAdvanced">
-             <property name="title">
-              <string>Advanced</string>
-             </property>
-             <property name="checkable">
-              <bool>true</bool>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_llamaAdvanced">
-              <item>
-               <widget class="QLabel" name="label_llama_dl_version_lbl">
-                <property name="text">
-                 <string>Version (optional):</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="lineEdit_LlamaVersion">
-                <property name="placeholderText">
-                 <string>e.g. b4500 (leave blank for latest)</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
            </item>
            <item>
-            <widget class="QPlainTextEdit" name="plainTextEdit_LlamaOutput">
+            <widget class="QPlainTextEdit" name="plainTextEdit_VllmOutput">
              <property name="font">
               <font>
                <family>Courier New</family>
@@ -704,7 +646,7 @@
               <bool>true</bool>
              </property>
              <property name="placeholderText">
-              <string>Download output will appear here...</string>
+               <string>Install output will appear here...</string>
              </property>
             </widget>
            </item>

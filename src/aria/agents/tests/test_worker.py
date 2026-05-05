@@ -22,7 +22,7 @@ class TestWorkerAgent:
         """System prompt should load worker.md instructions."""
         prompt = WorkerAgent.get_system_prompt()
         assert "Worker Agent" in prompt
-        assert "autonomously" in prompt.lower()
+        assert "structured results" in prompt.lower()
 
     def test_get_system_prompt_with_output_dir(self):
         """System prompt should include output directory when provided."""

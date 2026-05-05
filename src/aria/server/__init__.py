@@ -2,28 +2,28 @@
 
 This module provides:
 - ``ServerManager``: controls the Chainlit webserver lifecycle (start, stop, restart, status)
-- ``LlamaCppServerManager``: manages the three llama-server inference processes
-  (chat, vision/language, embeddings)
+- ``VllmServerManager``: manages the vLLM inference processes
+  (chat, embeddings, rerank)
 
 Example:
     ```python
-    from aria.server import ServerManager, LlamaCppServerManager
+    from aria.server import ServerManager, VllmServerManager
 
-    llama = LlamaCppServerManager()
-    llama.start_all()
+    vllm = VllmServerManager()
+    vllm.start_all()
 
     manager = ServerManager()
     manager.run()  # blocking
 
-    llama.stop_all()
+    vllm.stop_all()
     ```
 """
 
-from aria.server.llama import LlamaCppServerManager
 from aria.server.manager import ServerManager, ServerStatus
+from aria.server.vllm import VllmServerManager
 
 __all__ = [
     "ServerManager",
     "ServerStatus",
-    "LlamaCppServerManager",
+    "VllmServerManager",
 ]

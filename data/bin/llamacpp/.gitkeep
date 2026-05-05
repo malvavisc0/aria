@@ -1,4 +1,0 @@
-# This file ensures the bin/llamacpp/ directory is tracked by git.
-# Place your llama.cpp binaries here (llama-server, llama-cli, etc.).
-# Run: aria llamacpp download
-# The contents of this directory are ignored by git (see .gitignore).

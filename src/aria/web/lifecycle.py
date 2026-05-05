@@ -16,19 +16,23 @@ import os
 
 from chromadb import PersistentClient as ChromaDBPersistentClient
 from chromadb.config import Settings as ChromaDBSettings
+from llama_index.core import Settings as LlamaIndexSettings
 from loguru import logger
 from sqlalchemy import create_engine
 
+from aria.config.api import Vllm as VllmConfig
 from aria.config.database import ChromaDB as ChromaDBConfig
 from aria.config.database import SQLite as SQLiteConfig
 from aria.config.folders import Debug as DebugConfig
 from aria.config.models import Chat as ChatConfig
 from aria.config.models import Embeddings as EmbeddingsConfig
 from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
-from aria.server.llama import LlamaCppServerManager
+from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+)
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -130,19 +134,23 @@ def _init_database() -> None:
     Base.metadata.create_all(_state.db_engine)
 
 
-def _init_llama_servers() -> None:
-    """Start all configured LlamaCpp inference servers."""
-    _state.llama_manager = LlamaCppServerManager()
-    _state.llama_manager.start_all()
-    logger.info("All LlamaCpp servers ready")
+def _init_vllm_servers() -> None:
+    """Start all configured vLLM inference servers."""
+    _state.vllm_manager = VllmServerManager()
+    _state.vllm_manager.start_all()
+    logger.info("All vLLM servers ready")
 
 
 def _init_llm_clients() -> None:
     """Initialize the LLM and embeddings clients."""
-    _state.llm = get_chat_llm(api_base=ChatConfig.api_url)
+
+    _state.llm = get_chat_llm(
+        api_base=ChatConfig.api_url,
+        model=ChatConfig.model,
+        api_key=VllmConfig.api_key,
+    )
     _state.embeddings = get_embeddings_model(
-        api_base=EmbeddingsConfig.api_url,
-        model_name=EmbeddingsConfig.model,
+        model_name=EmbeddingsConfig.model_path or EmbeddingsConfig.model,
     )
 
 
@@ -185,7 +193,8 @@ async def _init_browser() -> None:
                 logger.info("Lightpanda browser started successfully")
             else:
                 logger.warning(
-                    "Lightpanda browser failed to start — " "browser tools disabled"
+                    "Lightpanda browser failed to start — "
+                    "browser tools disabled"
                 )
     else:
         logger.info("Lightpanda not installed — browser tools disabled")
@@ -206,12 +215,12 @@ async def _cleanup_on_failure() -> None:
             pass
         _state.browser_manager = None
 
-    if _state.llama_manager:
+    if _state.vllm_manager:
         try:
-            _state.llama_manager.stop_all()
+            _state.vllm_manager.stop_all()
         except Exception:
             pass
-        _state.llama_manager = None
+        _state.vllm_manager = None
 
     if _state.db_engine:
         try:
@@ -265,8 +274,8 @@ async def on_app_startup_handler() -> None:
     # Phase 2 – Non-critical subsystems (failure is tolerated)
     # ------------------------------------------------------------------
     try:
-        logger.info("Starting LlamaCpp inference servers...")
-        _init_llama_servers()
+        logger.info("Starting vLLM inference servers...")
+        _init_vllm_servers()
 
         logger.info("Initializing LLM and embeddings clients...")
         _init_llm_clients()
@@ -301,12 +310,12 @@ async def on_app_shutdown_handler() -> None:
     global _log_sink_id, _tool_call_sink_id
     logger.info("Shutting down Aria web UI...")
 
-    if _state.llama_manager:
+    if _state.vllm_manager:
         try:
-            _state.llama_manager.stop_all()
-            logger.info("All LlamaCpp servers stopped")
+            _state.vllm_manager.stop_all()
+            logger.info("All vLLM servers stopped")
         except Exception as e:
-            logger.error(f"Error stopping LlamaCpp servers: {e}")
+            logger.error(f"Error stopping vLLM servers: {e}")
 
     if _state.browser_manager:
         try:
@@ -320,7 +329,7 @@ async def on_app_shutdown_handler() -> None:
             set_browser_manager(None)
             _state.browser_manager = None
 
-    _state.llama_manager = None
+    _state.vllm_manager = None
     _state.llm = None
     _state.embeddings = None
     _state.vector_db = None

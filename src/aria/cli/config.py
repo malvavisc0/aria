@@ -164,7 +164,6 @@ def show_api():
 
     table.add_row("Chat API URL", Chat.api_url)
     table.add_row("Max Iterations", str(Chat.max_iteration))
-    table.add_row("Embeddings API", Embeddings.api_url)
     table.add_row("Embeddings Model", Embeddings.model)
     table.add_row("Token Limit", str(Embeddings.token_limit))
 
@@ -281,7 +280,6 @@ def optimize_config(
         get_free_vram_per_gpu,
         get_total_vram_mb,
     )
-    from aria.scripts.gguf import get_model_path
 
     # ── 1. Detect Hardware ─────────────────────────────────────
     gpus = detect_gpus_with_details()
@@ -333,21 +331,20 @@ def optimize_config(
     console.print(hw_table)
 
     # ── 3. Get Model Sizes ─────────────────────────────────────
-    from aria.config.api import LlamaCpp as LlamaCppConfig
-
-    models_dir = LlamaCppConfig.models_path
-
     model_files = {
-        "chat": Chat.filename,
-        "vl": Vision.filename,
-        "embeddings": Embeddings.filename,
+        "chat": Chat.model_path,
+        "vl": Vision.model_path,
+        "embeddings": Embeddings.model_path,
     }
 
     model_sizes_mb: dict[str, int] = {}
-    for alias, filename in model_files.items():
-        if filename:
-            path = get_model_path(filename, models_dir)
-            model_sizes_mb[alias] = get_model_file_size(path) if path else 0
+    for alias, mp in model_files.items():
+        if mp:
+            p = Path(mp)
+            if p.is_absolute() and p.exists():
+                model_sizes_mb[alias] = get_model_file_size(p)
+            else:
+                model_sizes_mb[alias] = 0
         else:
             model_sizes_mb[alias] = 0
 
