@@ -7,8 +7,6 @@ local filesystem path to a downloaded snapshot directory.
 Environment Variables:
     CHAT_MODEL_PATH: HuggingFace repo ID or local path for the chat model.
     EMBED_MODEL_PATH: HuggingFace repo ID or local path for the embeddings model.
-    VL_MODEL_PATH: (Optional) HuggingFace repo ID or local path for the VL model.
-    RERANK_MODEL_PATH: (Optional) HuggingFace repo ID or local path for the rerank model.
 """
 
 import random
@@ -66,23 +64,3 @@ class Embeddings:
     token_limit_ratio = float(get_optional_env("TOKEN_LIMIT_RATIO", "0.85"))
     token_limit = int(VllmConfig.chat_context_size * token_limit_ratio)
     model_path = _resolve_model_path(get_optional_env("EMBED_MODEL_PATH", ""))
-
-
-class Rerank:
-    api_url = get_optional_env("RERANK_API_URL", "http://0.0.0.0:9093")
-    model = get_optional_env("RERANK_MODEL", "")
-    model_path = _resolve_model_path(get_optional_env("RERANK_MODEL_PATH", ""))
-
-    @classmethod
-    def get_port(cls) -> int:
-        return urllib.parse.urlparse(cls.api_url).port or _random_user_port()
-
-
-class Vision:
-    api_url = get_optional_env("VL_OPENAI_API", "")
-    model = get_optional_env("VL_MODEL", "")
-    model_path = _resolve_model_path(get_optional_env("VL_MODEL_PATH", ""))
-
-    @classmethod
-    def get_port(cls) -> int:
-        return urllib.parse.urlparse(cls.api_url).port or _random_user_port()

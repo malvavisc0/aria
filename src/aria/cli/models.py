@@ -14,9 +14,6 @@ Example:
     # Download the chat model
     aria models download --model chat
 
-    # Download the vision-language model
-    aria models download --model vl
-
     # Download the embeddings model
     aria models download --model embeddings
 
@@ -40,7 +37,7 @@ from rich.console import Console
 from rich.table import Table
 
 from aria.config.huggingface import HuggingFace
-from aria.config.models import Chat, Embeddings, Rerank, Vision
+from aria.config.models import Chat, Embeddings
 
 app = typer.Typer(
     name="models",
@@ -53,9 +50,7 @@ error_console = Console(stderr=True, style="bold red")
 # Maps alias -> (config_class, env_var)
 _MODEL_CONFIGS: dict[str, tuple] = {
     "chat": (Chat, "CHAT_MODEL_PATH"),
-    "vl": (Vision, "VL_MODEL_PATH"),
     "embeddings": (Embeddings, "EMBED_MODEL_PATH"),
-    "rerank": (Rerank, "RERANK_MODEL_PATH"),
 }
 
 
@@ -81,7 +76,7 @@ def _resolve_model_config(alias: str) -> tuple[str, str]:
     """Resolve a model alias to (repo_id, local_path) using config classes.
 
     Args:
-        alias: One of 'chat', 'vl', 'embeddings', 'rerank'.
+        alias: One of 'chat', 'embeddings'.
 
     Returns:
         Tuple of (repo_id, local_path) where repo_id is the raw env var
@@ -120,7 +115,7 @@ def download_command(
         typer.Option(
             "--model",
             "-m",
-            help="Model alias: 'chat', 'vl', 'embeddings', or 'rerank'.",
+            help="Model alias: 'chat' or 'embeddings'.",
         ),
     ],
     token: Annotated[
@@ -207,9 +202,7 @@ def list_command():
 
     model_configs = [
         ("chat", Chat.model_path),
-        ("vl", Vision.model_path),
         ("embeddings", Embeddings.model_path),
-        ("rerank", Rerank.model_path),
     ]
 
     for alias, model_path in model_configs:
@@ -251,9 +244,7 @@ def memory_command():
     # Model configurations
     model_configs = [
         ("chat", Chat.model_path),
-        ("vl", Vision.model_path),
         ("embeddings", Embeddings.model_path),
-        ("rerank", Rerank.model_path),
     ]
 
     # Build model info table

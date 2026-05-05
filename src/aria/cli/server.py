@@ -201,7 +201,7 @@ def server_stop():
 @app.command("status")
 def server_status():
     """Show the current status of the Aria webserver and llama servers."""
-    from aria.config.models import Chat, Vision
+    from aria.config.models import Chat
 
     manager = ServerManager()
     status = manager.get_status()
@@ -256,7 +256,6 @@ def server_status():
 
     for role, get_port in [
         ("chat", Chat.get_port),
-        ("vl", Vision.get_port),
     ]:
         port = get_port()
         try:

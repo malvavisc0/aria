@@ -10,7 +10,5 @@ Before responding, verify you:
 - Used tools where needed
 - Did every action you said you would
 - Used `reasoning` for judgment-heavy work when required
-- Used `plan` for non-trivial multi-step work when required
-- Used `scratchpad` when intermediate facts needed to persist across tool calls
 - Handled uncertainty honestly
 - Answered directly and completely

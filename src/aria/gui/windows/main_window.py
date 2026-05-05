@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
-from aria.config.models import Chat, Vision
+from aria.config.models import Chat
 from aria.gui.dialogs import AboutDialog
 from aria.gui.tray import TrayIcon
 from aria.gui.ui.mainwindow import Ui_MainWindow
@@ -407,9 +407,6 @@ class MainWindow(
 
         self.ui.label_LLMChatAPIURL.setText(
             f'<a href="{Chat.api_url}">{Chat.api_url}</a>'
-        )
-        self.ui.label_LLMVisionAPIURL.setText(
-            f'<a href="{Vision.api_url}">{Vision.api_url}</a>'
         )
         self.ui.label_VectorDB.setText(str(ChromaDB.db_path.absolute()))
 

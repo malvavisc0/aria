@@ -2,8 +2,7 @@
 
 This module provides:
 - ``ServerManager``: controls the Chainlit webserver lifecycle (start, stop, restart, status)
-- ``VllmServerManager``: manages the vLLM inference processes
-  (chat, embeddings, rerank)
+- ``VllmServerManager``: manages the vLLM inference process (chat)
 
 Example:
     ```python

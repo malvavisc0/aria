@@ -1,12 +1,7 @@
 """vLLM inference server manager.
 
-Manages vLLM processes required by the Aria web UI:
-  - Chat server (port 7070): ``python -m vllm.entrypoints.openai.api_server``
-  - Embeddings server (port 7072): same entrypoint with ``--task embedding``
-  - Rerank server (port 7073): sentence-transformers micro-server on ``:9093``
-
-The VL (vision/language) server is NOT started automatically. It starts
-on-demand when the user invokes a vision command (e.g., ``aria vision pdf``).
+Manages the vLLM chat process required by the Aria web UI:
+  - Chat server (port 9090): ``python -m vllm.entrypoints.openai.api_server``
 
 Process state is persisted to ``data/vllm_servers.json`` so the manager
 can track servers started by other processes (e.g. CLI to GUI).
@@ -16,7 +11,7 @@ Example:
     from aria.server.vllm import VllmServerManager
 
     manager = VllmServerManager()
-    manager.start_all()   # starts chat + embeddings + rerank, waits for /health
+    manager.start_all()   # starts chat, waits for /health
     # ... run Chainlit ...
     manager.stop_all()    # graceful shutdown
     ```
@@ -44,15 +39,10 @@ from aria.server.process_utils import (
 
 
 class VllmServerManager:
-    """Manages vLLM inference server processes for chat, embeddings, and rerank.
+    """Manages vLLM inference server processes for chat.
 
-    All chat/embeddings servers are launched as
+    All chat servers are launched as
     ``python -m vllm.entrypoints.openai.api_server`` with model-specific flags.
-    The rerank server is a sentence-transformers FastAPI micro-server.
-
-    The VL (vision/language) server is NOT started automatically.
-    It starts on-demand when the user invokes a vision command
-    (e.g., ``aria vision pdf`` or ``aria vision image``).
 
     Process state is persisted to ``data/vllm_servers.json`` so the manager
     can track servers started by other processes (e.g. CLI to GUI).
@@ -258,19 +248,13 @@ class VllmServerManager:
         return False
 
     def start_all(self) -> None:
-        """Start chat and embeddings vLLM server processes.
-
-        The VL (vision/language) server is NOT started automatically.
-        It starts on-demand when the user invokes a vision command.
-
-        The rerank server is started if a rerank model is configured
-        and sentence-transformers is installed.
+        """Start the chat vLLM server process.
 
         Raises:
-            RuntimeError: If any server fails to start or become ready.
+            RuntimeError: If the server fails to start or become ready.
         """
         from aria.config.api import Vllm as VllmConfig
-        from aria.config.models import Chat, Rerank
+        from aria.config.models import Chat
 
         servers: list[tuple[str, list[str], int]] = []
 
@@ -322,21 +306,6 @@ class VllmServerManager:
         # --- Embeddings server (skipped) ---
         # Embeddings are now loaded in-process via HuggingFaceEmbedding.
         # No separate vLLM server is needed.
-
-        # --- Rerank server (optional) ---
-        if Rerank.model_path:
-            try:
-                rerank_port = Rerank.get_port()
-                rerank_cmd = self._build_rerank_cmd(
-                    model_path=Rerank.model_path,
-                    port=rerank_port,
-                )
-                servers.append(("rerank", rerank_cmd, rerank_port))
-            except Exception as exc:
-                logger.warning(
-                    f"Rerank model configured but could not start: {exc} — "
-                    "skipping rerank server"
-                )
 
         from aria.config.folders import Debug as DebugConfig
 
@@ -402,38 +371,6 @@ class VllmServerManager:
             )
 
         logger.info("All vLLM server instances are ready.")
-
-    def _build_rerank_cmd(
-        self,
-        model_path: str,
-        port: int,
-    ) -> list[str]:
-        """Build command to launch the rerank micro-server.
-
-        Args:
-            model_path: HuggingFace model ID for the rerank model.
-            port: Port for the rerank server.
-
-        Returns:
-            List of command arguments.
-        """
-        from aria.config.folders import Debug as DebugConfig
-
-        log_file = DebugConfig.logs_path.parent / "vllm-rerank.log"
-
-        # Use the rerank module directly
-        cmd = [
-            sys.executable,
-            "-m",
-            "aria.server.rerank",
-            "--model",
-            model_path,
-            "--port",
-            str(port),
-            "--host",
-            self._host,
-        ]
-        return cmd
 
     def stop_all(self, timeout: float = 10.0) -> None:
         """Stop all running vLLM server processes.

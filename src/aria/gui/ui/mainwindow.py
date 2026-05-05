@@ -129,12 +129,12 @@ class Ui_MainWindow(object):
         self.label_svc_uptime_lbl.setObjectName(u"label_svc_uptime_lbl")
         self.label_svc_uptime_lbl.setStyleSheet(u"color: #888;")
 
-        self.formLayout_service.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_svc_uptime_lbl)
+        self.formLayout_service.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_svc_uptime_lbl)
 
         self.label_ServiceUptime = QLabel(self.groupBox_Service)
         self.label_ServiceUptime.setObjectName(u"label_ServiceUptime")
 
-        self.formLayout_service.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_ServiceUptime)
+        self.formLayout_service.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_ServiceUptime)
 
         self.label_svc_started_lbl = QLabel(self.groupBox_Service)
         self.label_svc_started_lbl.setObjectName(u"label_svc_started_lbl")
@@ -275,29 +275,16 @@ class Ui_MainWindow(object):
 
         self.formLayout_llmapis.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_LLMChatAPIURL)
 
-        self.label_llm_vision_lbl = QLabel(self.groupBox_LLMAPIs)
-        self.label_llm_vision_lbl.setObjectName(u"label_llm_vision_lbl")
-        self.label_llm_vision_lbl.setStyleSheet(u"color: #888;")
-
-        self.formLayout_llmapis.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_llm_vision_lbl)
-
-        self.label_LLMVisionAPIURL = QLabel(self.groupBox_LLMAPIs)
-        self.label_LLMVisionAPIURL.setObjectName(u"label_LLMVisionAPIURL")
-        self.label_LLMVisionAPIURL.setTextFormat(Qt.TextFormat.RichText)
-        self.label_LLMVisionAPIURL.setOpenExternalLinks(True)
-
-        self.formLayout_llmapis.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_LLMVisionAPIURL)
-
         self.label_llm_vectordb_lbl = QLabel(self.groupBox_LLMAPIs)
         self.label_llm_vectordb_lbl.setObjectName(u"label_llm_vectordb_lbl")
         self.label_llm_vectordb_lbl.setStyleSheet(u"color: #888;")
 
-        self.formLayout_llmapis.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_llm_vectordb_lbl)
+        self.formLayout_llmapis.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_llm_vectordb_lbl)
 
         self.label_VectorDB = QLabel(self.groupBox_LLMAPIs)
         self.label_VectorDB.setObjectName(u"label_VectorDB")
 
-        self.formLayout_llmapis.setWidget(3, QFormLayout.ItemRole.FieldRole, self.label_VectorDB)
+        self.formLayout_llmapis.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_VectorDB)
 
 
         self.horizontalLayout_overview_bottom.addWidget(self.groupBox_LLMAPIs)
@@ -402,25 +389,15 @@ class Ui_MainWindow(object):
 
         self.formLayout_models_status.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_ModelChat_Status)
 
-        self.label_model_vl_lbl = QLabel(self.groupBox_Models)
-        self.label_model_vl_lbl.setObjectName(u"label_model_vl_lbl")
-
-        self.formLayout_models_status.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_model_vl_lbl)
-
-        self.label_ModelVL_Status = QLabel(self.groupBox_Models)
-        self.label_ModelVL_Status.setObjectName(u"label_ModelVL_Status")
-
-        self.formLayout_models_status.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_ModelVL_Status)
-
         self.label_model_emb_lbl = QLabel(self.groupBox_Models)
         self.label_model_emb_lbl.setObjectName(u"label_model_emb_lbl")
 
-        self.formLayout_models_status.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_model_emb_lbl)
+        self.formLayout_models_status.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_model_emb_lbl)
 
         self.label_ModelEmbeddings_Status = QLabel(self.groupBox_Models)
         self.label_ModelEmbeddings_Status.setObjectName(u"label_ModelEmbeddings_Status")
 
-        self.formLayout_models_status.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_ModelEmbeddings_Status)
+        self.formLayout_models_status.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_ModelEmbeddings_Status)
 
 
         self.verticalLayout_models.addLayout(self.formLayout_models_status)
@@ -521,12 +498,12 @@ class Ui_MainWindow(object):
         self.label_lightpanda_status_lbl = QLabel(self.groupBox_Lightpanda)
         self.label_lightpanda_status_lbl.setObjectName(u"label_lightpanda_status_lbl")
 
-        self.formLayout_lightpanda_status.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl)
+        self.formLayout_lightpanda_status.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl)
 
         self.label_Lightpanda_Status = QLabel(self.groupBox_Lightpanda)
         self.label_Lightpanda_Status.setObjectName(u"label_Lightpanda_Status")
 
-        self.formLayout_lightpanda_status.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status)
+        self.formLayout_lightpanda_status.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status)
 
 
         self.verticalLayout_lightpanda.addLayout(self.formLayout_lightpanda_status)
@@ -617,14 +594,14 @@ class Ui_MainWindow(object):
         self.label_user_password_lbl = QLabel(self.groupBox_CreateUser)
         self.label_user_password_lbl.setObjectName(u"label_user_password_lbl")
 
-        self.formLayout_createUser.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_user_password_lbl)
+        self.formLayout_createUser.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_user_password_lbl)
 
         self.lineEdit_UserPassword = QLineEdit(self.groupBox_CreateUser)
         self.lineEdit_UserPassword.setObjectName(u"lineEdit_UserPassword")
         self.lineEdit_UserPassword.setMaxLength(48)
         self.lineEdit_UserPassword.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
 
-        self.formLayout_createUser.setWidget(2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword)
+        self.formLayout_createUser.setWidget(1, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword)
 
         self.label_user_confirm_password_lbl = QLabel(self.groupBox_CreateUser)
         self.label_user_confirm_password_lbl.setObjectName(u"label_user_confirm_password_lbl")
@@ -783,12 +760,12 @@ class Ui_MainWindow(object):
         self.label_ChatRepoLbl = QLabel(self.groupBox_SettingsBasic)
         self.label_ChatRepoLbl.setObjectName(u"label_ChatRepoLbl")
 
-        self.formLayout_settingsBasic.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_ChatRepoLbl)
+        self.formLayout_settingsBasic.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_ChatRepoLbl)
 
         self.lineEdit_ChatRepo = QLineEdit(self.groupBox_SettingsBasic)
         self.lineEdit_ChatRepo.setObjectName(u"lineEdit_ChatRepo")
 
-        self.formLayout_settingsBasic.setWidget(2, QFormLayout.ItemRole.FieldRole, self.lineEdit_ChatRepo)
+        self.formLayout_settingsBasic.setWidget(1, QFormLayout.ItemRole.FieldRole, self.lineEdit_ChatRepo)
 
         self.label_ChatModelLbl = QLabel(self.groupBox_SettingsBasic)
         self.label_ChatModelLbl.setObjectName(u"label_ChatModelLbl")
@@ -835,7 +812,7 @@ class Ui_MainWindow(object):
         self.label_ChatCtxLbl = QLabel(self.groupBox_SettingsAdvanced)
         self.label_ChatCtxLbl.setObjectName(u"label_ChatCtxLbl")
 
-        self.formLayout_settingsAdvanced.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_ChatCtxLbl)
+        self.formLayout_settingsAdvanced.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_ChatCtxLbl)
 
         self.comboBox_ChatCtxSize = QComboBox(self.groupBox_SettingsAdvanced)
         self.comboBox_ChatCtxSize.addItem("")
@@ -848,7 +825,7 @@ class Ui_MainWindow(object):
         self.comboBox_ChatCtxSize.addItem("")
         self.comboBox_ChatCtxSize.setObjectName(u"comboBox_ChatCtxSize")
 
-        self.formLayout_settingsAdvanced.setWidget(2, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatCtxSize)
+        self.formLayout_settingsAdvanced.setWidget(1, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatCtxSize)
 
         self.checkBox_KVCacheOffload = QCheckBox(self.groupBox_SettingsAdvanced)
         self.checkBox_KVCacheOffload.setObjectName(u"checkBox_KVCacheOffload")
@@ -952,8 +929,6 @@ class Ui_MainWindow(object):
         self.label_LLMType.setText(QCoreApplication.translate("MainWindow", u"Local AI", None))
         self.label_llm_chat_lbl.setText(QCoreApplication.translate("MainWindow", u"Chat", None))
         self.label_LLMChatAPIURL.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_llm_vision_lbl.setText(QCoreApplication.translate("MainWindow", u"Vision/OCR", None))
-        self.label_LLMVisionAPIURL.setText(QCoreApplication.translate("MainWindow", u"-", None))
         self.label_llm_vectordb_lbl.setText(QCoreApplication.translate("MainWindow", u"Knowledge Base", None))
         self.label_VectorDB.setText(QCoreApplication.translate("MainWindow", u"-", None))
         self.label_DebugLogsPath.setText(QCoreApplication.translate("MainWindow", u"-", None))
@@ -967,8 +942,6 @@ class Ui_MainWindow(object):
         self.groupBox_Models.setTitle(QCoreApplication.translate("MainWindow", u"AI Model Files", None))
         self.label_model_chat_lbl.setText(QCoreApplication.translate("MainWindow", u"Chat", None))
         self.label_ModelChat_Status.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_model_vl_lbl.setText(QCoreApplication.translate("MainWindow", u"Vision/VL", None))
-        self.label_ModelVL_Status.setText(QCoreApplication.translate("MainWindow", u"-", None))
         self.label_model_emb_lbl.setText(QCoreApplication.translate("MainWindow", u"Embeddings", None))
         self.label_ModelEmbeddings_Status.setText(QCoreApplication.translate("MainWindow", u"-", None))
         self.label_model_select_lbl.setText(QCoreApplication.translate("MainWindow", u"Model:", None))

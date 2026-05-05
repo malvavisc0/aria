@@ -22,7 +22,7 @@ class ChatterAgent(FunctionAgent):
 
     Handles natural dialogue, general knowledge, and file operations
     directly. Domain-specific tasks (web search, finance, entertainment,
-    vision, etc.) are delegated to CLI commands via the ``shell`` tool.
+    etc.) are delegated to CLI commands via the ``shell`` tool.
     """
 
     @staticmethod
@@ -43,20 +43,16 @@ class ChatterAgent(FunctionAgent):
 
 def get_agent(
     llm: LLM,
-    vl_api_base: str = "",
-    vl_model: str = "",
     extras: Optional[str] = None,
 ) -> ChatterAgent:
     """Factory function to create and return a ChatterAgent instance.
 
     Loads only core + file tools from the registry. Domain tools
-    (web, finance, imdb, http, process, vision, browser, development)
+    (web, finance, imdb, http, process, browser, development)
     are accessed via CLI commands through the ``shell`` tool.
 
     Args:
         llm: The language model to use for generating responses.
-        vl_api_base: Unused (kept for API compatibility).
-        vl_model: Unused (kept for API compatibility).
         extras: Optional additional context or instructions to customize the
             agent's behavior.
 

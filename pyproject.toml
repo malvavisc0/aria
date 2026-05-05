@@ -8,7 +8,6 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "sentence-transformers",
     "chainlit",
     "chromadb",
     "ddgs",
@@ -34,7 +33,7 @@ dependencies = [
     "typer",
     "yfinance",
     "youtube-transcript-api",
-    "llama-index-embeddings-huggingface>=0.7.0",
+    "llama-index-embeddings-huggingface",
 ]
 
 [project.optional-dependencies]

@@ -123,26 +123,6 @@ class TestBuildVllmCmd:
         assert "--chat-template" not in cmd
 
 
-class TestBuildRerankCmd:
-    """Tests for VllmServerManager._build_rerank_cmd()."""
-
-    def setup_method(self):
-        with patch("aria.server.vllm.load_state", return_value={}):
-            self.manager = VllmServerManager()
-
-    def test_rerank_cmd_uses_aria_module(self):
-        """Rerank command should use aria.server.rerank module."""
-        cmd = self.manager._build_rerank_cmd(
-            model_path="BAAI/bge-reranker-v2-m3",
-            port=9093,
-        )
-        assert "aria.server.rerank" in cmd
-        assert "--model" in cmd
-        assert "BAAI/bge-reranker-v2-m3" in cmd
-        assert "--port" in cmd
-        assert "9093" in cmd
-
-
 class TestStopAll:
     """Tests for VllmServerManager.stop_all()."""
 

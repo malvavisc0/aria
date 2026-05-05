@@ -226,12 +226,11 @@ def _check_model_exists(model_path: str) -> bool:
 
 def _check_models(checks: List[CheckResult]) -> None:
     """Check that all required models are configured and downloaded."""
-    from aria.config.models import Chat, Embeddings, Vision
+    from aria.config.models import Chat, Embeddings
 
     model_checks = [
         ("chat", Chat.model_path, True),  # required
         ("embeddings", Embeddings.model_path, True),  # required
-        ("vl", Vision.model_path, False),  # optional
     ]
 
     for alias, model_path, required in model_checks:
@@ -336,12 +335,11 @@ def run_preflight_checks() -> PreflightResult:
         3. vLLM is installed
         4. Chat model is configured and downloaded
         5. Embeddings model is configured and downloaded
-        6. VL model status (optional)
-        7. Token limit is within context bounds
-        8. Memory requirements fit available hardware
-        9. LLM server connectivity (informational)
-       10. Knowledge database access
-       11. Tool loading
+        6. Token limit is within context bounds
+        7. Memory requirements fit available hardware
+        8. LLM server connectivity (informational)
+        9. Knowledge database access
+       10. Tool loading
 
     Returns:
         PreflightResult with pass/fail status and all check details.

@@ -24,7 +24,6 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from typing_extensions import TypedDict
 
 from aria.agents import get_chatter_agent
-from aria.config.models import Vision as VisionConfig
 
 
 class StatefulAgentWorkflow(AgentWorkflow):
@@ -318,8 +317,6 @@ def get_agent_workflow(llm: OpenAILike) -> AgentWorkflow:
 
     chatter = get_chatter_agent(
         llm=llm,
-        vl_api_base=VisionConfig.api_url,
-        vl_model=VisionConfig.model,
         extras=get_instructions_extras(agent_name="aria"),
     )
 

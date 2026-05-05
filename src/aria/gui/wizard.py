@@ -206,7 +206,7 @@ class _ModelPage(QWizardPage):
 
         form = QFormLayout()
         self._model_combo = QComboBox()
-        self._model_combo.addItems(["chat", "vl", "embeddings"])
+        self._model_combo.addItems(["chat", "embeddings"])
         form.addRow("Model type:", self._model_combo)
         layout.addLayout(form)
 
@@ -267,7 +267,7 @@ class _ModelPage(QWizardPage):
     def _start_download(self):
         from huggingface_hub import snapshot_download
 
-        from aria.config.models import Chat, Embeddings, Vision
+        from aria.config.models import Chat, Embeddings
 
         self._download_btn.setEnabled(False)
         self._status_label.setText("Downloading…")
@@ -281,13 +281,6 @@ class _ModelPage(QWizardPage):
             if not model_path:
                 self._on_failed(
                     "Chat model is not configured (CHAT_MODEL_PATH)."
-                )
-                return
-        elif alias == "vl":
-            model_path = Vision.model_path
-            if not model_path:
-                self._on_failed(
-                    "Vision model is not configured (VL_MODEL_PATH)."
                 )
                 return
         elif alias == "embeddings":

@@ -45,12 +45,6 @@ class Vllm:
     chat_context_size = (
         int(v) if (v := get_optional_env("CHAT_CONTEXT_SIZE", "")) else 65536
     )
-    vl_context_size = (
-        int(v) if (v := get_optional_env("VL_CONTEXT_SIZE", "")) else 8192
-    )
-    rerank_context_size = (
-        int(v) if (v := get_optional_env("RERANK_CONTEXT_SIZE", "")) else 4096
-    )
 
     # Chat template file (Jinja2) for tool-calling format.
     # Resolved relative to the project root (Path.cwd())

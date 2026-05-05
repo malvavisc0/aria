@@ -52,7 +52,6 @@ from aria.cli import (
     system,
     users,
 )
-from aria.cli import vision as vision_cli
 from aria.cli import vllm as vllm_cli
 from aria.cli import web as web_cli
 from aria.cli import worker as worker_cli
@@ -83,7 +82,6 @@ app.add_typer(imdb_cli.app, name="imdb")
 app.add_typer(web_cli.app, name="web")
 app.add_typer(dev_cli.app, name="dev")
 app.add_typer(http_cli.app, name="http")
-app.add_typer(vision_cli.app, name="vision")
 app.add_typer(finetune_cli.app, name="finetune")
 app.add_typer(worker_cli.app, name="worker")
 app.add_typer(self_cli.app, name="self")
@@ -123,8 +121,8 @@ def _print_banner():
     console.print(
         Panel(
             (
-                "[bold]🧠 ARIA CLI[/bold]\n"
-                f"[dim]AI Assistant Management • {version_text}[/dim]"
+                "[bold]ARIA CLI[/bold]\n"
+                f"[dim]Local AI assistant • {version_text}[/dim]"
             ),
             border_style="cyan",
             expand=False,
@@ -137,34 +135,38 @@ def _print_banner():
 # Command groups for display
 COMMAND_GROUPS = [
     {
-        "title": "Quick Start",
+        "title": "Setup",
         "commands": [
-            ("check", "Run preflight checks"),
+            ("check", "Verify system prerequisites"),
+            ("config", "Show settings, paths, and keys"),
+            ("users", "Manage user accounts"),
         ],
     },
     {
         "title": "Infrastructure",
         "commands": [
-            ("users", "Manage user accounts"),
-            ("models", "Download and list models"),
-            ("vllm", "Install and manage vLLM engine"),
+            ("models", "Download and manage models"),
+            ("vllm", "Install and manage vLLM"),
             ("server", "Start or stop the web UI"),
-            ("config", "Show settings, paths, and keys"),
-            ("system", "Hardware, GPU, VRAM, processes"),
+            ("system", "Inspect hardware and GPU"),
         ],
     },
     {
-        "title": "Agent Tools",
+        "title": "Research",
         "commands": [
-            ("web", "Search, browse, fetch, weather, YouTube"),
-            ("knowledge", "Store and recall persistent facts"),
-            ("finance", "Stock prices, company info, news"),
-            ("imdb", "Movies, TV shows, people"),
-            ("dev", "Execute Python code"),
-            ("http", "Make API requests (persisted)"),
-            ("vision", "Analyze PDFs and images (VL model)"),
-            ("worker", "Spawn and manage background agents"),
-            ("self", "Introspect tool availability"),
+            ("web", "Search, fetch pages, get weather"),
+            ("finance", "Look up stocks and company data"),
+            ("http", "Make API requests"),
+            ("imdb", "Look up movies, shows, people"),
+        ],
+    },
+    {
+        "title": "Agents",
+        "commands": [
+            ("worker", "Spawn background agents"),
+            ("knowledge", "Store and recall facts"),
+            ("dev", "Run Python code"),
+            ("self", "List available tools"),
         ],
     },
 ]
@@ -183,16 +185,11 @@ def main(ctx: typer.Context):
         for group in COMMAND_GROUPS:
             console.print(f"[bold]{group['title']}[/bold]")
             for cmd, desc in group["commands"]:
-                console.print(f"   [cyan]aria {cmd}[/cyan]  {desc}")
+                padded = f"aria {cmd}".ljust(18)
+                console.print(f"   [cyan]{padded}[/cyan]{desc}")
             console.print()
 
-        console.print(
-            "[dim]Run 'aria <command> --help' for detailed usage.[/dim]"
-        )
-        console.print(
-            "[dim]Common agent flow: web search/fetch -> inspect saved "
-            "artifact -> verify -> answer.[/dim]"
-        )
+        console.print("[dim]Run 'aria <command> --help' for details.[/dim]")
 
 
 # Category display configuration

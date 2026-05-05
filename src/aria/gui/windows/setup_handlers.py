@@ -153,7 +153,7 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
     def run(self) -> None:
         from huggingface_hub import snapshot_download
 
-        from aria.config.models import Chat, Embeddings, Rerank, Vision
+        from aria.config.models import Chat, Embeddings
 
         model_path = None
         if self._alias == "chat":
@@ -161,13 +161,6 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
             if not model_path:
                 self.error.emit(
                     "Chat model is not configured (CHAT_MODEL_PATH)."
-                )
-                return
-        elif self._alias == "vl":
-            model_path = Vision.model_path
-            if not model_path:
-                self.error.emit(
-                    "Vision model is not configured (VL_MODEL_PATH)."
                 )
                 return
         elif self._alias == "embeddings":
@@ -308,7 +301,7 @@ class SetupHandlersMixin:
         """Populate all Setup tab status labels from current config."""
         from pathlib import Path
 
-        from aria.config.models import Chat, Embeddings, Vision
+        from aria.config.models import Chat, Embeddings
         from aria.scripts.vllm import get_vllm_version, is_vllm_installed
 
         # vLLM status
@@ -338,7 +331,6 @@ class SetupHandlersMixin:
 
         model_configs = [
             ("label_ModelChat_Status", Chat.model_path),
-            ("label_ModelVL_Status", Vision.model_path),
             ("label_ModelEmbeddings_Status", Embeddings.model_path),
         ]
         for label_name, model_path in model_configs:

@@ -42,7 +42,7 @@ from rich.table import Table
 
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Data, Debug, Storage
-from aria.config.models import Chat, Embeddings, Vision
+from aria.config.models import Chat, Embeddings
 
 app = typer.Typer(
     name="config",
@@ -333,7 +333,6 @@ def optimize_config(
     # ── 3. Get Model Sizes ─────────────────────────────────────
     model_files = {
         "chat": Chat.model_path,
-        "vl": Vision.model_path,
         "embeddings": Embeddings.model_path,
     }
 
@@ -362,17 +361,6 @@ def optimize_config(
     if chat_ctx == 0:
         chat_ctx = 65536
 
-    # VL context: conservative (runs alongside chat in some setups)
-    vl_ctx = calculate_max_safe_context(
-        free_vram_mb=max_free_vram,
-        model_size_mb=model_sizes_mb.get("vl", 0),
-        is_embedding_model=False,
-    )
-    if vl_ctx == 0:
-        vl_ctx = 8192
-    # Cap VL context at 16384 — vision models don't need huge context
-    vl_ctx = min(vl_ctx, 16384)
-
     # Embeddings context: use embedding tiers
     embed_ctx = calculate_max_safe_context(
         free_vram_mb=max_free_vram,
@@ -393,7 +381,6 @@ def optimize_config(
 
     optimized = {
         "CHAT_CONTEXT_SIZE": str(chat_ctx),
-        "VL_CONTEXT_SIZE": str(vl_ctx),
         "EMBEDDINGS_CONTEXT_SIZE": str(embed_ctx),
         "KV_CACHE_OFFLOAD": kv_offload,
         "TOKEN_LIMIT": str(token_limit),
@@ -417,11 +404,6 @@ def optimize_config(
     reasons = {
         "CHAT_CONTEXT_SIZE": (
             f"based on {max_free_vram} MB free VRAM"
-            if max_free_vram > 0
-            else "default (no GPU)"
-        ),
-        "VL_CONTEXT_SIZE": (
-            "conservative for vision model"
             if max_free_vram > 0
             else "default (no GPU)"
         ),
