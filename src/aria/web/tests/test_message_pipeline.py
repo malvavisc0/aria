@@ -33,9 +33,7 @@ def test_final_response_is_not_suppressed_after_tool_calls() -> None:
         {"response": type("Response", (), {"content": "final answer"})()},
     )()
 
-    content = "".join(
-        stream_buffer
-    ).strip() or pipeline._extract_response_text(
+    content = "".join(stream_buffer).strip() or pipeline._extract_response_text(
         getattr(handler_result, "response", None)
     )
 

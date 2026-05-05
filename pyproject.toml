@@ -44,6 +44,7 @@ vllm = ["vllm>=0.20.0"]
 
 [project.scripts]
 aria = "aria:main"
+ax = "aria:main"
 aria-gui = "aria.gui:main"
 
 [build-system]

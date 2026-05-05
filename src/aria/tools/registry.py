@@ -61,9 +61,7 @@ def _get_core_lite_tools() -> List[FunctionTool]:
     for mod, fn in tool_specs:
         func = _import_function(mod, fn)
         if fn == "shell":
-            tools.append(
-                FunctionTool.from_defaults(fn=func, fn_schema=ShellToolSchema)
-            )
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=ShellToolSchema))
         else:
             tools.append(FunctionTool.from_defaults(fn=func))
     return tools
@@ -98,9 +96,7 @@ def _get_core_tools() -> List[FunctionTool]:
     for mod, fn in tool_specs:
         func = _import_function(mod, fn)
         if fn == "shell":
-            tools.append(
-                FunctionTool.from_defaults(fn=func, fn_schema=ShellToolSchema)
-            )
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=ShellToolSchema))
         else:
             tools.append(FunctionTool.from_defaults(fn=func))
     return tools
@@ -141,9 +137,7 @@ def _get_web_tools() -> List[FunctionTool]:
     tools = []
     for mod, fn in tool_specs:
         try:
-            tools.append(
-                FunctionTool.from_defaults(async_fn=_import_function(mod, fn))
-            )
+            tools.append(FunctionTool.from_defaults(async_fn=_import_function(mod, fn)))
         except (ImportError, AttributeError):
             logger.warning(f"Could not load browser tool: {mod}.{fn}")
     return tools
@@ -188,9 +182,7 @@ def _get_entertainment_tools() -> List[FunctionTool]:
     tools = []
     for mod, fn in tool_specs:
         try:
-            tools.append(
-                FunctionTool.from_defaults(fn=_import_function(mod, fn))
-            )
+            tools.append(FunctionTool.from_defaults(fn=_import_function(mod, fn)))
         except (ImportError, AttributeError):
             logger.warning(f"Could not load entertainment tool: {mod}.{fn}")
     return tools

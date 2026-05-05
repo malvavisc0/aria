@@ -3,7 +3,6 @@
 import importlib.metadata
 from unittest.mock import patch
 
-
 from aria.scripts.vllm import (
     detect_install_target,
     get_vllm_version,

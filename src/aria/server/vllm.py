@@ -113,9 +113,7 @@ class VllmServerManager:
                 if isinstance(val, (int, float)) and val > 0:
                     return int(val)
         except (json.JSONDecodeError, OSError) as e:
-            logger.warning(
-                f"Could not read model config at {config_path}: {e}"
-            )
+            logger.warning(f"Could not read model config at {config_path}: {e}")
         return None
 
     def _clear_pids(self) -> None:
@@ -139,6 +137,7 @@ class VllmServerManager:
         served_model_name: Optional[str] = None,
         tool_call_parser: Optional[str] = None,
         reasoning_parser: Optional[str] = None,
+        chat_template_kwargs: Optional[str] = None,
     ) -> list[str]:
         """Build command to launch a vLLM server.
 
@@ -152,6 +151,8 @@ class VllmServerManager:
             tensor_parallel_size: Number of GPUs for tensor parallelism.
             dtype: Data type (``auto``, ``float16``, ``bfloat16``).
             chat_template_file: Optional Jinja2 chat template file path.
+            chat_template_kwargs: JSON string of kwargs for the chat template
+                (e.g. ``'{"enable_thinking": true}'``).
 
         Returns:
             List of command arguments.
@@ -178,16 +179,12 @@ class VllmServerManager:
             cmd.extend(["--max-model-len", str(max_model_len)])
 
         if gpu_memory_utilization is not None:
-            cmd.extend(
-                ["--gpu-memory-utilization", str(gpu_memory_utilization)]
-            )
+            cmd.extend(["--gpu-memory-utilization", str(gpu_memory_utilization)])
 
         effective_quant: Optional[str] = None
         if quantization:
             # vLLM v0.20+: gptq kernel is buggy for 4-bit; use gptq_marlin
-            effective_quant = (
-                "gptq_marlin" if quantization == "gptq" else quantization
-            )
+            effective_quant = "gptq_marlin" if quantization == "gptq" else quantization
             cmd.extend(["--quantization", effective_quant])
 
         # Resolve dtype: GPTQ only supports float16
@@ -227,8 +224,11 @@ class VllmServerManager:
         if reasoning_parser:
             cmd.extend(["--reasoning-parser", reasoning_parser])
 
+        if chat_template_kwargs:
+            cmd.extend(["--default-chat-template-kwargs", chat_template_kwargs])
+
         # Override model's generation_config.json (may cap max_tokens too low)
-        # cmd.extend(["--generation-config", "vllm"])
+        cmd.extend(["--generation-config", "vllm"])
 
         # sentence-transformers models often need trust-remote-code
         cmd.extend(["--trust-remote-code"])
@@ -344,6 +344,7 @@ class VllmServerManager:
             served_model_name=Chat.model,
             tool_call_parser=VllmConfig.tool_call_parser,
             reasoning_parser=VllmConfig.reasoning_parser,
+            chat_template_kwargs=VllmConfig.chat_template_kwargs or None,
         )
         servers.append(("chat", chat_cmd, Chat.get_port()))
 
@@ -359,9 +360,7 @@ class VllmServerManager:
         for role, cmd, port in servers:
             log_file = DebugConfig.logs_path.parent / f"vllm-{role}.log"
             log_files[role] = log_file
-            logger.info(
-                f"Starting {role} server on port {port}: {' '.join(cmd)}"
-            )
+            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
             logger.info(f"  stderr → {log_file}")
 
             log_fh = open(log_file, "w")
@@ -393,9 +392,7 @@ class VllmServerManager:
         failed = []
         for role, _, port in servers:
             logger.info(f"Waiting for {role} server on port {port}...")
-            if not self._wait_for_ready(
-                self._host, port, proc=procs.get(role)
-            ):
+            if not self._wait_for_ready(self._host, port, proc=procs.get(role)):
                 failed.append(role)
                 log_tail = ""
                 lf = log_files.get(role)

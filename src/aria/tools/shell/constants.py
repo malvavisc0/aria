@@ -53,5 +53,9 @@ BLOCKED_COMMANDS = [
     "wipe",
 ]
 
-BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Data.path))).resolve()
+# Default working directory for shell commands.
+# Uses the project root (Data.path's parent) so that `aria` CLI subcommands
+# resolve DATA_FOLDER correctly (relative to the project, not to data/).
+_PROJECT_ROOT = Data.path.parent
+BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(_PROJECT_ROOT))).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
