@@ -35,7 +35,6 @@ from aria.cli import (
 )
 from aria.cli import dev as dev_cli
 from aria.cli import finance as finance_cli
-from aria.cli import finetune as finetune_cli
 from aria.cli import (
     get_db_session,
 )
@@ -82,7 +81,6 @@ app.add_typer(imdb_cli.app, name="imdb")
 app.add_typer(web_cli.app, name="web")
 app.add_typer(dev_cli.app, name="dev")
 app.add_typer(http_cli.app, name="http")
-app.add_typer(finetune_cli.app, name="finetune")
 app.add_typer(worker_cli.app, name="worker")
 app.add_typer(self_cli.app, name="self")
 
@@ -224,7 +222,9 @@ def _print_category(category: str, checks: list) -> tuple[int, int]:
     Returns:
         Tuple of (passed_count, failed_count) for this category.
     """
-    config = CATEGORY_CONFIG.get(category, {"icon": "•", "label": category.title()})
+    config = CATEGORY_CONFIG.get(
+        category, {"icon": "•", "label": category.title()}
+    )
     passed = sum(1 for c in checks if c.passed)
     failed = len(checks) - passed
 
@@ -241,7 +241,9 @@ def _print_category(category: str, checks: list) -> tuple[int, int]:
             details = f" [dim]({check.details})[/dim]" if check.details else ""
             console.print(f"   [green]✓[/green] {check.name}{details}")
         else:
-            console.print(f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]")
+            console.print(
+                f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]"
+            )
             if check.hint:
                 console.print(f"      [dim]→ {check.hint}[/dim]")
 
@@ -254,7 +256,9 @@ def _print_summary_panel(total_passed: int, total_failed: int, hints: list):
     total = total_passed + total_failed
 
     if total_failed == 0:
-        content = f"[green]✅ All {total} checks passed - System ready![/green]"
+        content = (
+            f"[green]✅ All {total} checks passed - System ready![/green]"
+        )
         style = "green"
     else:
         plural = "s" if total_failed > 1 else ""

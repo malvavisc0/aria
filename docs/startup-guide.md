@@ -96,7 +96,6 @@ aria imdb search "title"        # Search movies/TV
 aria dev run "code"             # Execute Python
 aria vllm install               # Install vLLM
 aria vllm status                # Check vLLM status
-aria finetune                   # Fine-tune models with LoRA/QLoRA
 aria worker spawn --prompt "..." # Background worker
 aria self test-tools            # Verify tools
 ```

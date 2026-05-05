@@ -161,9 +161,6 @@ aria models download      # Download a model from Hugging Face
 aria models list          # List downloaded models
 aria models memory        # Show model memory requirements
 
-# Fine-tuning
-aria finetune             # Fine-tune models with LoRA/QLoRA
-
 # User management
 aria users list           # List users
 aria users add            # Add new user

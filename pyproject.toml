@@ -41,16 +41,6 @@ gui = [
     "pyside6",
 ] # GUI dependencies — required for aria-gui and standalone AppImage/.exe builds
 vllm = ["vllm>=0.20.0"]
-finetune = [
-    "torch",
-    "transformers",
-    "peft",
-    "trl",
-    "bitsandbytes",
-    "accelerate",
-    "datasets",
-    "gptqmodel",
-]
 
 [project.scripts]
 aria = "aria:main"
@@ -104,4 +94,3 @@ exclude_lines = [
 
 [tool.uv]
 link-mode = "copy"
-no-build-isolation-package = ["gptqmodel"]
