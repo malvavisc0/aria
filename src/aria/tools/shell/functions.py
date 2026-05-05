@@ -9,6 +9,7 @@ import json
 from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from aria.tools import get_function_name, tool_response
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
@@ -18,6 +19,28 @@ from aria.tools.shell.validation import (
     _validate_command,
     _validate_working_dir,
 )
+
+
+class ShellToolSchema(BaseModel):
+    """Simplified schema exposed to the LLM for the shell tool.
+
+    The actual ``shell`` function accepts Union types for batch execution,
+    but the LLM only needs to see a plain string for ``commands``.
+    This avoids confusing ``anyOf`` schemas that cause the LLM to
+    retry with incorrect argument formats.
+    """
+
+    reason: str = Field(description="Why you are executing this command")
+    commands: str = Field(description="The shell command string to execute")
+    stop_on_error: bool = Field(
+        default=True, description="Stop on first failure"
+    )
+    timeout: Optional[int] = Field(
+        default=None, description="Timeout in seconds (default: 30, max: 300)"
+    )
+    working_dir: Optional[str] = Field(
+        default=None, description="Working directory path"
+    )
 
 
 def _run_shell_command(
@@ -155,7 +178,8 @@ def shell(
         try:
             result_str = _run_shell_command(
                 reason=(
-                    f"Batch command {i + 1}/{len(normalized)}: " f"{display_command}"
+                    f"Batch command {i + 1}/{len(normalized)}: "
+                    f"{display_command}"
                 ),
                 command=cmd_str,
                 timeout=cmd_timeout,

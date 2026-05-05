@@ -228,7 +228,7 @@ class VllmServerManager:
             cmd.extend(["--reasoning-parser", reasoning_parser])
 
         # Override model's generation_config.json (may cap max_tokens too low)
-        cmd.extend(["--generation-config", "vllm"])
+        # cmd.extend(["--generation-config", "vllm"])
 
         # sentence-transformers models often need trust-remote-code
         cmd.extend(["--trust-remote-code"])

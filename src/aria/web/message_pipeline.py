@@ -32,7 +32,7 @@ from aria.web.state import AppStateNotInitializedError, _state
 # These match opening tags (partial content being streamed)
 THINKING_OPEN_PATTERNS = [
     re.compile(r"💭", re.IGNORECASE),
-    re.compile(r"<think>", re.IGNORECASE),
+    re.compile(r"<think", re.IGNORECASE),
     re.compile(r"<reasoning", re.IGNORECASE),
     re.compile(r"<reflection", re.IGNORECASE),
 ]
@@ -203,7 +203,6 @@ async def _stream_agent_response(
     thinking_detector = ThinkingBlockDetector()
 
     async for event in handler.stream_events():
-        logger.error(f"Stream event: {type(event).__name__} | {event}")
         if isinstance(event, ToolCall):
             await maybe_remove_step(current_step)
             await maybe_remove_step(thinking_step)
@@ -291,6 +290,9 @@ async def on_message_handler(message: cl.Message) -> None:
     Args:
         message: The incoming Chainlit message from the user.
     """
+    if not _state.agents_workflow:
+        return
+
     output = cl.Message(content="")
 
     try:

@@ -33,7 +33,9 @@ def test_final_response_is_not_suppressed_after_tool_calls() -> None:
         {"response": type("Response", (), {"content": "final answer"})()},
     )()
 
-    content = "".join(stream_buffer).strip() or pipeline._extract_response_text(
+    content = "".join(
+        stream_buffer
+    ).strip() or pipeline._extract_response_text(
         getattr(handler_result, "response", None)
     )
 
@@ -56,7 +58,7 @@ class TestThinkingBlockDetectorBasic:
 
     def test_open_think_tag_enters_thinking(self) -> None:
         detector = ThinkingBlockDetector()
-        entered, exited = detector.process_delta("<think>")
+        entered, exited = detector.process_delta("<think")
         assert entered is True
         assert exited is False
         assert detector.in_thinking is True
@@ -151,11 +153,13 @@ class TestThinkingBlockDetectorSplitTags:
 
     def test_tag_split_into_single_characters(self) -> None:
         detector = ThinkingBlockDetector()
-        for char in "<think":
+        # Characters before the pattern completes don't trigger
+        for char in "<thin":
             entered, _ = detector.process_delta(char)
             assert entered is False
 
-        entered, _ = detector.process_delta(">")
+        # "k" completes "<think" which matches the open pattern
+        entered, _ = detector.process_delta("k")
         assert entered is True
         assert detector.in_thinking is True
 
