@@ -599,7 +599,7 @@ def push_to_hub(
         model_path: Local path to the quantized model directory.
         repo_id: Target HF repo (e.g. ``"myorg/my-model-gptq-int4"``).
         private: Create the repo as private if it does not exist yet.
-        token: HF API token. Falls back to ``HUGGINGFACE_TOKEN`` env var.
+        token: HF API token. Falls back to ``HF_TOKEN`` env var.
         commit_message: Commit message for the upload.
 
     Returns:

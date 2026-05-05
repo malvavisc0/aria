@@ -122,7 +122,7 @@ def download_command(
         Optional[str],
         typer.Option(
             "--token",
-            help="HuggingFace API token. Falls back to HUGGINGFACE_TOKEN env var.",
+            help="HuggingFace API token. Falls back to HF_TOKEN env var.",
         ),
     ] = None,
     force: Annotated[

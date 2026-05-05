@@ -4,7 +4,7 @@ This module provides configuration for HuggingFace Hub access, including
 authentication tokens.
 
 Environment Variables:
-    HUGGINGFACE_TOKEN: Optional API token for accessing gated/private models.
+    HF_TOKEN: Optional API token for accessing gated/private models.
         Leave empty for public models.
 
 Example:
@@ -27,4 +27,4 @@ class HuggingFace:
             models (e.g. Llama, Mistral). None if not set.
     """
 
-    token: str | None = getenv("HUGGINGFACE_TOKEN") or None
+    token: str | None = getenv("HF_TOKEN") or None

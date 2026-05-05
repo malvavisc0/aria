@@ -49,9 +49,7 @@ def recommend_cmd(
     ],
     token: Annotated[
         Optional[str],
-        typer.Option(
-            "--token", help="HF API token. Falls back to HUGGINGFACE_TOKEN."
-        ),
+        typer.Option("--token", help="HF API token. Falls back to HF_TOKEN."),
     ] = None,
 ) -> None:
     """Suggest QLoRA fine-tuning parameters for your hardware and model.
