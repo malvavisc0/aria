@@ -1,0 +1,27 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[oc]
+*.egg-info
+dist/
+build/
+wheels/
+.venv
+htmlcov/
+.coverage
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Data & runtime
+.data/
+files/
+data/models/
+
+# OS
+.DS_Store
+Thumbs.db

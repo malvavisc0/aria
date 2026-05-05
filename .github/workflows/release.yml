@@ -15,13 +15,62 @@ on:
 
 permissions:
   contents: write   # needed to create GitHub Releases and upload assets
+  id-token: write   # needed for PyPI trusted publishing (OIDC)
+  packages: write   # needed to push Docker images to GHCR
 
 jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 0: Validate that the tag matches __version__ in __init__.py
+  # ────────────────────────────────────────────────────────────────────────────
+  validate-version:
+    name: Validate version tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract and compare versions
+        run: |
+          # Derive the tag (supports both push and workflow_dispatch)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          # Strip leading 'v' prefix
+          TAG_VERSION="${TAG#v}"
+
+          # Read __version__ from src/aria/__init__.py
+          INIT_VERSION=$(python3 -c "
+          import re, pathlib
+          text = pathlib.Path('src/aria/__init__.py').read_text()
+          match = re.search(r'^__version__\s*=\s*[\"]([^\"]+)[\"]', text, re.MULTILINE)
+          print(match.group(1) if match else '')
+          ")
+
+          if [[ -z "${INIT_VERSION}" ]]; then
+            echo "::error::Could not read __version__ from src/aria/__init__.py"
+            exit 1
+          fi
+
+          echo "Tag version:     ${TAG_VERSION}"
+          echo "__init__ version: ${INIT_VERSION}"
+
+          if [[ "${TAG_VERSION}" != "${INIT_VERSION}" ]]; then
+            echo "::error::Version mismatch! Tag '${TAG_VERSION}' != __version__ '${INIT_VERSION}'. Update src/aria/__init__.py before tagging."
+            exit 1
+          fi
+
+          echo "✅ Versions match: ${TAG_VERSION}"
+
   # ────────────────────────────────────────────────────────────────────────────
   # Job 1: Build the Linux AppImage
   # ────────────────────────────────────────────────────────────────────────────
   build-appimage:
     name: Build AppImage (Linux x86_64)
+    needs: validate-version
     runs-on: ubuntu-22.04
 
     steps:
@@ -125,10 +174,11 @@ jobs:
           retention-days: 7
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Job 2: Build the Windows .exe installer
+  # Job 2: Build the Windows .exe
   # ────────────────────────────────────────────────────────────────────────────
   build-windows:
     name: Build Windows .exe
+    needs: validate-version
     runs-on: windows-latest
 
     steps:
@@ -150,8 +200,6 @@ jobs:
         run: uv run pyinstaller packaging/aria-gui.spec --noconfirm
 
       - name: Zip the output folder
-        # Zip the one-folder bundle so it can be uploaded as a single artifact.
-        # For a proper installer, replace this step with Inno Setup or NSIS.
         run: |
           Compress-Archive -Path dist\aria-gui\* -DestinationPath dist\Aria-Windows-x86_64.zip
         shell: pwsh
@@ -164,15 +212,149 @@ jobs:
           retention-days: 7
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Job 3: Create GitHub Release and attach both artifacts
+  # Job 3: Build the macOS .app bundle (Apple Silicon)
+  # ────────────────────────────────────────────────────────────────────────────
+  build-macos:
+    name: Build macOS .app (arm64)
+    needs: validate-version
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Sync dependencies (gui + dev)
+        run: uv sync --extra gui --group dev
+
+      - name: Run PyInstaller
+        run: uv run pyinstaller packaging/aria-gui.spec --noconfirm
+
+      - name: Rename bundle to Aria.app
+        run: |
+          mv dist/aria-gui dist/Aria.app
+
+      - name: Create zip for distribution
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent Aria.app Aria-macOS-arm64.zip
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aria-macOS-arm64.zip
+          path: dist/Aria-macOS-arm64.zip
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 4: Publish to PyPI using trusted publishing (OIDC)
+  # ────────────────────────────────────────────────────────────────────────────
+  publish-pypi:
+    name: Publish to PyPI
+    needs: validate-version
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aria
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 5: Build and push Docker images to GHCR
+  # ────────────────────────────────────────────────────────────────────────────
+  build-docker:
+    name: "Build Docker (${{ matrix.label }})"
+    needs: [publish-pypi]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: "CUDA/CPU"
+            base_image: "vllm/vllm-openai:latest"
+            suffix: ""
+          - label: "ROCm (AMD)"
+            base_image: "vllm/vllm-openai-rocm:latest"
+            suffix: "-rocm"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ matrix.base_image }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/aria${{ matrix.suffix }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/aria${{ matrix.suffix }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 6: Create GitHub Release and attach all platform artifacts
   # ────────────────────────────────────────────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build-appimage, build-windows]
+    needs: [build-appimage, build-windows, build-macos, publish-pypi, build-docker]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
     steps:
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
       - name: Download AppImage artifact
         uses: actions/download-artifact@v4
         with:
@@ -185,6 +367,12 @@ jobs:
           name: Aria-Windows-x86_64.zip
           path: release-assets/
 
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Aria-macOS-arm64.zip
+          path: release-assets/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -194,6 +382,7 @@ jobs:
           files: |
             release-assets/Aria-x86_64.AppImage
             release-assets/Aria-Windows-x86_64.zip
+            release-assets/Aria-macOS-arm64.zip
           body: |
             ## Aria ${{ github.ref_name }}
 
@@ -203,6 +392,13 @@ jobs:
             |----------|------|
             | Linux (x86_64) | `Aria-x86_64.AppImage` |
             | Windows (x86_64) | `Aria-Windows-x86_64.zip` |
+            | macOS (Apple Silicon) | `Aria-macOS-arm64.zip` |
+
+            ### pip
+
+            ```bash
+            pip install aria==${{ steps.version.outputs.version }}
+            ```
 
             ### Linux — AppImage
 
@@ -214,6 +410,24 @@ jobs:
             ### Windows
 
             Extract `Aria-Windows-x86_64.zip` and run `aria-gui.exe`.
+
+            ### macOS
+
+            Extract `Aria-macOS-arm64.zip`, then:
+            ```bash
+            xattr -cr Aria.app
+            open Aria.app
+            ```
+
+            ### Docker
+
+            ```bash
+            # CUDA / CPU
+            docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+
+            # ROCm (AMD GPUs)
+            docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+            ```
 
             ### First Run
 

@@ -1,3 +1,6 @@
+__version__ = "0.1.0"
+
+
 def main():
     from aria.initializer import is_initialized, run_initialization
 
