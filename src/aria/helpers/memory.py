@@ -31,9 +31,7 @@ def get_model_file_size(model_path: Path) -> int:
         return model_path.stat().st_size // (1024 * 1024)
 
     if model_path.is_dir():
-        total = sum(
-            f.stat().st_size for f in model_path.rglob("*") if f.is_file()
-        )
+        total = sum(f.stat().st_size for f in model_path.rglob("*") if f.is_file())
         return total // (1024 * 1024)
 
     return 0
@@ -80,13 +78,9 @@ def detect_system_ram() -> Tuple[int, int]:
                 if "Pages free" in line:
                     pages_free = int(line.split(":")[1].strip().rstrip("."))
                 elif "Pages inactive" in line:
-                    pages_inactive = int(
-                        line.split(":")[1].strip().rstrip(".")
-                    )
+                    pages_inactive = int(line.split(":")[1].strip().rstrip("."))
 
-            available_mb = (
-                (pages_free + pages_inactive) * page_size // (1024 * 1024)
-            )
+            available_mb = (pages_free + pages_inactive) * page_size // (1024 * 1024)
             return total_mb, available_mb
 
         else:

@@ -130,9 +130,7 @@ class _EnginePage(QWizardPage):
 
         btn_layout = QHBoxLayout()
         self._download_btn = QPushButton("Install vLLM")
-        self._download_btn.setIcon(
-            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
-        )
+        self._download_btn.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
         self._download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self._download_btn)
         btn_layout.addStretch()
@@ -223,9 +221,7 @@ class _ModelPage(QWizardPage):
 
         btn_layout = QHBoxLayout()
         self._download_btn = QPushButton("Download Model")
-        self._download_btn.setIcon(
-            QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
-        )
+        self._download_btn.setIcon(QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown)))
         self._download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self._download_btn)
         btn_layout.addStretch()
@@ -248,9 +244,7 @@ class _ModelPage(QWizardPage):
                 from huggingface_hub import try_to_load_from_cache
 
                 try:
-                    cached = try_to_load_from_cache(
-                        Chat.model_path, "config.json"
-                    )
+                    cached = try_to_load_from_cache(Chat.model_path, "config.json")
                     exists = cached is not None and cached != "None"
                 except Exception:
                     exists = False
@@ -259,9 +253,7 @@ class _ModelPage(QWizardPage):
                 self._status_label.setText(
                     "✓ Chat model already available. Click Next to continue."
                 )
-                self._status_label.setStyleSheet(
-                    "color: #2e7d32; font-weight: bold;"
-                )
+                self._status_label.setStyleSheet("color: #2e7d32; font-weight: bold;")
                 self.completeChanged.emit()
 
     def _start_download(self):
@@ -279,9 +271,7 @@ class _ModelPage(QWizardPage):
         if alias == "chat":
             model_path = Chat.model_path
             if not model_path:
-                self._on_failed(
-                    "Chat model is not configured (CHAT_MODEL_PATH)."
-                )
+                self._on_failed("Chat model is not configured (CHAT_MODEL_PATH).")
                 return
         elif alias == "embeddings":
             model_path = Embeddings.model_path
@@ -440,9 +430,7 @@ class _UserPage(QWizardPage):
                         id=str(uuid.uuid4()),
                         display_name=self._name_edit.text().strip(),
                         identifier=self._email_edit.text().strip(),
-                        metadata_=json.dumps(
-                            {"role": "admin", "created_by": "wizard"}
-                        ),
+                        metadata_=json.dumps({"role": "admin", "created_by": "wizard"}),
                         password=hash_password(self._password_edit.text()),
                         createdAt=datetime.now().isoformat() + "Z",
                     )

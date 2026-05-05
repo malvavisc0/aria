@@ -33,9 +33,7 @@ class AppStateNotInitializedError(RuntimeError):
     before the startup handler has completed initialization.
     """
 
-    def __init__(
-        self, message: str = "AppState is not fully initialized"
-    ) -> None:
+    def __init__(self, message: str = "AppState is not fully initialized") -> None:
         super().__init__(message)
 
 
@@ -92,9 +90,7 @@ class AppState(BaseModel):
             missing = [f for f in _REQUIRED_FIELDS if getattr(self, f) is None]
             if not self.startup_complete:
                 missing.append("startup_complete")
-            raise AppStateNotInitializedError(
-                f"Not initialized: {', '.join(missing)}"
-            )
+            raise AppStateNotInitializedError(f"Not initialized: {', '.join(missing)}")
 
 
 # NOTE: _state is a mutable singleton accessed from multiple async coroutines.

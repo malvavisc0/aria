@@ -26,9 +26,7 @@ class Vllm:
         if (v := get_optional_env("ARIA_VLLM_GPU_MEMORY_UTILIZATION", ""))
         else None
     )
-    quantization: Optional[str] = (
-        get_optional_env("ARIA_VLLM_QUANT", "") or None
-    )
+    quantization: Optional[str] = get_optional_env("ARIA_VLLM_QUANT", "") or None
     tensor_parallel_size: int = int(get_optional_env("ARIA_VLLM_TP_SIZE", "1"))
     dtype: str = get_optional_env("ARIA_VLLM_DTYPE", "auto")
     kv_cache_dtype: str = get_optional_env("ARIA_VLLM_KV_CACHE_DTYPE", "auto")
@@ -36,9 +34,7 @@ class Vllm:
     tool_call_parser: str = get_optional_env(
         "ARIA_VLLM_TOOL_CALL_PARSER", "qwen3_coder"
     )
-    reasoning_parser: str = get_optional_env(
-        "ARIA_VLLM_REASONING_PARSER", "qwen3"
-    )
+    reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "qwen3")
 
     # Context sizes for each model type
     # Use int(v) if v is non-empty, otherwise fall back to default

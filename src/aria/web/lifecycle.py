@@ -16,7 +16,6 @@ import os
 
 from chromadb import PersistentClient as ChromaDBPersistentClient
 from chromadb.config import Settings as ChromaDBSettings
-from llama_index.core import Settings as LlamaIndexSettings
 from loguru import logger
 from sqlalchemy import create_engine
 
@@ -30,9 +29,7 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
-)
+LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -193,8 +190,7 @@ async def _init_browser() -> None:
                 logger.info("Lightpanda browser started successfully")
             else:
                 logger.warning(
-                    "Lightpanda browser failed to start — "
-                    "browser tools disabled"
+                    "Lightpanda browser failed to start — " "browser tools disabled"
                 )
     else:
         logger.info("Lightpanda not installed — browser tools disabled")

@@ -17,7 +17,6 @@ Example:
     ```
 """
 
-import os
 import subprocess
 import sys
 import time
@@ -123,9 +122,6 @@ class VllmServerManager:
         Returns:
             List of command arguments.
         """
-        from aria.config.folders import Debug as DebugConfig
-
-        log_file = DebugConfig.logs_path.parent / f"vllm-{role}.log"
 
         cmd = [
             sys.executable,

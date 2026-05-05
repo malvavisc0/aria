@@ -37,13 +37,9 @@ class TrainConfig:
     """
 
     base_model: str  # HF repo ID of the base model
-    datasets: list[str] = field(
-        default_factory=list
-    )  # one or more HF dataset IDs
+    datasets: list[str] = field(default_factory=list)  # one or more HF dataset IDs
     run_name: str = ""  # output subdirectory name under data/models/
-    output_dir: Optional[Path] = (
-        None  # defaults to Data.path/models/<run_name>
-    )
+    output_dir: Optional[Path] = None  # defaults to Data.path/models/<run_name>
     lora_rank: int = 32
     lora_alpha: int = 64
     lora_dropout: float = 0.05
@@ -59,9 +55,7 @@ class TrainConfig:
     clean: bool = False  # enable cleaning pipeline
     dedup: bool = False  # remove exact duplicate texts
     min_tokens: int = 10  # drop samples shorter than this
-    max_tokens: Optional[int] = (
-        None  # drop samples longer (defaults to max_seq_len)
-    )
+    max_tokens: Optional[int] = None  # drop samples longer (defaults to max_seq_len)
     languages: Optional[list[str]] = None  # e.g. ["en"] — requires langdetect
     max_special_ratio: float = 0.3  # drop if special chars exceed this ratio
 
@@ -73,9 +67,7 @@ class QuantizeConfig:
     bits: int = 4
     group_size: int = 128
     desc_act: bool = False
-    calibration_dataset: str = (
-        "wikitext2"  # or path to local JSONL {"text": "..."}
-    )
+    calibration_dataset: str = "wikitext2"  # or path to local JSONL {"text": "..."}
     n_calibration_samples: int = 128
     calibration_seq_len: int = 2048
 
@@ -164,11 +156,7 @@ def clean_dataset(
     # ── 3. Token length filter ─────────────────────────────────────────
     def _token_length_ok(example: dict) -> bool:
         ids = tokenizer(example["text"], return_length=True)
-        length = (
-            ids["length"][0]
-            if isinstance(ids["length"], list)
-            else ids["length"]
-        )
+        length = ids["length"][0] if isinstance(ids["length"], list) else ids["length"]
         return min_tokens <= length <= max_tokens
 
     n_before = len(dataset)
@@ -292,9 +280,7 @@ def train(config: TrainConfig) -> Path:
     )
     if config.max_memory is not None:
         model_kwargs["max_memory"] = config.max_memory
-    model = AutoModelForCausalLM.from_pretrained(
-        config.base_model, **model_kwargs
-    )
+    model = AutoModelForCausalLM.from_pretrained(config.base_model, **model_kwargs)
     model = prepare_model_for_kbit_training(
         model, use_gradient_checkpointing=False  # handled by SFTConfig
     )
@@ -326,9 +312,7 @@ def train(config: TrainConfig) -> Path:
             messages = [
                 {
                     "role": (
-                        "user"
-                        if turn["from"] in ("human", "user")
-                        else "assistant"
+                        "user" if turn["from"] in ("human", "user") else "assistant"
                     ),
                     "content": turn["value"],
                 }
@@ -464,9 +448,7 @@ def merge_adapter(base_model: str, adapter_path: Path, output: Path) -> Path:
 
     hf_token = HuggingFace.token
     output.mkdir(parents=True, exist_ok=True)
-    console.print(
-        f"[cyan]Loading base model on CPU for merge: {base_model}[/cyan]"
-    )
+    console.print(f"[cyan]Loading base model on CPU for merge: {base_model}[/cyan]")
     tokenizer = AutoTokenizer.from_pretrained(
         str(adapter_path), trust_remote_code=True, token=hf_token
     )
@@ -500,9 +482,7 @@ def _get_calibration_data(
     import datasets as hf_datasets
 
     if dataset_name == "wikitext2":
-        data = hf_datasets.load_dataset(
-            "wikitext", "wikitext-2-raw-v1", split="train"
-        )
+        data = hf_datasets.load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
         texts = [row["text"] for row in data if len(row["text"]) > 50]
     else:
         p = Path(dataset_name)
@@ -575,9 +555,7 @@ def quantize(model_path: Path, output: Path, config: QuantizeConfig) -> Path:
 
     logger.info("GPTQ Int{} model saved to {}", config.bits, output)
     console.print(f"[green]✓ GPTQ Int{config.bits} → {output}[/green]")
-    console.print(
-        f"[dim]  vLLM: --model {output} --quantization gptq_marlin[/dim]"
-    )
+    console.print(f"[dim]  vLLM: --model {output} --quantization gptq_marlin[/dim]")
     return output
 
 
@@ -613,9 +591,7 @@ def push_to_hub(
     api = HfApi(token=resolved_token)
 
     console.print(f"[cyan]Creating/verifying repo: {repo_id}[/cyan]")
-    api.create_repo(
-        repo_id=repo_id, private=private, exist_ok=True, repo_type="model"
-    )
+    api.create_repo(repo_id=repo_id, private=private, exist_ok=True, repo_type="model")
 
     console.print(f"[cyan]Uploading {model_path} → {repo_id}...[/cyan]")
     api.upload_folder(
@@ -678,9 +654,7 @@ def fetch_model_info(repo_id: str, token: Optional[str] = None) -> ModelInfo:
         params_b = info.safetensors.total / 1e9
 
     architectures = info.config.get("architectures", []) if info.config else []
-    model_type = (
-        info.config.get("model_type", "unknown") if info.config else "unknown"
-    )
+    model_type = info.config.get("model_type", "unknown") if info.config else "unknown"
     hidden_size = info.config.get("hidden_size") if info.config else None
     num_layers = info.config.get("num_hidden_layers") if info.config else None
 
@@ -729,9 +703,7 @@ def recommend(
     vram_gib = vram_mib / 1024
     ram_gib = ram_mib / 1024
 
-    reasoning.append(
-        f"Model ~{params_b:.1f}B params on {vram_gib:.1f} GiB VRAM"
-    )
+    reasoning.append(f"Model ~{params_b:.1f}B params on {vram_gib:.1f} GiB VRAM")
 
     # ── Size-based LoRA + LR heuristics ────────────────────────────────
     if params_b < 3:

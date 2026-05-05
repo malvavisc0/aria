@@ -1,10 +1,7 @@
 """Tests for VllmServerManager in server/vllm.py."""
 
-import subprocess
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from aria.server.vllm import VllmServerManager
 

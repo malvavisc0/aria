@@ -1,9 +1,7 @@
 """Tests for _wait_for_ready() health polling in server/vllm.py."""
 
-import time
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from aria.server.vllm import VllmServerManager
 
@@ -47,9 +45,7 @@ class TestWaitForReady:
             return mock_resp
 
         with (
-            patch(
-                "aria.server.vllm.urlopen", side_effect=_urlopen_side_effect
-            ),
+            patch("aria.server.vllm.urlopen", side_effect=_urlopen_side_effect),
             patch("aria.server.vllm.time.sleep"),
         ):
             result = manager._wait_for_ready("127.0.0.1", 9090, timeout=10.0)
@@ -89,14 +85,10 @@ class TestWaitForReady:
         mock_resp.__enter__ = MagicMock(return_value=mock_resp)
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch(
-            "aria.server.vllm.urlopen", return_value=mock_resp
-        ) as mock_open:
+        with patch("aria.server.vllm.urlopen", return_value=mock_resp) as mock_open:
             manager._wait_for_ready("0.0.0.0", 7070, timeout=5.0)
 
-        mock_open.assert_called_once_with(
-            "http://0.0.0.0:7070/health", timeout=2
-        )
+        mock_open.assert_called_once_with("http://0.0.0.0:7070/health", timeout=2)
 
     def test_uses_class_default_timeout(self):
         """When timeout=None, should use HEALTH_TIMEOUT class constant."""

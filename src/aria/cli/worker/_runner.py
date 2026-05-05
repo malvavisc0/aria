@@ -45,16 +45,12 @@ async def _run(args):
     logger.add(str(log_file), rotation="10 MB", level="DEBUG")
     logger.info(f"Worker {worker_id} starting (PID {os.getpid()})")
 
-    _update_audit(
-        worker_id, {"started_at": datetime.now(timezone.utc).isoformat()}
-    )
+    _update_audit(worker_id, {"started_at": datetime.now(timezone.utc).isoformat()})
 
     try:
         llm = get_chat_llm(api_base=ChatConfig.api_url, model=ChatConfig.model)
         extras = get_instructions_extras(agent_name="worker")
-        agent = get_worker_agent(
-            llm=llm, extras=extras, output_dir=str(output_dir)
-        )
+        agent = get_worker_agent(llm=llm, extras=extras, output_dir=str(output_dir))
 
         memory = Memory.from_defaults(
             session_id=worker_id, token_limit=EmbeddingsConfig.token_limit

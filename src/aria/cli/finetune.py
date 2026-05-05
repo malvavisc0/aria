@@ -44,9 +44,7 @@ console = Console(width=200)
 
 @app.command("recommend")
 def recommend_cmd(
-    model: Annotated[
-        str, typer.Option("--model", help="HF repo ID of the model.")
-    ],
+    model: Annotated[str, typer.Option("--model", help="HF repo ID of the model.")],
     token: Annotated[
         Optional[str],
         typer.Option("--token", help="HF API token. Falls back to HF_TOKEN."),
@@ -83,22 +81,16 @@ def recommend_cmd(
     gpus = detect_gpus_with_details() if check_nvidia_smi_available() else []
     total_vram_mib = get_total_vram_mb() if gpus else 0
     total_ram_mb, _ = detect_system_ram()
-    bf16 = (
-        torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False
-    )
+    bf16 = torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False
 
     # ── Hardware table ─────────────────────────────────────────────────
-    hw_table = Table(
-        title="Hardware", show_header=False, title_style="bold cyan"
-    )
+    hw_table = Table(title="Hardware", show_header=False, title_style="bold cyan")
     hw_table.add_column("Property", style="cyan", width=10)
     hw_table.add_column("Value", style="green")
 
     if gpus:
         gpu = gpus[0]
-        hw_table.add_row(
-            "GPU", f"{gpu.name} ({gpu.total_memory / 1024:.1f} GiB)"
-        )
+        hw_table.add_row("GPU", f"{gpu.name} ({gpu.total_memory / 1024:.1f} GiB)")
         if len(gpus) > 1:
             hw_table.add_row("GPUs", str(len(gpus)))
     else:
@@ -161,9 +153,7 @@ def recommend_cmd(
     rec_table.add_row("lora_alpha", str(rec.lora_alpha))
     rec_table.add_row("max_seq_len", str(rec.max_seq_len))
     rec_table.add_row("batch_size", str(rec.batch_size))
-    rec_table.add_row(
-        "gradient_accumulation", str(rec.gradient_accumulation_steps)
-    )
+    rec_table.add_row("gradient_accumulation", str(rec.gradient_accumulation_steps))
     rec_table.add_row("learning_rate", f"{rec.learning_rate:.0e}")
     rec_table.add_row("epochs", str(rec.epochs))
     if rec.max_memory:
@@ -200,9 +190,7 @@ def recommend_cmd(
 
 @app.command("run")
 def run(
-    model: Annotated[
-        str, typer.Option("--model", help="Base model HF repo ID.")
-    ],
+    model: Annotated[str, typer.Option("--model", help="Base model HF repo ID.")],
     dataset: Annotated[
         str,
         typer.Option(
@@ -226,15 +214,9 @@ def run(
         int, typer.Option(help="Max training sequence length in tokens.")
     ] = 2048,
     epochs: Annotated[int, typer.Option(help="Training epochs.")] = 1,
-    batch_size: Annotated[
-        int, typer.Option(help="Per-device batch size.")
-    ] = 2,
-    grad_accum: Annotated[
-        int, typer.Option(help="Gradient accumulation steps.")
-    ] = 8,
-    learning_rate: Annotated[
-        float, typer.Option(help="Learning rate.")
-    ] = 2e-4,
+    batch_size: Annotated[int, typer.Option(help="Per-device batch size.")] = 2,
+    grad_accum: Annotated[int, typer.Option(help="Gradient accumulation steps.")] = 8,
+    learning_rate: Annotated[float, typer.Option(help="Learning rate.")] = 2e-4,
     max_samples: Annotated[
         Optional[int],
         typer.Option(help="Limit dataset samples (None = full dataset)."),
@@ -264,9 +246,7 @@ def run(
     ] = None,
     max_special_ratio: Annotated[
         float,
-        typer.Option(
-            "--max-special-ratio", help="Max special character ratio (0-1)."
-        ),
+        typer.Option("--max-special-ratio", help="Max special character ratio (0-1)."),
     ] = 0.3,
     skip_finetune: Annotated[
         bool,
@@ -277,21 +257,13 @@ def run(
     ] = False,
     skip_quantize: Annotated[
         bool,
-        typer.Option(
-            "--skip-quantize", help="Stop after merge, skip quantization."
-        ),
+        typer.Option("--skip-quantize", help="Stop after merge, skip quantization."),
     ] = False,
-    gptq_bits: Annotated[
-        int, typer.Option(help="GPTQ quantization bits.")
-    ] = 4,
-    gptq_group_size: Annotated[
-        int, typer.Option(help="GPTQ group size.")
-    ] = 128,
+    gptq_bits: Annotated[int, typer.Option(help="GPTQ quantization bits.")] = 4,
+    gptq_group_size: Annotated[int, typer.Option(help="GPTQ group size.")] = 128,
     calibration: Annotated[
         str,
-        typer.Option(
-            help="Calibration dataset: 'wikitext2' or path to JSONL."
-        ),
+        typer.Option(help="Calibration dataset: 'wikitext2' or path to JSONL."),
     ] = "wikitext2",
 ) -> None:
     """Full pipeline: QLoRA SFT → merge LoRA → GPTQ quantize.
@@ -313,9 +285,7 @@ def run(
     # Parse comma-separated dataset IDs
     dataset_ids = [d.strip() for d in dataset.split(",") if d.strip()]
     lang_list = (
-        [l.strip() for l in languages.split(",") if l.strip()]
-        if languages
-        else None
+        [l.strip() for l in languages.split(",") if l.strip()] if languages else None
     )
 
     base_dir = Data.path / "models" / run_name
@@ -395,9 +365,7 @@ def quantize_cmd(
     ],
     output: Annotated[
         Path,
-        typer.Option(
-            "--output", help="Output directory for the quantized model."
-        ),
+        typer.Option("--output", help="Output directory for the quantized model."),
     ],
     bits: Annotated[int, typer.Option(help="Quantization bits.")] = 4,
     group_size: Annotated[int, typer.Option(help="GPTQ group size.")] = 128,
@@ -427,9 +395,7 @@ def quantize_cmd(
 def push(
     model: Annotated[
         Path,
-        typer.Option(
-            "--model", help="Local path to the quantized model directory."
-        ),
+        typer.Option("--model", help="Local path to the quantized model directory."),
     ],
     repo_id: Annotated[
         str,

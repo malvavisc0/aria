@@ -264,9 +264,7 @@ def memory_command():
 
         downloaded = _is_model_downloaded(model_path)
         status = (
-            "[green]✓ Downloaded[/green]"
-            if downloaded
-            else "[red]✗ Not downl.[/red]"
+            "[green]✓ Downloaded[/green]" if downloaded else "[red]✗ Not downl.[/red]"
         )
         model_table.add_row(alias, model_path[:60], status)
 
