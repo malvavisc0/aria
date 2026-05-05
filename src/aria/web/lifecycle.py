@@ -29,7 +29,9 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+)
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -190,7 +192,8 @@ async def _init_browser() -> None:
                 logger.info("Lightpanda browser started successfully")
             else:
                 logger.warning(
-                    "Lightpanda browser failed to start — " "browser tools disabled"
+                    "Lightpanda browser failed to start — "
+                    "browser tools disabled"
                 )
     else:
         logger.info("Lightpanda not installed — browser tools disabled")
@@ -268,26 +271,46 @@ async def on_app_startup_handler() -> None:
 
     # ------------------------------------------------------------------
     # Phase 2 – Non-critical subsystems (failure is tolerated)
+    # Each subsystem is initialized independently so that a failure in
+    # one does not prevent others from starting.
     # ------------------------------------------------------------------
+    _vllm_ready = False
+    _llm_ready = False
+
     try:
         logger.info("Starting vLLM inference servers...")
         _init_vllm_servers()
-
-        logger.info("Initializing LLM and embeddings clients...")
-        _init_llm_clients()
-
-        logger.info("Initializing vector database...")
-        _init_vector_db()
-
-        logger.info("Initializing agent workflows...")
-        _init_agent_workflows()
-
-        await _init_browser()
+        _vllm_ready = True
     except Exception as e:
         logger.warning(
-            f"Non-critical subsystem failed to start: {e}. "
-            "The app will run with reduced functionality."
+            f"vLLM servers failed to start: {e}. LLM features disabled."
         )
+
+    if _vllm_ready:
+        try:
+            logger.info("Initializing LLM and embeddings clients...")
+            _init_llm_clients()
+            _llm_ready = True
+        except Exception as e:
+            logger.warning(f"LLM clients failed to initialize: {e}.")
+
+    try:
+        logger.info("Initializing vector database...")
+        _init_vector_db()
+    except Exception as e:
+        logger.warning(f"Vector database failed to initialize: {e}.")
+
+    if _llm_ready and _state.llm is not None:
+        try:
+            logger.info("Initializing agent workflows...")
+            _init_agent_workflows()
+        except Exception as e:
+            logger.warning(f"Agent workflows failed to initialize: {e}.")
+
+    try:
+        await _init_browser()
+    except Exception as e:
+        logger.warning(f"Browser failed to start: {e}.")
 
     _state.startup_complete = True
     logger.info("Aria web UI startup complete")

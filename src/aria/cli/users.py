@@ -102,10 +102,14 @@ def list_users():
 def add_user(
     identifier: Annotated[
         str,
-        typer.Option(prompt="User identifier (email)", help="User email address"),
+        typer.Option(
+            prompt="User identifier (email)", help="User email address"
+        ),
     ],
     name: Annotated[str, typer.Option(help="User name)")],
-    role: Annotated[str, typer.Option(help="User role (user, admin, etc.)")] = "user",
+    role: Annotated[
+        str, typer.Option(help="User role (user, admin, etc.)")
+    ] = "user",
 ):
     """Create a new user account.
 
@@ -132,7 +136,9 @@ def add_user(
         ).scalar_one_or_none()
 
         if existing:
-            error_console.print(f"[red]✗[/red] User '{identifier}' already exists")
+            error_console.print(
+                f"[red]✗[/red] User '{identifier}' already exists"
+            )
             raise typer.Exit(1)
 
         password = typer.prompt(
@@ -167,7 +173,9 @@ def add_user(
 def reset_password(
     identifier: Annotated[
         str,
-        typer.Option(prompt="User identifier (email)", help="User email address"),
+        typer.Option(
+            prompt="User identifier (email)", help="User email address"
+        ),
     ],
 ):
     """Reset a user's password.
@@ -214,9 +222,13 @@ def reset_password(
 def update_user(
     identifier: Annotated[
         str,
-        typer.Option(prompt="User identifier (email)", help="User email address"),
+        typer.Option(
+            prompt="User identifier (email)", help="User email address"
+        ),
     ],
-    role: Annotated[Optional[str], typer.Option(help="New role for the user")] = None,
+    role: Annotated[
+        Optional[str], typer.Option(help="New role for the user")
+    ] = None,
     metadata_json: Annotated[
         Optional[str], typer.Option(help="JSON string of metadata to merge")
     ] = None,
@@ -274,13 +286,17 @@ def update_user(
         metadata["updated_at"] = datetime.now().isoformat()
         user.metadata_ = json.dumps(metadata)
 
-        console.print(f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated")
+        console.print(
+            f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' updated"
+        )
 
 
 @app.command("delete")
 def delete_user(
     identifier: Annotated[str, typer.Option(help="User identifier (email)")],
-    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip confirmation prompt"
+    ),
 ):
     """Delete a user and all associated data.
 
@@ -323,4 +339,61 @@ def delete_user(
 
         console.print(
             f"[green]✓[/green] User '[cyan]{identifier}[/cyan]' deleted ({thread_count} threads removed)"
+        )
+
+
+@app.command("clean")
+def clean_user_chats(
+    identifier: Annotated[str, typer.Option(help="User identifier (email)")],
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip confirmation prompt"
+    ),
+):
+    """Delete all chat threads for a user.
+
+    Removes all threads (and their steps, elements, and feedbacks) owned
+    by the user. The user account itself is preserved.
+
+    Args:
+        identifier: User email address
+        yes: Skip confirmation prompt
+
+    Example:
+        ```bash
+        # Clean with interactive confirmation
+        aria users clean --identifier user@example.com
+
+        # Clean without confirmation
+        aria users clean --identifier user@example.com --yes
+        ```
+    """
+    with get_db_session() as session:
+        user = session.execute(
+            select(User).where(User.identifier == identifier)
+        ).scalar_one_or_none()
+
+        if not user:
+            error_console.print(f"[red]✗[/red] User '{identifier}' not found")
+            raise typer.Exit(1)
+
+        thread_count = len(user.threads)
+
+        if thread_count == 0:
+            console.print(
+                f"[yellow]No threads found for user '[cyan]{identifier}[/cyan]'.[/yellow]"
+            )
+            return
+
+        if not yes:
+            console.print(
+                f"[yellow]Warning:[/yellow] This will delete {thread_count} thread(s) "
+                f"for user '[cyan]{identifier}[/cyan]' with all associated data."
+            )
+            typer.confirm("Proceed?", abort=True)
+
+        for thread in list(user.threads):
+            session.delete(thread)
+
+        console.print(
+            f"[green]✓[/green] Deleted {thread_count} thread(s) for user '[cyan]{identifier}[/cyan]'"
         )

@@ -17,6 +17,7 @@ Example:
     ```
 """
 
+import json
 import subprocess
 import sys
 import time
@@ -82,6 +83,41 @@ class VllmServerManager:
         """Save current PIDs to state file."""
         save_state(self.PID_FILE, self._pids)
 
+    @staticmethod
+    def _get_model_max_context(model_path: str) -> Optional[int]:
+        """Read the model's maximum context length from its config.json.
+
+        Inspects ``max_position_embeddings``, ``model_max_length``, or
+        ``max_seq_len`` fields in the model's config file.
+
+        Args:
+            model_path: Local path to the model directory.
+
+        Returns:
+            The model's maximum context length, or None if it cannot
+            be determined.
+        """
+        config_path = Path(model_path) / "config.json"
+        if not config_path.is_file():
+            return None
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            # Try fields in order of preference
+            for key in (
+                "max_position_embeddings",
+                "model_max_length",
+                "max_seq_len",
+            ):
+                val = config.get(key)
+                if isinstance(val, (int, float)) and val > 0:
+                    return int(val)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(
+                f"Could not read model config at {config_path}: {e}"
+            )
+        return None
+
     def _clear_pids(self) -> None:
         """Clear state file and reset in-memory PIDs."""
         self._pids.clear()
@@ -91,7 +127,6 @@ class VllmServerManager:
         self,
         model_path: str,
         port: int,
-        role: str,
         task: str = "auto",
         max_model_len: Optional[int] = None,
         gpu_memory_utilization: Optional[float] = None,
@@ -110,7 +145,6 @@ class VllmServerManager:
         Args:
             model_path: HuggingFace model ID or local path.
             port: Port to run the server on.
-            role: Server role name (chat/embeddings), used for log naming.
             task: vLLM task type (``auto``, ``embed``, ``generate``).
             max_model_len: Maximum sequence length.
             gpu_memory_utilization: Fraction of GPU memory to use (0.0–1.0).
@@ -193,6 +227,9 @@ class VllmServerManager:
         if reasoning_parser:
             cmd.extend(["--reasoning-parser", reasoning_parser])
 
+        # Override model's generation_config.json (may cap max_tokens too low)
+        cmd.extend(["--generation-config", "vllm"])
+
         # sentence-transformers models often need trust-remote-code
         cmd.extend(["--trust-remote-code"])
 
@@ -261,6 +298,18 @@ class VllmServerManager:
                 "Set CHAT_MODEL_PATH in your .env file."
             )
 
+        # --- Clamp max_model_len to the model's actual maximum ---
+        # This must happen BEFORE gpu_memory_utilization calculation so
+        # that the KV cache estimate is based on the actual context size.
+        max_model_len = VllmConfig.chat_context_size
+        model_max = self._get_model_max_context(Chat.model_path)
+        if model_max is not None and max_model_len > model_max:
+            logger.info(
+                f"Clamping max_model_len from {max_model_len} to "
+                f"{model_max} (model's max_position_embeddings)"
+            )
+            max_model_len = model_max
+
         # --- Auto-calculate gpu_memory_utilization if not explicitly set ---
         gpu_mem = VllmConfig.gpu_memory_utilization
         if gpu_mem is None:
@@ -273,15 +322,14 @@ class VllmServerManager:
             gpu_mem = calculate_gpu_memory_utilization(
                 total_vram_mb=total_vram,
                 model_path=Chat.model_path,
-                context_size=VllmConfig.chat_context_size,
+                context_size=max_model_len,
                 kv_cache_dtype=VllmConfig.kv_cache_dtype,
             )
 
         chat_cmd = self._build_vllm_cmd(
             model_path=Chat.model_path,
             port=Chat.get_port(),
-            role="chat",
-            max_model_len=VllmConfig.chat_context_size,
+            max_model_len=max_model_len,
             gpu_memory_utilization=gpu_mem,
             quantization=VllmConfig.quantization,
             tensor_parallel_size=VllmConfig.tensor_parallel_size,

@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-
 from aria.server.vllm import VllmServerManager
 
 
@@ -18,7 +17,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="BAAI/bge-m3",
             port=9090,
-            role="chat",
         )
         assert "-m" in cmd
         assert "vllm.entrypoints.openai.api_server" in cmd
@@ -34,7 +32,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="BAAI/bge-m3",
             port=9092,
-            role="embeddings",
             task="embed",
         )
         assert "--runner" in cmd
@@ -47,7 +44,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="/data/models/chat",
             port=9090,
-            role="chat",
             quantization="gptq",
         )
         assert "--quantization" in cmd
@@ -58,7 +54,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="/data/models/chat",
             port=9090,
-            role="chat",
             quantization="gptq",
             dtype="auto",
         )
@@ -70,7 +65,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="/data/models/chat",
             port=9090,
-            role="chat",
             quantization="gptq",
             dtype="float16",
         )
@@ -82,7 +76,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="BAAI/bge-m3",
             port=9090,
-            role="chat",
             quantization=None,
         )
         assert "--quantization" not in cmd
@@ -92,7 +85,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="/data/models/chat",
             port=9090,
-            role="chat",
             tensor_parallel_size=2,
         )
         assert "--tensor-parallel-size" in cmd
@@ -103,7 +95,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="/data/models/chat",
             port=9090,
-            role="chat",
             tensor_parallel_size=1,
         )
         assert "--tensor-parallel-size" not in cmd
@@ -113,7 +104,6 @@ class TestBuildVllmCmd:
         cmd = self.manager._build_vllm_cmd(
             model_path="BAAI/bge-m3",
             port=9092,
-            role="embeddings",
             task="embed",
             chat_template_file="/path/to/template.jinja",
         )
