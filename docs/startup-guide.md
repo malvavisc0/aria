@@ -26,8 +26,7 @@ Aria supports multiple compute platforms:
 
 | Platform | Description |
 |----------|-------------|
-| NVIDIA GPU | CUDA acceleration with VRAM for model inference |
-| Apple Silicon | Metal acceleration with unified memory |
+| NVIDIA GPU | CUDA acceleration with VRAM for model inference (via vLLM) |
 | CPU-only | Fallback mode without GPU acceleration (slower) |
 
 The preflight checks automatically detect your platform and adjust memory requirements accordingly.
@@ -95,7 +94,9 @@ aria knowledge store "key" "v"  # Store a fact
 aria finance stock TICKER       # Stock price
 aria imdb search "title"        # Search movies/TV
 aria dev run "code"             # Execute Python
-aria vision pdf "file"          # Extract PDF
+aria vllm install               # Install vLLM
+aria vllm status                # Check vLLM status
+aria finetune                   # Fine-tune models with LoRA/QLoRA
 aria worker spawn --prompt "..." # Background worker
 aria self test-tools            # Verify tools
 ```
@@ -197,11 +198,11 @@ Before starting the server, Aria validates the environment:
 |----------|--------|
 | Environment | Required env vars (DATA_FOLDER, CHAINLIT_AUTH_SECRET, etc.) |
 | Storage | Data folder exists, knowledge DB accessible |
-| Binaries | llama-server binary installed, Lightpanda (optional) |
-| Models | Chat, vision, and embedding GGUF models downloaded |
+| Binaries | vLLM installed, Lightpanda (optional) |
+| Models | Chat model downloaded, embeddings model available |
 | Hardware | GPU available, sufficient VRAM, memory requirements |
-| Connectivity | LLM server reachable |
-| Tools | Core + file tools load correctly (11 tools) |
+| Connectivity | vLLM server reachable |
+| Tools | Core + file tools load correctly |
 
 ### Running Preflight Manually
 
@@ -218,8 +219,8 @@ aria server run
 If preflight fails, the server will not start. Common fixes:
 
 ```bash
-# Download missing binaries
-aria llamacpp download
+# Install vLLM
+aria vllm install
 
 # Download missing models
 aria models download
@@ -264,8 +265,8 @@ flowchart TD
     subgraph Web Application
         I[chainlit run web_ui.py]
         J[on_app_startup]
-        K[LlamaCppServerManager]
-        L[Start 3 inference servers]
+        K[VLLMServerManager]
+        L[Start vLLM inference server]
     end
     
     A --> C
@@ -304,7 +305,7 @@ flowchart TD
 1. Run `aria check` to identify issues
 2. Check logs in `data/logs/aria.log`
 3. Verify all models are downloaded: `aria models list`
-4. Verify binaries are installed: `aria llamacpp status`
+4. Verify vLLM is installed: `aria vllm status`
 
 ### Port Already in Use
 

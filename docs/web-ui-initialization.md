@@ -29,7 +29,7 @@ The application uses a global state pattern via the [`AppState`](src/aria/web_ui
 flowchart TB
     subgraph Startup [on_app_startup]
         A[1. Initialize Logging] --> B[2. Create Database Engine]
-        B --> C[3. Start LlamaCpp Servers]
+        B --> C[3. Start vLLM Server]
         C --> D[4. Initialize LLM and Embeddings]
         D --> E[5. Initialize Vector Database]
         E --> F[6. Initialize Agent Workflows]
@@ -42,7 +42,7 @@ flowchart TB
         vector_db[ChromaDB Client]
         agents_workflow[AgentWorkflow]
         prompt_enhancer[PromptEnhancerAgent]
-        llama_manager[LlamaCppServerManager]
+        vllm_manager[VLLMServerManager]
         db_engine[SQLAlchemy Engine]
     end
     
@@ -51,8 +51,8 @@ flowchart TB
     subgraph External [External Dependencies]
         sqlite[(SQLite Database)]
         chromadb[(ChromaDB)]
-        llama_servers[LlamaCpp Servers]
-        openai_api[OpenAI-compatible APIs]
+        vllm_server[vLLM Server]
+        huggingface[HuggingFace Hub]
     end
     
     AppState --> External
@@ -72,18 +72,22 @@ The following environment variables must be configured before starting the appli
 | `ARIA_DB_FILENAME` | Yes | SQLite database filename | `aria.db` |
 | `LOCAL_STORAGE_PATH` | Yes | Local storage subdirectory | `storage` |
 | `CHROMADB_PERSISTENT_PATH` | Yes | ChromaDB persistence directory | `chromadb` |
-| `LLAMA_CPP_BIN_DIR` | Yes | LlamaCpp binaries directory | `bin/llamacpp` |
-| `LLAMA_CPP_VERSION` | Yes | LlamaCpp version | `latest` |
-| `GGUF_MODELS_DIR` | Yes | Directory for GGUF models | `models` |
-| `CHAT_OPENAI_API` | Yes | Chat LLM API endpoint | `http://localhost:7070/v1` |
-| `MAX_ITERATIONS` | Yes | Max agent iterations | `100` |
-| `TOKEN_LIMIT` | Yes | Memory token limit | `4096` |
-| `EMBEDDINGS_API_URL` | Yes | Embeddings API endpoint | `http://localhost:7071/v1` |
-| `EMBEDDINGS_MODEL` | Yes | Embeddings model name | `Qwen/Qwen3-Embedding-0.6B-GGUF` |
-| `VL_OPENAI_API` | Yes | Vision/Language API endpoint | `http://localhost:7071/v1` |
-| `VL_MODEL` | Yes | Vision model name | `ggml-org/granite-docling-258M-GGUF` |
+| `CHAT_OPENAI_API` | Yes | Chat LLM API endpoint | `http://localhost:9090/v1` |
+| `CHAT_MODEL` | Yes | Chat model name | `Granite-4.1-8B` |
+| `CHAT_MODEL_PATH` | Yes | HuggingFace model path | `ethanhunt3/Granite-4.1-8B-GPTQ-INT4` |
+| `CHAT_CONTEXT_SIZE` | Yes | Chat context window size | `32768` |
+| `MAX_ITERATIONS` | Yes | Max agent iterations | `50` |
+| `TOKEN_LIMIT_RATIO` | Yes | Memory token limit ratio | `0.80` |
+| `EMBEDDINGS_MODEL` | Yes | Embeddings model name | `granite-embedding-311m-multilingual-r2` |
+| `EMBED_MODEL_PATH` | Yes | HuggingFace embeddings path | `ibm-granite/granite-embedding-311m-multilingual-r2` |
+| `EMBEDDINGS_CONTEXT_SIZE` | Yes | Embeddings context size | `8192` |
 | `CHAINLIT_AUTH_SECRET` | Yes | Secret for Chainlit auth | `your-secret-here` |
-| `LLAMA_CONTEXT_SIZE` | No | Context window size | `8192` |
+| `ARIA_VLLM_QUANT` | No | vLLM quantization method | `gptq_marlin` |
+| `ARIA_VLLM_GPU_MEMORY_UTILIZATION` | No | GPU memory utilization (auto if unset) | `0.85` |
+| `ARIA_VLLM_KV_CACHE_DTYPE` | No | KV cache data type | `fp8` |
+| `ARIA_VLLM_TP_SIZE` | No | Tensor parallel size | `1` |
+| `ARIA_VLLM_API_KEY` | No | vLLM API key | `sk-aria` |
+| `ARIA_VLLM_TOOL_CALL_PARSER` | No | Tool call parser for model family | `granite4` |
 | `HUGGINGFACE_TOKEN` | No | HF token for gated models | `` |
 
 ### Directory Structure
@@ -96,22 +100,19 @@ data/
 ├── chromadb/            # ChromaDB persistence (created automatically)
 ├── storage/             # Local file storage for uploads
 ├── debug.logs           # Application logs
-├── llama_servers.json   # Server process state
 ├── bin/
-│   ├── run-model        # Model runner script
-│   └── llamacpp/        # LlamaCpp binaries
-└── models/              # GGUF model files
+│   └── lightpanda/      # Lightpanda headless browser binary
+└── models/              # Downloaded model files (optional, vLLM uses HF cache)
 ```
 
 ### External Services
 
-The application requires LlamaCpp inference servers to be available:
+The application uses vLLM for LLM inference and in-process HuggingFace for embeddings:
 
-| Server | Default Port | Purpose |
-|--------|--------------|---------|
-| Chat Server | 7070 | Main conversation LLM |
-| VL Server | 7071 | Vision/Language model |
-| Embeddings Server | 7072 | Text embeddings |
+| Service | Default Port | Purpose |
+|---------|--------------|---------|
+| vLLM Server | 9090 | Chat LLM inference |
+| Embeddings | In-process | Text embeddings (loaded via HuggingFace) |
 
 ---
 
@@ -164,29 +165,30 @@ Base.metadata.create_all(_state.db_engine)
 
 ---
 
-### Step 3: Start LlamaCpp Servers
+### Step 3: Start vLLM Server
 
 ```python
-_state.llama_manager = LlamaCppServerManager(
-    context_size=LlamaCppConfig.context_size
-)
-_state.llama_manager.start_all()
+_state.vllm_manager = VLLMServerManager()
+_state.vllm_manager.start()
 ```
 
 **What happens:**
-- Creates a [`LlamaCppServerManager`](src/aria/server/llama.py:43) instance
-- Starts three inference servers: Chat, VL, and Embeddings
-- Waits for health checks on all servers (blocking)
-- Default timeout: 120 seconds per server
+- Creates a [`VLLMServerManager`](src/aria/server/vllm.py) instance
+- Starts a single vLLM inference server for the chat model
+- Auto-detects GPU VRAM and calculates optimal memory utilization
+- Applies quantization settings (GPTQ/AWQ) from configuration
+- Waits for health check on the vLLM server (blocking)
+- Default timeout: 120 seconds
 
 **Server startup details:**
-- Chat and VL servers use the `run-model` script
-- Embeddings server uses `llama-server --embedding` directly
-- Process PIDs are saved to `data/llama_servers.json`
+- vLLM is started as a Python subprocess with OpenAI-compatible API
+- Default port: 9090
+- Model is loaded from HuggingFace Hub (or local cache)
+- KV cache dtype is configured (fp8 recommended for 8 GB GPUs)
 
 **Failure conditions:**
-- Missing LlamaCpp binaries
-- Missing model files
+- vLLM not installed (`aria vllm install`)
+- Missing or invalid model path
 - Port already in use
 - Health check timeout
 - Insufficient GPU memory
@@ -201,17 +203,18 @@ _state.embeddings = get_embeddings_model(api_base=EmbeddingsConfig.api_url)
 ```
 
 **What happens:**
-- Creates OpenAI-compatible LLM client pointing to Chat server
-- Creates OpenAIEmbedding client pointing to Embeddings server
+- Creates OpenAI-compatible LLM client pointing to vLLM server
+- Creates HuggingFace embeddings model (loaded in-process)
 
 **Configuration used:**
-- [`ChatConfig.api_url`](src/aria/config/models.py:7) = `CHAT_OPENAI_API`
-- [`EmbeddingsConfig.api_url`](src/aria/config/models.py:18) = `EMBEDDINGS_API_URL`
+- `ChatConfig.api_url` = `CHAT_OPENAI_API` (default: `http://localhost:9090/v1`)
+- Embeddings loaded directly via `llama-index-embeddings-huggingface`
 
 **Failure conditions:**
-- LLM server not responding
+- vLLM server not responding
 - Invalid API URL
 - Model not loaded on server
+- Embeddings model download failure
 
 ---
 
@@ -286,7 +289,7 @@ class AppState:
     vector_db: ClientAPI | None = None           # Required
     agents_workflow: AgentWorkflow | None = None # Required
     prompt_enhancer: PromptEnhancerAgent | None = None  # Optional
-    llama_manager: LlamaCppServerManager | None = None  # Optional
+    vllm_manager: VLLMServerManager | None = None       # Optional
     db_engine: Engine | None = None              # Required
     _startup_complete: bool = field(default=False, repr=False)
 ```
@@ -335,11 +338,11 @@ if _state.is_initialized():
 |------|---------|---------|------------|
 | Logging | Permission denied | Silent failure or crash | Check directory permissions |
 | Database | Cannot create file | Exception at startup | Verify `DATA_FOLDER` exists and is writable |
-| LlamaCpp | Missing binaries | `FileNotFoundError` | Install LlamaCpp to `bin/llamacpp` |
-| LlamaCpp | Missing models | Server startup failure | Download GGUF models to `models/` |
-| LlamaCpp | Port in use | Health check timeout | Kill existing processes on ports 7070-7072 |
-| LlamaCpp | GPU OOM | Server crash | Reduce context size or use smaller model |
-| LLM | Connection refused | API call failure | Ensure LlamaCpp servers are healthy |
+| vLLM | Not installed | `ImportError` or startup failure | Run `aria vllm install` |
+| vLLM | Missing model | Model download failure | Verify `CHAT_MODEL_PATH` is valid on HuggingFace |
+| vLLM | Port in use | Health check timeout | Kill existing process on port 9090 |
+| vLLM | GPU OOM | Server crash | Reduce `CHAT_CONTEXT_SIZE` or use smaller model |
+| LLM | Connection refused | API call failure | Ensure vLLM server is healthy |
 | ChromaDB | Permission denied | Exception at startup | Check `CHROMADB_PERSISTENT_PATH` permissions |
 
 ### Non-Critical Failures (Degraded Functionality)
@@ -347,7 +350,7 @@ if _state.is_initialized():
 | Component | Failure | Impact | Fallback |
 |-----------|---------|--------|----------|
 | `prompt_enhancer` | Not initialized | Enhance command unavailable | Original prompt used |
-| `llama_manager` | Not initialized | No local inference | External API required |
+| `vllm_manager` | Not initialized | No local inference | External API required |
 
 ### Runtime Failures
 
@@ -369,12 +372,12 @@ The [`on_app_shutdown()`](src/aria/web_ui.py:411) function handles graceful shut
 async def on_app_shutdown() -> None:
     logger.info("Shutting down Aria web UI...")
     
-    # Stop LlamaCpp servers
-    if _state.llama_manager:
-        _state.llama_manager.stop_all()
+    # Stop vLLM server
+    if _state.vllm_manager:
+        _state.vllm_manager.stop()
     
     # Reset all state
-    _state.llama_manager = None
+    _state.vllm_manager = None
     _state.llm = None
     _state.embeddings = None
     _state.vector_db = None
@@ -392,8 +395,8 @@ async def on_app_shutdown() -> None:
 
 ```mermaid
 flowchart TB
-    A[Shutdown Triggered] --> B{llama_manager exists?}
-    B -->|Yes| C[Stop all LlamaCpp servers]
+    A[Shutdown Triggered] --> B{vllm_manager exists?}
+    B -->|Yes| C[Stop vLLM server]
     B -->|No| D[Skip server shutdown]
     C --> E[Reset all state attributes to None]
     D --> E
@@ -428,31 +431,32 @@ cat data/debug.logs | grep -i "failed\|error"
 
 ---
 
-#### 2. LlamaCpp Server Timeout
+#### 2. vLLM Server Timeout
 
-**Symptom:** "Starting LlamaCpp inference servers..." hangs indefinitely.
+**Symptom:** "Starting vLLM inference server..." hangs indefinitely.
 
 **Causes:**
-- Model file missing
+- Model file not found or invalid
 - Insufficient GPU memory
 - Port already in use
 
 **Diagnosis:**
 ```bash
-# Check if ports are in use
-lsof -i :7070 -i :7071 -i :7072
+# Check if port is in use
+lsof -i :9090
 
 # Check GPU memory
 nvidia-smi
 
-# Check model files
-ls -la data/models/
+# Check vLLM installation
+aria vllm status
 ```
 
 **Resolution:**
-- Kill existing processes on ports
+- Kill existing processes on port 9090
 - Free GPU memory
-- Download required model files
+- Verify model path: `aria vllm info`
+- Install vLLM if missing: `aria vllm install`
 
 ---
 
@@ -505,18 +509,16 @@ ls -la data/chromadb/
 
 | Service | Endpoint | Expected Response |
 |---------|----------|-------------------|
-| Chat Server | `http://localhost:7070/health` | `{"status": "ok"}` |
-| VL Server | `http://localhost:7071/health` | `{"status": "ok"}` |
-| Embeddings Server | `http://localhost:7072/health` | `{"status": "ok"}` |
+| vLLM Server | `http://localhost:9090/health` | `{"status": "ok"}` |
 
 ---
 
 ## Related Files
 
 - [`src/aria/web_ui.py`](src/aria/web_ui.py) - Main web UI module
-- [`src/aria/config/api.py`](src/aria/config/api.py) - LlamaCpp configuration
+- [`src/aria/config/api.py`](src/aria/config/api.py) - vLLM and service configuration
 - [`src/aria/config/database.py`](src/aria/config/database.py) - Database configuration
 - [`src/aria/config/models.py`](src/aria/config/models.py) - Model configuration
-- [`src/aria/server/llama.py`](src/aria/server/llama.py) - LlamaCpp server manager
+- [`src/aria/server/vllm.py`](src/aria/server/vllm.py) - vLLM server manager
 - [`src/aria/llm.py`](src/aria/llm.py) - LLM and agent workflow initialization
 - [`src/aria/db/models.py`](src/aria/db/models.py) - Database models

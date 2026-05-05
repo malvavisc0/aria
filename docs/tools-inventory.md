@@ -1,6 +1,6 @@
 # Aria Tools Inventory
 
-A comprehensive guide to all tools available in the `src/aria/tools` package. Each tool returns JSON-formatted responses. Tools are organized into **7 categories** managed by a centralized registry.
+A comprehensive guide to all tools available in the `src/aria/tools` package. Each tool returns JSON-formatted responses. Tools are organized into **6 categories** managed by a centralized registry.
 
 ## Docstring Convention
 
@@ -32,7 +32,6 @@ This format is consumed by LlamaIndex's `FunctionTool.from_defaults()` which ext
 11. [Reasoning Tools](#11-reasoning-tools)
 12. [Search Tools](#12-search-tools)
 13. [Shell Tools](#13-shell-tools)
-14. [Vision Tools](#14-vision-tools)
 
 ---
 
@@ -162,7 +161,7 @@ Centralized, categorized tool loading. Agents load tools by category through the
 
 | Category | Constant | Loading | Tools |
 |----------|----------|---------|-------|
-| **CORE** | `"core"` | Always | `reasoning`, `plan`, `knowledge`, `scratchpad`, `web_search`, `download`, `get_current_weather`, `shell` |
+| **CORE** | `"core"` | Always | `reasoning`, `plan`, `scratchpad`, `web_search`, `download`, `get_current_weather`, `shell` |
 | **FILES** | `"files"` | Always | `read_file`, `write_file`, `edit_file`, `file_info`, `list_files`, `search_files`, `copy_file`, `delete_file`, `rename_file` |
 | **WEB** | `"web"` | On-demand | `open_url`, `browser_click` |
 | **DEVELOPMENT** | `"development"` | On-demand | `python` |
@@ -170,7 +169,6 @@ Centralized, categorized tool loading. Agents load tools by category through the
 | **ENTERTAINMENT** | `"entertainment"` | On-demand | `search_imdb_titles`, `get_movie_details`, `get_person_details`, `get_person_filmography`, `get_all_series_episodes`, `get_movie_reviews`, `get_movie_trivia`, `get_youtube_video_transcription` |
 | **SYSTEM** | `"system"` | On-demand | `http_request`, `process` |
 
-> **Note:** `parse_pdf` is a vision tool loaded separately in `aria.py` via `make_parse_pdf` (requires VL server binding).
 
 ### API
 
@@ -737,66 +735,6 @@ shell("Building", commands=[
 
 ---
 
-## 14. Vision Tools
-
-**Package:** `aria.tools.vision` | **Loaded separately** in `aria.py` via `make_parse_pdf` and `make_analyze_image`
-
-PDF and image analysis using a vision-language model. PDF pages are rendered to PNG via `pypdfium2` (150 DPI); images are loaded and converted to PNG via Pillow. Both are sent to the VL server via OpenAI multimodal chat format. PDF falls back to text extraction if VL fails.
-
-### `make_parse_pdf(api_base, model) -> Callable`
-
-Factory returning async `parse_pdf` closure bound to VL server.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `api_base` | `str` | VL server URL (e.g., `http://localhost:9091/v1`) |
-| `model` | `str` | Model name (e.g., `granite-docling-258M-Q8_0.gguf`) |
-
-### `parse_pdf(reason, file_path, prompt="")` -- async
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `reason` | `str` | -- | Why you're extracting |
-| `file_path` | `str` | -- | Absolute path to PDF |
-| `prompt` | `str` | `""` | Extraction instruction (defaults to full text/table extraction) |
-
-**Returns:** `source_file`, `output_file`, `content_preview`, `total_chars`, `pages_processed`. Full content persisted to markdown in `VISION_OUTPUT_DIR`.
-
-```python
-parse_pdf = make_parse_pdf("http://localhost:9091/v1", "granite-docling-258M-Q8_0.gguf")
-result = await parse_pdf("Analyzing contract", "/data/downloads/contract.pdf")
-result = await parse_pdf("Tables only", "/data/downloads/report.pdf",
-                         prompt="Extract only tables as markdown.")
-```
-
-### `make_analyze_image(api_base, model) -> Callable`
-
-Factory returning async `analyze_image` closure bound to VL server.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `api_base` | `str` | VL server URL (e.g., `http://localhost:9091/v1`) |
-| `model` | `str` | Model name (e.g., `granite-docling-258M-Q8_0.gguf`) |
-
-### `analyze_image(reason, file_path, prompt="")` -- async
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `reason` | `str` | -- | Why you're analyzing |
-| `file_path` | `str` | -- | Absolute path to image (PNG, JPEG, WebP, GIF, BMP, TIFF) |
-| `prompt` | `str` | `""` | Analysis instruction (defaults to general description) |
-
-**Returns:** `source_file`, `output_file`, `content_preview`, `total_chars`. Full analysis persisted to markdown in `VISION_OUTPUT_DIR`.
-
-```python
-analyze_image = make_analyze_image("http://localhost:9091/v1", "granite-docling-258M-Q8_0.gguf")
-result = await analyze_image("Describe diagram", "/data/downloads/architecture.png")
-result = await analyze_image("Extract text", "/data/downloads/screenshot.jpg",
-                             prompt="Extract all visible text from this screenshot.")
-```
-
----
-
 ## Architecture Diagram
 
 ```mermaid
@@ -864,11 +802,6 @@ graph TB
         end
     end
 
-    subgraph Sep[Loaded Separately]
-        parse_pdf_tool[parse_pdf - Vision]
-        analyze_image_tool[analyze_image - Vision]
-    end
-
     subgraph Infra[Core Infrastructure]
         constants
         decorators
@@ -886,7 +819,6 @@ graph TB
     Core -.-> Infra
     FilesCat -.-> Infra
     OnDemand -.-> Infra
-    Sep -.-> Infra
 ```
 
 ---
@@ -906,7 +838,6 @@ Domain tools are also accessible via CLI commands through the `shell` tool. This
 | `aria imdb search/movie/person/...` | Entertainment | Movie/TV database |
 | `aria web click "selector"` | Browser | Click element on current page |
 | `aria dev run "code"` | Development | Execute Python code |
-| `aria vision pdf/image "file"` | Vision | PDF parsing, image analysis |
 | `aria http request METHOD "url"` | System | HTTP requests |
 | `aria system hardware/processes` | System | Hardware info, process management |
 | `aria worker spawn/status/list` | Workers | Background worker agents |
@@ -945,5 +876,3 @@ Domain tools are also accessible via CLI commands through the `shell` tool. This
 | Get YouTube transcript | `get_youtube_video_transcription` | ENTERTAINMENT |
 | Make HTTP requests | `http_request` | SYSTEM |
 | Manage background processes | `process` | SYSTEM |
-| Extract text from PDFs | `parse_pdf` | Vision (separate) |
-| Analyze/describe images | `analyze_image` | Vision (separate) |
