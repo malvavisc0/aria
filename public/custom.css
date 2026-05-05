@@ -1,29 +1,59 @@
 /* ============================================================
-   Aria – "AI Labs" Design System
-   Research-paper white · terminal-green prompts · flat on purpose
+   Aria – "AI Labs" Design System v2
+   Elegant · Cool · Exciting
+   Research-paper white · terminal-green prompts · purposeful motion
    ============================================================ */
 
-/* ── Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* ── Fonts (Geist via jsDelivr CDN) ── */
+@import url('https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css');
+@import url('https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css');
 
-/* ── Design tokens (scoped to Aria, not Chainlit's built-ins) ── */
+/* ── Design tokens ── */
 :root {
+  /* Spacing (8px grid) */
+  --space-1: 0.25rem;
+  /* 4px — sub-grid */
+  --space-2: 0.5rem;
+  /* 8px */
+  --space-3: 0.75rem;
+  /* 12px */
+  --space-4: 1rem;
+  /* 16px */
+  --space-5: 1.5rem;
+  /* 24px */
+  --space-6: 2rem;
+  /* 32px */
+  --space-7: 2.5rem;
+  /* 40px */
+  --space-8: 3rem;
+  /* 48px */
+
   /* Grid / dot pattern */
   --aria-grid-size: 24px;
   --aria-dot-size: 1px;
   --aria-dot-color: rgba(0, 0, 0, 0.06);
 
-  /* Scrollbar – light defaults (overridden in dark scope) */
+  /* Scrollbar */
   --aria-scroll-track: rgba(0, 0, 0, 0.04);
   --aria-scroll-thumb: rgba(0, 0, 0, 0.16);
   --aria-scroll-thumb-hover: rgba(0, 0, 0, 0.28);
+
+  /* Elevation */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.03);
+  --elevation-2: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elevation-3: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+
+  /* Semantic colors (not in theme.json) */
+  --warning: 40 95% 50%;
+  --code-background-light: 48 14% 95%;
+  --code-background-dark: 220 12% 10%;
 
   /* Transitions */
   --aria-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --aria-duration: 180ms;
 }
 
-/* ── Dark-mode scroll + dot overrides ── */
+/* ── Dark-mode token overrides ── */
 html.dark,
 html[data-theme="dark"],
 :root[data-theme="dark"],
@@ -32,6 +62,9 @@ body[data-theme="dark"] {
   --aria-scroll-track: rgba(255, 255, 255, 0.04);
   --aria-scroll-thumb: rgba(255, 255, 255, 0.14);
   --aria-scroll-thumb-hover: rgba(255, 255, 255, 0.26);
+  --elevation-1: none;
+  --elevation-2: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --elevation-3: 0 4px 20px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
@@ -90,7 +123,7 @@ body[data-theme="dark"] {
 }
 
 /* ============================================================
-   2. Typography – IBM Plex throughout
+   2. Typography – Geist harmonious scale (1.25 ratio)
    ============================================================ */
 body,
 .cl-root,
@@ -103,19 +136,67 @@ body,
 .cl-user-message,
 .cl-assistant-message {
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
   letter-spacing: -0.006em;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+/* Global heading scale — Major Third (1.25×) */
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
+}
+
+h2 {
+  font-size: 1.4rem;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
+}
+
+h3 {
+  font-size: 1.125rem;
+  line-height: 1.3;
   font-weight: 500;
   letter-spacing: -0.015em;
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-1);
+}
+
+h4 {
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+h5 {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+h6 {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 /* Labels, badges, metadata → monospace */
@@ -128,7 +209,7 @@ h6 {
 [data-testid="timestamp"],
 .cl-tag {
   font-family: var(--font-mono) !important;
-  font-size: 0.72rem !important;
+  font-size: 0.6875rem !important;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -139,12 +220,12 @@ pre,
 .cl-code,
 .hljs {
   font-family: var(--font-mono) !important;
-  font-size: 0.82rem !important;
+  font-size: 0.8125rem !important;
   line-height: 1.55;
 }
 
 /* ============================================================
-   3. Messages – clean cards with hairline borders
+   3. Messages – clean cards with elevation
    ============================================================ */
 
 /* --- Light mode messages --- */
@@ -153,18 +234,20 @@ html[data-theme="light"] .cl-message,
 :root[data-theme="light"] .cl-message,
 body[data-theme="light"] .cl-message {
   border: 1px solid hsl(var(--border));
-  border-radius: 5px !important;
-  box-shadow: none;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--elevation-1);
   background: hsl(var(--card));
-  padding: 1rem 1.25rem;
-  transition: border-color var(--aria-duration) var(--aria-ease);
+  padding: var(--space-4);
+  transition: border-color var(--aria-duration) var(--aria-ease),
+    box-shadow var(--aria-duration) var(--aria-ease);
 }
 
 html.light .cl-message:hover,
 html[data-theme="light"] .cl-message:hover,
 :root[data-theme="light"] .cl-message:hover,
 body[data-theme="light"] .cl-message:hover {
-  border-color: hsl(var(--primary) / 0.25);
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: var(--elevation-2);
 }
 
 /* --- Dark mode messages --- */
@@ -173,10 +256,10 @@ html[data-theme="dark"] .cl-message,
 :root[data-theme="dark"] .cl-message,
 body[data-theme="dark"] .cl-message {
   border: 1px solid hsl(var(--border));
-  border-radius: 5px !important;
+  border-radius: var(--radius) !important;
   box-shadow: none;
   background: hsl(var(--card));
-  padding: 1rem 1.25rem;
+  padding: var(--space-4);
   transition: border-color var(--aria-duration) var(--aria-ease);
 }
 
@@ -184,7 +267,7 @@ html.dark .cl-message:hover,
 html[data-theme="dark"] .cl-message:hover,
 :root[data-theme="dark"] .cl-message:hover,
 body[data-theme="dark"] .cl-message:hover {
-  border-color: hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.35);
 }
 
 /* ============================================================
@@ -193,8 +276,8 @@ body[data-theme="dark"] .cl-message:hover {
 .cl-message-avatar {
   border-radius: 50% !important;
   border: 2px solid hsl(var(--border));
-  width: 2.25rem !important;
-  height: 2.25rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
   object-fit: cover;
   transition: border-color var(--aria-duration) var(--aria-ease);
 }
@@ -209,19 +292,18 @@ body[data-theme="dark"] .cl-message:hover {
 .cl-input,
 .cl-input input,
 .cl-input textarea {
-  border-radius: 5px !important;
+  border-radius: var(--radius) !important;
   transition: border-color var(--aria-duration) var(--aria-ease),
     box-shadow var(--aria-duration) var(--aria-ease);
 }
 
-/* Input focus – no colored border, keep it subtle */
+/* Input focus – subtle but VISIBLE (WCAG 2.4.7) */
 .cl-input:focus-within,
 .cl-input:focus-within textarea,
 .cl-input:focus-within input {
-  border-color: hsl(var(--border)) !important;
-  box-shadow: none !important;
+  border-color: hsl(var(--primary) / 0.5) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.08) !important;
   outline: none !important;
-  ring: none !important;
 }
 
 /* Neutralize Chainlit's built-in textarea border/ring classes */
@@ -242,39 +324,79 @@ textarea[class*="border-input"]:focus {
 }
 
 /* ============================================================
-   6. Buttons – flat, green accent for primary action
+   6. Buttons – flat, purposeful interaction states
    ============================================================ */
 .cl-button,
 button {
-  border-radius: 5px !important;
-  /* design.md rounded.md */
+  border-radius: var(--radius) !important;
   font-family: var(--font-sans);
   font-weight: 500;
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
   letter-spacing: -0.005em;
   transition: background-color var(--aria-duration) var(--aria-ease),
     border-color var(--aria-duration) var(--aria-ease),
     color var(--aria-duration) var(--aria-ease),
-    box-shadow var(--aria-duration) var(--aria-ease);
+    box-shadow var(--aria-duration) var(--aria-ease),
+    transform var(--aria-duration) var(--aria-ease);
 }
 
-/* Primary button – green */
+/* Primary button */
 .cl-button.primary,
 button.primary {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   border: none !important;
-  padding: 10px 20px !important;
+  padding: var(--space-2) var(--space-4) !important;
 }
 
 .cl-button.primary:hover,
 button.primary:hover {
-  filter: brightness(1.08);
+  background-color: hsl(155 100% 22%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 var(--space-1) var(--space-2) hsl(var(--primary) / 0.2);
 }
 
 .cl-button.primary:active,
 button.primary:active {
-  filter: brightness(0.95);
+  background-color: hsl(155 100% 20%) !important;
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Secondary / ghost buttons */
+.cl-button:not(.primary),
+button:not(.primary) {
+  padding: var(--space-2) var(--space-3) !important;
+}
+
+.cl-button:not(.primary):hover,
+button:not(.primary):hover {
+  background-color: hsl(var(--accent)) !important;
+  border-color: hsl(var(--primary) / 0.2) !important;
+}
+
+/* Disabled buttons */
+button:disabled,
+button[disabled],
+.cl-button:disabled,
+.cl-button[disabled] {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  filter: grayscale(0.2);
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Disabled inputs */
+input:disabled,
+textarea:disabled,
+select:disabled,
+.cl-input:has(input:disabled),
+.cl-input:has(textarea:disabled) {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: hsl(var(--muted)) !important;
 }
 
 /* ============================================================
@@ -291,6 +413,7 @@ html.light .cl-sidebar,
 html[data-theme="light"] .cl-sidebar,
 :root[data-theme="light"] .cl-sidebar {
   background: hsl(var(--sidebar-background) / 0.92) !important;
+  box-shadow: var(--elevation-1);
 }
 
 /* Dark sidebar */
@@ -304,10 +427,9 @@ html[data-theme="dark"] .cl-sidebar,
    8. Steps & Tool calls – terminal-green accent strip
    ============================================================ */
 .cl-step {
-  border-radius: 3px !important;
-  /* design.md rounded.sm */
+  border-radius: calc(var(--radius) - 2px) !important;
   border: 1px solid hsl(var(--border)) !important;
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
   overflow: hidden;
   transition: border-color var(--aria-duration) var(--aria-ease);
 }
@@ -319,6 +441,7 @@ html[data-theme="dark"] .cl-sidebar,
 /* Step header bar with left green accent */
 .cl-step-header {
   border-left: 3px solid hsl(var(--primary));
+  padding: var(--space-2) var(--space-3);
 }
 
 /* Tool call / CoT step styling */
@@ -328,7 +451,7 @@ html[data-theme="dark"] .cl-sidebar,
 
 /* Typing indicator */
 .cl-typing {
-  border-radius: 5px !important;
+  border-radius: var(--radius) !important;
 }
 
 /* ============================================================
@@ -343,7 +466,7 @@ html[data-theme="dark"] .cl-sidebar,
 }
 
 .cl-message-content {
-  font-size: 0.95rem;
+  font-size: 0.9375rem;
   line-height: 1.65;
   letter-spacing: -0.005em;
   max-width: none;
@@ -358,31 +481,59 @@ html[data-theme="dark"] .cl-sidebar,
   margin-bottom: 0;
 }
 
+/* Content-scoped heading scale (dampened for readability in chat) */
 .cl-message-content h1 {
-  font-size: 1.2rem;
-  margin-top: 1.25rem;
-  margin-bottom: 0.35rem;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
 }
 
 .cl-message-content h2 {
-  font-size: 1.05rem;
-  margin-top: 1rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.125rem;
+  line-height: 1.3;
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .cl-message-content h3 {
-  font-size: 0.975rem;
-  margin-top: 0.85rem;
-  margin-bottom: 0.25rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.cl-message-content h4 {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  font-weight: 600;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.cl-message-content h5 {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cl-message-content h6 {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Code blocks – thin border, terminal feel */
 .cl-message-content pre,
 .cl-code {
-  border-radius: 3px !important;
-  /* rounded.sm */
+  border-radius: calc(var(--radius) - 2px) !important;
   border: 1px solid hsl(var(--border));
-  padding: 0.875rem 1rem;
+  padding: var(--space-3) var(--space-4);
 }
 
 /* Light code block */
@@ -390,7 +541,7 @@ html.light .cl-message-content pre,
 html.light .cl-code,
 html[data-theme="light"] .cl-message-content pre,
 html[data-theme="light"] .cl-code {
-  background: hsl(60 10% 96%) !important;
+  background: hsl(var(--code-background-light)) !important;
 }
 
 /* Dark code block */
@@ -398,33 +549,33 @@ html.dark .cl-message-content pre,
 html.dark .cl-code,
 html[data-theme="dark"] .cl-message-content pre,
 html[data-theme="dark"] .cl-code {
-  background: hsl(210 12% 8%) !important;
+  background: hsl(var(--code-background-dark)) !important;
 }
 
 /* Inline code */
 .cl-message-content code:not(pre code) {
-  border-radius: 3px;
-  padding: 0.15em 0.4em;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.125em 0.375em;
   font-size: 0.85em;
 }
 
 html.light .cl-message-content code:not(pre code),
 html[data-theme="light"] .cl-message-content code:not(pre code) {
-  background: hsl(60 10% 93%);
+  background: hsl(var(--code-background-light));
   border: 1px solid hsl(var(--border));
 }
 
 html.dark .cl-message-content code:not(pre code),
 html[data-theme="dark"] .cl-message-content code:not(pre code) {
-  background: hsl(210 10% 14%);
+  background: hsl(var(--code-background-dark));
   border: 1px solid hsl(var(--border));
 }
 
 /* Blockquotes – left green bar */
 .cl-message-content blockquote {
   border-left: 3px solid hsl(var(--primary));
-  padding-left: 1rem;
-  margin: 0.75rem 0;
+  padding-left: var(--space-4);
+  margin: var(--space-3) 0;
   color: hsl(var(--muted-foreground));
   font-style: italic;
 }
@@ -433,22 +584,22 @@ html[data-theme="dark"] .cl-message-content code:not(pre code) {
 .cl-message-content table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 0.88rem;
+  font-size: 0.875rem;
 }
 
 .cl-message-content th {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   text-align: left;
   border-bottom: 2px solid hsl(var(--border));
 }
 
 .cl-message-content td {
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid hsl(var(--border));
 }
 
@@ -478,7 +629,7 @@ html[data-theme="dark"] .cl-message-content code:not(pre code) {
    ============================================================ */
 .cl-chat-profile,
 .cl-thread-item {
-  border-radius: 5px !important;
+  border-radius: var(--radius) !important;
   transition: background-color var(--aria-duration) var(--aria-ease);
 }
 
@@ -493,27 +644,28 @@ html[data-theme="dark"] .cl-message-content code:not(pre code) {
 }
 
 /* ============================================================
-   12. Settings & Popovers
+   12. Settings & Popovers – elevated panels
    ============================================================ */
 .cl-settings,
 .cl-popover,
 .cl-dialog,
 .cl-dropdown {
-  border-radius: 5px !important;
+  border-radius: var(--radius) !important;
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--elevation-3);
 }
 
 /* ============================================================
-   13. Alerts – flat, no gradients
+   13. Alerts – flat, with brand-aligned accents
    ============================================================ */
 .cl-alert {
-  border-radius: 3px !important;
+  border-radius: calc(var(--radius) - 2px) !important;
   border: 1px solid hsl(var(--border));
 }
 
 .cl-alert-info {
   border-left: 3px solid hsl(var(--primary));
+  background-color: hsl(var(--accent)) !important;
 }
 
 .cl-alert-success {
@@ -521,7 +673,7 @@ html[data-theme="dark"] .cl-message-content code:not(pre code) {
 }
 
 .cl-alert-warning {
-  border-left: 3px solid hsl(40, 95%, 50%);
+  border-left: 3px solid hsl(var(--warning));
 }
 
 .cl-alert-error {
@@ -529,7 +681,7 @@ html[data-theme="dark"] .cl-message-content code:not(pre code) {
 }
 
 /* ============================================================
-   14. Focus rings – consistent green outline
+   14. Focus rings – consistent green outline (WCAG 2.4.7)
    ============================================================ */
 *:focus-visible {
   outline: 2px solid hsl(var(--primary)) !important;
@@ -540,7 +692,7 @@ html[data-theme="dark"] .cl-message-content code:not(pre code) {
    15. Scrollbars – both themes, thin and subtle
    ============================================================ */
 
-/* Firefox – light */
+/* Firefox */
 html.light *:not(pre):not(code),
 html[data-theme="light"] *:not(pre):not(code),
 :root[data-theme="light"] *:not(pre):not(code) {
@@ -548,7 +700,6 @@ html[data-theme="light"] *:not(pre):not(code),
   scrollbar-color: var(--aria-scroll-thumb) var(--aria-scroll-track);
 }
 
-/* Firefox – dark */
 html.dark *:not(pre):not(code),
 html[data-theme="dark"] *:not(pre):not(code),
 :root[data-theme="dark"] *:not(pre):not(code) {
@@ -556,7 +707,7 @@ html[data-theme="dark"] *:not(pre):not(code),
   scrollbar-color: var(--aria-scroll-thumb) var(--aria-scroll-track);
 }
 
-/* Chromium/WebKit scrollbar sizing */
+/* Chromium/WebKit */
 *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -589,8 +740,10 @@ html[data-theme="dark"] *:not(pre):not(code),
 
 .cl-login h1,
 .cl-auth h1 {
-  font-weight: 500;
+  font-size: 1.75rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 /* Light login background */
@@ -615,13 +768,13 @@ html[data-theme="dark"] .cl-auth {
 
 /* Smooth fade for new messages */
 .cl-message {
-  animation: aria-fade-in 250ms var(--aria-ease) both;
+  animation: aria-fade-in 280ms var(--aria-ease) both;
 }
 
 @keyframes aria-fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
 
   to {
@@ -650,26 +803,49 @@ html[data-theme="dark"] .cl-auth {
   }
 }
 
+/* Send button glow on hover */
+button[class*="send"],
+button[aria-label*="send"],
+button[aria-label*="Send"] {
+  transition: box-shadow var(--aria-duration) var(--aria-ease),
+    transform var(--aria-duration) var(--aria-ease) !important;
+}
+
+button[class*="send"]:hover,
+button[aria-label*="send"]:hover,
+button[aria-label*="Send"]:hover {
+  box-shadow: 0 0 var(--space-4) hsl(var(--primary) / 0.35) !important;
+  transform: scale(1.05);
+}
+
 /* ============================================================
-   18. Utility – hide distracting elements, polish edges
+   18. Utility – polish edges, override Chainlit defaults
    ============================================================ */
 
-/* Remove Chainlit's default box-shadow on cards */
-.cl-card {
+/* Cards – light mode gets subtle elevation */
+html.light .cl-card,
+html[data-theme="light"] .cl-card {
+  box-shadow: var(--elevation-1) !important;
+  border: 1px solid hsl(var(--border));
+}
+
+html.dark .cl-card,
+html[data-theme="dark"] .cl-card {
   box-shadow: none !important;
+  border: 1px solid hsl(var(--border));
 }
 
 /* Tooltips */
 .cl-tooltip {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  border-radius: 3px;
+  font-size: 0.6875rem;
+  border-radius: calc(var(--radius) - 2px);
 }
 
 /* File upload area */
 .cl-dropzone,
 .cl-file-upload {
-  border-radius: 5px !important;
+  border-radius: var(--radius) !important;
   border: 2px dashed hsl(var(--border));
   transition: border-color var(--aria-duration) var(--aria-ease),
     background-color var(--aria-duration) var(--aria-ease);
@@ -683,15 +859,45 @@ html[data-theme="dark"] .cl-auth {
   background-color: hsl(var(--primary) / 0.04);
 }
 
+/* Override Chainlit's blue info/empty-state badge to match brand */
+.cl-badge[data-variant="info"],
+[class*="info-badge"],
+[class*="empty-state"] .cl-badge {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  border: 1px solid hsl(var(--primary) / 0.2);
+}
+
 /* ============================================================
-   19. Responsive – tighter padding on small screens
+   19. Form validation states
+   ============================================================ */
+input:invalid:not(:placeholder-shown),
+textarea:invalid:not(:placeholder-shown) {
+  border-color: hsl(var(--destructive)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.08);
+}
+
+/* ============================================================
+   20. Responsive – grid-aligned padding on small screens
    ============================================================ */
 @media (max-width: 768px) {
   .cl-message {
-    padding: 0.75rem 0.875rem !important;
+    padding: var(--space-3) var(--space-3) !important;
   }
 
   .cl-message-content {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.0625rem;
   }
 }

@@ -53,7 +53,7 @@ reaction_on_message_received = false
 
 # Authorize users to spontaneously upload files with messages
 [features.spontaneous_file_upload]
-enabled = true
+enabled = false
 # PDF and image files supported by the vision-language agent.
 accept = [
     "application/pdf",
