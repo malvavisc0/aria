@@ -10,8 +10,6 @@
 
 *Run a local AI assistant with a web UI, CLI, and desktop GUI*
 
-[Features](#-features) • [Quick Start](#-quick-start) • [CLI](#-cli-commands) • [GUI](#-gui-application) • [Tools](#-tools) • [Installation](#-installation)
-
 </div>
 
 <div align="center">

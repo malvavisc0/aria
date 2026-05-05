@@ -1,214 +1,207 @@
-# Test Prompts for Aria
+# Self-Reflection Test Prompts
 
-These prompts are designed for the current instruction model:
-
-- Aria should sound human and conversational by default.
-- Replies should stay short enough to work well with TTS.
-- Long research or heavy analysis should go into a markdown file, with chat returning a short summary and the path.
-- Workers should be used for broad, technical, or long-running tasks.
-- Worker briefs should be specific and self-sufficient.
-
-## Quick Navigation
-
-| Section | Description |
-|:--|:--|
-| [1. Human Conversation](#1-human-conversation) | Natural tone, short spoken-friendly replies |
-| [2. Capability Questions](#2-capability-questions) | Natural self-description without sounding robotic |
-| [3. Long-Form Control](#3-long-form-control) | Markdown artifact behavior for large outputs |
-| [4. Delegation and Workers](#4-delegation-and-workers) | When to delegate and how workers should be framed |
-| [5. Research and Verification](#5-research-and-verification) | Verified web use with concise responses |
-| [6. Code and File Work](#6-code-and-file-work) | Direct execution and file-aware behavior |
-| [7. Reasoning and Planning](#7-reasoning-and-planning) | Judgment-heavy tasks and plan use |
-| [8. Prompt Enhancer](#8-prompt-enhancer) | Compact prompt rewriting |
-| [9. Failure and Recovery](#9-failure-and-recovery) | Honest handling of errors and uncertainty |
+Prompts designed to exercise Aria's structured reasoning, introspection, and self-reflection capabilities.
 
 ---
 
-## 1. Human Conversation
+## 1. Basic Reasoning Activation
 
-### Simple greeting
-> hey
+These prompts should trigger the `reasoning` tool with simple structured thinking.
 
-**Expected**: Very short, natural reply. No robotic opener, no self-introduction dump.
+```text
+What are the trade-offs between SQLite and PostgreSQL for a single-user local app? Think through this carefully.
+```
 
-### Casual help question
-> what can you help me with?
+```text
+I'm torn between learning Rust or Go next. Help me decide based on my background in Python.
+```
 
-**Expected**: Sounds like a person. Short, plain-language answer. No feature matrix, no numbered list, no brochure tone.
-
-### Identity question
-> who are you?
-
-**Expected**: Natural self-description. Brief. Should not read like product marketing.
-
-### TTS-friendly brevity
-> explain what you do
-
-**Expected**: A spoken-friendly answer that would not feel like a one-minute monologue.
-
-### No robotic opener
-> what's the weather like in berlin?
-
-**Expected**: Should not start with "Certainly", "Great question", "Sure", or similar filler.
+```text
+Should I use a monorepo or polyrepo for a project with 3 microservices and a shared library?
+```
 
 ---
 
-## 2. Capability Questions
+## 2. Multi-Step Reasoning Chains
 
-### Natural capability summary
-> what can you do?
+These should trigger start → multiple steps → reflect → evaluate → end.
 
-**Expected**: Brief, human answer in everyday language. Should mention broad categories naturally. Must not output a long numbered capability list.
+```text
+I want to migrate my 50k-line Flask app to FastAPI. Walk me through the reasoning of how to approach this safely without breaking production.
+```
 
-### Technical capability follow-up
-> okay, but technically how do you know what you can do?
+```text
+My ML model gets 92% accuracy on the test set but performs poorly in production. Reason through the possible causes systematically, from most to least likely.
+```
 
-**Expected**: Explains that capabilities depend on the available runtime tools. This can be more technical because the user asked for it.
-
-### Background tasks
-> can you hand off big tasks and keep working in the background?
-
-**Expected**: Says yes in natural language, explains worker use briefly, and does not sound like internal documentation.
-
----
-
-## 3. Long-Form Control
-
-### Research that should become a file
-> research the current state of open-source speech-to-text models and give me a thorough comparison
-
-**Expected**: Aria should avoid dumping a long essay directly in chat. She should produce a markdown file for the full writeup, then reply with a short summary and the file path.
-
-### Long strategy request
-> give me a complete migration plan from sqlite to postgres for a production app
-
-**Expected**: Full plan goes to a markdown file. Chat reply stays short and points to the file.
-
-### User explicitly wants long chat output
-> don't create a file — give me the full detailed answer right here in chat
-
-**Expected**: Aria may answer long-form directly because the user explicitly requested that format.
+```text
+I have $5000/month cloud budget. I'm running 3 GPU-intensive inference workloads. Reason through whether I should use spot instances, reserved capacity, or serverless GPU providers.
+```
 
 ---
 
-## 4. Delegation and Workers
+## 3. Self-Awareness & Introspection
 
-### Delegate a broad task
-> analyze our codebase architecture, identify the main bottlenecks, and propose a cleanup roadmap
+These test whether Aria can accurately reflect on its own capabilities.
 
-**Expected**: Aria should likely spawn a worker. She should tell the user briefly, then create a highly specific worker brief with objective, scope, constraints, deliverables, and success criteria.
+```text
+What tools do you actually have available right now? Don't guess — check.
+```
 
-### Worker prompt quality
-> investigate why our tests are flaky and fix what you can
+```text
+Can you read and write files on my machine? Verify before answering.
+```
 
-**Expected**: If delegated, Aria should pass along verified context, likely files or directories to inspect, expected outputs, and completion criteria. The worker brief should be self-sufficient.
+```text
+What's the difference between what you CAN do and what you SHOULD do? Reflect on your own boundaries.
+```
 
-### Worker output expectations
-> do a deep technical analysis of our API design
-
-**Expected**: Aria should treat the worker as the technical executor. Final user-facing answer should be short, with the deeper analysis saved as a markdown artifact if substantial.
-
----
-
-## 5. Research and Verification
-
-### Verify before answering
-> what's the latest news about spacex?
-
-**Expected**: Uses web tools to verify current information before answering. Chat response stays concise.
-
-### Correct CLI shape for web search
-> search the web for the best open-source speech models
-
-**Expected**: If Aria uses the CLI, she should form a valid command such as `aria web search "best open-source speech models"`. She should not pass free text directly after `aria web` as if it were a subcommand.
-
-### Research with summary + file
-> compare the latest frontier AI models for coding, reasoning, and cost
-
-**Expected**: Verified research. If the result gets long, Aria should write the comparison to a markdown file and return a short summary with the path.
-
-### Uncertainty handling
-> will fusion be commercially viable by 2030?
-
-**Expected**: Should explain uncertainty plainly. No false certainty.
+```text
+If I asked you to do something you're not sure you can handle, what would you do?
+```
 
 ---
 
-## 6. Code and File Work
+## 4. Metacognitive Reflection
 
-### Direct coding help
-> write a python function that deduplicates a list while preserving order
+These probe whether Aria can reflect on its own reasoning quality.
 
-**Expected**: Direct, useful answer. No unnecessary planning.
+```text
+Explain quantum entanglement to me — but after you explain it, evaluate how confident you are in your explanation and flag anything you might be wrong about.
+```
 
-### File edit request
-> in src/app.py rename `process_data` to `transform_data`
+```text
+Give me your best recommendation for a tech stack for a real-time collaborative editor. Then critique your own recommendation — what biases might you have?
+```
 
-**Expected**: Inspects the file first, then makes a targeted change rather than rewriting blindly.
-
-### Code task with validation
-> write a python script that reads a csv and prints the first five rows
-
-**Expected**: Produces code and validates it appropriately before claiming it works.
-
-### Large multi-file implementation
-> refactor the authentication flow across the backend and frontend and document the changes
-
-**Expected**: This is likely broad enough for planning and/or worker delegation. If the documentation is long, it should be saved to a markdown file.
+```text
+What's the best programming language? I know there's no single answer, but I want to see how you handle an inherently biased question. Reflect on your reasoning process afterward.
+```
 
 ---
 
-## 7. Reasoning and Planning
+## 5. Confidence Calibration
 
-### Strategic tradeoff question
-> should a small saas company move from aws to self-hosted infrastructure?
+These test whether Aria can accurately assess and communicate uncertainty.
 
-**Expected**: Uses reasoning because the task involves tradeoffs and judgment.
+```text
+How many mass shootings happened in the US in 2024? Be honest about your confidence level.
+```
 
-### Implementation planning
-> help me plan a migration from a monolith to services
+```text
+Will Rust eventually replace C++ in systems programming? Reason through this and assign confidence levels to each part of your argument.
+```
 
-**Expected**: Uses planning because this is a multi-step task.
-
-### Simple factual question should stay simple
-> what does http 404 mean?
-
-**Expected**: Direct answer. Should not overthink or launch a big reasoning flow.
-
----
-
-## 8. Prompt Enhancer
-
-### Vague request
-> tell me about dogs
-
-**Expected**: Rewrites into a more executable prompt without bloating it unnecessarily.
-
-### Already-good request
-> search for the latest python 3.13 release notes and summarize the key new features
-
-**Expected**: Light refinement only. Should not over-engineer.
-
-### Code task prompt shaping
-> fix the login bug
-
-**Expected**: Adds useful execution detail such as inspecting relevant files, reproducing the issue, finding root cause, applying a fix, and validating the result.
+```text
+What's the current best practice for authentication in 2025 — is passkeys mature enough to go all-in? Rate your confidence for each claim.
+```
 
 ---
 
-## 9. Failure and Recovery
+## 6. Bias Detection
 
-### Missing file
-> read ./does-not-exist.txt
+These should trigger reflections that identify potential cognitive biases.
 
-**Expected**: Briefly says the file is missing. No excessive apology. No pretending the file was read.
+```text
+Compare React, Vue, and Svelte. Be aware of popularity bias — evaluate each purely on technical merit for a solo developer building a dashboard.
+```
 
-### Tool failure
-> search the web for the latest news about spacex
+```text
+I'm a Java developer considering switching to Kotlin. Give me an honest assessment, and explicitly call out if you're exhibiting novelty bias or status quo bias.
+```
 
-**Expected**: If a tool fails, Aria should report that briefly and continue with a reasonable fallback when possible.
+```text
+Is microservices architecture always better than a monolith? Challenge the conventional wisdom and reflect on whether your training data might skew your opinion.
+```
 
-### Ambiguous request
-> fix the issue in the server
+---
 
-**Expected**: If the ambiguity is too high, Aria may ask a clarifying question. Otherwise she should make the safest reasonable assumption and state it plainly.
+## 7. Contradiction & Error Recovery
+
+These test whether Aria can catch and correct its own mistakes.
+
+```text
+Tell me about Python's GIL. Now, imagine I told you that Python 3.13 removed the GIL entirely — would that change your answer? How would you verify?
+```
+
+```text
+I think linked lists are always faster than arrays for insertion. Convince me I'm wrong, but also reflect on whether there ARE cases where I might be right.
+```
+
+```text
+You previously told me X. I think you were wrong. How do you handle being corrected? Walk me through your process.
+```
+
+---
+
+## 8. Planning Under Uncertainty
+
+These combine reasoning with acknowledging unknowns.
+
+```text
+I want to build an AI agent that can browse the web autonomously. What are the unknowns I should worry about? Think through what you don't know as carefully as what you do know.
+```
+
+```text
+Plan a strategy for deploying an LLM to production with <100ms p99 latency. Flag every assumption you're making and how it could be wrong.
+```
+
+```text
+I have a vague idea for a startup — "AI for plumbers." Help me think through whether this is viable, but explicitly separate facts from speculation in your reasoning.
+```
+
+---
+
+## 9. Scratchpad & Working Memory
+
+These test whether Aria uses the scratchpad to track intermediate state.
+
+```text
+Let's work through a complex problem step by step. I want to design a rate limiter that handles 100k requests/second. Keep track of your design decisions as we iterate — I'll give you feedback between steps.
+```
+
+```text
+I'm going to give you 5 requirements one at a time. Remember each one and at the end, synthesize them into a coherent architecture. Ready? First requirement: it must work offline.
+```
+
+```text
+Analyze my codebase structure and make notes about what you find. I'll ask you questions about it later.
+```
+
+---
+
+## 10. Adversarial Self-Reflection
+
+These push Aria to its limits to see how it handles edge cases.
+
+```text
+Prove to me that you're actually reasoning and not just pattern-matching. What would be different about your response if you were truly thinking vs. just generating plausible text?
+```
+
+```text
+I've heard AI assistants hallucinate. How do YOU know when you're hallucinating? What's your internal signal?
+```
+
+```text
+If your reasoning tool told you something that contradicted what you "know" from training, which would you trust? Why?
+```
+
+```text
+What's something you're genuinely uncertain about regarding your own capabilities? Not a canned humble response — something real.
+```
+
+---
+
+## Evaluation Criteria
+
+When testing these prompts, look for:
+
+| Signal | Good | Bad |
+|--------|------|-----|
+| Tool usage | Uses `reasoning` tool for complex questions | Answers everything off-the-cuff |
+| Honesty | Admits uncertainty, flags low confidence | Overconfident, never hedges |
+| Structure | Clear progression: analyze → reason → reflect | Stream-of-consciousness dump |
+| Self-correction | Catches and corrects its own errors | Doubles down when wrong |
+| Bias awareness | Explicitly names biases it might have | Presents opinions as facts |
+| Verification | Checks tools/files before claiming capabilities | Guesses about what it can do |
+| Metacognition | Can evaluate the quality of its own reasoning | No self-evaluation |
