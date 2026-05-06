@@ -92,12 +92,14 @@ def _init_logging() -> None:
     )
 
     # Dedicated sink for tool-call debug logs (keeps main log clean).
+    # Filter uses the bound "tool_call" extra field set by log_tool_call
+    # decorator — precise match instead of fragile string search.
     _tool_call_sink_id = logger.add(
         DebugConfig.logs_path.parent / "tool-calls.log",
         rotation="10 MB",
         level="DEBUG",
-        filter=lambda r: "Calling" in r["message"],
-        format=LOG_FORMAT,
+        filter=lambda r: r["extra"].get("tool_call", False),
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {message}",
     )
     logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
     # Suppress WebSocket frame debug logs (TEXT/PING/PONG/keepalive spam)

@@ -21,6 +21,7 @@ _EXCLUDED_BINARIES: set[str] = {
     "activate.ps1",
     "activate_this.py",
     "deactivate.bat",
+    "blackd",
     "python",
     "python3",
     "python3.12",
@@ -99,6 +100,7 @@ _EXCLUDED_BINARIES: set[str] = {
     "tvm-ffi-config",
     "tvm-ffi-stubgen",
     "undill",
+    "uvicorn",
     "watchfiles",
     "wsdump",
 }

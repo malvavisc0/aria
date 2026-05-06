@@ -105,7 +105,7 @@ def _execute_command_internal(
         if result.stdout:
             logger.info("stdout: {}", result.stdout[:2000])
         if result.stderr:
-            logger.warning("stderr: {}", result.stderr[:2000])
+            logger.debug("stderr: {}", result.stderr[:2000])
         return _build_response(
             operation,
             display_command,
