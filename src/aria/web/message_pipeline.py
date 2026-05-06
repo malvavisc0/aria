@@ -179,7 +179,7 @@ async def on_message_handler(message: cl.Message) -> None:
         prompt = await _handle_message(message)
 
         memory: Memory | None = cl.user_session.get("memory")
-        if memory is None:
+        if memory is None or memory.session_id != message.thread_id:
             memory = create_memory(message.thread_id)
             cl.user_session.set("memory", memory)
             logger.debug(f"Created new Memory for thread {message.thread_id}")

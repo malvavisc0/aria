@@ -55,7 +55,9 @@ def get_data_layer_handler() -> SQLiteSQLAlchemyDataLayer:
     return _cached_data_layer
 
 
-async def auth_callback_handler(username: str, password: str) -> cl.User | None:
+async def auth_callback_handler(
+    username: str, password: str
+) -> cl.User | None:
     """Authenticate a user with username and password.
 
     Called by Chainlit during login to verify user credentials
@@ -100,9 +102,11 @@ async def auth_callback_handler(username: str, password: str) -> cl.User | None:
 async def on_chat_start_handler() -> None:
     """Handle the start of a new chat session.
 
-    Called by Chainlit when a new chat session begins. Sets up
-    custom commands available in the chat interface.
+    Called by Chainlit when a new chat session begins. Clears any
+    stale memory from the previous thread and sets up custom
+    commands available in the chat interface.
     """
+    cl.user_session.set("memory", None)
     logger.debug("Starting new chat session")
     await cl.context.emitter.set_commands(
         [
