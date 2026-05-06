@@ -20,10 +20,10 @@ class TestGetVenvExtras:
         assert len(result) > 0
 
     def test_contains_header(self):
-        """Should include the Additional Binaries header."""
+        """Should include the Additional Commands header."""
         result = get_venv_extras()
         assert (
-            "Additional Binaries" in result
+            "Additional Commands" in result
             or "virtual environment" in result.lower()
         )
 

@@ -32,12 +32,16 @@ class ShellToolSchema(BaseModel):
 
     reason: str = Field(description="Why you are executing this command")
     commands: str = Field(description="The shell command string to execute")
-    stop_on_error: bool = Field(default=True, description="Stop on first failure")
+    stop_on_error: bool = Field(
+        default=True, description="Stop on first failure"
+    )
     timeout: int | None = Field(
         default=None,
         description="Timeout in seconds (default: 30, max: configurable via ARIA_MAX_TIMEOUT)",
     )
-    working_dir: str | None = Field(default=None, description="Working directory path")
+    working_dir: str | None = Field(
+        default=None, description="Working directory path"
+    )
     env: dict[str, str] | None = Field(
         default=None,
         description="Additional environment variables to set for execution",
@@ -149,7 +153,6 @@ def shell(
     When to use:
         - Run shell commands (git, pip, npm, system utilities, etc.).
         - Batch multiple commands with per-command timeout and error handling.
-        - Do NOT use for Python code — use `python`.
         - Do NOT use for long-running background processes — use `process`.
 
     Args:
@@ -197,7 +200,9 @@ def shell(
 
         try:
             result_str = _run_shell_command(
-                reason=(f"Batch command {i + 1}/{len(normalized)}: {display_command}"),
+                reason=(
+                    f"Batch command {i + 1}/{len(normalized)}: {display_command}"
+                ),
                 command=cmd_str,
                 timeout=cmd_timeout,
                 working_dir=cmd_working_dir,

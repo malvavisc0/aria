@@ -1,6 +1,7 @@
 import platform
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Any, cast
 
 from chromadb.api import ClientAPI as ChromaClientAPI
@@ -260,9 +261,17 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     date_str = f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
 
     tz = timestamp.astimezone().tzinfo
+    import shutil
+
+    shell_path = shutil.which("bash") or shutil.which("zsh") or "unknown"
+    shell_name = (
+        Path(shell_path).name if shell_path != "unknown" else "unknown"
+    )
+
     lines: list[str] = [
         f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
-        f"- **OS**: {host}",
+        f"- **System OS**: {host}",
+        f"- **Shell**: {shell_name}",
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")

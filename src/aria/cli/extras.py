@@ -255,14 +255,20 @@ def get_venv_extras(
         rows.append(("Other", "`, `".join(uncategorized)))
 
     lines = [
-        "### Additional Binaries Available\n",
-        "These binaries are available in the active virtual environment "
+        "### Additional Commands Available\n",
+        "These commands are available in the active virtual environment "
         "and can be called via `shell`.\n",
-        "| Category | Tools |",
-        "|----------|-------|",
+        "| Category | Commands |",
+        "|----------|----------|",
     ]
-    for category, tools in rows:
-        lines.append(f"| {category} | `{tools}` |")
+    for category, commands in rows:
+        lines.append(f"| {category} | `{commands}` |")
+
+    lines.append("")
+    lines.append(
+        "Always run `<command> --help` before using any new command "
+        "for the first time."
+    )
 
     return "\n".join(lines)
 

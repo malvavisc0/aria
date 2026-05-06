@@ -24,7 +24,7 @@ app = typer.Typer(
 def processes_cmd(
     ctx: typer.Context,
     action: str = typer.Argument(
-        "list", help="Action: start, stop, status, logs, list"
+        "list", help="Action: start, stop, status, logs, list, restart"
     ),
     name: str | None = typer.Option(None, "--name", "-n", help="Process name"),
     command: str | None = typer.Option(
