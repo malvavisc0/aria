@@ -11,6 +11,7 @@ by Chainlit when the application starts and stops. It manages:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -29,7 +30,9 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+)
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -138,14 +141,17 @@ def _init_vllm_servers() -> None:
     logger.info("All vLLM servers ready")
 
 
-def _init_llm_clients() -> None:
-    """Initialize the LLM and embeddings clients."""
-
+def _init_chat_llm() -> None:
+    """Initialize the chat LLM client (requires vLLM to be healthy)."""
     _state.llm = get_chat_llm(
         api_base=ChatConfig.api_url,
         model=ChatConfig.model,
         api_key=VllmConfig.api_key,
     )
+
+
+def _load_embeddings_sync() -> None:
+    """Load the embeddings model in-process (CPU-only, no vLLM dependency)."""
     _state.embeddings = get_embeddings_model(
         model_name=EmbeddingsConfig.model_path or EmbeddingsConfig.model,
     )
@@ -274,20 +280,35 @@ async def on_app_startup_handler() -> None:
     _vllm_ready = False
     _llm_ready = False
 
+    # Start embeddings load concurrently with vLLM warmup (CPU-only,
+    # no dependency on vLLM). This hides embeddings load latency behind
+    # the vLLM health-check wait (~300s max).
+    logger.info("Loading embeddings model (concurrent with vLLM)...")
+    embed_task = asyncio.create_task(asyncio.to_thread(_load_embeddings_sync))
+
     try:
         logger.info("Starting vLLM inference servers...")
-        _init_vllm_servers()
+        await asyncio.to_thread(_init_vllm_servers)
         _vllm_ready = True
     except Exception as e:
-        logger.warning(f"vLLM servers failed to start: {e}. LLM features disabled.")
+        logger.warning(
+            f"vLLM servers failed to start: {e}. LLM features disabled."
+        )
+
+    # Await embeddings result (likely already done by now)
+    try:
+        await embed_task
+        logger.info("Embeddings model loaded")
+    except Exception as e:
+        logger.warning(f"Embeddings model failed to load: {e}.")
 
     if _vllm_ready:
         try:
-            logger.info("Initializing LLM and embeddings clients...")
-            _init_llm_clients()
+            logger.info("Initializing chat LLM client...")
+            _init_chat_llm()
             _llm_ready = True
         except Exception as e:
-            logger.warning(f"LLM clients failed to initialize: {e}.")
+            logger.warning(f"Chat LLM client failed to initialize: {e}.")
 
     try:
         logger.info("Initializing vector database...")
