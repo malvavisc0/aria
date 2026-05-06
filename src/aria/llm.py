@@ -311,13 +311,13 @@ def get_chat_llm(
         api_key=api_key,
         is_chat_model=True,
         is_function_calling_model=True,
-        temperature=0.4,
-        max_tokens=16384,
+        temperature=0.65,
+        max_tokens=8192,
         additional_kwargs={
-            "top_p": 0.95,
+            "top_p": 0.85,
             "extra_body": {
-                "top_k": 20,
-                "repetition_penalty": 1.05,
+                "top_k": 50,
+                "repetition_penalty": 1.15,
             },
         },
     )
