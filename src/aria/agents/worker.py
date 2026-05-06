@@ -6,8 +6,6 @@ worker-specific instructions that mandate autonomous execution and
 forbid sub-worker spawning.
 """
 
-from typing import Optional
-
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from loguru import logger
@@ -21,8 +19,8 @@ class WorkerAgent(FunctionAgent):
 
     @staticmethod
     def get_system_prompt(
-        extras: Optional[str] = None,
-        output_dir: Optional[str] = None,
+        extras: str | None = None,
+        output_dir: str | None = None,
     ) -> str:
         base = load_agent_instructions(
             agent_name="worker",
@@ -31,16 +29,15 @@ class WorkerAgent(FunctionAgent):
         )
         if output_dir:
             base += (
-                f"\n\n## Output Directory\n"
-                f"Write all deliverables to: `{output_dir}`"
+                f"\n\n## Output Directory\nWrite all deliverables to: `{output_dir}`"
             )
         return base
 
 
 def get_worker_agent(
     llm: LLM,
-    extras: Optional[str] = None,
-    output_dir: Optional[str] = None,
+    extras: str | None = None,
+    output_dir: str | None = None,
 ) -> WorkerAgent:
     """Create a WorkerAgent with full tool set (plan, scratchpad included)."""
     from aria.tools.registry import CORE, FILES

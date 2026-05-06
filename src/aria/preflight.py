@@ -22,7 +22,6 @@ Example:
 
 import os
 from dataclasses import dataclass, field
-from typing import List
 
 
 @dataclass
@@ -57,20 +56,20 @@ class PreflightResult:
     """
 
     passed: bool
-    checks: List[CheckResult] = field(default_factory=list)
+    checks: list[CheckResult] = field(default_factory=list)
 
     @property
-    def failures(self) -> List[CheckResult]:
+    def failures(self) -> list[CheckResult]:
         """Return only the failed checks."""
         return [c for c in self.checks if not c.passed]
 
-    def group_by_category(self) -> dict[str, List[CheckResult]]:
+    def group_by_category(self) -> dict[str, list[CheckResult]]:
         """Group checks by category for display.
 
         Returns:
             Dict mapping category names to lists of checks.
         """
-        grouped: dict[str, List[CheckResult]] = {}
+        grouped: dict[str, list[CheckResult]] = {}
         for check in self.checks:
             if check.category not in grouped:
                 grouped[check.category] = []
@@ -95,7 +94,7 @@ REQUIRED_ENV_VARS = [
 ]
 
 
-def _check_env_vars(checks: List[CheckResult]) -> None:
+def _check_env_vars(checks: list[CheckResult]) -> None:
     """Check that all required environment variables are set."""
     passed = sum(1 for var in REQUIRED_ENV_VARS if os.getenv(var))
     total = len(REQUIRED_ENV_VARS)
@@ -124,7 +123,7 @@ def _check_env_vars(checks: List[CheckResult]) -> None:
             )
 
 
-def _check_data_folder(checks: List[CheckResult]) -> None:
+def _check_data_folder(checks: list[CheckResult]) -> None:
     """Check that the data folder exists."""
     from aria.config.folders import Data
 
@@ -150,7 +149,7 @@ def _check_data_folder(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_binaries(checks: List[CheckResult]) -> None:
+def _check_binaries(checks: list[CheckResult]) -> None:
     """Check that vLLM is installed."""
     from aria.scripts.vllm import get_vllm_version, is_vllm_installed
 
@@ -176,7 +175,7 @@ def _check_binaries(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_lightpanda(checks: List[CheckResult]) -> None:
+def _check_lightpanda(checks: list[CheckResult]) -> None:
     """Check if Lightpanda is installed (optional)."""
     from aria.config.api import Lightpanda
 
@@ -224,7 +223,7 @@ def _check_model_exists(model_path: str) -> bool:
     return path.is_absolute() and path.exists() and path.is_dir()
 
 
-def _check_models(checks: List[CheckResult]) -> None:
+def _check_models(checks: list[CheckResult]) -> None:
     """Check that all required models are configured and downloaded."""
     from aria.config.models import Chat, Embeddings
 
@@ -281,7 +280,7 @@ def _check_models(checks: List[CheckResult]) -> None:
             )
 
 
-def _check_token_limit(checks: List[CheckResult]) -> None:
+def _check_token_limit(checks: list[CheckResult]) -> None:
     """Check that TOKEN_LIMIT_RATIO is within safe bounds.
 
     The memory token limit (TOKEN_LIMIT_RATIO × CHAT_CONTEXT_SIZE) must
@@ -344,7 +343,7 @@ def run_preflight_checks() -> PreflightResult:
     Returns:
         PreflightResult with pass/fail status and all check details.
     """
-    checks: List[CheckResult] = []
+    checks: list[CheckResult] = []
 
     _check_env_vars(checks)
     _check_data_folder(checks)
@@ -396,7 +395,7 @@ def _detect_compute_platform() -> str:
     return "cpu"
 
 
-def _check_memory_requirements(checks: List[CheckResult]) -> None:
+def _check_memory_requirements(checks: list[CheckResult]) -> None:
     """Check if models fit in available GPU VRAM and RAM.
 
     Platform-aware:
@@ -421,7 +420,7 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
                 name="System RAM",
                 passed=True,
                 category="hardware",
-                details=f"{_mb_to_gb(total_ram_mb)} total",
+                details=f"{_mb_to_gb(total_ram_mb)} total, {_mb_to_gb(avail_ram_mb)} available",
             )
         )
 
@@ -460,7 +459,7 @@ def _check_memory_requirements(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_llm_server(checks: List[CheckResult]) -> None:
+def _check_llm_server(checks: list[CheckResult]) -> None:
     """Check that the LLM server is reachable (non-blocking).
 
     The LLM server starts *after* preflight, so this check always passes.
@@ -493,7 +492,7 @@ def _check_llm_server(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_knowledge_db(checks: List[CheckResult]) -> None:
+def _check_knowledge_db(checks: list[CheckResult]) -> None:
     """Check that the knowledge database is accessible."""
     try:
         from aria.tools.knowledge.database import KnowledgeDatabase
@@ -519,7 +518,7 @@ def _check_knowledge_db(checks: List[CheckResult]) -> None:
         )
 
 
-def _check_tool_loading(checks: List[CheckResult]) -> None:
+def _check_tool_loading(checks: list[CheckResult]) -> None:
     """Check that core + file tools load correctly."""
     try:
         from aria.tools.registry import CORE, FILES, get_tools

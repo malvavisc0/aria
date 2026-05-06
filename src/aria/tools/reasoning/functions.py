@@ -10,7 +10,7 @@ parameters, solving the memory management problem inherent in LLM agents.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -28,10 +28,10 @@ def _ok(
     tool: str,
     reason: str,
     agent_id: str,
-    session_id: Optional[str],
-    data: Dict[str, Any],
-    timestamp: Optional[str] = None,
-) -> Dict[str, Any]:
+    session_id: str | None,
+    data: dict[str, Any],
+    timestamp: str | None = None,
+) -> dict[str, Any]:
     return {
         "status": "success",
         "tool": tool,
@@ -48,13 +48,13 @@ def _err(
     tool: str,
     reason: str,
     agent_id: str,
-    session_id: Optional[str],
+    session_id: str | None,
     code: str,
     message: str,
-    how_to_fix: Optional[str] = None,
+    how_to_fix: str | None = None,
     recoverable: bool = False,
-    timestamp: Optional[str] = None,
-) -> Dict[str, Any]:
+    timestamp: str | None = None,
+) -> dict[str, Any]:
     err = {"code": code, "message": message, "recoverable": recoverable}
     if how_to_fix:
         err["how_to_fix"] = how_to_fix
@@ -89,14 +89,14 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
 def reasoning(
     reason: str,
     action: str,
-    content: Optional[str] = None,
-    cognitive_mode: Optional[str] = None,
-    reasoning_type: Optional[str] = None,
-    evidence: Optional[List[str]] = None,
-    confidence: Optional[float] = None,
-    on_step: Optional[int] = None,
+    content: str | None = None,
+    cognitive_mode: str | None = None,
+    reasoning_type: str | None = None,
+    evidence: list[str] | None = None,
+    confidence: float | None = None,
+    on_step: int | None = None,
     agent_id: str = _DEFAULT_AGENT_ID,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Structured reasoning: start → step → reflect → evaluate → end.
 
     Actions: start, step, reflect, evaluate, summary, end.
@@ -156,7 +156,7 @@ def reasoning(
         )
 
 
-def _action_start(reason: str, agent_id: str) -> Dict[str, Any]:
+def _action_start(reason: str, agent_id: str) -> dict[str, Any]:
     """Start a new reasoning session."""
     # Auto-generate unique session ID using UUID for collision resistance
     session_id = f"{agent_id}_session_{uuid.uuid4().hex[:12]}"
@@ -204,12 +204,12 @@ def _action_start(reason: str, agent_id: str) -> Dict[str, Any]:
 def _action_step(
     reason: str,
     agent_id: str,
-    content: Optional[str],
-    cognitive_mode: Optional[str],
-    reasoning_type: Optional[str],
-    evidence: Optional[List[str]],
-    confidence: Optional[float],
-) -> Dict[str, Any]:
+    content: str | None,
+    cognitive_mode: str | None,
+    reasoning_type: str | None,
+    evidence: list[str] | None,
+    confidence: float | None,
+) -> dict[str, Any]:
     """Add a reasoning step."""
     if content is None:
         return _err(
@@ -269,9 +269,9 @@ def _action_step(
 def _action_reflect(
     reason: str,
     agent_id: str,
-    content: Optional[str],
-    on_step: Optional[int],
-) -> Dict[str, Any]:
+    content: str | None,
+    on_step: int | None,
+) -> dict[str, Any]:
     """Add a reflection."""
     if content is None:
         return _err(
@@ -324,7 +324,7 @@ def _action_reflect(
         )
 
 
-def _action_evaluate(reason: str, agent_id: str) -> Dict[str, Any]:
+def _action_evaluate(reason: str, agent_id: str) -> dict[str, Any]:
     """Evaluate reasoning quality."""
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -361,7 +361,7 @@ def _action_evaluate(reason: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def _action_summary(reason: str, agent_id: str) -> Dict[str, Any]:
+def _action_summary(reason: str, agent_id: str) -> dict[str, Any]:
     """Get session summary."""
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:
@@ -398,7 +398,7 @@ def _action_summary(reason: str, agent_id: str) -> Dict[str, Any]:
         )
 
 
-def _action_end(reason: str, agent_id: str) -> Dict[str, Any]:
+def _action_end(reason: str, agent_id: str) -> dict[str, Any]:
     """End the reasoning session."""
     session_id = registry.get_active_session_id(agent_id)
     if session_id is None:

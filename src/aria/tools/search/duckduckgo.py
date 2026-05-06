@@ -1,7 +1,5 @@
 """DuckDuckGo-backed web search tool."""
 
-from typing import Dict, List, Optional
-
 from ddgs import DDGS
 from loguru import logger
 
@@ -11,9 +9,7 @@ from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
 
 @log_tool_call
-def duckduckgo_web_search(
-    reason: str, query: str, max_results: Optional[int] = 5
-) -> str:
+def duckduckgo_web_search(reason: str, query: str, max_results: int | None = 5) -> str:
     """
     Search the web and return a small set of {title, href} results.
 
@@ -34,7 +30,7 @@ def duckduckgo_web_search(
             get_function_name(), reason, RuntimeError(validation_error)
         )
 
-    results: List[Dict[str, str]] = []
+    results: list[dict[str, str]] = []
 
     try:
         # Perform the search with timeout
@@ -72,7 +68,7 @@ def duckduckgo_web_search(
     return tool_success_response(get_function_name(), reason, {"results": results})
 
 
-def _validate_inputs(query: str, max_results: Optional[int]) -> Optional[str]:
+def _validate_inputs(query: str, max_results: int | None) -> str | None:
     """
     Validate input parameters for the web search function.
 

@@ -4,9 +4,9 @@ This module provides CLI commands to manage the Aria webserver:
 - run: Run the server in foreground (blocking)
 - start: Start the server in background
 - stop: Stop the server
-- status: Show server status (web_ui and llama servers)
+- status: Show server status (web_ui and vLLM servers)
 
-LlamaCpp servers are managed internally by the web_ui via Chainlit lifecycle hooks.
+vLLM servers are managed internally by the web_ui via Chainlit lifecycle hooks.
 
 Example:
     ```bash
@@ -120,7 +120,7 @@ def _wait_for_health(host: str, port: int, timeout: float) -> bool:
 def server_run():
     """Run the Aria webserver in foreground (blocking).
 
-    Llama-server processes are started automatically by the web_ui.
+    vLLM server processes are started automatically by the web_ui.
     Press Ctrl+C to stop.
     """
     # Run preflight checks
@@ -146,7 +146,7 @@ def server_run():
 def server_start():
     """Start the Aria webserver in background.
 
-    Llama-server processes are started automatically by the web_ui.
+    vLLM server processes are started automatically by the web_ui.
     """
     # Run preflight checks
     result = run_preflight_checks()
@@ -186,7 +186,7 @@ def server_start():
 def server_stop():
     """Stop the Aria webserver.
 
-    Also stops all llama-server processes managed by the web_ui.
+    Also stops all vLLM server processes managed by the web_ui.
     """
     manager = ServerManager()
     if manager.stop():
@@ -198,7 +198,7 @@ def server_stop():
 
 @app.command("status")
 def server_status():
-    """Show the current status of the Aria webserver and llama servers."""
+    """Show the current status of the Aria webserver and vLLM servers."""
     from aria.config.models import Chat
 
     manager = ServerManager()
@@ -243,12 +243,12 @@ def server_status():
 
     console.print(table)
 
-    # Llama servers status (always show, not just when web_ui is running)
+    # vLLM servers status (always show, not just when web_ui is running)
     console.print()
-    llama_table = Table(title="Llama Servers", show_header=True)
-    llama_table.add_column("Role", style="cyan", width=12)
-    llama_table.add_column("Port", style="yellow")
-    llama_table.add_column("Status", style="green")
+    vllm_table = Table(title="vLLM Servers", show_header=True)
+    vllm_table.add_column("Role", style="cyan", width=12)
+    vllm_table.add_column("Port", style="yellow")
+    vllm_table.add_column("Status", style="green")
 
     for role, get_port in [
         ("chat", Chat.get_port),
@@ -260,6 +260,6 @@ def server_status():
         except (URLError, OSError):
             is_running = False
 
-        llama_table.add_row(role, str(port), "● Running" if is_running else "○ Stopped")
+        vllm_table.add_row(role, str(port), "● Running" if is_running else "○ Stopped")
 
-    console.print(llama_table)
+    console.print(vllm_table)

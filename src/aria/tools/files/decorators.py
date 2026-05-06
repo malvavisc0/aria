@@ -6,8 +6,8 @@ error handling and validation to file operation functions.
 """
 
 import inspect
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable
 
 from loguru import logger
 

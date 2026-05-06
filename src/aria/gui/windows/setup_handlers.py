@@ -11,8 +11,8 @@ import queue
 import re
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon
@@ -97,7 +97,7 @@ class _BaseDownloadWorker(QObject):
     # Set by the main-thread signal handlers so the drain timer can
     # detect completion without touching Qt from the worker thread.
     _done: bool = False
-    _error_msg: Optional[str] = None
+    _error_msg: str | None = None
 
     def run(self) -> None:
         """Execute the download. Must be overridden by subclasses."""
@@ -140,7 +140,7 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
     def __init__(
         self,
         alias: str,
-        token: Optional[str],
+        token: str | None,
         force: bool,
     ):
         super().__init__()
@@ -182,7 +182,7 @@ class _ModelDownloadWorker(_BaseDownloadWorker):
 class _LightpandaDownloadWorker(_BaseDownloadWorker):
     """Worker that downloads Lightpanda binary in a background thread."""
 
-    def __init__(self, bin_dir: Path, version: Optional[str] = None):
+    def __init__(self, bin_dir: Path, version: str | None = None):
         super().__init__()
         self._bin_dir = bin_dir
         self._version = version
@@ -251,12 +251,12 @@ class SetupHandlersMixin:
         )
 
         # Thread / worker attribute handles (kept for closeEvent compat)
-        self._vllm_dl_thread: Optional[QThread] = None
-        self._vllm_dl_worker: Optional[_VllmInstallWorker] = None
-        self._model_dl_thread: Optional[QThread] = None
-        self._model_dl_worker: Optional[_ModelDownloadWorker] = None
-        self._lightpanda_dl_thread: Optional[QThread] = None
-        self._lightpanda_dl_worker: Optional[_LightpandaDownloadWorker] = None
+        self._vllm_dl_thread: QThread | None = None
+        self._vllm_dl_worker: _VllmInstallWorker | None = None
+        self._model_dl_thread: QThread | None = None
+        self._model_dl_worker: _ModelDownloadWorker | None = None
+        self._lightpanda_dl_thread: QThread | None = None
+        self._lightpanda_dl_worker: _LightpandaDownloadWorker | None = None
 
         self._dl_slots: dict[str, _DownloadSlot] = {
             "vllm": _DownloadSlot(

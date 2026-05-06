@@ -62,6 +62,7 @@ class TestStreamAgentResponse:
         output = self._make_output()
 
         emitted = await pipeline._stream_agent_response(handler, output)
+        assert emitted is True
 
         output.stream_token.assert_any_await(pipeline._THINKING_OPEN)
         output.stream_token.assert_any_await("pondering")

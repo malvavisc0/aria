@@ -6,8 +6,8 @@ error handling and validation to Python code execution functions.
 """
 
 import inspect
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable
 
 from loguru import logger
 

@@ -11,7 +11,6 @@ import re
 import tempfile
 import time
 from pathlib import Path
-from typing import Dict, Optional, Union
 from urllib.parse import urlparse
 
 import httpx
@@ -72,7 +71,7 @@ def _is_binary_content(content_type: str) -> bool:
     return any(binary_type in content_type for binary_type in BINARY_CONTENT_TYPES)
 
 
-def _get_default_headers() -> Dict[str, str]:
+def _get_default_headers() -> dict[str, str]:
     """Generate default HTTP headers to mimic a real browser."""
     return {
         "User-Agent": random.choice(USER_AGENTS),
@@ -85,9 +84,7 @@ def _get_default_headers() -> Dict[str, str]:
     }
 
 
-def _extract_filename_from_response(
-    response: httpx.Response, url: str
-) -> Optional[str]:
+def _extract_filename_from_response(response: httpx.Response, url: str) -> str | None:
     """Extract filename from HTTP response headers or URL."""
     content_disp = response.headers.get("content-disposition", "")
     if content_disp:
@@ -104,9 +101,9 @@ def _extract_filename_from_response(
 
 def _fetch_file(
     url: str,
-    custom_headers: Optional[Dict[str, str]] = None,
+    custom_headers: dict[str, str] | None = None,
     max_size: int = MAX_FILE_SIZE,
-) -> tuple[Union[str, bytes], str, Optional[str]]:
+) -> tuple[str | bytes, str, str | None]:
     """Download a file from a URL with simple retry logic."""
     from aria.tools.search.download import URLDownloadError
 
@@ -225,7 +222,7 @@ def _clean_text(text: str) -> str:
     return text
 
 
-def _markitdown(content: Union[str, bytes], content_type: str, url: str) -> str:
+def _markitdown(content: str | bytes, content_type: str, url: str) -> str:
     """Convert content to markdown using MarkItDown."""
     if isinstance(content, str):
         content = content.encode("utf-8")
@@ -238,7 +235,7 @@ def _markitdown(content: Union[str, bytes], content_type: str, url: str) -> str:
     return _clean_text(result)
 
 
-def _create_response(tool: str, reason: str, file_path: str, metadata: Dict) -> str:
+def _create_response(tool: str, reason: str, file_path: str, metadata: dict) -> str:
     """Create a success JSON response."""
     return tool_success_response(
         tool,
@@ -253,13 +250,13 @@ def _create_error_response(tool: str, reason: str, error_message: str) -> str:
 
 
 def _save_content_to_file(
-    content: Union[str, bytes],
+    content: str | bytes,
     url: str,
     content_type: str,
     output_format: str = "auto",
-    original_filename: Optional[str] = None,
-    download_path: Optional[str] = None,
-) -> tuple[str, Dict]:
+    original_filename: str | None = None,
+    download_path: str | None = None,
+) -> tuple[str, dict]:
     """Save content to a file on disk and return the file path and metadata."""
     if download_path:
         resolved_path = Path(download_path).expanduser().resolve()

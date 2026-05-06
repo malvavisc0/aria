@@ -5,13 +5,12 @@ to reduce code duplication and ensure consistent behavior.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 INSTRUCTIONS_DIR = Path(__file__).parent
 BASE_SECTIONS_DIR = INSTRUCTIONS_DIR / "base"
 
 # All available base section names, in load order.
-ALL_BASE_SECTIONS: List[str] = [
+ALL_BASE_SECTIONS: list[str] = [
     "core",
     "tools",
     "evidence",
@@ -21,9 +20,9 @@ ALL_BASE_SECTIONS: List[str] = [
 
 def load_agent_instructions(
     agent_name: str,
-    extras: Optional[str] = None,
-    variables: Optional[Dict[str, str]] = None,
-    base_sections: Optional[List[str]] = None,
+    extras: str | None = None,
+    variables: dict[str, str] | None = None,
+    base_sections: list[str] | None = None,
 ) -> str:
     """Load agent instructions from a markdown file.
 
@@ -65,10 +64,10 @@ def load_agent_instructions(
             for section in sections_to_load:
                 section_path = BASE_SECTIONS_DIR / f"{section}.md"
                 if section_path.exists():
-                    with open(section_path, mode="r", encoding="utf-8") as file:
+                    with open(section_path, encoding="utf-8") as file:
                         parts.append(file.read())
 
-        with open(instructions_path, mode="r", encoding="utf-8") as file:
+        with open(instructions_path, encoding="utf-8") as file:
             parts.append(file.read())
 
     if extras:

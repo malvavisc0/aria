@@ -4,7 +4,7 @@ Provides a persistent key-value working memory that survives across
 reasoning sessions and conversations.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from aria.tools import utc_timestamp
 from aria.tools.decorators import log_tool_call
@@ -18,19 +18,21 @@ _DEFAULT_AGENT_ID = "aria"
 def scratchpad(
     reason: str,
     key: str,
-    value: Optional[str] = None,
+    value: str | None = None,
     operation: str = "get",
     agent_id: str = _DEFAULT_AGENT_ID,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Ephemeral key-value working memory (SQLite-backed).
 
-    Operations: get, set, delete, list. Use key="all" to clear all.
+    When to use:
+        - Store/retrieve small data across reasoning sessions.
+        - Use key="all" with delete to clear all entries.
 
     Args:
         reason: Why (logging).
         key: Key to operate on (ignored for list).
         value: Value to store (required for set).
-        operation: get|set|delete|list (default: get).
+        operation: get | set | delete | list (default: get).
         agent_id: Auto-set, do not provide.
 
     Returns:
@@ -53,7 +55,7 @@ def scratchpad(
             agent_id=agent_id,
             code="UNSUPPORTED_OPERATION",
             message=(
-                f"Unknown operation '{operation}'. " "Supported: get, set, delete, list"
+                f"Unknown operation '{operation}'. Supported: get, set, delete, list"
             ),
             how_to_fix="Use one of: get, set, delete, list",
         )
@@ -66,9 +68,9 @@ def _ok(
     *,
     reason: str,
     agent_id: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     timestamp: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "status": "success",
         "tool": "scratchpad",
@@ -85,9 +87,9 @@ def _err(
     agent_id: str,
     code: str,
     message: str,
-    how_to_fix: Optional[str] = None,
-) -> Dict[str, Any]:
-    err: Dict[str, Any] = {
+    how_to_fix: str | None = None,
+) -> dict[str, Any]:
+    err: dict[str, Any] = {
         "code": code,
         "message": message,
         "recoverable": True,
@@ -111,9 +113,9 @@ def _op_set(
     reason: str,
     agent_id: str,
     key: str,
-    value: Optional[str],
+    value: str | None,
     now: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if value is None:
         return _err(
             reason=reason,
@@ -145,7 +147,7 @@ def _op_get(
     agent_id: str,
     key: str,
     now: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     db = get_database()
     item = db.get_item(agent_id, key)
 
@@ -176,7 +178,7 @@ def _op_delete(
     agent_id: str,
     key: str,
     now: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     db = get_database()
 
     if key == "all":
@@ -218,7 +220,7 @@ def _op_list(
     reason: str,
     agent_id: str,
     now: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     db = get_database()
     items = db.list_items(agent_id)
 

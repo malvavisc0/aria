@@ -22,7 +22,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -84,7 +83,7 @@ class VllmServerManager:
         save_state(self.PID_FILE, self._pids)
 
     @staticmethod
-    def _get_model_max_context(model_path: str) -> Optional[int]:
+    def _get_model_max_context(model_path: str) -> int | None:
         """Read the model's maximum context length from its config.json.
 
         Inspects ``max_position_embeddings``, ``model_max_length``, or
@@ -126,18 +125,18 @@ class VllmServerManager:
         model_path: str,
         port: int,
         task: str = "auto",
-        max_model_len: Optional[int] = None,
-        gpu_memory_utilization: Optional[float] = None,
-        quantization: Optional[str] = None,
+        max_model_len: int | None = None,
+        gpu_memory_utilization: float | None = None,
+        quantization: str | None = None,
         tensor_parallel_size: int = 1,
         dtype: str = "auto",
-        chat_template_file: Optional[str] = None,
+        chat_template_file: str | None = None,
         kv_cache_dtype: str = "auto",
         api_key: str = "sk-aria",
-        served_model_name: Optional[str] = None,
-        tool_call_parser: Optional[str] = None,
-        reasoning_parser: Optional[str] = None,
-        chat_template_kwargs: Optional[str] = None,
+        served_model_name: str | None = None,
+        tool_call_parser: str | None = None,
+        reasoning_parser: str | None = None,
+        chat_template_kwargs: str | None = None,
     ) -> list[str]:
         """Build command to launch a vLLM server.
 
@@ -181,7 +180,7 @@ class VllmServerManager:
         if gpu_memory_utilization is not None:
             cmd.extend(["--gpu-memory-utilization", str(gpu_memory_utilization)])
 
-        effective_quant: Optional[str] = None
+        effective_quant: str | None = None
         if quantization:
             # vLLM v0.20+: gptq kernel is buggy for 4-bit; use gptq_marlin
             effective_quant = "gptq_marlin" if quantization == "gptq" else quantization
@@ -242,8 +241,8 @@ class VllmServerManager:
         self,
         host: str,
         port: int,
-        timeout: Optional[float] = None,
-        proc: Optional[subprocess.Popen] = None,
+        timeout: float | None = None,
+        proc: subprocess.Popen | None = None,
     ) -> bool:
         """Poll ``/health`` until the server returns HTTP 200 or timeout.
 
@@ -369,13 +368,13 @@ class VllmServerManager:
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
             )
+            log_fh.close()
             self._pids[role] = proc.pid
             procs[role] = proc
 
             # Brief check: if the process exits immediately it failed validation
             time.sleep(3)
             if proc.poll() is not None:
-                log_fh.close()
                 stderr_output = ""
                 if log_file.exists():
                     stderr_output = log_file.read_text().strip()[-2000:]

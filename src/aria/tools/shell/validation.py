@@ -6,7 +6,6 @@ including blocked command detection and working directory validation.
 
 import re
 from pathlib import Path
-from typing import List, Optional
 
 from aria.tools.shell.constants import BASE_DIR, BLOCKED_COMMANDS
 from aria.tools.shell.exceptions import (
@@ -36,7 +35,7 @@ def _extract_command_name(command: str) -> str:
     return ""
 
 
-def _extract_all_command_names(command: str) -> List[str]:
+def _extract_all_command_names(command: str) -> list[str]:
     """Extract command names from all segments of a shell pipeline.
 
     Splits on shell operators (|, ||, &&, ;) and extracts the first
@@ -94,7 +93,7 @@ def _validate_command(command: str) -> None:
         )
 
 
-def _validate_working_dir(working_dir: Optional[str]) -> Path:
+def _validate_working_dir(working_dir: str | None) -> Path:
     """Validate and resolve the working directory.
 
     Args:

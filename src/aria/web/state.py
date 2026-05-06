@@ -53,7 +53,7 @@ class AppState(BaseModel):
     - LLM and embeddings clients
     - Vector database connection
     - Agent workflow
-    - LlamaCpp server manager
+    - vLLM server manager
     - Browser manager
     - Database engine
 

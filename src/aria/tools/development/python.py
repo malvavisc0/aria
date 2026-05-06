@@ -3,7 +3,6 @@
 import ast
 import os
 import traceback
-from typing import List, Optional
 
 from loguru import logger
 
@@ -31,27 +30,18 @@ from aria.tools.development.exceptions import PythonSecurityError
 )
 def python(
     reason: str,
-    code: Optional[str] = None,
-    file: Optional[str] = None,
-    args: Optional[List[str]] = None,
-    timeout: Optional[int] = DEFAULT_TIMEOUT,
+    code: str | None = None,
+    file: str | None = None,
+    args: list[str] | None = None,
+    timeout: int | None = DEFAULT_TIMEOUT,
     check_only: bool = False,
 ) -> str:
     """Execute or validate Python code with sandboxed output capture.
 
     When to use:
-        - Use this to run Python code snippets or scripts when you need
-          to compute, transform data, or test logic.
-        - Use this with check_only=True to validate syntax without
-          executing (e.g., before writing code to a file).
-        - Use this to run Python test files or scripts from disk.
-        - Do NOT use this for shell commands (git, pip, npm) — use
-          the `shell` tool instead.
-
-    Why:
-        Provides a controlled Python execution environment with timeout
-        enforcement, stdout/stderr capture, and syntax validation —
-        essential for safe code execution within an agent workflow.
+        - Run Python code snippets, scripts, or test files.
+        - Use check_only=True to validate syntax without executing.
+        - Do NOT use for shell commands (git, pip, npm) — use `shell`.
 
     Args:
         reason: Why you're running this (for logging/auditing).
@@ -62,13 +52,7 @@ def python(
         check_only: If True, validate syntax without executing.
 
     Returns:
-        JSON with result data. For check_only: valid, error_type, message.
-        For execution: success, stdout, stderr, error_type, traceback.
-
-    Important:
-        - Provide exactly one of ``code`` or ``file``, not both.
-        - Execution is sandboxed with restricted globals (no imports of
-          os, sys, subprocess, etc.).
+        JSON with result data (stdout, stderr, traceback, etc.).
     """
     # Validate mutual exclusivity
     if code is None and file is None:
@@ -84,8 +68,8 @@ def python(
 
 def _python_check(
     reason: str,
-    code: Optional[str],
-    file: Optional[str],
+    code: str | None,
+    file: str | None,
 ) -> str:
     """Validate Python syntax without executing."""
     if code is not None:
@@ -126,10 +110,10 @@ def _python_check(
 
 def _python_execute(
     reason: str,
-    code: Optional[str],
-    file: Optional[str],
-    args: Optional[List[str]],
-    timeout: Optional[int],
+    code: str | None,
+    file: str | None,
+    args: list[str] | None,
+    timeout: int | None,
 ) -> str:
     """Execute Python code or file."""
     is_file = file is not None

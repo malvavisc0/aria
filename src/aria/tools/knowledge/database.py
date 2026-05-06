@@ -1,8 +1,7 @@
 """Database operations for knowledge store persistence."""
 
 import json
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import select
@@ -43,7 +42,7 @@ class KnowledgeDatabase:
         agent_id: str,
         key: str,
         value: str,
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
     ) -> None:
         """Store a new knowledge entry."""
         with self.get_session() as session:
@@ -53,15 +52,15 @@ class KnowledgeDatabase:
                 key=key,
                 value=value,
                 tags=json.dumps(tags) if tags else None,
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
                 is_active=True,
             )
             session.add(entry)
             session.commit()
             logger.debug(f"Stored knowledge entry {entry_id} with key '{key}'")
 
-    def recall(self, agent_id: str, key: str) -> Optional[Dict]:
+    def recall(self, agent_id: str, key: str) -> dict | None:
         """Recall a knowledge entry by key."""
         with self.get_session() as session:
             stmt = (
@@ -92,7 +91,7 @@ class KnowledgeDatabase:
         agent_id: str,
         query: str,
         max_results: int = 10,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Search knowledge entries by key or value substring."""
         with self.get_session() as session:
             pattern = f"%{query}%"
@@ -126,9 +125,9 @@ class KnowledgeDatabase:
     def list_entries(
         self,
         agent_id: str,
-        tag: Optional[str] = None,
+        tag: str | None = None,
         max_results: int = 50,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """List all knowledge entries for an agent."""
         with self.get_session() as session:
             stmt = select(KnowledgeEntryModel).where(
@@ -170,7 +169,7 @@ class KnowledgeDatabase:
                 return False
 
             entry.value = value
-            entry.updated_at = datetime.now(timezone.utc)
+            entry.updated_at = datetime.now(UTC)
             session.commit()
             logger.debug(f"Updated knowledge entry {entry_id}")
             return True
@@ -189,7 +188,7 @@ class KnowledgeDatabase:
                 return False
 
             entry.is_active = False
-            entry.updated_at = datetime.now(timezone.utc)
+            entry.updated_at = datetime.now(UTC)
             session.commit()
             logger.debug(f"Deleted knowledge entry {entry_id}")
             return True

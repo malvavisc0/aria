@@ -9,8 +9,7 @@ Note: This is separate from aria.db.models.Base which is used for
 the Chainlit UI database - Users, Threads, Steps, etc.
 """
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -36,15 +35,15 @@ class ScratchpadItemModel(Base):
     agent_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)

@@ -67,7 +67,7 @@ class TestStorageIntegration:
     @pytest.mark.asyncio
     async def test_storage_directory_created(self, data_layer_with_storage):
         """Test storage directory is created."""
-        _, storage_client, storage_path = data_layer_with_storage
+        _, _, storage_path = data_layer_with_storage
 
         assert storage_path.exists()
         assert storage_path.is_dir()

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ################################################################################
 ## Form generated from reading UI file 'edituserdialog.ui'
 ##
@@ -26,7 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_EditUserDialog(object):
+class Ui_EditUserDialog:
     def setupUi(self, EditUserDialog):
         if not EditUserDialog.objectName():
             EditUserDialog.setObjectName("EditUserDialog")

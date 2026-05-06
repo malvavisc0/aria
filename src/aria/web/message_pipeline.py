@@ -48,14 +48,10 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning(
-                "Prompt enhancer not available, returning original prompt"
-            )
+            logger.warning("Prompt enhancer not available, returning original prompt")
             return prompt
         try:
-            response = await _state.prompt_enhancer.run(
-                user_msg=message.content
-            )
+            response = await _state.prompt_enhancer.run(user_msg=message.content)
             results: PromptEnhancementResult = response.structured_response
             prompt = results.enhanced
             logger.debug("Prompt enhancement completed successfully")
@@ -121,9 +117,7 @@ async def _stream_agent_response(
                     await output.stream_token(_THINKING_OPEN)
                     thinking_opened = True
                     emitted = True
-                await output.stream_token(
-                    event.thinking_delta.replace("\n", "\n> ")
-                )
+                await output.stream_token(event.thinking_delta.replace("\n", "\n> "))
             elif event.delta:
                 if thinking_opened:
                     await output.stream_token(_THINKING_CLOSE)

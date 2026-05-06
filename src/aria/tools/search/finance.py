@@ -1,7 +1,7 @@
 """Yahoo Finance-backed market data tools."""
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yfinance
 from loguru import logger
@@ -335,8 +335,7 @@ def fetch_ticker_news(reason: str, ticker: str, max_articles: int = 10) -> str:
         - Articles are sorted by recency (most recent first).
     """
     logger.info(
-        f"fetch_ticker_news called with ticker='{ticker}', "
-        f"max_articles={max_articles}"
+        f"fetch_ticker_news called with ticker='{ticker}', max_articles={max_articles}"
     )
     raw_ticker = ticker
     try:
@@ -481,7 +480,7 @@ def _get_ticker(ticker: str) -> Any:
     return yfinance.Ticker(ticker)
 
 
-def _get_ticker_info(ticker_obj: Any, ticker: str) -> Dict[str, Any]:
+def _get_ticker_info(ticker_obj: Any, ticker: str) -> dict[str, Any]:
     """
     Get ticker info with error handling.
 
@@ -503,7 +502,7 @@ def _get_ticker_info(ticker_obj: Any, ticker: str) -> Dict[str, Any]:
         ) from exc
 
 
-def _process_news_article(article: Any) -> Optional[Dict[str, Any]]:
+def _process_news_article(article: Any) -> dict[str, Any] | None:
     """
     Process a single news article into standardized format.
 

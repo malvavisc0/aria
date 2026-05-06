@@ -4,8 +4,6 @@ Wraps the persistent key-value knowledge store as CLI sub-commands
 that output JSON.
 """
 
-from typing import List, Optional
-
 import typer
 
 app = typer.Typer(
@@ -17,7 +15,7 @@ app = typer.Typer(
 def store_cmd(
     key: str = typer.Argument(..., help="Unique key for the entry"),
     value: str = typer.Argument(..., help="Value to store"),
-    tags: Optional[List[str]] = typer.Option(
+    tags: list[str] | None = typer.Option(
         None, "--tags", "-t", help="Tags for categorization"
     ),
 ):
@@ -68,9 +66,7 @@ def search_cmd(
 
 @app.command("list")
 def list_cmd(
-    tags: Optional[List[str]] = typer.Option(
-        None, "--tags", "-t", help="Filter by tags"
-    ),
+    tags: list[str] | None = typer.Option(None, "--tags", "-t", help="Filter by tags"),
     max_results: int = typer.Option(10, "--max-results", "-n", help="Maximum results"),
 ):
     """List all stored knowledge entries."""

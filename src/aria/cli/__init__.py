@@ -21,13 +21,17 @@ from sqlalchemy.orm import Session
 from aria.config.database import SQLite
 from aria.db.models import Base
 
+_engine = create_engine(SQLite.db_url)
+Base.metadata.create_all(_engine)
+
 
 @contextlib.contextmanager
 def get_db_session():
     """Context manager for database sessions with automatic transaction handling.
 
-    Creates a new SQLAlchemy session, commits on success, rolls back on error,
-    and always closes the session on exit.
+    Uses a module-level singleton engine to avoid creating a new engine
+    (and connection pool) on every invocation. Commits on success,
+    rolls back on error, and always closes the session on exit.
 
     Yields:
         Session: An active SQLAlchemy session for database operations.
@@ -42,9 +46,7 @@ def get_db_session():
             users = session.execute(select(User)).scalars().all()
         ```
     """
-    engine = create_engine(SQLite.db_url)
-    Base.metadata.create_all(engine)
-    session = Session(engine)
+    session = Session(_engine)
     try:
         yield session
         session.commit()

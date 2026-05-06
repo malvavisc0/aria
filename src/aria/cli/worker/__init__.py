@@ -9,9 +9,8 @@ import shutil
 import subprocess
 import sys
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -68,13 +67,13 @@ def spawn(
         "-e",
         help="Expected deliverable or result the worker should produce.",
     ),
-    instructions: Optional[str] = typer.Option(
+    instructions: str | None = typer.Option(
         None,
         "--instructions",
         "-i",
         help="Optional extra instructions. Avoid vague additions; the worker should not need follow-up questions.",
     ),
-    thread_id: Optional[str] = typer.Option(
+    thread_id: str | None = typer.Option(
         None,
         "--thread-id",
         "-t",
@@ -123,7 +122,7 @@ def spawn(
         "worker_id": wid,
         "pid": process.pid,
         "status": "running",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "completed_at": None,
         "thread_id": thread_id,
         "prompt": prompt,
@@ -151,7 +150,7 @@ def spawn(
 
 @app.command("list")
 def list_workers(
-    thread_id: Optional[str] = typer.Option(
+    thread_id: str | None = typer.Option(
         None,
         "--thread-id",
         "-t",
@@ -232,7 +231,7 @@ def cancel(
 
     stop_process(audit.get("pid", 0))
     audit["status"] = "cancelled"
-    audit["completed_at"] = datetime.now(timezone.utc).isoformat()
+    audit["completed_at"] = datetime.now(UTC).isoformat()
     save_state(path, audit)
     typer.echo(json.dumps(audit))
 
@@ -245,7 +244,7 @@ def clean(
     if not WORKERS_DIR.exists():
         return
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     removed = 0
     for f in WORKERS_DIR.glob("worker_*.json"):
         audit = load_state(f)

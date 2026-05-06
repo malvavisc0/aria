@@ -1,7 +1,5 @@
 """Planner registry backed by database."""
 
-from typing import Optional
-
 from loguru import logger
 
 from .database import PlannerDatabase
@@ -16,7 +14,7 @@ def _get_db() -> PlannerDatabase:
     return _db
 
 
-def get_active_plan_id(agent_id: str) -> Optional[str]:
+def get_active_plan_id(agent_id: str) -> str | None:
     """Get the most recent active plan ID for an agent."""
     db = _get_db()
     plan_data = db.get_active_plan(agent_id)

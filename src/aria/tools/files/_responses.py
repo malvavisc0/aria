@@ -4,12 +4,12 @@ This module provides standardized response helpers for file tool operations,
 ensuring consistent output format using the Standard Envelope pattern.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from aria.tools import get_function_name, tool_error_response, tool_response
 
 
-def file_success_response(reason: str, data: Dict[str, Any], tool: str = "") -> str:
+def file_success_response(reason: str, data: dict[str, Any], tool: str = "") -> str:
     """Build standardized success response for file operations.
 
     Args:

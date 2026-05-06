@@ -11,7 +11,7 @@ actual files on disk.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any
 
 import aiofiles
 from chainlit.data.storage_clients.base import BaseStorageClient
@@ -43,7 +43,7 @@ class LocalStorageClient(BaseStorageClient):
             await client.upload_file("test.txt", b"data")
     """
 
-    def __init__(self, storage_path: Union[str, Path], base_url: str = "/storage"):
+    def __init__(self, storage_path: str | Path, base_url: str = "/storage"):
         """Initialize local storage client.
 
         Args:
@@ -100,11 +100,11 @@ class LocalStorageClient(BaseStorageClient):
     async def upload_file(
         self,
         object_key: str,
-        data: Union[bytes, str],
+        data: bytes | str,
         mime: str = "application/octet-stream",
         overwrite: bool = True,
         content_disposition: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Upload a file to local storage.
 
         Args:

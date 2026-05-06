@@ -133,7 +133,7 @@ class ServerHandlersMixin:
             self._settings_just_saved = False
             if result.passed:
                 self.statusBar().showMessage(
-                    "Settings saved — all checks passed. " "Restart to apply.",
+                    "Settings saved — all checks passed. Restart to apply.",
                     5000,
                 )
             else:
@@ -156,7 +156,7 @@ class ServerHandlersMixin:
             self._settings_just_loaded = False
             if result.passed:
                 self.statusBar().showMessage(
-                    "Settings loaded — all checks passed. " "Server can be started.",
+                    "Settings loaded — all checks passed. Server can be started.",
                     5000,
                 )
             else:
@@ -329,7 +329,7 @@ class ServerHandlersMixin:
             if crashed:
                 # Crash message takes priority
                 self.statusBar().showMessage(
-                    "Server stopped unexpectedly. " "Check logs for details.",
+                    "Server stopped unexpectedly. Check logs for details.",
                     10000,
                 )
             elif (

@@ -4,7 +4,7 @@ This module provides startup and shutdown handlers that are invoked
 by Chainlit when the application starts and stops. It manages:
 - Database initialization (SQLite, ChromaDB)
 - LLM and embeddings model setup
-- LlamaCpp server management
+- vLLM server management
 - Browser automation (Lightpanda)
 - Logging configuration
 """
@@ -190,7 +190,7 @@ async def _init_browser() -> None:
                 logger.info("Lightpanda browser started successfully")
             else:
                 logger.warning(
-                    "Lightpanda browser failed to start — " "browser tools disabled"
+                    "Lightpanda browser failed to start — browser tools disabled"
                 )
     else:
         logger.info("Lightpanda not installed — browser tools disabled")
@@ -316,7 +316,7 @@ async def on_app_shutdown_handler() -> None:
 
     Called by Chainlit when the application is shutting down.
     Performs cleanup of:
-    - LlamaCpp inference servers
+    - vLLM inference servers
     - Lightpanda browser
     - Database connections
     - Logging sinks

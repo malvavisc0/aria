@@ -1,8 +1,7 @@
 """Database operations for reasoning persistence using SQLAlchemy."""
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime, timedelta
 
 from loguru import logger
 from sqlalchemy import select
@@ -67,7 +66,7 @@ class ReasoningDatabase:
 
             if existing:
                 # Update existing
-                existing.updated_at = datetime.now(timezone.utc)
+                existing.updated_at = datetime.now(UTC)
                 existing.is_active = True
             else:
                 # Create new
@@ -76,7 +75,7 @@ class ReasoningDatabase:
                     session_id=session_id,
                     agent_id=agent_id,
                     created_at=datetime.fromisoformat(created_at),
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     is_active=True,
                 )
                 session.add(new_session)
@@ -84,14 +83,14 @@ class ReasoningDatabase:
             session.commit()
             logger.debug(f"Saved session metadata: {session_id} for agent {agent_id}")
 
-    def load_session(self, session_id: str, agent_id: str) -> Optional[Dict]:
+    def load_session(self, session_id: str, agent_id: str) -> dict | None:
         """Load complete session data from database."""
         with self.get_session() as session:
             # Get session with all relationships
             stmt = select(ReasoningSessionModel).where(
                 ReasoningSessionModel.session_id == session_id,
                 ReasoningSessionModel.agent_id == agent_id,
-                ReasoningSessionModel.is_active == True,  # noqa: E712
+                ReasoningSessionModel.is_active == True,
             )
             session_model = session.execute(stmt).scalar_one_or_none()
 
@@ -174,7 +173,7 @@ class ReasoningDatabase:
             logger.debug(f"Loaded session {session_id} for agent {agent_id}")
             return session_data
 
-    def save_step(self, session_internal_id: str, step: Dict) -> None:
+    def save_step(self, session_internal_id: str, step: dict) -> None:
         """Save a reasoning step."""
         with self.get_session() as session:
             step_model = ReasoningStepModel(
@@ -196,12 +195,12 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.now(timezone.utc)
+            session_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Saved step {step['id']} for session {session_internal_id}")
 
-    def save_reflection(self, session_internal_id: str, reflection: Dict) -> None:
+    def save_reflection(self, session_internal_id: str, reflection: dict) -> None:
         """Save a reflection."""
         with self.get_session() as session:
             refl_model = ReasoningReflectionModel(
@@ -218,7 +217,7 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.now(timezone.utc)
+            session_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Saved reflection for session {session_internal_id}")
@@ -229,7 +228,7 @@ class ReasoningDatabase:
         key: str,
         value: str,
         updated_at: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> None:
         """Save or update a scratchpad item."""
         with self.get_session() as session:
@@ -257,7 +256,7 @@ class ReasoningDatabase:
 
             session.commit()
             logger.debug(
-                f"Saved scratchpad item {key} for session " f"{session_internal_id}"
+                f"Saved scratchpad item {key} for session {session_internal_id}"
             )
 
     def save_tool_event(
@@ -266,7 +265,7 @@ class ReasoningDatabase:
         tool_name: str,
         reason: str,
         timestamp: str,
-        payload: Optional[Dict] = None,
+        payload: dict | None = None,
     ) -> None:
         """Persist an audit event for a tool call."""
         with self.get_session() as session:
@@ -284,7 +283,7 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.now(timezone.utc)
+            session_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(
@@ -304,8 +303,7 @@ class ReasoningDatabase:
                 session.delete(item)
                 session.commit()
                 logger.debug(
-                    f"Deleted scratchpad item {key} for session "
-                    f"{session_internal_id}"
+                    f"Deleted scratchpad item {key} for session {session_internal_id}"
                 )
 
     def clear_scratchpad(self, session_internal_id: str) -> None:
@@ -369,16 +367,16 @@ class ReasoningDatabase:
                 ReasoningSessionModel.id == session_internal_id
             )
             session_model = session.execute(stmt).scalar_one()
-            session_model.updated_at = datetime.now(timezone.utc)
+            session_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Reset session {session_internal_id}")
 
-    def list_sessions(self, agent_id: Optional[str] = None) -> List[Dict]:
+    def list_sessions(self, agent_id: str | None = None) -> list[dict]:
         """List all active sessions, optionally filtered by agent."""
         with self.get_session() as session:
             stmt = select(ReasoningSessionModel).where(
-                ReasoningSessionModel.is_active == True  # noqa: E712
+                ReasoningSessionModel.is_active == True
             )
 
             if agent_id:
@@ -398,15 +396,13 @@ class ReasoningDatabase:
                 for s in sessions
             ]
 
-    def cleanup_old_sessions(
-        self, days: int = 30, agent_id: Optional[str] = None
-    ) -> int:
+    def cleanup_old_sessions(self, days: int = 30, agent_id: str | None = None) -> int:
         """Permanently delete inactive sessions older than specified days."""
         with self.get_session() as session:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
             stmt = select(ReasoningSessionModel).where(
-                ReasoningSessionModel.is_active == False,  # noqa: E712
+                ReasoningSessionModel.is_active == False,
                 ReasoningSessionModel.updated_at < cutoff_date,
             )
 

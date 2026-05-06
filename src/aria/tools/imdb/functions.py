@@ -13,7 +13,6 @@ self-documenting.
 
 import inspect
 from functools import wraps
-from typing import Optional
 
 from imdbinfo import TitleType as ImdbTitleType
 from imdbinfo import (
@@ -52,7 +51,7 @@ from aria.tools.imdb.constants import (
 )
 
 
-def _get_title_type(title_type: Optional[str]) -> Optional[ImdbTitleType]:
+def _get_title_type(title_type: str | None) -> ImdbTitleType | None:
     """
     Convert user-friendly title type string to ImdbTitleType enum.
 
@@ -171,9 +170,7 @@ def _imdb_tool(error_not_found_msg_template: str, *, id_param: str = "imdb_id"):
 
 
 @log_tool_call
-def search_imdb_titles(
-    reason: str, query: str, title_type: Optional[str] = None
-) -> str:
+def search_imdb_titles(reason: str, query: str, title_type: str | None = None) -> str:
     """
     Search for movies, TV series, and other titles on IMDb.
 

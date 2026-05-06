@@ -41,7 +41,7 @@ def load_state(pid_file: Path) -> dict[str, Any]:
     if not pid_file.exists():
         return {}
     try:
-        with open(pid_file, "r") as f:
+        with open(pid_file) as f:
             return json.load(f)
     except (json.JSONDecodeError, KeyError, ValueError):
         return {}

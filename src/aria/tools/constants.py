@@ -37,10 +37,10 @@ REPORTS_DIR.mkdir(exist_ok=True)
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
 # Default timeout for operations (seconds)
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = int(os.environ.get("ARIA_DEFAULT_TIMEOUT", "30"))
 
-# Maximum timeout limit (seconds)
-MAX_TIMEOUT = 300
+# Maximum timeout limit (seconds) — configurable for long builds/downloads
+MAX_TIMEOUT = int(os.environ.get("ARIA_MAX_TIMEOUT", "600"))
 
 # ============================================================================
 # Network Configuration

@@ -1,7 +1,6 @@
 """Knowledge store tool for persistent key-value storage."""
 
 import uuid
-from typing import List, Optional
 
 from loguru import logger
 
@@ -17,11 +16,11 @@ _DEFAULT_AGENT_ID = "aria"
 def knowledge(
     reason: str,
     action: str,
-    key: Optional[str] = None,
-    value: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    entry_id: Optional[str] = None,
-    query: Optional[str] = None,
+    key: str | None = None,
+    value: str | None = None,
+    tags: list[str] | None = None,
+    entry_id: str | None = None,
+    query: str | None = None,
     max_results: int = 10,
     agent_id: str = _DEFAULT_AGENT_ID,
 ) -> str:
@@ -97,9 +96,9 @@ def _action_store(
     db,
     reason: str,
     agent_id: str,
-    key: Optional[str],
-    value: Optional[str],
-    tags: Optional[List[str]],
+    key: str | None,
+    value: str | None,
+    tags: list[str] | None,
 ) -> str:
     """Store a new knowledge entry."""
     if not key:
@@ -135,7 +134,7 @@ def _action_recall(
     db,
     reason: str,
     agent_id: str,
-    key: Optional[str],
+    key: str | None,
 ) -> str:
     """Recall a knowledge entry by key."""
     if not key:
@@ -164,7 +163,7 @@ def _action_search(
     db,
     reason: str,
     agent_id: str,
-    query: Optional[str],
+    query: str | None,
     max_results: int,
 ) -> str:
     """Search knowledge entries."""
@@ -192,7 +191,7 @@ def _action_list(
     db,
     reason: str,
     agent_id: str,
-    tags: Optional[List[str]],
+    tags: list[str] | None,
     max_results: int,
 ) -> str:
     """List all knowledge entries."""
@@ -213,8 +212,8 @@ def _action_update(
     db,
     reason: str,
     agent_id: str,
-    entry_id: Optional[str],
-    value: Optional[str],
+    entry_id: str | None,
+    value: str | None,
 ) -> str:
     """Update an existing knowledge entry."""
     if not entry_id:
@@ -253,7 +252,7 @@ def _action_delete(
     db,
     reason: str,
     agent_id: str,
-    entry_id: Optional[str],
+    entry_id: str | None,
 ) -> str:
     """Delete a knowledge entry."""
     if not entry_id:

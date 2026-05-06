@@ -19,20 +19,15 @@ _DEFAULT_DB_PATH = str(Data.path / "tools.db")
 
 
 class ToolsDatabase:
-    """Shared database engine for all tool modules."""
+    """Shared database engine for all tool modules.
 
-    _instance = None
-    _initialized: bool
-
-    def __new__(cls, db_path: str = _DEFAULT_DB_PATH):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
+    Instances are created via ``get_tools_database()`` which maintains a
+    module-level singleton.  The ``__new__``-based singleton guard has been
+    removed to avoid redundant dual-singleton patterns.
+    """
 
     def __init__(self, db_path: str = _DEFAULT_DB_PATH):
-        self._initialized = getattr(self, "_initialized", False)
-        if self._initialized:
+        if getattr(self, "_initialized", False):
             return
 
         self.db_path = db_path

@@ -114,10 +114,7 @@ def _print_banner():
     console.print()
     console.print(
         Panel(
-            (
-                "[bold]ARIA CLI[/bold]\n"
-                f"[dim]Local AI assistant • {version_text}[/dim]"
-            ),
+            (f"[bold]ARIA CLI[/bold]\n[dim]Local AI assistant • {version_text}[/dim]"),
             border_style="cyan",
             expand=False,
             padding=(0, 2),

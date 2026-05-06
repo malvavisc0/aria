@@ -19,7 +19,7 @@ Example:
 """
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -43,7 +43,7 @@ def download_command(
         Path, typer.Option(help="Directory to install the binary to")
     ] = Lightpanda.get_bin_path(),
     version: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(help="Specific version tag to install (default: nightly)"),
     ] = None,
 ):

@@ -9,7 +9,7 @@ import argparse
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from loguru import logger
@@ -45,7 +45,7 @@ async def _run(args):
     logger.add(str(log_file), rotation="10 MB", level="DEBUG")
     logger.info(f"Worker {worker_id} starting (PID {os.getpid()})")
 
-    _update_audit(worker_id, {"started_at": datetime.now(timezone.utc).isoformat()})
+    _update_audit(worker_id, {"started_at": datetime.now(UTC).isoformat()})
 
     try:
         llm = get_chat_llm(api_base=ChatConfig.api_url, model=ChatConfig.model)
@@ -79,7 +79,7 @@ async def _run(args):
                 tool_calls.append(
                     {
                         "tool": event.tool_name,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "timestamp": datetime.now(UTC).isoformat(),
                     }
                 )
             elif isinstance(event, AgentOutput) and event.response:
@@ -101,7 +101,7 @@ async def _run(args):
             worker_id,
             {
                 "status": "completed",
-                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": datetime.now(UTC).isoformat(),
                 "result": result_text[:2000],
                 "result_file": str(result_file),
                 "tool_calls": tool_calls,
@@ -115,7 +115,7 @@ async def _run(args):
             worker_id,
             {
                 "status": "failed",
-                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": datetime.now(UTC).isoformat(),
                 "error": str(e),
             },
         )

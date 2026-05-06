@@ -7,7 +7,6 @@ module. These functions should not be imported directly by external modules.
 
 import shutil
 from pathlib import Path
-from typing import List, Optional
 
 from loguru import logger
 
@@ -83,8 +82,8 @@ def _validate_inputs(
     chunk_size: int = 0,
     offset: int = 0,
     length: int = 0,
-    contents: Optional[str] = None,
-    new_lines: Optional[List[str]] = None,
+    contents: str | None = None,
+    new_lines: list[str] | None = None,
 ) -> None:
     """Comprehensive input validation for file operations.
 
@@ -134,7 +133,7 @@ def _validate_inputs(
             line_length = len(line)
             if line_length > MAX_LINE_LENGTH:
                 raise FileSecurityError(
-                    "Line length " f"{line_length} exceeds limit: {MAX_LINE_LENGTH}"
+                    f"Line length {line_length} exceeds limit: {MAX_LINE_LENGTH}"
                 )
 
 
@@ -247,7 +246,7 @@ def _secure_resolve_dir(
         raise FileSecurityError(f"Path resolution failed: {exc}") from exc
 
 
-def _create_backup(file_path: Path) -> Optional[Path]:
+def _create_backup(file_path: Path) -> Path | None:
     """Create backup of file before destructive operation.
 
     Args:

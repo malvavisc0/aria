@@ -1,6 +1,5 @@
 import re
 import subprocess
-from typing import List, Optional, Tuple
 
 from loguru import logger
 from pydantic import BaseModel
@@ -27,7 +26,7 @@ class GPUMetadata(BaseModel):
     compute_mode: str
 
 
-def detect_gpus_with_details(log_errors: bool = False) -> List[GPUMetadata]:
+def detect_gpus_with_details(log_errors: bool = False) -> list[GPUMetadata]:
     """
     Detect all installed NVIDIA GPUs with detailed information.
 
@@ -85,7 +84,7 @@ def detect_gpus_with_details(log_errors: bool = False) -> List[GPUMetadata]:
             )
 
             # Helper function to safely parse numeric values with unit suffixes
-            def parse_numeric(value: str, suffixes: Optional[List[str]] = None) -> int:
+            def parse_numeric(value: str, suffixes: list[str] | None = None) -> int:
                 """Parse numeric value, optionally removing unit suffixes."""
                 if not value:
                     return 0
@@ -270,7 +269,7 @@ def check_gpu_memory_usage(gpu_index: int, usage_threshold: float) -> bool:
         return False
 
 
-def get_free_vram_per_gpu() -> List[int]:
+def get_free_vram_per_gpu() -> list[int]:
     """
     Get the free VRAM for each available GPU.
 
@@ -305,7 +304,7 @@ def get_free_vram_per_gpu() -> List[int]:
         return []
 
 
-def detect_nvlink() -> Tuple[bool, Optional[str]]:
+def detect_nvlink() -> tuple[bool, str | None]:
     """
     Detect NVLink connectivity and bonding status between GPUs.
 

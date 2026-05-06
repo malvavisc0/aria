@@ -1,7 +1,5 @@
 """Download and convert content from a URL."""
 
-from typing import Dict, Optional
-
 from aria.tools import (
     get_function_name,
     log_tool_call,
@@ -46,9 +44,9 @@ class ContentParsingError(Exception):
 def download(
     reason: str,
     url: str,
-    output: Optional[str] = "auto",
-    custom_headers: Optional[Dict[str, str]] = None,
-    max_size: Optional[int] = None,
+    output: str | None = "auto",
+    custom_headers: dict[str, str] | None = None,
+    max_size: int | None = None,
     convert_to_markdown: bool = False,
 ) -> str:
     """Download files from URLs (PDFs, images, archives, HTML, etc.).

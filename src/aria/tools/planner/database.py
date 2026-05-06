@@ -1,7 +1,6 @@
 """Database operations for planner persistence."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime, timedelta
 
 from loguru import logger
 from sqlalchemy import select
@@ -41,7 +40,7 @@ class PlannerDatabase:
         plan_id: str,
         agent_id: str,
         task: str,
-        steps: List[Dict],
+        steps: list[dict],
         created_at: str,
     ) -> None:
         """Save a new plan with its steps."""
@@ -52,7 +51,7 @@ class PlannerDatabase:
                 agent_id=agent_id,
                 task=task,
                 created_at=datetime.fromisoformat(created_at),
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
                 is_active=True,
             )
             session.add(plan)
@@ -74,12 +73,12 @@ class PlannerDatabase:
             session.commit()
             logger.debug(f"Saved plan {plan_id} with {len(steps)} steps")
 
-    def load_plan(self, plan_id: str) -> Optional[Dict]:
+    def load_plan(self, plan_id: str) -> dict | None:
         """Load a plan by its ID."""
         with self.get_session() as session:
             stmt = select(PlanModel).where(
                 PlanModel.id == plan_id,
-                PlanModel.is_active == True,  # noqa: E712
+                PlanModel.is_active == True,
             )
             plan_model = session.execute(stmt).scalar_one_or_none()
 
@@ -109,14 +108,14 @@ class PlannerDatabase:
                 "steps": steps,
             }
 
-    def get_active_plan(self, agent_id: str) -> Optional[Dict]:
+    def get_active_plan(self, agent_id: str) -> dict | None:
         """Get the most recent active plan for an agent."""
         with self.get_session() as session:
             stmt = (
                 select(PlanModel)
                 .where(
                     PlanModel.agent_id == agent_id,
-                    PlanModel.is_active == True,  # noqa: E712
+                    PlanModel.is_active == True,
                 )
                 .order_by(PlanModel.updated_at.desc())
             )
@@ -132,9 +131,9 @@ class PlannerDatabase:
         self,
         plan_id: str,
         step_id: str,
-        status: Optional[str] = None,
-        result: Optional[str] = None,
-        description: Optional[str] = None,
+        status: str | None = None,
+        result: str | None = None,
+        description: str | None = None,
     ) -> bool:
         """Update a step in a plan."""
         with self.get_session() as session:
@@ -153,12 +152,12 @@ class PlannerDatabase:
                 step_model.result = result
             if description is not None:
                 step_model.description = description
-            step_model.updated_at = datetime.now(timezone.utc)
+            step_model.updated_at = datetime.now(UTC)
 
             # Update plan timestamp
             plan_stmt = select(PlanModel).where(PlanModel.id == plan_id)
             plan_model = session.execute(plan_stmt).scalar_one()
-            plan_model.updated_at = datetime.now(timezone.utc)
+            plan_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Updated step {step_id} in plan {plan_id}")
@@ -169,8 +168,8 @@ class PlannerDatabase:
         plan_id: str,
         step_id: str,
         description: str,
-        after_step_id: Optional[str],
-    ) -> Optional[Dict]:
+        after_step_id: str | None,
+    ) -> dict | None:
         """Add a step to a plan."""
         with self.get_session() as session:
             # Get plan and steps
@@ -203,7 +202,7 @@ class PlannerDatabase:
                     if step.step_number >= step_number:
                         step.step_number += 1
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             new_step = PlanStepModel(
                 plan_id=plan_id,
                 step_id=step_id,
@@ -216,7 +215,7 @@ class PlannerDatabase:
             session.add(new_step)
 
             # Update plan timestamp
-            plan_model.updated_at = datetime.now(timezone.utc)
+            plan_model.updated_at = datetime.now(UTC)
 
             session.commit()
 
@@ -229,7 +228,7 @@ class PlannerDatabase:
                 "updated_at": new_step.updated_at.isoformat(),
             }
 
-    def remove_step(self, plan_id: str, step_id: str) -> Optional[Dict]:
+    def remove_step(self, plan_id: str, step_id: str) -> dict | None:
         """Remove a step from a plan."""
         with self.get_session() as session:
             stmt = select(PlanStepModel).where(
@@ -266,13 +265,13 @@ class PlannerDatabase:
             # Update plan timestamp
             plan_stmt = select(PlanModel).where(PlanModel.id == plan_id)
             plan_model = session.execute(plan_stmt).scalar_one()
-            plan_model.updated_at = datetime.now(timezone.utc)
+            plan_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Removed step {step_id} from plan {plan_id}")
             return removed_data
 
-    def reorder_steps(self, plan_id: str, step_ids: List[str]) -> Optional[List[Dict]]:
+    def reorder_steps(self, plan_id: str, step_ids: list[str]) -> list[dict] | None:
         """Reorder steps in a plan."""
         with self.get_session() as session:
             # Get plan
@@ -294,7 +293,7 @@ class PlannerDatabase:
             for idx, sid in enumerate(step_ids):
                 step = step_lookup[sid]
                 step.step_number = idx
-                step.updated_at = datetime.now(timezone.utc)
+                step.updated_at = datetime.now(UTC)
                 reordered.append(
                     {
                         "position": idx + 1,
@@ -308,7 +307,7 @@ class PlannerDatabase:
                 )
 
             # Update plan timestamp
-            plan_model.updated_at = datetime.now(timezone.utc)
+            plan_model.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Reordered steps for plan {plan_id}")
@@ -324,17 +323,17 @@ class PlannerDatabase:
                 return False
 
             plan_model.is_active = False
-            plan_model.updated_at = datetime.now(timezone.utc)
+            plan_model.updated_at = datetime.now(UTC)
             session.commit()
             logger.debug(f"Deleted plan {plan_id}")
             return True
 
-    def list_plans(self, agent_id: Optional[str] = None) -> List[Dict]:
+    def list_plans(self, agent_id: str | None = None) -> list[dict]:
         """List all active plans."""
         with self.get_session() as session:
             stmt = (
                 select(PlanModel)
-                .where(PlanModel.is_active == True)  # noqa: E712
+                .where(PlanModel.is_active == True)
                 .order_by(PlanModel.updated_at.desc())
             )
 
@@ -354,13 +353,13 @@ class PlannerDatabase:
                 for p in plans
             ]
 
-    def cleanup_old_plans(self, days: int = 30, agent_id: Optional[str] = None) -> int:
+    def cleanup_old_plans(self, days: int = 30, agent_id: str | None = None) -> int:
         """Permanently delete inactive plans older than specified days."""
         with self.get_session() as session:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
             stmt = select(PlanModel).where(
-                PlanModel.is_active == False,  # noqa: E712
+                PlanModel.is_active == False,
                 PlanModel.updated_at < cutoff_date,
             )
 

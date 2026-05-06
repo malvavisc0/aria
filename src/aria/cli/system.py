@@ -15,7 +15,7 @@ Example:
 
 import json
 import platform
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -387,8 +387,8 @@ def processes_cmd(
     action: str = typer.Argument(
         "list", help="Action: start, stop, status, logs, list"
     ),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Process name"),
-    command: Optional[str] = typer.Option(
+    name: str | None = typer.Option(None, "--name", "-n", help="Process name"),
+    command: str | None = typer.Option(
         None, "--command", "-c", help="Command to execute (for start)"
     ),
 ):

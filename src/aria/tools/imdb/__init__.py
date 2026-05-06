@@ -16,11 +16,11 @@ from aria.tools.imdb.functions import (
 )
 
 __all__ = [
-    "search_imdb_titles",
-    "get_movie_details",
-    "get_person_details",
-    "get_person_filmography",
     "get_all_series_episodes",
+    "get_movie_details",
     "get_movie_reviews",
     "get_movie_trivia",
+    "get_person_details",
+    "get_person_filmography",
+    "search_imdb_titles",
 ]

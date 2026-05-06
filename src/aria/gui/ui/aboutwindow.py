@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ################################################################################
 ## Form generated from reading UI file 'aboutwindow.ui'
 ##
@@ -30,7 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_AboutDialog(object):
+class Ui_AboutDialog:
     def setupUi(self, AboutDialog):
         if not AboutDialog.objectName():
             AboutDialog.setObjectName("AboutDialog")

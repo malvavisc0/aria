@@ -32,7 +32,7 @@ Example:
 import json
 import uuid
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -216,9 +216,9 @@ def update_user(
         str,
         typer.Option(prompt="User identifier (email)", help="User email address"),
     ],
-    role: Annotated[Optional[str], typer.Option(help="New role for the user")] = None,
+    role: Annotated[str | None, typer.Option(help="New role for the user")] = None,
     metadata_json: Annotated[
-        Optional[str], typer.Option(help="JSON string of metadata to merge")
+        str | None, typer.Option(help="JSON string of metadata to merge")
     ] = None,
 ):
     """Modify user metadata and role.

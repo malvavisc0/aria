@@ -173,7 +173,7 @@ class TestGetFileFromURL:
         assert "timestamp" in metadata
 
         # Verify file content
-        with open(data["file_path"], "r") as f:
+        with open(data["file_path"]) as f:
             content = f.read()
             assert "Test" in content
 
@@ -241,7 +241,7 @@ class TestIntegration:
         assert file_size > 0
 
         # Verify we can read the file
-        with open(data["file_path"], "r") as f:
+        with open(data["file_path"]) as f:
             content = f.read()
             assert len(content) > 0
             assert "Example Domain" in content

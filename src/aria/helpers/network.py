@@ -26,6 +26,6 @@ def get_network_ip() -> str:
         sock.close()
 
         return ip_address
-    except (socket.error, OSError):
+    except OSError:
         # Fallback to localhost if detection fails
         return "127.0.0.1"

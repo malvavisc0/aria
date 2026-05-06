@@ -92,14 +92,13 @@ def setup_directories() -> None:
 def setup_database() -> None:
     """Create SQLite database and all tables."""
     from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
 
     from aria.config.database import SQLite
     from aria.db.models import Base
 
     engine = create_engine(SQLite.db_url)
     Base.metadata.create_all(engine)
-    Session(engine).close()
+    engine.dispose()
     console.print("   [green]✓[/green] Initialized database")
 
 

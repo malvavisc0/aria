@@ -2,7 +2,6 @@
 
 import stat
 from pathlib import Path
-from typing import Dict, List
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QIcon, QPalette, QTextCharFormat
@@ -48,7 +47,7 @@ def human_size(path: Path) -> str:
     return f"{size:.1f} EiB"
 
 
-def friendly_permissions(path: Path) -> Dict[str, List[str]]:
+def friendly_permissions(path: Path) -> dict[str, list[str]]:
     """
     Returns a dict like:
     {
@@ -64,7 +63,7 @@ def friendly_permissions(path: Path) -> Dict[str, List[str]]:
     try:
         mode = path.stat().st_mode
 
-        def get_perms(r: int, w: int, x: int) -> List[str]:
+        def get_perms(r: int, w: int, x: int) -> list[str]:
             perms = []
             if mode & r:
                 perms.append("Read")

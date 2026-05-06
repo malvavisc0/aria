@@ -7,7 +7,7 @@ response building.
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from loguru import logger
 
@@ -26,7 +26,7 @@ def _build_response(
     return_code: int = -1,
     execution_time: float = 0.0,
     timed_out: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a standard command execution response dict.
 
     Args:
@@ -63,13 +63,13 @@ def _build_response(
 def _execute_command_internal(
     operation: str,
     display_command: str,
-    run_target: Union[str, List[str]],
+    run_target: str | list[str],
     working_dir: Path,
     timeout: int,
     *,
     shell: bool,
-    env: Optional[Dict[str, str]] = None,
-) -> Dict[str, Any]:
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Execute a command and return a standardized response dict.
 
     Args:

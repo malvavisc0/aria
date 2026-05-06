@@ -4,7 +4,6 @@ Wraps the http_request tool as a CLI sub-command.
 """
 
 import json
-from typing import Dict, Optional
 
 import typer
 
@@ -20,13 +19,11 @@ app = typer.Typer(
 def http_cmd(
     method: str = typer.Argument(..., help="HTTP method (GET, POST, PUT, etc.)"),
     url: str = typer.Argument(..., help="URL to request"),
-    headers: Optional[str] = typer.Option(
+    headers: str | None = typer.Option(
         None, "--headers", "-H", help="JSON string of headers"
     ),
-    body: Optional[str] = typer.Option(
-        None, "--body", "-b", help="Request body string"
-    ),
-    timeout: Optional[int] = typer.Option(
+    body: str | None = typer.Option(None, "--body", "-b", help="Request body string"),
+    timeout: int | None = typer.Option(
         30, "--timeout", "-t", help="Timeout in seconds"
     ),
 ):
@@ -37,7 +34,7 @@ def http_cmd(
     """
     from aria.tools.http.functions import http_request
 
-    parsed_headers: Optional[Dict[str, str]] = None
+    parsed_headers: dict[str, str] | None = None
     if headers:
         parsed_headers = json.loads(headers)
 

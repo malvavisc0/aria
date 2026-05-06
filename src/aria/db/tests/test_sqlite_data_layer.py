@@ -1,8 +1,8 @@
 """Integration tests for SQLiteSQLAlchemyDataLayer."""
 
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Callable
 
 import pytest
 from chainlit.types import Pagination, ThreadFilter

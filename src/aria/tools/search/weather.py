@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -48,7 +48,7 @@ _WEATHER_CODE_TEXT: dict[int, str] = {
 }
 
 
-def _ok(reason: str, result: Dict[str, Any]) -> str:
+def _ok(reason: str, result: dict[str, Any]) -> str:
     return tool_success_response(get_function_name(), reason, result)
 
 
@@ -56,7 +56,7 @@ def _err(reason: str, message: str) -> str:
     return tool_error_response(get_function_name(), reason, RuntimeError(message))
 
 
-def _get_weather_text(code: Optional[int]) -> str:
+def _get_weather_text(code: int | None) -> str:
     if code is None:
         return "Unknown"
     return _WEATHER_CODE_TEXT.get(code, f"Unknown (code={code})")

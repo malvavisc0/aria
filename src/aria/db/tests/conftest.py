@@ -1,8 +1,9 @@
 """Shared fixtures and utilities for SQLite data layer tests."""
 
 import uuid
+from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
-from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -131,7 +132,7 @@ async def data_layer(
 
 
 @pytest.fixture
-def sample_user_data() -> Dict[str, Any]:
+def sample_user_data() -> dict[str, Any]:
     """Sample user data dictionary.
 
     Returns:
@@ -146,7 +147,7 @@ def sample_user_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_thread_data() -> Dict[str, Any]:
+def sample_thread_data() -> dict[str, Any]:
     """Sample thread data with tags.
 
     Returns:
@@ -164,7 +165,7 @@ def sample_thread_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_step_data(sample_thread_data: Dict[str, Any]) -> Dict[str, Any]:
+def sample_step_data(sample_thread_data: dict[str, Any]) -> dict[str, Any]:
     """Sample step data with tags, metadata, and generation.
 
     Args:
@@ -197,7 +198,7 @@ def sample_step_data(sample_thread_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_element_data(sample_thread_data: Dict[str, Any]) -> Dict[str, Any]:
+def sample_element_data(sample_thread_data: dict[str, Any]) -> dict[str, Any]:
     """Sample element data with props.
 
     Args:
@@ -220,8 +221,8 @@ def sample_element_data(sample_thread_data: Dict[str, Any]) -> Dict[str, Any]:
 
 @pytest.fixture
 def sample_feedback_data(
-    sample_thread_data: Dict[str, Any], sample_step_data: Dict[str, Any]
-) -> Dict[str, Any]:
+    sample_thread_data: dict[str, Any], sample_step_data: dict[str, Any]
+) -> dict[str, Any]:
     """Sample feedback data.
 
     Args:
@@ -255,11 +256,11 @@ async def create_user(
     Usage:
         user = await create_user(identifier="test@example.com", metadata={})
     """
-    created_users: List[str] = []
+    created_users: list[str] = []
 
     async def _create_user(
-        identifier: Optional[str] = None, metadata: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+        identifier: str | None = None, metadata: dict | None = None
+    ) -> dict[str, Any]:
         from chainlit.user import User
 
         if identifier is None:
@@ -299,14 +300,14 @@ async def create_thread(
     Usage:
         thread_id = await create_thread(name="Test", tags=["tag1"])
     """
-    created_threads: List[str] = []
+    created_threads: list[str] = []
 
     async def _create_thread(
-        thread_id: Optional[str] = None,
-        name: Optional[str] = None,
-        user_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        metadata: Optional[Dict] = None,
+        thread_id: str | None = None,
+        name: str | None = None,
+        user_id: str | None = None,
+        tags: list[str] | None = None,
+        metadata: dict | None = None,
     ) -> str:
         if thread_id is None:
             thread_id = str(uuid.uuid4())
@@ -342,7 +343,7 @@ async def raw_db_query(db_session: AsyncSession) -> Callable:
         result = await raw_db_query('SELECT * FROM users WHERE id = :id', {"id": "123"})
     """
 
-    async def _execute_query(query: str, params: Optional[Dict] = None) -> Any:
+    async def _execute_query(query: str, params: dict | None = None) -> Any:
         if params is None:
             params = {}
         result = await db_session.execute(text(query), params)

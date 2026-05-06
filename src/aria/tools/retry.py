@@ -4,8 +4,8 @@ import asyncio
 import logging
 import random
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Tuple, Type
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ DEFAULT_BACKOFF_FACTOR = 1.5
 def with_retry(
     max_retries: int = DEFAULT_MAX_RETRIES,
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
-    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    retryable_exceptions: tuple[type[Exception], ...] = (Exception,),
 ):
     """Decorator for retrying operations on transient failures.
 

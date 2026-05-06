@@ -11,13 +11,13 @@ from aria.tools.retry import DEFAULT_MAX_RETRIES as MAX_RETRIES
 
 # Re-export for backward compatibility
 __all__ = [
+    "BINARY_CONTENT_TYPES",
     "DOWNLOADS_DIR",
+    "HTML_CONTENT_TYPES",
     "MAX_FILE_SIZE",
     "MAX_RETRIES",
-    "TIMEOUT",
     "SUPPORTED_FORMATS",
-    "HTML_CONTENT_TYPES",
-    "BINARY_CONTENT_TYPES",
+    "TIMEOUT",
     "USER_AGENTS",
 ]
 
@@ -40,7 +40,7 @@ BINARY_CONTENT_TYPES = [
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-powerpoint",
-    ("application/vnd.openxmlformats-officedocument" ".presentationml.presentation"),
+    ("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
     "image/",
     "video/",
     "audio/",

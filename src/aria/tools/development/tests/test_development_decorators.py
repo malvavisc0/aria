@@ -217,12 +217,9 @@ class TestWithInputValidation:
 
     def test_validation_with_none_values(self):
         """Test that None values are not validated."""
-        from typing import Optional
 
         @with_input_validation(code=True, timeout=True)
-        def func_with_none(
-            code: Optional[str] = None, timeout: Optional[int] = None
-        ) -> str:
+        def func_with_none(code: str | None = None, timeout: int | None = None) -> str:
             return "Success"
 
         # Should not raise even though values are None

@@ -1,7 +1,6 @@
 """File management operations (copy, move, delete, rename)."""
 
 from shutil import copy2
-from typing import Optional
 
 from loguru import logger
 
@@ -27,7 +26,7 @@ def copy_file(
     reason: str,
     source: str,
     destination: str,
-    overwrite: Optional[bool] = False,
+    overwrite: bool | None = False,
 ) -> str:
     """Copy a file to a new location (dirs auto-created).
 

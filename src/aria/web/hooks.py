@@ -131,7 +131,7 @@ async def on_chat_resume_handler(thread: ThreadDict) -> None:
     try:
         if not _state.is_initialized():
             logger.info(
-                "AppState not yet initialized, waiting for startup to " "complete..."
+                "AppState not yet initialized, waiting for startup to complete..."
             )
             if not await wait_for_initialization():
                 logger.warning(

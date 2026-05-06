@@ -12,7 +12,6 @@ All internet-facing commands live here:
 """
 
 import asyncio
-from typing import Optional
 
 import typer
 
@@ -29,7 +28,7 @@ app = typer.Typer(
 @app.command("search")
 def search_cmd(
     query: str = typer.Argument(..., help="Search query"),
-    max_results: Optional[int] = typer.Option(
+    max_results: int | None = typer.Option(
         5, "--max-results", "-n", help="Number of results to return"
     ),
 ):
@@ -178,7 +177,7 @@ def weather_cmd(
 @app.command("youtube")
 def youtube_cmd(
     url: str = typer.Argument(..., help="YouTube video URL"),
-    languages: Optional[str] = typer.Option(
+    languages: str | None = typer.Option(
         None,
         "--languages",
         "-l",

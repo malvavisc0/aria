@@ -1,7 +1,6 @@
 """SQLAlchemy models for reasoning persistence."""
 
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -16,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 # Import shared tools Base and re-export for backward compatibility
-from aria.tools.models import (  # noqa: F401 - re-exported for compatibility
+from aria.tools.models import (
     Base,
 )
 
@@ -37,40 +36,40 @@ class ReasoningSessionModel(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Soft delete flag
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
     # Relationships
-    steps: Mapped[List["ReasoningStepModel"]] = relationship(
+    steps: Mapped[list["ReasoningStepModel"]] = relationship(
         "ReasoningStepModel",
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="ReasoningStepModel.step_number",
     )
 
-    reflections: Mapped[List["ReasoningReflectionModel"]] = relationship(
+    reflections: Mapped[list["ReasoningReflectionModel"]] = relationship(
         "ReasoningReflectionModel",
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="ReasoningReflectionModel.timestamp",
     )
 
-    scratchpad_items: Mapped[List["ReasoningScratchpadModel"]] = relationship(
+    scratchpad_items: Mapped[list["ReasoningScratchpadModel"]] = relationship(
         "ReasoningScratchpadModel",
         back_populates="session",
         cascade="all, delete-orphan",
     )
 
-    tool_events: Mapped[List["ReasoningToolEventModel"]] = relationship(
+    tool_events: Mapped[list["ReasoningToolEventModel"]] = relationship(
         "ReasoningToolEventModel",
         back_populates="session",
         cascade="all, delete-orphan",
@@ -112,14 +111,14 @@ class ReasoningStepModel(Base):
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
 
     # Why this step was added (echoed from tool `reason`)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # JSON stored as text (will be serialized/deserialized)
     evidence: Mapped[str] = mapped_column(Text, nullable=True)
     biases_detected: Mapped[str] = mapped_column(Text, nullable=True)
 
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
 
     # Relationship
@@ -156,9 +155,9 @@ class ReasoningReflectionModel(Base):
     )  # Optional reference to step
 
     # Why this reflection was added (echoed from tool `reason`)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
 
     # Relationship
@@ -190,12 +189,12 @@ class ReasoningScratchpadModel(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Why this scratchpad key was last modified (echoed from tool `reason`)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Relationship
@@ -229,12 +228,12 @@ class ReasoningToolEventModel(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Optional minimal JSON payload for debugging/audit
-    payload_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     timestamp: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         index=True,
     )
 

@@ -1,7 +1,6 @@
 """Database operations for standalone scratchpad persistence."""
 
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import select
@@ -40,7 +39,7 @@ class ScratchpadDatabase:
         agent_id: str,
         key: str,
         value: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> None:
         """Set a scratchpad item (upsert by agent_id + key)."""
         with self.get_session() as session:
@@ -54,15 +53,15 @@ class ScratchpadDatabase:
             if existing:
                 existing.value = value
                 existing.reason = reason
-                existing.updated_at = datetime.now(timezone.utc)
+                existing.updated_at = datetime.now(UTC)
             else:
                 item = ScratchpadItemModel(
                     agent_id=agent_id,
                     key=key,
                     value=value,
                     reason=reason,
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                     is_active=True,
                 )
                 session.add(item)
@@ -70,7 +69,7 @@ class ScratchpadDatabase:
             session.commit()
             logger.debug(f"Scratchpad set: {key} for agent {agent_id}")
 
-    def get_item(self, agent_id: str, key: str) -> Optional[Dict]:
+    def get_item(self, agent_id: str, key: str) -> dict | None:
         """Get a scratchpad item by key."""
         with self.get_session() as session:
             stmt = select(ScratchpadItemModel).where(
@@ -104,12 +103,12 @@ class ScratchpadDatabase:
                 return False
 
             item.is_active = False
-            item.updated_at = datetime.now(timezone.utc)
+            item.updated_at = datetime.now(UTC)
             session.commit()
             logger.debug(f"Scratchpad deleted: {key} for agent {agent_id}")
             return True
 
-    def list_items(self, agent_id: str) -> List[Dict]:
+    def list_items(self, agent_id: str) -> list[dict]:
         """List all active scratchpad items for an agent."""
         with self.get_session() as session:
             stmt = (
@@ -148,7 +147,7 @@ class ScratchpadDatabase:
 
             for item in items:
                 item.is_active = False
-                item.updated_at = datetime.now(timezone.utc)
+                item.updated_at = datetime.now(UTC)
 
             session.commit()
             logger.debug(f"Scratchpad cleared {count} items for agent {agent_id}")

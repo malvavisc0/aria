@@ -3,8 +3,6 @@
 Wraps IMDb tools as CLI sub-commands that output JSON.
 """
 
-from typing import Optional
-
 import typer
 
 app = typer.Typer(
@@ -15,7 +13,7 @@ app = typer.Typer(
 @app.command("search")
 def search_cmd(
     query: str = typer.Argument(..., help="Title or name to search for"),
-    title_type: Optional[str] = typer.Option(
+    title_type: str | None = typer.Option(
         None, "--type", "-t", help="Filter: movie, series, episode, short"
     ),
 ):

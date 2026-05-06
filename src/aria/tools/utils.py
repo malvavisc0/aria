@@ -8,8 +8,8 @@ and response formatting.
 import inspect
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +20,14 @@ def utc_timestamp() -> str:
     Returns:
         str: ISO 8601 formatted timestamp in UTC timezone.
     """
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def safe_json(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     *,
     default: Any = None,
-    indent: Optional[int] = 2,
+    indent: int | None = 2,
     ensure_ascii: bool = False,
 ) -> str:
     """Safe JSON serialization with error handling.
@@ -91,7 +91,7 @@ def _truncate_json(json_str: str) -> str:
 def tool_success_response(
     tool: str,
     reason: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     **context: Any,
 ) -> str:
     """Generate a standardized JSON success response.
@@ -114,7 +114,7 @@ def tool_success_response(
     if not reason or not reason.strip():
         reason = f"unspecified_{tool}_operation"
 
-    response: Dict[str, Any] = {
+    response: dict[str, Any] = {
         "status": "success",
         "tool": tool,
         "reason": reason,
@@ -148,7 +148,7 @@ def tool_error_response(
     recoverable = getattr(exc, "recoverable", False)
     how_to_fix = getattr(exc, "how_to_fix", None)
 
-    error_block: Dict[str, Any] = {
+    error_block: dict[str, Any] = {
         "code": error_code,
         "message": str(exc),
         "type": type(exc).__name__,
@@ -157,7 +157,7 @@ def tool_error_response(
     if how_to_fix:
         error_block["how_to_fix"] = how_to_fix
 
-    response: Dict[str, Any] = {
+    response: dict[str, Any] = {
         "status": "error",
         "tool": tool,
         "reason": reason,
@@ -186,8 +186,8 @@ def tool_error_response(
 def tool_response(
     tool: str,
     reason: str,
-    data: Optional[Dict[str, Any]] = None,
-    exc: Optional[Exception] = None,
+    data: dict[str, Any] | None = None,
+    exc: Exception | None = None,
     **context: Any,
 ) -> str:
     """Convenience wrapper for generating tool responses.

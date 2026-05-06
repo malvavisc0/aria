@@ -8,7 +8,7 @@ module. These functions should not be imported directly by external modules.
 import io
 import signal
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -20,8 +20,8 @@ from aria.tools.development.exceptions import PythonSecurityError
 
 def _build_response(
     operation: str,
-    result: Optional[Dict[str, Any]] = None,
-    error: Optional[str] = None,
+    result: dict[str, Any] | None = None,
+    error: str | None = None,
     **metadata_fields,
 ) -> str:
     """Build standardized response structure as JSON string.
@@ -84,10 +84,10 @@ def _error_response(
 
 
 def _validate_inputs(
-    code: Optional[str] = None,
-    timeout: Optional[int] = None,
-    filename: Optional[str] = None,
-    file_path: Optional[str] = None,
+    code: str | None = None,
+    timeout: int | None = None,
+    filename: str | None = None,
+    file_path: str | None = None,
 ) -> None:
     """Comprehensive input validation for Python runner operations.
 
@@ -149,7 +149,7 @@ def _validate_inputs(
             raise PythonSecurityError("Path traversal attempt detected in file path")
 
 
-def _create_safe_globals() -> Dict[str, Any]:
+def _create_safe_globals() -> dict[str, Any]:
     """Create restricted global namespace for safe execution.
 
     Returns:
@@ -248,10 +248,10 @@ def _time_limit(seconds: int):
 
 def _capture_execution_output(
     code: str,
-    safe_globals: Dict[str, Any],
+    safe_globals: dict[str, Any],
     timeout: int,
     filename: str = "<string>",
-    argv: Optional[list[str]] = None,
+    argv: list[str] | None = None,
 ) -> tuple[str, str]:
     """Execute code and capture stdout/stderr.
 
@@ -309,10 +309,10 @@ def _capture_execution_output(
 
 def _execute_without_capture(
     code: str,
-    safe_globals: Dict[str, Any],
+    safe_globals: dict[str, Any],
     timeout: int,
     filename: str = "<string>",
-    argv: Optional[list[str]] = None,
+    argv: list[str] | None = None,
 ) -> None:
     """Execute code without capturing output.
 
@@ -397,9 +397,7 @@ def _read_file_safely(file_path: str) -> str:
             potential_path = BASE_DIR / file_path
             if potential_path.exists():
                 resolved_path = str(potential_path)
-                logger.debug(
-                    f"Resolved {file_path} to {resolved_path} " f"using BASE_DIR"
-                )
+                logger.debug(f"Resolved {file_path} to {resolved_path} using BASE_DIR")
         except Exception:
             pass
 
@@ -408,7 +406,7 @@ def _read_file_safely(file_path: str) -> str:
         raise FileNotFoundError(f"File not found: {file_path}")
 
     try:
-        with open(resolved_path, "r", encoding="utf-8") as f:
+        with open(resolved_path, encoding="utf-8") as f:
             return f.read()
     except PermissionError:
         logger.error(f"Permission denied reading file: {resolved_path}")

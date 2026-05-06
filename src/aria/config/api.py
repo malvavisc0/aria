@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from aria.config import get_optional_env
 from aria.config.folders import Data
@@ -21,12 +20,12 @@ class Vllm:
 
     # --- vLLM engine settings ---
     # None = auto-calculate at launch; set a float to override.
-    gpu_memory_utilization: Optional[float] = (
+    gpu_memory_utilization: float | None = (
         float(v)
         if (v := get_optional_env("ARIA_VLLM_GPU_MEMORY_UTILIZATION", ""))
         else None
     )
-    quantization: Optional[str] = get_optional_env("ARIA_VLLM_QUANT", "") or None
+    quantization: str | None = get_optional_env("ARIA_VLLM_QUANT", "") or None
     tensor_parallel_size: int = int(get_optional_env("ARIA_VLLM_TP_SIZE", "1"))
     dtype: str = get_optional_env("ARIA_VLLM_DTYPE", "auto")
     kv_cache_dtype: str = get_optional_env("ARIA_VLLM_KV_CACHE_DTYPE", "auto")
@@ -47,7 +46,7 @@ class Vllm:
     # Resolved relative to the project root (Path.cwd())
     # Empty string = use model's built-in template.
     _chat_template_raw = get_optional_env("CHAT_TEMPLATE_FILE", "")
-    chat_template_file: Optional[Path] = (
+    chat_template_file: Path | None = (
         Path.cwd() / Path(_chat_template_raw) if _chat_template_raw else None
     )
 
@@ -72,7 +71,7 @@ class Lightpanda:
         return Data.path / Path(cls.bin_dir)
 
     @classmethod
-    def get_binary_path(cls) -> Optional[Path]:
+    def get_binary_path(cls) -> Path | None:
         """Get the binary path, or None if not installed.
 
         Lightpanda uses a single binary name across platforms.

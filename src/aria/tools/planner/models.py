@@ -1,7 +1,6 @@
 """SQLAlchemy models for planner persistence."""
 
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -23,18 +22,18 @@ class PlanModel(Base):
     task: Mapped[str] = mapped_column(Text, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
-    steps: Mapped[List["PlanStepModel"]] = relationship(
+    steps: Mapped[list["PlanStepModel"]] = relationship(
         "PlanStepModel",
         back_populates="plan",
         cascade="all, delete-orphan",
@@ -62,22 +61,19 @@ class PlanStepModel(Base):
     step_number: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    result: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     plan: Mapped["PlanModel"] = relationship("PlanModel", back_populates="steps")
 
     def __repr__(self) -> str:
-        return (
-            f"<PlanStep(id={self.id}, step_id={self.step_id}, "
-            f"status={self.status})>"
-        )
+        return f"<PlanStep(id={self.id}, step_id={self.step_id}, status={self.status})>"

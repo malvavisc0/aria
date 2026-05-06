@@ -26,9 +26,10 @@ Example:
 import asyncio
 import hashlib
 import subprocess
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Awaitable, Callable, Optional
+from typing import Optional
 
 from loguru import logger
 from playwright.async_api import Browser, Page, Playwright, async_playwright
@@ -97,10 +98,10 @@ class LightpandaManager:
         """
         self._binary = binary_path
         self._port = port
-        self._process: Optional[subprocess.Popen] = None
-        self._playwright: Optional[Playwright] = None
-        self._browser: Optional[Browser] = None
-        self._page: Optional[Page] = None
+        self._process: subprocess.Popen | None = None
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
+        self._page: Page | None = None
         # Serialise all page operations — Lightpanda serves a single page
         # and concurrent navigations destroy each other's execution context.
         self._page_lock = asyncio.Lock()
@@ -394,8 +395,7 @@ class LightpandaManager:
                 logger.error(f"{action_name} error: {e}")
                 if not self._is_page_valid():
                     logger.warning(
-                        f"Browser crashed during {action_name}, "
-                        "attempting restart..."
+                        f"Browser crashed during {action_name}, attempting restart..."
                     )
                     if await self._ensure_page():
                         return self._error(

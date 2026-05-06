@@ -79,9 +79,7 @@ async def test_sequential_navigations(manager: LightpandaManager):
     p2 = json.loads(r2)
     assert p2["status"] == "success"
     assert "httpbin" in p2["data"]["url"]
-    print(
-        f"\n✓ sequential: page1={p1['data']['title']}, " f"page2={p2['data']['title']}"
-    )
+    print(f"\n✓ sequential: page1={p1['data']['title']}, page2={p2['data']['title']}")
 
 
 # ---------------------------------------------------------------------------
@@ -107,9 +105,9 @@ async def test_concurrent_navigations_are_serialised(
     payloads = [json.loads(r) for r in results]
     statuses = [p["status"] for p in payloads]
 
-    assert all(
-        s == "success" for s in statuses
-    ), f"Expected all successes, got: {statuses}"
+    assert all(s == "success" for s in statuses), (
+        f"Expected all successes, got: {statuses}"
+    )
     print(
         f"\n✓ concurrent: both succeeded — "
         f"{payloads[0]['data']['title']}, {payloads[1]['data']['title']}"
@@ -137,9 +135,9 @@ async def test_three_concurrent_navigations(manager: LightpandaManager):
     )
     for r, url in zip(results, urls):
         p = json.loads(r)
-        assert (
-            p["status"] == "success"
-        ), f"{url} failed: {p.get('error', {}).get('message', 'unknown')}"
+        assert p["status"] == "success", (
+            f"{url} failed: {p.get('error', {}).get('message', 'unknown')}"
+        )
     print(f"\n✓ 3-way concurrent: all {len(urls)} succeeded")
 
 
@@ -195,4 +193,4 @@ async def test_navigate_invalid_url(manager: LightpandaManager):
     # Should be an error, but the manager should not crash
     assert payload["status"] == "error"
     assert manager.is_running, "Manager should still be running after error"
-    print(f"\n✓ invalid URL handled gracefully: " f"{payload['error']['message'][:80]}")
+    print(f"\n✓ invalid URL handled gracefully: {payload['error']['message'][:80]}")

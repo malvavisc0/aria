@@ -295,7 +295,7 @@ def optimize_config(
             free_mb = free_vram_list[i] if i < len(free_vram_list) else 0
             hw_table.add_row(
                 f"GPU {i}",
-                f"{gpu.name} — {gpu.total_memory} MB total, " f"{free_mb} MB free",
+                f"{gpu.name} — {gpu.total_memory} MB total, {free_mb} MB free",
             )
     else:
         hw_table.add_row("GPU", "[yellow]No NVIDIA GPU detected[/yellow]")

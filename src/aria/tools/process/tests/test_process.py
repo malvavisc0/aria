@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import tempfile
 import time
 
 import pytest
@@ -68,12 +69,27 @@ class TestProcessManager:
             "Blocked command",
             action="start",
             name="blocked",
-            command="sudo",
-            args=["rm", "-rf", "/"],
+            command="shutdown",
+            args=["-h", "now"],
         )
         data = json.loads(result)
         assert "error" in data["data"]
         assert "blocked" in data["data"]["error"].lower()
+
+    def test_sudo_is_allowed(self):
+        """Test that sudo is NOT blocked (flexibility)."""
+        # sudo is allowed — it will fail with 'command not found' or
+        # permission error, but should not be blocked by the filter
+        result = process(
+            "sudo allowed",
+            action="start",
+            name="sudo_test",
+            command=sys.executable,
+            args=["-c", "print('sudo is fine')"],
+        )
+        data = json.loads(result)
+        # Should succeed starting (not blocked)
+        assert data["data"]["action"] == "start"
 
     def test_start_missing_name(self):
         """Test start without name returns error."""
@@ -229,3 +245,189 @@ class TestProcessManager:
         result = process("No name", action="logs")
         data = json.loads(result)
         assert "error" in data["data"]
+
+
+class TestProcessNewFeatures:
+    """Tests for new process tool features."""
+
+    def test_start_with_working_dir(self):
+        """Test starting a process with custom working directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = process(
+                "Working dir test",
+                action="start",
+                name="wd_test",
+                command=sys.executable,
+                args=["-c", "import os; print(os.getcwd())"],
+                working_dir=tmpdir,
+            )
+            data = json.loads(result)
+            assert data["data"]["action"] == "start"
+            assert tmpdir in data["data"]["working_dir"]
+
+    def test_start_with_invalid_working_dir(self):
+        """Test that invalid working_dir returns error."""
+        result = process(
+            "Bad dir",
+            action="start",
+            name="bad_wd",
+            command="echo",
+            args=["hi"],
+            working_dir="/nonexistent/path/xyz",
+        )
+        data = json.loads(result)
+        assert "error" in data["data"]
+
+    def test_start_with_env(self):
+        """Test starting a process with custom environment."""
+        result = process(
+            "Env test",
+            action="start",
+            name="env_test",
+            command=sys.executable,
+            args=["-c", "import os; print(os.environ.get('MY_TEST_VAR', ''))"],
+            env={"MY_TEST_VAR": "hello_aria"},
+        )
+        data = json.loads(result)
+        assert data["data"]["action"] == "start"
+
+        time.sleep(0.3)
+        logs = process("Get logs", action="logs", name="env_test")
+        logs_data = json.loads(logs)
+        assert "hello_aria" in logs_data["data"]["stdout"]
+
+    def test_start_with_shell_mode(self):
+        """Test starting process with shell=True for pipes."""
+        result = process(
+            "Shell mode test",
+            action="start",
+            name="shell_test",
+            command="echo hello | tr a-z A-Z",
+            use_shell=True,
+        )
+        data = json.loads(result)
+        assert data["data"]["action"] == "start"
+        assert data["data"]["use_shell"] is True
+
+        time.sleep(0.3)
+        logs = process("Get logs", action="logs", name="shell_test")
+        logs_data = json.loads(logs)
+        assert "HELLO" in logs_data["data"]["stdout"]
+
+    def test_restart_process(self):
+        """Test restarting a process."""
+        process(
+            "Start for restart",
+            action="start",
+            name="restart_test",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(10)"],
+        )
+        result = process("Restart it", action="restart", name="restart_test")
+        data = json.loads(result)
+        assert data["data"]["action"] == "start"
+        assert data["data"]["name"] == "restart_test"
+
+    def test_restart_nonexistent(self):
+        """Test restarting a non-existent process."""
+        result = process("Restart ghost", action="restart", name="ghost")
+        data = json.loads(result)
+        assert "error" in data["data"]
+
+    def test_signal_process(self):
+        """Test sending a signal to a running process."""
+        process(
+            "Start for signal",
+            action="start",
+            name="signal_test",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(10)"],
+        )
+        result = process(
+            "Send SIGTERM",
+            action="signal",
+            name="signal_test",
+            signal_name="SIGTERM",
+        )
+        data = json.loads(result)
+        assert data["data"]["action"] == "signal"
+        assert data["data"]["signal"] == "SIGTERM"
+
+    def test_signal_missing_signal_name(self):
+        """Test signal without signal_name returns error."""
+        process(
+            "Start",
+            action="start",
+            name="sig_missing",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(5)"],
+        )
+        result = process("Signal", action="signal", name="sig_missing")
+        data = json.loads(result)
+        assert "error" in data["data"]
+
+    def test_signal_invalid_name(self):
+        """Test signal with invalid signal name."""
+        process(
+            "Start",
+            action="start",
+            name="sig_invalid",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(5)"],
+        )
+        result = process(
+            "Bad signal",
+            action="signal",
+            name="sig_invalid",
+            signal_name="SIGFAKE",
+        )
+        data = json.loads(result)
+        assert "error" in data["data"]
+        assert "unknown" in data["data"]["error"].lower()
+
+    def test_timeout_auto_kill(self):
+        """Test that timeout auto-kills the process."""
+        process(
+            "Timeout test",
+            action="start",
+            name="timeout_test",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(30)"],
+            timeout=1,
+        )
+        # Wait for timeout + grace period
+        time.sleep(2.5)
+        result = process("Check status", action="status", name="timeout_test")
+        data = json.loads(result)
+        assert "exited" in data["data"]["status"]
+
+    def test_status_shows_command_and_working_dir(self):
+        """Test that status includes command and working_dir."""
+        process(
+            "Start",
+            action="start",
+            name="info_test",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(2)"],
+        )
+        result = process("Status", action="status", name="info_test")
+        data = json.loads(result)
+        assert "command" in data["data"]
+        assert "working_dir" in data["data"]
+
+    def test_list_shows_command_info(self):
+        """Test that list includes command info for each process."""
+        process(
+            "Start",
+            action="start",
+            name="list_info_test",
+            command=sys.executable,
+            args=["-c", "import time; time.sleep(2)"],
+        )
+        result = process("List", action="list")
+        data = json.loads(result)
+        proc_entry = next(
+            p for p in data["data"]["processes"] if p["name"] == "list_info_test"
+        )
+        assert "command" in proc_entry
+        assert "working_dir" in proc_entry

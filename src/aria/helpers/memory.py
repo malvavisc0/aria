@@ -7,7 +7,6 @@ for running models with vLLM.
 import platform
 import subprocess
 from pathlib import Path
-from typing import Tuple
 
 from loguru import logger
 
@@ -37,7 +36,7 @@ def get_model_file_size(model_path: Path) -> int:
     return 0
 
 
-def detect_system_ram() -> Tuple[int, int]:
+def detect_system_ram() -> tuple[int, int]:
     """Get total and available system RAM in MB.
 
     Returns:
@@ -85,7 +84,7 @@ def detect_system_ram() -> Tuple[int, int]:
 
         else:
             # Linux - read from /proc/meminfo
-            with open("/proc/meminfo", "r") as f:
+            with open("/proc/meminfo") as f:
                 meminfo = f.read()
 
             total_mb = 0

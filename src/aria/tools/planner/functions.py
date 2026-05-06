@@ -9,9 +9,9 @@ All plans are persisted to the database - no in-memory caching.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 from aria.tools import tool_response
 from aria.tools.decorators import log_tool_call
@@ -19,7 +19,7 @@ from aria.tools.decorators import log_tool_call
 from . import registry
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     """Status of a plan step."""
 
     PENDING = "pending"
@@ -35,13 +35,9 @@ class PlanStep:
     id: str
     description: str
     status: StepStatus = StepStatus.PENDING
-    result: Optional[str] = None
-    created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-    updated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    result: str | None = None
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 @dataclass
@@ -52,15 +48,11 @@ class Plan:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     steps: list[PlanStep] = field(default_factory=list)
     agent_id: str = "default"
-    created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-    updated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
-def _dict_to_plan(data: Dict) -> Plan:
+def _dict_to_plan(data: dict) -> Plan:
     """Convert database dict to Plan dataclass."""
     plan_steps = [
         PlanStep(
@@ -83,7 +75,7 @@ def _dict_to_plan(data: Dict) -> Plan:
     )
 
 
-def _step_to_dict(step: PlanStep) -> Dict:
+def _step_to_dict(step: PlanStep) -> dict:
     """Serialize a single plan step for database storage."""
     return {
         "id": step.id,
@@ -146,8 +138,8 @@ def _get_current_plan(execution_id: str) -> Plan:
 def _ok(
     tool: str,
     reason: str,
-    result: Dict[str, Any],
-    metadata: Optional[Dict[str, Any]] = None,
+    result: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
 ) -> str:
     """Build a success response."""
     return tool_response(
@@ -165,7 +157,7 @@ def _err(
     tool: str,
     reason: str,
     message: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> str:
     """Build an error response."""
     return tool_response(
@@ -182,11 +174,11 @@ def _err(
 def _action_create(
     reason: str,
     task: str,
-    steps: List[str],
+    steps: list[str],
     agent_id: str,
 ) -> str:
     """Create a new execution plan with the given task and steps."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         # Create plan steps
@@ -245,7 +237,7 @@ def _action_create(
 
 def _action_get(reason: str, execution_id: str) -> str:
     """Get the current plan status."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         current_plan = _get_current_plan(execution_id)
@@ -276,11 +268,11 @@ def _action_update(
     reason: str,
     execution_id: str,
     step_id: str,
-    status: Optional[str],
-    result: Optional[str],
+    status: str | None,
+    result: str | None,
 ) -> str:
     """Update a step's status and optionally its result."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         # Validate status
@@ -304,9 +296,7 @@ def _action_update(
             return _err(
                 tool="plan",
                 reason=reason,
-                message=(
-                    f"Invalid status '{status}'. " f"Valid values: {valid_statuses}"
-                ),
+                message=(f"Invalid status '{status}'. Valid values: {valid_statuses}"),
                 metadata={
                     "timestamp": timestamp,
                     "action": "update",
@@ -382,11 +372,11 @@ def _action_update(
 def _action_add(
     reason: str,
     execution_id: str,
-    after_step_id: Optional[str],
+    after_step_id: str | None,
     description: str,
 ) -> str:
     """Add a new step after a specified step or at the end."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         # Create new step
@@ -460,7 +450,7 @@ def _action_remove(
     step_id: str,
 ) -> str:
     """Remove a step from the plan."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         db = registry.get_db()
@@ -519,7 +509,7 @@ def _action_replace(
     description: str,
 ) -> str:
     """Replace a step's description."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         # Load current plan to get old description
@@ -610,10 +600,10 @@ def _action_replace(
 def _action_reorder(
     reason: str,
     execution_id: str,
-    step_ids: List[str],
+    step_ids: list[str],
 ) -> str:
     """Reorder steps in the plan."""
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     try:
         current_plan = _get_current_plan(execution_id)
@@ -725,15 +715,15 @@ def _action_reorder(
 def plan(
     reason: str,
     action: str,
-    task: Optional[str] = None,
-    steps: Optional[List[str]] = None,
-    step_id: Optional[str] = None,
-    status: Optional[str] = None,
-    result: Optional[str] = None,
-    description: Optional[str] = None,
-    after_step_id: Optional[str] = None,
-    step_ids: Optional[List[str]] = None,
-    execution_id: Optional[str] = None,
+    task: str | None = None,
+    steps: list[str] | None = None,
+    step_id: str | None = None,
+    status: str | None = None,
+    result: str | None = None,
+    description: str | None = None,
+    after_step_id: str | None = None,
+    step_ids: list[str] | None = None,
+    execution_id: str | None = None,
     agent_id: str = "default",
 ) -> str:
     """Create and manage ordered execution plans (SQLite-backed).

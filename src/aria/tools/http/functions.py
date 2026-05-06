@@ -1,7 +1,5 @@
 """HTTP request tool for making API calls."""
 
-from pathlib import Path
-from typing import Dict, Optional
 from uuid import uuid4
 
 import httpx
@@ -9,12 +7,13 @@ from loguru import logger
 
 from aria.tools import tool_response
 from aria.tools.constants import (
+    BASE_DIR,
     DEFAULT_TIMEOUT,
     MAX_TIMEOUT,
 )
 from aria.tools.decorators import log_tool_call
 
-HTTP_OUTPUT_DIR = Path("data/http")
+HTTP_OUTPUT_DIR = BASE_DIR / "http"
 HTTP_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -36,42 +35,27 @@ def http_request(
     reason: str,
     method: str,
     url: str,
-    headers: Optional[Dict[str, str]] = None,
-    body: Optional[str] = None,
-    timeout: Optional[int] = None,
+    headers: dict[str, str] | None = None,
+    body: str | None = None,
+    timeout: int | None = None,
 ) -> str:
     """Make HTTP requests to web APIs with redirect following.
 
     When to use:
-        - Use this to call REST APIs, fetch JSON data, or interact with
-          web services.
-        - Use this when you need full control over HTTP method, headers,
-          and body (e.g., POST with JSON payload).
-        - Do NOT use this to browse websites — use `open_url` for pages
-          that need JavaScript rendering.
-        - Do NOT use this to download files — use `download`.
-
-    Why:
-        Provides a general-purpose HTTP client (httpx) for API
-        integration. Follows redirects and never raises — errors are
-        returned in the response JSON.
+        - Call REST APIs, fetch JSON data, or interact with web services.
+        - Do NOT use for browsing websites — use `open_url`.
+        - Do NOT use for downloading files — use `download`.
 
     Args:
         reason: Why you're making this request (for logging/auditing).
-        method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD,
-            OPTIONS).
+        method: GET | POST | PUT | DELETE | PATCH | HEAD | OPTIONS.
         url: The URL to request.
         headers: Optional request headers (dict).
         body: Optional request body string (for POST/PUT/PATCH).
         timeout: Timeout in seconds (default: 30, max: 300).
 
     Returns:
-        JSON with status_code, headers, final url, and a saved body file.
-        Response content is persisted to disk rather than returned inline.
-
-    Important:
-        - This tool never raises exceptions; errors are returned as JSON.
-        - Follows HTTP redirects automatically.
+        JSON with status_code, headers, final url, saved body file path.
     """
     method = method.upper().strip()
 

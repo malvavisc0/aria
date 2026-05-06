@@ -14,7 +14,8 @@ Categories:
 - system: On-demand http_request, process
 """
 
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Dict, List, Optional
 
 from llama_index.core.tools import FunctionTool
 from loguru import logger
@@ -49,7 +50,7 @@ def _import_function(module_path: str, function_name: str) -> Callable:
     return getattr(module, function_name)
 
 
-def _get_core_lite_tools() -> List[FunctionTool]:
+def _get_core_lite_tools() -> list[FunctionTool]:
     """Aria agent core tools: reasoning + shell only."""
     from aria.tools.shell.functions import ShellToolSchema
 
@@ -67,7 +68,7 @@ def _get_core_lite_tools() -> List[FunctionTool]:
     return tools
 
 
-def _get_file_lite_tools() -> List[FunctionTool]:
+def _get_file_lite_tools() -> list[FunctionTool]:
     """Aria agent file tools: no file_info or copy_file."""
     tool_specs = [
         ("aria.tools.files", "read_file"),
@@ -82,7 +83,7 @@ def _get_file_lite_tools() -> List[FunctionTool]:
     ]
 
 
-def _get_core_tools() -> List[FunctionTool]:
+def _get_core_tools() -> list[FunctionTool]:
     """Worker core tools: reasoning, plan, scratchpad, shell."""
     from aria.tools.shell.functions import ShellToolSchema
 
@@ -102,7 +103,7 @@ def _get_core_tools() -> List[FunctionTool]:
     return tools
 
 
-def _get_file_tools() -> List[FunctionTool]:
+def _get_file_tools() -> list[FunctionTool]:
     """Worker file tools: full set including file_info and copy_file."""
     tool_specs = [
         ("aria.tools.files", "read_file"),
@@ -119,7 +120,7 @@ def _get_file_tools() -> List[FunctionTool]:
     ]
 
 
-def _get_web_tools() -> List[FunctionTool]:
+def _get_web_tools() -> list[FunctionTool]:
     """Get on-demand browser tools."""
     try:
         from aria.config.api import Lightpanda
@@ -143,7 +144,7 @@ def _get_web_tools() -> List[FunctionTool]:
     return tools
 
 
-def _get_development_tools() -> List[FunctionTool]:
+def _get_development_tools() -> list[FunctionTool]:
     """Get on-demand development tools."""
     tool_specs = [
         ("aria.tools.development", "python"),
@@ -154,7 +155,7 @@ def _get_development_tools() -> List[FunctionTool]:
     ]
 
 
-def _get_finance_tools() -> List[FunctionTool]:
+def _get_finance_tools() -> list[FunctionTool]:
     """Get on-demand finance tools."""
     tool_specs = [
         ("aria.tools.search", "fetch_current_stock_price"),
@@ -167,7 +168,7 @@ def _get_finance_tools() -> List[FunctionTool]:
     ]
 
 
-def _get_entertainment_tools() -> List[FunctionTool]:
+def _get_entertainment_tools() -> list[FunctionTool]:
     """Get on-demand entertainment tools."""
     tool_specs = [
         ("aria.tools.imdb", "search_imdb_titles"),
@@ -188,7 +189,7 @@ def _get_entertainment_tools() -> List[FunctionTool]:
     return tools
 
 
-def _get_system_tools() -> List[FunctionTool]:
+def _get_system_tools() -> list[FunctionTool]:
     """Get on-demand system tools."""
     tool_specs = [
         ("aria.tools.http", "http_request"),
@@ -200,7 +201,7 @@ def _get_system_tools() -> List[FunctionTool]:
     ]
 
 
-_CATEGORY_LOADERS: Dict[str, Callable[[], List[FunctionTool]]] = {
+_CATEGORY_LOADERS: dict[str, Callable[[], list[FunctionTool]]] = {
     CORE_LITE: _get_core_lite_tools,
     FILES_LITE: _get_file_lite_tools,
     CORE: _get_core_tools,
@@ -213,7 +214,7 @@ _CATEGORY_LOADERS: Dict[str, Callable[[], List[FunctionTool]]] = {
 }
 
 
-def get_tools(categories: Optional[List[str]] = None) -> List[FunctionTool]:
+def get_tools(categories: list[str] | None = None) -> list[FunctionTool]:
     """Get tools by category. None returns all tools.
 
     When multiple categories are loaded, tools are deduplicated by name
@@ -229,7 +230,7 @@ def get_tools(categories: Optional[List[str]] = None) -> List[FunctionTool]:
     if categories is None:
         categories = ALL_CATEGORIES
 
-    tools: List[FunctionTool] = []
+    tools: list[FunctionTool] = []
     seen: set[str] = set()
     for cat in categories:
         loader = _CATEGORY_LOADERS.get(cat)
@@ -246,25 +247,3 @@ def get_tools(categories: Optional[List[str]] = None) -> List[FunctionTool]:
             logger.error(f"Failed to load {cat} tools: {exc}")
 
     return tools
-
-
-def get_core_tools() -> List[FunctionTool]:
-    """Get always-loaded core tools (reasoning, plan, knowledge, etc.)."""
-    return get_tools([CORE])
-
-
-def get_file_tools() -> List[FunctionTool]:
-    """Get always-loaded file tools."""
-    return get_tools([FILES])
-
-
-def get_domain_tools(domain: str) -> List[FunctionTool]:
-    """Get on-demand domain tools.
-
-    Args:
-        domain: One of: web, development, finance, entertainment, system.
-
-    Returns:
-        List of FunctionTool instances for the domain.
-    """
-    return get_tools([domain])

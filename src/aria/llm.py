@@ -258,9 +258,7 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
 
     day = timestamp.day
     date_str = (
-        f"{timestamp.strftime('%B')} "
-        f"{day}{_ordinal_suffix(day)} "
-        f"{timestamp.year}"
+        f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
     )
 
     from aria.tools.development.constants import RESTRICTED_BUILTINS

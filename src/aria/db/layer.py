@@ -37,7 +37,7 @@ import json
 import logging
 import uuid as _uuid
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 from chainlit import PersistedUser
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 ASSISTANT_MESSAGE_TYPE = "assistant_message"
 
 
-def _json_dumps_or_none(value: Any) -> Optional[str]:
+def _json_dumps_or_none(value: Any) -> str | None:
     """Serialize value to JSON string, returning None for None input."""
     if value is None:
         return None
@@ -83,7 +83,7 @@ def _json_loads_or(value: Any, default: Any) -> Any:
     return value
 
 
-def _parse_iso_timestamp(value: Any) -> Optional[datetime]:
+def _parse_iso_timestamp(value: Any) -> datetime | None:
     """Parse an ISO 8601 timestamp string into a timezone-aware datetime."""
     if not isinstance(value, str) or not value.strip():
         return None
@@ -138,7 +138,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         step["generation"] = _json_loads_or(step.get("generation"), default={})
         return step
 
-    def _deserialize_element(self, element: Dict[str, Any]) -> Dict[str, Any]:
+    def _deserialize_element(self, element: dict[str, Any]) -> dict[str, Any]:
         """Deserialize JSON fields in an element dict.
 
         Args:
@@ -150,7 +150,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         element["props"] = _json_loads_or(element.get("props"), default={})
         return element
 
-    def _deserialize_thread(self, thread: Dict[str, Any]) -> Dict[str, Any]:
+    def _deserialize_thread(self, thread: dict[str, Any]) -> dict[str, Any]:
         """Deserialize JSON fields in a thread dict.
 
         Args:
@@ -190,7 +190,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                 )
                 step["parentId"] = None
 
-    async def create_user(self, user: User) -> Optional[PersistedUser]:
+    async def create_user(self, user: User) -> PersistedUser | None:
         """Override create_user to include display_name in the INSERT.
 
         Chainlit's base implementation omits display_name from the INSERT
@@ -260,10 +260,10 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
     async def update_thread(
         self,
         thread_id: str,
-        name: Optional[str] = None,
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        tags: Optional[List[str]] = None,
+        name: str | None = None,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ):
         """Update thread with SQLite-compatible tags serialization.
 
@@ -294,14 +294,14 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         """
         # Chainlit does not json.dumps(tags) for steps, but for SQLite we store
         # tags as TEXT containing a JSON array.
-        patched: Dict[str, Any] = dict(step_dict)
+        patched: dict[str, Any] = dict(step_dict)
         if isinstance(patched.get("tags"), list):
             patched["tags"] = _json_dumps_or_none(patched["tags"])
 
         return await super().create_step(cast(StepDict, patched))
 
     async def get_all_user_threads(
-        self, user_id: Optional[str] = None, thread_id: Optional[str] = None
+        self, user_id: str | None = None, thread_id: str | None = None
     ):
         """Get all threads for a user with proper JSON deserialization.
 
@@ -355,7 +355,7 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         # Deserialize JSON-string columns into the shapes Chainlit's types expect.
         for t in threads:
             logger.debug(f"Thread {t.get('id')}: {len(t.get('steps', []))} steps")
-            self._deserialize_thread(cast(Dict[str, Any], t))
+            self._deserialize_thread(cast(dict[str, Any], t))
 
             # Promote assistant messages to root level for thread display
             steps = t.get("steps") or []

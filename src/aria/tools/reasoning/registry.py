@@ -1,7 +1,5 @@
 """Session registry helpers backed by the database."""
 
-from typing import Optional
-
 from loguru import logger
 
 from .database import get_database
@@ -20,7 +18,7 @@ def _get_db():
     return _db
 
 
-def get_active_session_id(agent_id: str) -> Optional[str]:
+def get_active_session_id(agent_id: str) -> str | None:
     """Get most-recent active session ID for an agent from the database."""
     sessions = _get_db().list_sessions(agent_id)
     if not sessions:

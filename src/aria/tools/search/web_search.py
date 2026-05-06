@@ -4,8 +4,6 @@
 Auto-selects backend based on SEARXNG_URL environment variable.
 """
 
-from typing import Optional
-
 from loguru import logger
 
 from aria.tools import log_tool_call
@@ -28,9 +26,9 @@ def _get_searxng_url() -> str:
 def web_search(
     reason: str,
     query: str,
-    category: Optional[str] = None,
-    time_range: Optional[str] = None,
-    max_results: Optional[int] = 5,
+    category: str | None = None,
+    time_range: str | None = None,
+    max_results: int | None = 5,
 ) -> str:
     """Search the web for information using the best available backend.
 

@@ -6,8 +6,6 @@ that handles all tasks using core + file tools. Domain-specific capabilities
 the ``shell`` tool.
 """
 
-from typing import Optional
-
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from loguru import logger
@@ -26,7 +24,7 @@ class ChatterAgent(FunctionAgent):
     """
 
     @staticmethod
-    def get_system_prompt(extras: Optional[str] = None) -> str:
+    def get_system_prompt(extras: str | None = None) -> str:
         """
         Constructs the system prompt for the agent by combining the base
         instructions from a Markdown file with optional extra context.
@@ -43,7 +41,7 @@ class ChatterAgent(FunctionAgent):
 
 def get_agent(
     llm: LLM,
-    extras: Optional[str] = None,
+    extras: str | None = None,
 ) -> ChatterAgent:
     """Factory function to create and return a ChatterAgent instance.
 

@@ -1,7 +1,6 @@
 """File write and modification operations."""
 
 from pathlib import Path
-from typing import List, Optional
 
 from loguru import logger
 
@@ -50,7 +49,7 @@ def _atomic_write(file_path: Path, content: str) -> None:
 
 
 def _modify_lines_streaming(
-    file_path: Path, offset: int, length: int, new_lines: Optional[List[str]]
+    file_path: Path, offset: int, length: int, new_lines: list[str] | None
 ) -> tuple[int, int]:
     """Modify lines in file using streaming.
 
@@ -74,7 +73,7 @@ def _modify_lines_streaming(
 
     try:
         with (
-            open(file_path, "r", encoding="utf-8") as infile,
+            open(file_path, encoding="utf-8") as infile,
             open(temp_path, "w", encoding="utf-8") as outfile,
         ):
             for i, line in enumerate(infile):
@@ -230,7 +229,7 @@ def edit_file(
     file_name: str,
     offset: int,
     length: int = 0,
-    new_lines: Optional[List[str]] = None,
+    new_lines: list[str] | None = None,
 ) -> str:
     """Edit specific lines in a file (backup always created).
 
@@ -261,7 +260,7 @@ def edit_file(
         )
 
     logger.info(
-        f"Editing file {file_name}: {operation} " f"(offset={offset}, length={length})"
+        f"Editing file {file_name}: {operation} (offset={offset}, length={length})"
     )
 
     # Resolve path

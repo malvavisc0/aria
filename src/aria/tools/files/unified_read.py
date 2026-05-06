@@ -10,9 +10,9 @@ This module provides 4 unified read tools:
 import mimetypes
 import re
 import stat
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -26,7 +26,7 @@ from aria.tools.files.decorators import with_file_operation_error_handling
 from aria.tools.files.exceptions import FileOperationError
 
 
-def _read_lines_streaming(file_path: Path, offset: int, length: int) -> List[str]:
+def _read_lines_streaming(file_path: Path, offset: int, length: int) -> list[str]:
     """Read lines from file using streaming.
 
     Args:
@@ -39,7 +39,7 @@ def _read_lines_streaming(file_path: Path, offset: int, length: int) -> List[str
     """
     lines = []
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             for i, line in enumerate(f):
                 if i < offset:
                     continue
@@ -91,7 +91,7 @@ def _count_lines_efficiently(file_path: Path) -> int:
 
 def _build_directory_tree(
     path: Path, current_depth: int, max_depth: int
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build directory tree structure recursively.
 
     Args:
@@ -126,7 +126,7 @@ def _build_directory_tree(
         }
 
 
-def _count_tree_items(tree: Dict[str, Any]) -> tuple[int, int]:
+def _count_tree_items(tree: dict[str, Any]) -> tuple[int, int]:
     """Count files and directories in a tree.
 
     Args:
@@ -170,7 +170,7 @@ def _format_permissions_symbolic(mode: int) -> str:
     return "".join(perms)
 
 
-def _ok(tool: str, reason: str, result: Dict[str, Any], **metadata) -> str:
+def _ok(tool: str, reason: str, result: dict[str, Any], **metadata) -> str:
     """Build a success response."""
     import json
 
@@ -181,7 +181,7 @@ def _ok(tool: str, reason: str, result: Dict[str, Any], **metadata) -> str:
             "result": result,
             "error": "",
             "metadata": {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "success": True,
                 **metadata,
             },
@@ -201,7 +201,7 @@ def _err(tool: str, reason: str, message: str, **metadata) -> str:
             "result": {},
             "error": message,
             "metadata": {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "success": False,
                 **metadata,
             },
@@ -217,9 +217,9 @@ def _err(tool: str, reason: str, message: str, **metadata) -> str:
 def read_file(
     reason: str,
     file_name: str,
-    offset: Optional[int] = 0,
-    length: Optional[int] = 0,
-    max_lines: Optional[int] = 500,
+    offset: int | None = 0,
+    length: int | None = 0,
+    max_lines: int | None = 500,
 ) -> str:
     """Read file contents, optionally in chunks.
 
@@ -238,7 +238,7 @@ def read_file(
     max_lines_value = 500 if max_lines is None else max_lines
 
     logger.info(
-        f"Reading file: {file_name} " f"(offset={offset_value}, length={length_value})"
+        f"Reading file: {file_name} (offset={offset_value}, length={length_value})"
     )
 
     try:
@@ -361,10 +361,10 @@ def file_info(reason: str, file_name: str) -> str:
                     "size_bytes": file_stats.st_size,
                     "size_mb": round(file_stats.st_size / (1024 * 1024), 4),
                     "modified": datetime.fromtimestamp(
-                        file_stats.st_mtime, tz=timezone.utc
+                        file_stats.st_mtime, tz=UTC
                     ).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "created": datetime.fromtimestamp(
-                        file_stats.st_ctime, tz=timezone.utc
+                        file_stats.st_ctime, tz=UTC
                     ).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "permissions": _format_permissions_symbolic(file_stats.st_mode),
                     "mode_octal": oct(file_stats.st_mode)[-3:],
@@ -401,11 +401,11 @@ def file_info(reason: str, file_name: str) -> str:
 )
 def list_files(
     reason: str,
-    pattern: Optional[str] = "*",
-    recursive: Optional[bool] = False,
-    max_depth: Optional[int] = 3,
-    max_results: Optional[int] = 100,
-    path: Optional[str] = ".",
+    pattern: str | None = "*",
+    recursive: bool | None = False,
+    max_depth: int | None = 3,
+    max_results: int | None = 100,
+    path: str | None = ".",
 ) -> str:
     """List files/dirs with optional recursive tree view.
 
@@ -537,12 +537,12 @@ def list_files(
 def search_files(
     reason: str,
     pattern: str,
-    mode: Optional[str] = "name",
-    file_pattern: Optional[str] = "**/*",
-    recursive: Optional[bool] = True,
-    max_results: Optional[int] = 500,
-    context_lines: Optional[int] = 2,
-    path: Optional[str] = ".",
+    mode: str | None = "name",
+    file_pattern: str | None = "**/*",
+    recursive: bool | None = True,
+    max_results: int | None = 500,
+    context_lines: int | None = 2,
+    path: str | None = ".",
 ) -> str:
     """Search files by name pattern or content regex.
 
@@ -670,7 +670,7 @@ def search_files(
                     # Read file line by line to avoid loading entire file
                     # into memory at once
                     lines = []
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(file_path, encoding="utf-8", errors="ignore") as f:
                         for line in f:
                             lines.append(line)
                             # Safety limit on lines per file
@@ -731,7 +731,7 @@ def search_files(
             return _err(
                 tool="search_files",
                 reason=reason,
-                message=(f"Invalid mode '{mode_value}'. " "Use 'name' or 'content'."),
+                message=(f"Invalid mode '{mode_value}'. Use 'name' or 'content'."),
                 pattern=pattern,
             )
 

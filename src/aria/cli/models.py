@@ -29,7 +29,7 @@ Example:
 """
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from huggingface_hub import snapshot_download
@@ -88,8 +88,7 @@ def _resolve_model_config(alias: str) -> tuple[str, str]:
     """
     if alias not in _MODEL_CONFIGS:
         raise typer.BadParameter(
-            f"Unknown model alias '{alias}'. "
-            f"Choose from: {', '.join(_MODEL_CONFIGS)}"
+            f"Unknown model alias '{alias}'. Choose from: {', '.join(_MODEL_CONFIGS)}"
         )
 
     config_cls, env_var = _MODEL_CONFIGS[alias]
@@ -119,7 +118,7 @@ def download_command(
         ),
     ],
     token: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--token",
             help="HuggingFace API token. Falls back to HF_TOKEN env var.",

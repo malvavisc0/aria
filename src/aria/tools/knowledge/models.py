@@ -1,7 +1,6 @@
 """SQLAlchemy models for knowledge store persistence."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -27,17 +26,17 @@ class KnowledgeEntryModel(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Optional tags for categorization (JSON array string)
-    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tags: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Soft delete

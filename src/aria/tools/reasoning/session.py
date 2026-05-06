@@ -2,7 +2,7 @@
 
 import hashlib
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from .constants import (
     BIAS_PATTERNS,
@@ -18,9 +18,7 @@ if TYPE_CHECKING:
 class ReasoningSession:
     """A single reasoning session with structured reasoning artifacts."""
 
-    def __init__(
-        self, session_id: Optional[str] = None, agent_id: Optional[str] = None
-    ):
+    def __init__(self, session_id: str | None = None, agent_id: str | None = None):
         """Initialize a new reasoning session.
 
         Args:
@@ -30,13 +28,13 @@ class ReasoningSession:
         self.id = hashlib.md5(str(datetime.now()).encode()).hexdigest()
         self.session_id = session_id
         self.agent_id = agent_id
-        self.steps: List[Dict] = []
-        self.reflections: List[Dict] = []
-        self.scratchpad: Dict[str, Dict] = {}
-        self.tool_events: List[Dict[str, Any]] = []
+        self.steps: list[dict] = []
+        self.reflections: list[dict] = []
+        self.scratchpad: dict[str, dict] = {}
+        self.tool_events: list[dict[str, Any]] = []
         self.created_at = datetime.now().isoformat()
-        self.confidence_trajectory: List[float] = []
-        self._db: Optional["ReasoningDatabase"] = None
+        self.confidence_trajectory: list[float] = []
+        self._db: ReasoningDatabase | None = None
 
     def add_step(
         self,
@@ -44,9 +42,9 @@ class ReasoningSession:
         content: str,
         cognitive_mode: str = "analysis",
         reasoning_type: str = "deductive",
-        evidence: Optional[List[str]] = None,
+        evidence: list[str] | None = None,
         confidence: float = 0.65,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Add one structured reasoning step.
 
@@ -102,7 +100,7 @@ class ReasoningSession:
             },
         )
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "step_id": step["id"],
             "cognitive_mode": cognitive_mode,
             "reasoning_type": reasoning_type,
@@ -120,8 +118,8 @@ class ReasoningSession:
         return result
 
     def add_reflection(
-        self, reason: str, reflection: str, on_step: Optional[int] = None
-    ) -> Dict[str, Any]:
+        self, reason: str, reflection: str, on_step: int | None = None
+    ) -> dict[str, Any]:
         """
         Add meta-cognitive reflection.
 
@@ -143,7 +141,7 @@ class ReasoningSession:
                     f"Invalid on_step={on_step}. Valid step IDs: {valid_step_ids}"
                 )
 
-        entry: Dict[str, Any] = {
+        entry: dict[str, Any] = {
             "id": len(self.reflections) + 1,
             "content": reflection,
             "step_id": on_step,
@@ -176,8 +174,8 @@ class ReasoningSession:
         reason: str,
         key: str,
         operation: str = "get",
-        value: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        value: str | None = None,
+    ) -> dict[str, Any]:
         """
         Simple working memory scratchpad.
 
@@ -303,7 +301,7 @@ class ReasoningSession:
                     },
                 }
 
-    def evaluate(self, reason: str) -> Dict[str, Any]:
+    def evaluate(self, reason: str) -> dict[str, Any]:
         """
         Quick quality assessment of the reasoning chain.
 
@@ -320,7 +318,7 @@ class ReasoningSession:
 
         score = min(10, n_steps + n_refl * 2 + int(avg_conf * 10)) // 3
 
-        recommendations: List[str] = []
+        recommendations: list[str] = []
         if n_steps < 4:
             recommendations.append("Consider more steps")
         if n_refl == 0:
@@ -346,7 +344,7 @@ class ReasoningSession:
             "timestamp": now,
         }
 
-    def summary(self, reason: str) -> Dict[str, Any]:
+    def summary(self, reason: str) -> dict[str, Any]:
         """
         Current state overview.
 
@@ -378,7 +376,7 @@ class ReasoningSession:
             "timestamp": now,
         }
 
-    def reset(self, reason: str) -> Dict[str, Any]:
+    def reset(self, reason: str) -> dict[str, Any]:
         """
         Clear all reasoning data in this session.
 
@@ -404,7 +402,7 @@ class ReasoningSession:
             "timestamp": now,
         }
 
-    def _detect_biases(self, text: str) -> List[str]:
+    def _detect_biases(self, text: str) -> list[str]:
         """
         Detect potential cognitive biases in text.
 
@@ -425,7 +423,7 @@ class ReasoningSession:
         """Set database instance for persistence."""
         self._db = db
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize session to dictionary for storage."""
         return {
             "id": self.id,
@@ -440,7 +438,7 @@ class ReasoningSession:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "ReasoningSession":
+    def from_dict(cls, data: dict) -> "ReasoningSession":
         """Deserialize session from dictionary."""
         session = cls(session_id=data.get("session_id"), agent_id=data.get("agent_id"))
         session.id = data["id"]
@@ -459,17 +457,17 @@ class ReasoningSession:
                 self.id, self.session_id, self.agent_id, self.created_at
             )
 
-    def persist_step(self, step: Dict) -> None:
+    def persist_step(self, step: dict) -> None:
         """Persist a step to database."""
         if self._db:
             self._db.save_step(self.id, step)
 
-    def persist_reflection(self, reflection: Dict) -> None:
+    def persist_reflection(self, reflection: dict) -> None:
         """Persist a reflection to database."""
         if self._db:
             self._db.save_reflection(self.id, reflection)
 
-    def persist_scratchpad_item(self, key: str, value_dict: Dict) -> None:
+    def persist_scratchpad_item(self, key: str, value_dict: dict) -> None:
         """Persist a scratchpad item to database."""
         if self._db:
             self._db.save_scratchpad_item(
@@ -485,7 +483,7 @@ class ReasoningSession:
         tool_name: str,
         reason: str,
         timestamp: str,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
     ) -> None:
         """Persist a tool call event to database and local memory."""
         event = {

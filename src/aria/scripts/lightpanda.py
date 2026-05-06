@@ -19,7 +19,6 @@ import stat
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 from rich.console import Console
@@ -42,7 +41,7 @@ GITHUB_REPO = "lightpanda-io/browser"
 GITHUB_RELEASE_URL = f"https://github.com/{GITHUB_REPO}/releases/download/nightly"
 
 
-def download_lightpanda(bin_dir: Path, version: Optional[str] = None) -> Path:
+def download_lightpanda(bin_dir: Path, version: str | None = None) -> Path:
     """Download Lightpanda binary for current platform.
 
     Args:
@@ -101,7 +100,7 @@ def download_lightpanda(bin_dir: Path, version: Optional[str] = None) -> Path:
     return binary_path
 
 
-def get_lightpanda_binary(bin_dir: Optional[Path] = None) -> Optional[Path]:
+def get_lightpanda_binary(bin_dir: Path | None = None) -> Path | None:
     """Find the Lightpanda binary in the given directory.
 
     Args:
@@ -123,7 +122,7 @@ def get_lightpanda_binary(bin_dir: Optional[Path] = None) -> Optional[Path]:
     return binary if binary.exists() else None
 
 
-def _get_platform_asset_name() -> Optional[str]:
+def _get_platform_asset_name() -> str | None:
     """Get the platform-specific asset name for Lightpanda.
 
     Returns:

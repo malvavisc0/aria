@@ -6,7 +6,7 @@ from aria.helpers.dotenv import parse_dotenv, write_dotenv
 def test_parse_dotenv_preserves_values_and_raw_lines(tmp_path: Path) -> None:
     env_path = tmp_path / ".env"
     env_path.write_text(
-        "# Header\n" "DEBUG = true  # comment\n" "SERVER_PORT = 9876\n" "\n",
+        "# Header\nDEBUG = true  # comment\nSERVER_PORT = 9876\n\n",
         encoding="utf-8",
     )
 
@@ -26,7 +26,7 @@ def test_write_dotenv_updates_existing_and_keeps_comments(
 ) -> None:
     env_path = tmp_path / ".env"
     env_path.write_text(
-        "DEBUG = true  # verbose\n" "SERVER_PORT = 9876\n" "# keep me\n",
+        "DEBUG = true  # verbose\nSERVER_PORT = 9876\n# keep me\n",
         encoding="utf-8",
     )
 
@@ -38,7 +38,7 @@ def test_write_dotenv_updates_existing_and_keeps_comments(
     )
 
     assert env_path.read_text(encoding="utf-8") == (
-        "DEBUG = false  # verbose\n" "SERVER_PORT = 9999\n" "# keep me\n"
+        "DEBUG = false  # verbose\nSERVER_PORT = 9999\n# keep me\n"
     )
 
 
@@ -54,7 +54,7 @@ def test_write_dotenv_appends_missing_keys(tmp_path: Path) -> None:
     )
 
     assert env_path.read_text(encoding="utf-8") == (
-        "DEBUG = false\n" "\n" "SERVER_HOST = 0.0.0.0\n"
+        "DEBUG = false\n\nSERVER_HOST = 0.0.0.0\n"
     )
 
 

@@ -1,7 +1,7 @@
 """SearXNG-backed web search tool."""
 
 from os import getenv
-from typing import Any, Dict, Literal, TypedDict
+from typing import Any, Literal, TypedDict
 from urllib.parse import urlencode
 
 import httpx
@@ -39,7 +39,7 @@ class SearchPageStats(TypedDict):
 
 
 # Field mappings per category.
-_CATEGORY_FIELD_MAP: Dict[str, list[FieldSpec]] = {
+_CATEGORY_FIELD_MAP: dict[str, list[FieldSpec]] = {
     "general": [
         {"name": "url", "required": True, "default": None},
         {"name": "title", "required": True, "default": None},

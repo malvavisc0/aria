@@ -4,7 +4,6 @@ This module contains YouTube-related helper functions.
 """
 
 import re
-from typing import Optional
 
 from loguru import logger
 from youtube_transcript_api import (
@@ -27,7 +26,7 @@ from aria.tools.search._download_internals import (
 from aria.tools.search.constants import DOWNLOADS_DIR
 
 
-def _extract_video_id(url: str) -> Optional[str]:
+def _extract_video_id(url: str) -> str | None:
     """Extract YouTube video ID from URL.
 
     Args:
@@ -43,7 +42,7 @@ def _extract_video_id(url: str) -> Optional[str]:
 
 
 def _get_youtube_transcript(
-    video_id: str, languages: Optional[list[str]] = None
+    video_id: str, languages: list[str] | None = None
 ) -> tuple[str, list, float]:
     """Fetch and format YouTube transcript.
 
@@ -76,7 +75,7 @@ def _get_youtube_transcript(
 def get_youtube_video_transcription(
     reason: str,
     url: str,
-    languages: Optional[list[str]] = None,
+    languages: list[str] | None = None,
 ) -> str:
     """Download and save a YouTube video's captions/transcript to disk.
 
@@ -152,7 +151,7 @@ def get_youtube_video_transcription(
 
     except NoTranscriptFound:
         error_msg = (
-            f"No transcripts found for video {video_id}. " "Video may lack captions."
+            f"No transcripts found for video {video_id}. Video may lack captions."
         )
         logger.warning(error_msg)
         return tool_error_response(get_function_name(), reason, RuntimeError(error_msg))

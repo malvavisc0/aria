@@ -6,7 +6,7 @@ proper timeout handling, output capture, and basic security constraints.
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -33,19 +33,23 @@ class ShellToolSchema(BaseModel):
     reason: str = Field(description="Why you are executing this command")
     commands: str = Field(description="The shell command string to execute")
     stop_on_error: bool = Field(default=True, description="Stop on first failure")
-    timeout: Optional[int] = Field(
-        default=None, description="Timeout in seconds (default: 30, max: 300)"
+    timeout: int | None = Field(
+        default=None,
+        description="Timeout in seconds (default: 30, max: configurable via ARIA_MAX_TIMEOUT)",
     )
-    working_dir: Optional[str] = Field(
-        default=None, description="Working directory path"
+    working_dir: str | None = Field(default=None, description="Working directory path")
+    env: dict[str, str] | None = Field(
+        default=None,
+        description="Additional environment variables to set for execution",
     )
 
 
 def _run_shell_command(
     reason: str,
     command: str,
-    timeout: Optional[int] = None,
-    working_dir: Optional[str] = None,
+    timeout: int | None = None,
+    working_dir: str | None = None,
+    env: dict[str, str] | None = None,
     tool_name: str = "shell",
 ) -> str:
     """Execute a command string via the system shell.
@@ -53,8 +57,9 @@ def _run_shell_command(
     Args:
         reason: Why you're executing.
         command: Full command string (supports pipes, redirects, etc.).
-        timeout: Timeout in seconds (default: 30, max: 300).
+        timeout: Timeout in seconds (default: 30, max: configurable).
         working_dir: Working directory (default: BASE_DIR).
+        env: Additional environment variables (merged with current env).
         tool_name: Tool name for response (default: "shell").
 
     Returns:
@@ -72,6 +77,13 @@ def _run_shell_command(
     )
     resolved_working_dir = _validate_working_dir(working_dir)
 
+    # Build environment: merge additional vars with current env
+    import os
+
+    proc_env = None
+    if env:
+        proc_env = {**os.environ, **env}
+
     response = _execute_command_internal(
         tool_name,
         command,
@@ -79,6 +91,7 @@ def _run_shell_command(
         resolved_working_dir,
         actual_timeout,
         shell=True,
+        env=proc_env,
     )
     return tool_response(
         tool=tool_name,
@@ -88,8 +101,8 @@ def _run_shell_command(
 
 
 def _normalize_commands(
-    commands: Union[str, Dict[str, Any], List[Any]],
-) -> List[Dict[str, Any]]:
+    commands: str | dict[str, Any] | list[Any],
+) -> list[dict[str, Any]]:
     """Normalize various command input formats into a uniform list.
 
     Supported formats:
@@ -125,20 +138,28 @@ def _normalize_commands(
 @log_tool_call
 def shell(
     reason: str,
-    commands: Union[str, List[str], Dict[str, Any], List[Dict[str, Any]]],
+    commands: str | list[str] | dict[str, Any] | list[dict[str, Any]],
     stop_on_error: bool = True,
-    timeout: Optional[int] = None,
-    working_dir: Optional[str] = None,
+    timeout: int | None = None,
+    working_dir: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> str:
     """Execute shell commands with timeout and security constraints.
+
+    When to use:
+        - Run shell commands (git, pip, npm, system utilities, etc.).
+        - Batch multiple commands with per-command timeout and error handling.
+        - Do NOT use for Python code — use `python`.
+        - Do NOT use for long-running background processes — use `process`.
 
     Args:
         reason: Why (logging).
         commands: str | list[str] | dict | list[dict].
-            Dict keys: command, timeout, working_dir, continue_on_error.
+            Dict keys: command, timeout, working_dir, env, continue_on_error.
         stop_on_error: Stop on first failure (default: True).
-        timeout: Default timeout seconds (default: 30, max: 300).
+        timeout: Default timeout seconds (default: 30, max: configurable).
         working_dir: Default working directory.
+        env: Additional environment variables for all commands.
 
     Returns:
         JSON with results[] per command: stdout, stderr, return_code,
@@ -159,7 +180,7 @@ def shell(
             },
         )
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     success_count = 0
     failure_count = 0
     total_execution_time = 0.0
@@ -169,18 +190,18 @@ def shell(
         cmd_str = cmd_dict.get("command", "")
         cmd_timeout = cmd_dict.get("timeout", timeout)
         cmd_working_dir = cmd_dict.get("working_dir", working_dir)
+        cmd_env = cmd_dict.get("env", env)
         continue_on_error = cmd_dict.get("continue_on_error", False)
 
         display_command = cmd_str.strip()
 
         try:
             result_str = _run_shell_command(
-                reason=(
-                    f"Batch command {i + 1}/{len(normalized)}: " f"{display_command}"
-                ),
+                reason=(f"Batch command {i + 1}/{len(normalized)}: {display_command}"),
                 command=cmd_str,
                 timeout=cmd_timeout,
                 working_dir=cmd_working_dir,
+                env=cmd_env,
             )
             result = json.loads(result_str)
             results.append(result)
