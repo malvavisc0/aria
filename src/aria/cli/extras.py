@@ -99,6 +99,7 @@ _EXCLUDED_BINARIES: set[str] = {
     "tqdm",
     "tvm-ffi-config",
     "tvm-ffi-stubgen",
+    "typer",
     "undill",
     "uvicorn",
     "watchfiles",
