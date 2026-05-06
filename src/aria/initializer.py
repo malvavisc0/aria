@@ -19,12 +19,29 @@ from aria.helpers.network import get_network_ip
 console = Console()
 
 
+def _find_project_root() -> Path:
+    """Walk up from this file to find the project root (contains pyproject.toml).
+
+    Mirrors the same helper in ``aria.config.folders`` — kept separate to
+    avoid importing that module before the ``.env`` file exists (its module-
+    level code reads ``DATA_FOLDER`` from the environment).
+    """
+    current = Path(__file__).resolve().parent
+    for parent in [current, *current.parents]:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return Path.cwd()
+
+
+_PROJECT_ROOT = _find_project_root()
+
+
 def is_initialized() -> bool:
     """Check if the environment is already initialized.
 
     Returns True if .env exists with a non-empty CHAINLIT_AUTH_SECRET.
     """
-    env_file = Path.cwd() / ".env"
+    env_file = _PROJECT_ROOT / ".env"
     if not env_file.exists():
         return False
 
@@ -47,7 +64,7 @@ def generate_secret() -> str:
 
 def setup_env_file() -> bool:
     """Create .env from .env.example with generated secret and network IP."""
-    env_file = Path.cwd() / ".env"
+    env_file = _PROJECT_ROOT / ".env"
     if env_file.exists():
         return False
 
@@ -63,7 +80,9 @@ def setup_env_file() -> bool:
 
     # Detect and set network IP for SERVER_HOST
     network_ip = get_network_ip()
-    content = content.replace("SERVER_HOST = 0.0.0.0", f"SERVER_HOST = {network_ip}")
+    content = content.replace(
+        "SERVER_HOST = 0.0.0.0", f"SERVER_HOST = {network_ip}"
+    )
 
     env_file.write_text(content)
 

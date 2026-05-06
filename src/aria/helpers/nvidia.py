@@ -80,11 +80,15 @@ def detect_gpus_with_details(log_errors: bool = False) -> list[GPUMetadata]:
 
             # Calculate memory utilization percentage (rounded to 2 decimals)
             memory_util = (
-                round((used_mem / total_mem * 100), 2) if total_mem > 0 else 0.0
+                round((used_mem / total_mem * 100), 2)
+                if total_mem > 0
+                else 0.0
             )
 
             # Helper function to safely parse numeric values with unit suffixes
-            def parse_numeric(value: str, suffixes: list[str] | None = None) -> int:
+            def parse_numeric(
+                value: str, suffixes: list[str] | None = None
+            ) -> int:
                 """Parse numeric value, optionally removing unit suffixes."""
                 if not value:
                     return 0
@@ -168,7 +172,9 @@ def detect_gpu_count() -> int:
         )
         # Filter empty lines to get accurate count
         lines = [
-            line.strip() for line in result.stdout.strip().split("\n") if line.strip()
+            line.strip()
+            for line in result.stdout.strip().split("\n")
+            if line.strip()
         ]
         return len(lines)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -202,7 +208,9 @@ def get_total_vram_mb() -> int:
         )
         # Filter empty lines before processing
         vram_values = [
-            vram.strip() for vram in result.stdout.strip().split("\n") if vram.strip()
+            vram.strip()
+            for vram in result.stdout.strip().split("\n")
+            if vram.strip()
         ]
         total_vram = sum(int(vram) for vram in vram_values)
         return total_vram
@@ -549,6 +557,74 @@ def calculate_max_safe_context(
     return max(MIN_CONTEXT, context_size)
 
 
+def _estimate_kv_cache_mb(
+    model_path: str,
+    context_size: int,
+    kv_cache_dtype: str,
+) -> int | None:
+    """Estimate KV cache size from model architecture (config.json).
+
+    Reads ``num_hidden_layers``, ``num_key_value_heads`` (or
+    ``num_attention_heads`` for MHA), and ``head_dim`` (or derives it from
+    ``hidden_size / num_attention_heads``) to compute the exact KV cache
+    footprint.
+
+    Formula::
+
+        bytes_per_elem = 1 if fp8, else 2 (fp16)
+        kv_per_token   = 2 × num_layers × num_kv_heads × head_dim × bytes
+        total_bytes    = kv_per_token × context_size
+
+    Returns:
+        KV cache size in MiB, or None if config.json is unavailable.
+    """
+    import json
+    from pathlib import Path
+
+    config_path = Path(model_path) / "config.json" if model_path else None
+    if not config_path or not config_path.is_file():
+        return None
+
+    try:
+        with open(config_path) as f:
+            cfg = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    num_layers = cfg.get("num_hidden_layers")
+    num_kv_heads = cfg.get("num_key_value_heads") or cfg.get(
+        "num_attention_heads"
+    )
+    head_dim = cfg.get("head_dim")
+
+    if not head_dim:
+        hidden_size = cfg.get("hidden_size")
+        num_heads = cfg.get("num_attention_heads")
+        if hidden_size and num_heads:
+            head_dim = hidden_size // num_heads
+
+    if not all((num_layers, num_kv_heads, head_dim)):
+        return None
+
+    bytes_per_elem = 1 if kv_cache_dtype == "fp8" else 2
+    # 2 tensors (K + V) per layer
+    kv_per_token = 2 * num_layers * num_kv_heads * head_dim * bytes_per_elem
+    total_bytes = kv_per_token * context_size
+    kv_mb = total_bytes // (1024 * 1024)
+
+    logger.debug(
+        "KV cache from config.json: layers={}, kv_heads={}, head_dim={}, "
+        "dtype={}, ctx={} → {} MiB",
+        num_layers,
+        num_kv_heads,
+        head_dim,
+        kv_cache_dtype,
+        context_size,
+        kv_mb,
+    )
+    return kv_mb
+
+
 def calculate_gpu_memory_utilization(
     total_vram_mb: int,
     model_path: str = "",
@@ -560,34 +636,31 @@ def calculate_gpu_memory_utilization(
 ) -> float:
     """Calculate the optimal ``gpu_memory_utilization`` fraction for vLLM.
 
-    Instead of using a percentage of total VRAM (which wastes memory on large
-    GPUs), this function estimates the **actual memory needs** based on model
-    weight size, KV cache requirements for the target context length, and
-    fixed overhead.
+    Estimates **actual memory needs** from model weight size on disk and
+    architecture-aware KV cache computation (read from the model's
+    ``config.json``).  Falls back to a conservative heuristic when the
+    config is unavailable.
 
     The formula is::
 
-        kv_cache    = model_weights × (context_size / 32768) × kv_dtype_factor
+        kv_cache    = 2 × layers × kv_heads × head_dim × ctx × bytes_per_elem
         needed      = (model_weights + kv_cache + overhead + headroom) × safety
         utilization = needed / total_vram
 
-    Where ``kv_dtype_factor`` is 0.5 for fp8 KV cache, 1.0 otherwise.
-
-    This means a small model on a large GPU gets a low utilization (e.g. 0.45
-    on a 33 GiB GPU with an 8B INT4 model at 128k context), instead of always
-    reserving ~90 %.
+    This means a small quantized model on a large GPU gets a low utilization
+    (leaving headroom), instead of always reserving ~90%.
 
     Args:
         total_vram_mb: Total GPU VRAM in MiB (from ``get_total_vram_mb()``).
-        model_path: Local path to the model directory.  Used to estimate
-            model weight size from disk.
+        model_path: Local path to the model directory.  Used to read
+            ``config.json`` for architecture info and measure weight size.
         context_size: Target maximum sequence length (from
             ``CHAT_CONTEXT_SIZE``).  Directly scales KV cache estimate.
         kv_cache_dtype: KV cache data type (``"auto"``, ``"fp8"``, etc.).
             ``"fp8"`` halves the KV cache memory footprint.
         safety_factor: Multiplier for the total memory estimate to account
             for activation memory, fragmentation, and batch processing.
-            Default ``1.20`` (20 % safety margin).
+            Default ``1.20`` (20% safety margin).
         headroom_mb: Fixed VRAM reserved for the OS, display, and thermal
             headroom.  Default 1024 MiB (1 GiB).
         vllm_overhead_mb: Fixed overhead for vLLM CUDA kernels, buffers,
@@ -599,17 +672,14 @@ def calculate_gpu_memory_utilization(
 
     Example::
 
-        >>> # 8 GB GPU, 8B INT4 model (~4 GiB), 128k context, fp8 KV
-        >>> calculate_gpu_memory_utilization(8192, "/path/to/8b-int4", 131072, "fp8")
-        0.90
+        >>> # 8 GB GPU, 9B INT4 model, 128k context, fp8 KV
+        >>> calculate_gpu_memory_utilization(8192, "/models/9b-int4", 131072, "fp8")
+        0.95
 
-        >>> # 33 GB GPU, same model
-        >>> calculate_gpu_memory_utilization(34120, "/path/to/8b-int4", 131072, "fp8")
-        0.50
-
-        >>> # 33 GB GPU, 32k context
-        >>> calculate_gpu_memory_utilization(34120, "/path/to/8b-int4", 32768, "fp8")
-        0.50
+        >>> # 32 GB GPU, 9B INT4 model (~5 GiB weights), 128k ctx, fp8 KV
+        >>> # KV = 2×40×8×128×131072×1 = 10 GiB, total ~17 GiB → util≈0.62
+        >>> calculate_gpu_memory_utilization(33400, "/models/9b-int4", 131072, "fp8")
+        0.62
     """
     from pathlib import Path
 
@@ -629,7 +699,7 @@ def calculate_gpu_memory_utilization(
         )
         return FALLBACK
 
-    # --- Step 1: Estimate model weight size ---
+    # --- Step 1: Estimate model weight size from disk ---
     model_size_mb = 0
     if model_path:
         model_size_mb = get_model_file_size(Path(model_path))
@@ -643,23 +713,35 @@ def calculate_gpu_memory_utilization(
         )
         model_size_mb = DEFAULT_MODEL_SIZE_MB
 
-    # --- Step 2: Estimate KV cache size ---
-    # Heuristic: KV cache scales linearly with context size and model size.
-    #   fp8 KV:  half the footprint of auto/fp16
-    #   Reference: 32k context baseline (factor = 1.0 at 32k)
-    kv_dtype_factor = 0.5 if kv_cache_dtype == "fp8" else 1.0
-    context_factor = context_size / 32768
-    kv_cache_mb = int(model_size_mb * context_factor * kv_dtype_factor)
+    # --- Step 2: Estimate KV cache size (architecture-aware) ---
+    kv_cache_mb = _estimate_kv_cache_mb(
+        model_path, context_size, kv_cache_dtype
+    )
+
+    kv_source = "config.json"
+    if kv_cache_mb is None:
+        # Fallback: estimate when config.json is unavailable.
+        # Approximation: kv_cache ≈ model_weights × (ctx/32k) × dtype_factor
+        # This assumes KV cache at 32k baseline is roughly proportional to
+        # model weight size — conservative for GQA models, adequate for MHA.
+        kv_source = "heuristic (no config.json)"
+        kv_dtype_factor = 0.5 if kv_cache_dtype == "fp8" else 1.0
+        context_factor = context_size / 32768
+        kv_cache_mb = int(model_size_mb * context_factor * kv_dtype_factor)
 
     # --- Step 3: Compute total memory needed ---
-    raw_needed_mb = model_size_mb + kv_cache_mb + vllm_overhead_mb + headroom_mb
+    raw_needed_mb = (
+        model_size_mb + kv_cache_mb + vllm_overhead_mb + headroom_mb
+    )
     needed_mb = int(raw_needed_mb * safety_factor)
 
     # --- Step 4: Calculate utilization ---
     utilization = needed_mb / total_vram_mb
 
     # Clamp to safe bounds
-    utilization = max(MIN_UTILIZATION, min(MAX_UTILIZATION, round(utilization, 2)))
+    utilization = max(
+        MIN_UTILIZATION, min(MAX_UTILIZATION, round(utilization, 2))
+    )
 
     # --- Step 5: Log the reasoning ---
     logger.info(
@@ -667,7 +749,7 @@ def calculate_gpu_memory_utilization(
         "  VRAM total:        {vram:>8,} MiB\n"
         "  Model weights:     {model:>8,} MiB\n"
         "  KV cache estimate: {kv:>8,} MiB  "
-        "(ctx={ctx:,}, dtype={kv_dtype}, factor={kv_factor})\n"
+        "(ctx={ctx:,}, dtype={kv_dtype}, source={src})\n"
         "  vLLM overhead:     {over:>8,} MiB\n"
         "  Headroom:          {head:>8,} MiB\n"
         "  Raw needed:        {raw:>8,} MiB\n"
@@ -679,7 +761,7 @@ def calculate_gpu_memory_utilization(
         kv=kv_cache_mb,
         ctx=context_size,
         kv_dtype=kv_cache_dtype,
-        kv_factor=kv_dtype_factor,
+        src=kv_source,
         over=vllm_overhead_mb,
         head=headroom_mb,
         raw=raw_needed_mb,
