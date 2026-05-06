@@ -266,6 +266,18 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")
+
+    # Inject available CLI extras from the virtual environment
+    try:
+        from aria.cli.extras import get_venv_extras
+
+        extras_md = get_venv_extras()
+        if extras_md and "No virtual environment" not in extras_md:
+            lines.append("")
+            lines.append(extras_md)
+    except Exception:
+        pass  # Never fail instructions generation over extras
+
     return "\n".join(lines)
 
 

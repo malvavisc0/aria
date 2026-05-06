@@ -14,6 +14,12 @@ Example:
     ```
 """
 
+import logging
+
+# Suppress noisy debug logs from markdown_it and similar libraries
+logging.getLogger("markdown_it").setLevel(logging.WARNING)
+logging.getLogger("markdownify").setLevel(logging.WARNING)
+
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
@@ -298,3 +304,73 @@ def instructions(
 
     if not raw:
         console.print()
+
+
+# ── Extras subcommand ───────────────────────────────────────────────────────
+
+
+@app.command("extras")
+def extras(
+    filter_term: str | None = typer.Option(
+        None,
+        "--filter",
+        "-f",
+        help="Filter binaries by substring match.",
+    ),
+    raw: bool = typer.Option(
+        False,
+        "--raw",
+        "-r",
+        help="Output raw markdown with no Rich formatting (useful for piping).",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Output structured JSON (easy for agents to parse).",
+    ),
+):
+    """Display extra CLI tools available in the virtual environment.
+
+    Scans the active venv's bin directory for user-facing CLI binaries
+    that agents can call via shell.
+
+    Example:
+        ```bash
+        # Show all extras
+        ax check extras
+
+        # Filter by term
+        ax check extras --filter http
+
+        # Raw markdown for piping
+        ax check extras --raw
+
+        # JSON output for agents
+        ax check extras --json
+        ```
+    """
+    import json
+
+    from aria.cli.extras import get_venv_extras, get_venv_extras_json
+
+    if json_output:
+        result = get_venv_extras_json(filter_term=filter_term)
+        console.print(json.dumps(result, indent=2))
+    else:
+        result = get_venv_extras(filter_term=filter_term)
+
+        if raw:
+            console.print(result)
+        else:
+            console.print()
+            console.print(
+                Panel(
+                    Markdown(result),
+                    title="[bold]🔧 Extra Binaries Available[/bold]",
+                    title_align="left",
+                    border_style="cyan",
+                    padding=(1, 2),
+                )
+            )
+            console.print()

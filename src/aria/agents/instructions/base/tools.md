@@ -27,9 +27,9 @@ Wrong: `ax web "query"` — Right: `ax web search "query"`
 | `ax config` | `show`, `paths`, `database`, `api`, `optimize` | Display configuration settings, paths, database/API config, optimize .env |
 | `ax processes` | `start`, `stop`, `status`, `logs`, `list` | Manage background processes |
 | `ax worker` | `spawn`, `list`, `status`, `logs`, `cancel`, `clean` | Background worker agent management |
-| `ax check` | `preflight`, `instructions` | Verify system prerequisites, view agent instructions |
+| `ax check` | `preflight`, `instructions`, `extras` | Verify system prerequisites, view agent instructions, list available CLI tools |
 
-### Persistent Memory: ax knowledge
+### Persistent Memory via ax knowledge
 
 Entries survive across conversations and restarts (SQLite-backed).
 
@@ -45,6 +45,10 @@ Entries survive across conversations and restarts (SQLite-backed).
 **Recall** when: user references past conversations, you need preferences, or before assuming environment state.
 **Store** when: user shares preferences/facts/instructions, you discover project conventions, or user asks to remember.
 **Skip** for: ephemeral single-conversation data, large content (use files), one-off facts.
+
+### Additional Binaries Available
+
+The virtual environment includes additional CLI tools (linters, HTTP clients, AI/ML tools, etc.) that can be called via `shell`. These are listed in the **Environment** section of your instructions. Run `ax check extras` to see the full list, or `ax check extras --filter <term>` to search.
 
 ### reasoning
 

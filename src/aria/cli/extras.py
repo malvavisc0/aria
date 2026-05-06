@@ -1,0 +1,353 @@
+"""Extras CLI — discover available CLI tools in the virtual environment.
+
+Scans the active venv's bin directory for user-facing CLI binaries,
+filters out internal/excluded entries, and returns a formatted markdown
+table that can be injected into agent instructions at runtime.
+"""
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+# Binaries to exclude — internal, unsafe, or not useful for agents.
+_EXCLUDED_BINARIES: set[str] = {
+    # Python internals
+    "activate",
+    "activate.bat",
+    "activate.csh",
+    "activate.fish",
+    "activate.nu",
+    "activate.ps1",
+    "activate_this.py",
+    "deactivate.bat",
+    "python",
+    "python3",
+    "python3.12",
+    "pydoc.bat",
+    # Aria internals
+    "aria",
+    "aria-gui",
+    "ax",
+    # Package managers / build internals
+    "pip",
+    "pip3",
+    "pip3.12",
+    "wheel",
+    "distlib",
+    "distlib-script",
+    "setuptools",
+    "pkg_resources",
+    # PyInstaller internals
+    "pyi-archive_viewer",
+    "pyi-bindepend",
+    "pyi-grab_version",
+    "pyi-makespec",
+    "pyi-set_version",
+    "pyinstaller",
+    # Supervisor internals
+    "echo_supervisord_conf",
+    "generate-supervisor-config",
+    "pidproxy",
+    "standard-supervisor",
+    # Misc internals / not useful standalone
+    "cbor2",
+    "chainlit",
+    "chevron",
+    "chroma",
+    "coverage",
+    "coverage3",
+    "coverage-3.12",
+    "curl-cffi",
+    "deactivate",
+    "distro",
+    "dotenv",
+    "f2py",
+    "flashinfer",
+    "get_gprof",
+    "get_objgraph",
+    "gguf-editor-gui",
+    "griffecli",
+    "isort-identify-imports",
+    "isympy",
+    "jp.py",
+    "json-playground",
+    "llama-index-instrumentation",
+    "mistral_common",
+    "normalizer",
+    "nltk",
+    "numba",
+    "numpy-config",
+    "onnxruntime_test",
+    "opentelemetry-bootstrap",
+    "opentelemetry-instrument",
+    "proton-viewer",
+    "pypdfium2",
+    "py.test",
+    "pybase64",
+    "pycodestyle",
+    "pyflakes",
+    "pygmentize",
+    "sample",
+    "striprtf",
+    "supervisorctl",
+    "supervisord",
+    "tabulate",
+    "torchfrtrace",
+    "torchrun",
+    "tqdm",
+    "tvm-ffi-config",
+    "tvm-ffi-stubgen",
+    "undill",
+    "watchfiles",
+    "wsdump",
+}
+
+# Binaries that require external dependencies to be useful.
+# If the dependency is not found on PATH, the binary is excluded.
+_DEPENDENCY_CHECKS: dict[str, list[str]] = {
+    "tiny-agents": ["npx"],
+}
+
+# Category groupings for display.
+_CATEGORIES: dict[str, list[str]] = {
+    "AI / ML": [
+        "hf",
+        "huggingface-cli",
+        "openai",
+        "transformers",
+        "tiny-agents",
+        "llamaindex-cli",
+        "llama-parse",
+        "vllm",
+        "mcp",
+        "torchrun",
+        "numba",
+        "flashinfer",
+        "proton",
+        "proton-viewer",
+    ],
+    "Web / HTTP": [
+        "httpx",
+        "fastapi",
+        "uvicorn",
+        "playwright",
+        "websockets",
+    ],
+    "Search / Content": [
+        "ddgs",
+        "markitdown",
+        "markdownify",
+        "markdown-it",
+        "magika",
+        "youtube_transcript_api",
+        "filetype",
+    ],
+    "Linting / Formatting": [
+        "black",
+        "blackd",
+        "ruff",
+        "flake8",
+        "isort",
+    ],
+    "Data / Serialization": [
+        "jsonschema",
+        "pwiz",
+        "gguf-convert-endian",
+        "gguf-dump",
+        "gguf-editor-gui",
+        "gguf-new-metadata",
+        "gguf-set-metadata",
+    ],
+    "Build / Packaging": [
+        "ninja",
+        "pyproject-build",
+        "griffe",
+    ],
+    "NLP": [
+        "nltk",
+    ],
+    "System / CLI": [
+        "cpuinfo",
+        "distro",
+        "tqdm",
+        "chainlit",
+        "supervisorctl",
+        "supervisord",
+        "z3",
+        "typer",
+    ],
+}
+
+
+def _get_venv_bin_dir() -> Path | None:
+    """Return the venv bin directory, or None if not in a venv."""
+    # Check VIRTUAL_ENV env var first (most reliable when activated)
+    venv = os.environ.get("VIRTUAL_ENV")
+    if venv:
+        return Path(venv) / "bin"
+    # Fallback: sys.prefix / bin (works when running from venv python)
+    candidate = Path(sys.prefix) / "bin"
+    if candidate.exists():
+        return candidate
+    return None
+
+
+def get_venv_extras(
+    excluded: set[str] | None = None,
+    filter_term: str | None = None,
+) -> str:
+    """Scan the venv bin directory and return a formatted markdown table.
+
+    Args:
+        excluded: Additional binaries to exclude beyond the default set.
+        filter_term: If provided, only include binaries matching this substring.
+
+    Returns:
+        A markdown string with the extras table, or a message if no venv found.
+    """
+    bin_dir = _get_venv_bin_dir()
+    if not bin_dir or not bin_dir.exists():
+        return "No virtual environment detected."
+
+    all_excluded = _EXCLUDED_BINARIES | (excluded or set())
+
+    # Collect available binaries
+    available: set[str] = set()
+    for entry in sorted(bin_dir.iterdir()):
+        name = entry.name
+        if name in all_excluded:
+            continue
+        if not entry.is_file():
+            continue
+        # Skip non-executable (but allow all on systems where everything is +x)
+        if not os.access(entry, os.X_OK):
+            continue
+        # Skip .bat/.csh files
+        if name.endswith((".bat", ".csh", ".fish", ".nu", ".ps1")):
+            continue
+        # Check dependency requirements
+        if name in _DEPENDENCY_CHECKS:
+            deps = _DEPENDENCY_CHECKS[name]
+            if not all(shutil.which(d) for d in deps):
+                continue
+        if filter_term and filter_term.lower() not in name.lower():
+            continue
+        available.add(name)
+
+    if not available:
+        return "No extra CLI tools found in the virtual environment."
+
+    # Build categorized table
+    categorized: set[str] = set()
+    rows: list[tuple[str, str]] = []
+
+    for category, members in _CATEGORIES.items():
+        found = [m for m in members if m in available]
+        if not found:
+            continue
+        categorized.update(found)
+        rows.append((category, "`, `".join(sorted(found))))
+
+    # Uncategorized binaries
+    uncategorized = sorted(available - categorized)
+    if uncategorized:
+        rows.append(("Other", "`, `".join(uncategorized)))
+
+    lines = [
+        "### Additional Binaries Available\n",
+        "These binaries are available in the active virtual environment "
+        "and can be called via `shell`.\n",
+        "| Category | Tools |",
+        "|----------|-------|",
+    ]
+    for category, tools in rows:
+        lines.append(f"| {category} | `{tools}` |")
+
+    return "\n".join(lines)
+
+
+def get_venv_extras_list(
+    excluded: set[str] | None = None,
+    filter_term: str | None = None,
+) -> list[str]:
+    """Return just the binary names as a sorted list."""
+    bin_dir = _get_venv_bin_dir()
+    if not bin_dir or not bin_dir.exists():
+        return []
+
+    all_excluded = _EXCLUDED_BINARIES | (excluded or set())
+    available: list[str] = []
+    for entry in sorted(bin_dir.iterdir()):
+        name = entry.name
+        if name in all_excluded:
+            continue
+        if not entry.is_file():
+            continue
+        if not os.access(entry, os.X_OK):
+            continue
+        if name.endswith((".bat", ".csh", ".fish", ".nu", ".ps1")):
+            continue
+        # Check dependency requirements
+        if name in _DEPENDENCY_CHECKS:
+            deps = _DEPENDENCY_CHECKS[name]
+            if not all(shutil.which(d) for d in deps):
+                continue
+        if filter_term and filter_term.lower() not in name.lower():
+            continue
+        available.append(name)
+    return available
+
+
+def get_venv_extras_json(
+    excluded: set[str] | None = None,
+    filter_term: str | None = None,
+) -> dict:
+    """Return extras as a structured dict for JSON serialization.
+
+    Returns:
+        A dict with ``categories``, ``uncategorized``, and ``total`` keys.
+    """
+    bin_dir = _get_venv_bin_dir()
+    if not bin_dir or not bin_dir.exists():
+        return {"categories": {}, "uncategorized": [], "total": 0}
+
+    all_excluded = _EXCLUDED_BINARIES | (excluded or set())
+
+    # Collect available binaries
+    available: set[str] = set()
+    for entry in sorted(bin_dir.iterdir()):
+        name = entry.name
+        if name in all_excluded:
+            continue
+        if not entry.is_file():
+            continue
+        if not os.access(entry, os.X_OK):
+            continue
+        if name.endswith((".bat", ".csh", ".fish", ".nu", ".ps1")):
+            continue
+        if name in _DEPENDENCY_CHECKS:
+            deps = _DEPENDENCY_CHECKS[name]
+            if not all(shutil.which(d) for d in deps):
+                continue
+        if filter_term and filter_term.lower() not in name.lower():
+            continue
+        available.add(name)
+
+    # Build categorized result
+    categorized: set[str] = set()
+    categories: dict[str, list[str]] = {}
+    for category, members in _CATEGORIES.items():
+        found = sorted(m for m in members if m in available)
+        if not found:
+            continue
+        categorized.update(found)
+        categories[category] = found
+
+    uncategorized = sorted(available - categorized)
+
+    return {
+        "categories": categories,
+        "uncategorized": uncategorized,
+        "total": len(available),
+    }
