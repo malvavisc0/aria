@@ -363,7 +363,7 @@ def get_default_memory(
             FactExtractionMemoryBlock(
                 name="extracted_facts",
                 llm=llm,
-                max_facts=20,
+                max_facts=40,
                 priority=1,
             )
         )
@@ -373,7 +373,7 @@ def get_default_memory(
             name="vector_memory",
             vector_store=ChromaVectorStore(chroma_collection=collection),
             embed_model=embed_model,
-            similarity_top_k=3,
+            similarity_top_k=5,
             retrieval_context_window=2,
             priority=2,
         )
@@ -386,7 +386,7 @@ def get_default_memory(
         insert_method=InsertMethod.SYSTEM,
         memory_blocks=memory_blocks,
         token_limit=token_limit,
-        chat_history_token_ratio=0.8,
+        chat_history_token_ratio=0.7,
         token_flush_size=EmbeddingsConfig.context_size,
     )
 

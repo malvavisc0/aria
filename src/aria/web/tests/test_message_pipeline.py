@@ -1,213 +1,115 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from aria.web import message_pipeline as pipeline
-from aria.web.message_pipeline import ThinkingBlockDetector
 
 
-def test_extract_response_text_from_content() -> None:
-    class _Response:
-        content = "hello"
+class TestStreamAgentResponse:
+    """Tests for the simplified _stream_agent_response."""
 
-    assert pipeline._extract_response_text(_Response()) == "hello"
+    @staticmethod
+    def _make_handler(*events):
+        """Build a mock handler yielding the given events."""
 
+        async def _stream():
+            for ev in events:
+                yield ev
 
-def test_extract_response_text_from_blocks() -> None:
-    class _Block:
-        def __init__(self, text: str) -> None:
-            self.text = text
+        handler = MagicMock()
+        handler.stream_events = _stream
+        handler.__await__ = lambda self: iter(
+            [MagicMock(response=MagicMock(content=None))]
+        )
+        return handler
 
-    class _Response:
-        content = None
-        blocks = [_Block("one"), _Block("two")]
+    @staticmethod
+    def _make_output():
+        output = MagicMock()
+        output.stream_token = AsyncMock()
+        return output
 
-    assert pipeline._extract_response_text(_Response()) == "one\ntwo"
+    @pytest.mark.asyncio
+    async def test_streams_text_delta(self) -> None:
+        from llama_index.core.agent.workflow import AgentStream
 
+        event = AgentStream(
+            delta="hello",
+            response="hello",
+            current_agent_name="test",
+        )
+        handler = self._make_handler(event)
+        output = self._make_output()
 
-def test_final_response_is_not_suppressed_after_tool_calls() -> None:
-    stream_buffer: list[str] = []
-    handler_result = type(
-        "HandlerResult",
-        (),
-        {"response": type("Response", (), {"content": "final answer"})()},
-    )()
+        emitted = await pipeline._stream_agent_response(handler, output)
 
-    content = "".join(stream_buffer).strip() or pipeline._extract_response_text(
-        getattr(handler_result, "response", None)
-    )
+        assert emitted is True
+        output.stream_token.assert_any_await("hello")
 
-    assert content == "final answer"
+    @pytest.mark.asyncio
+    async def test_streams_thinking_delta_as_blockquote(self) -> None:
+        from llama_index.core.agent.workflow import AgentStream
 
+        event = AgentStream(
+            delta="",
+            response="",
+            current_agent_name="test",
+            thinking_delta="pondering",
+        )
+        handler = self._make_handler(event)
+        output = self._make_output()
 
-class TestThinkingBlockDetectorBasic:
-    """Basic open/close detection in single deltas."""
+        emitted = await pipeline._stream_agent_response(handler, output)
 
-    def test_initial_state_is_not_in_thinking(self) -> None:
-        detector = ThinkingBlockDetector()
-        assert detector.in_thinking is False
+        output.stream_token.assert_any_await(pipeline._THINKING_OPEN)
+        output.stream_token.assert_any_await("pondering")
 
-    def test_plain_text_does_not_enter_thinking(self) -> None:
-        detector = ThinkingBlockDetector()
-        entered, exited = detector.process_delta("hello world")
-        assert entered is False
-        assert exited is False
-        assert detector.in_thinking is False
+    @pytest.mark.asyncio
+    async def test_closes_thinking_block_on_regular_delta(self) -> None:
+        from llama_index.core.agent.workflow import AgentStream
 
-    def test_open_think_tag_enters_thinking(self) -> None:
-        detector = ThinkingBlockDetector()
-        entered, exited = detector.process_delta("<think")
-        assert entered is True
-        assert exited is False
-        assert detector.in_thinking is True
+        thinking = AgentStream(
+            delta="",
+            response="",
+            current_agent_name="test",
+            thinking_delta="thought",
+        )
+        regular = AgentStream(
+            delta="answer",
+            response="answer",
+            current_agent_name="test",
+        )
+        handler = self._make_handler(thinking, regular)
+        output = self._make_output()
 
-    def test_close_think_tag_exits_thinking(self) -> None:
-        detector = ThinkingBlockDetector()
-        detector.process_delta("<think>")
-        entered, exited = detector.process_delta("</think>")
-        assert entered is False
-        assert exited is True
-        assert detector.in_thinking is False
+        emitted = await pipeline._stream_agent_response(handler, output)
 
-    def test_emoji_opens_and_closes_thinking(self) -> None:
-        detector = ThinkingBlockDetector()
-        entered, exited = detector.process_delta("💭")
-        assert entered is True
-        assert detector.in_thinking is True
+        assert emitted is True
+        calls = [c.args[0] for c in output.stream_token.call_args_list]
+        assert calls == [
+            pipeline._THINKING_OPEN,
+            "thought",
+            pipeline._THINKING_CLOSE,
+            "answer",
+        ]
 
-        entered, exited = detector.process_delta("💭")
-        assert exited is True
-        assert detector.in_thinking is False
+    @pytest.mark.asyncio
+    async def test_agent_output_fallback_when_no_streamed_content(
+        self,
+    ) -> None:
+        from llama_index.core.agent.workflow import AgentOutput
+        from llama_index.core.llms import ChatMessage
 
+        event = AgentOutput(
+            response=ChatMessage(content="fallback answer"),
+            current_agent_name="test",
+        )
+        handler = self._make_handler(event)
+        output = self._make_output()
 
-class TestThinkingBlockDetectorAllPatterns:
-    """All open/close patterns are recognized."""
+        emitted = await pipeline._stream_agent_response(handler, output)
 
-    @pytest.mark.parametrize(
-        "open_tag,close_tag",
-        [
-            ("<think>", "</think>"),
-            ("<reasoning", "</reasoning>"),
-            ("<reflection", "</reflection>"),
-            ("💭", "💭"),
-        ],
-    )
-    def test_pattern_pair(self, open_tag: str, close_tag: str) -> None:
-        detector = ThinkingBlockDetector()
-        entered, _ = detector.process_delta(open_tag)
-        assert entered is True
-        assert detector.in_thinking is True
-
-        _, exited = detector.process_delta(close_tag)
-        assert exited is True
-        assert detector.in_thinking is False
-
-    def test_case_insensitive_think_tag(self) -> None:
-        detector = ThinkingBlockDetector()
-        entered, _ = detector.process_delta("<THINK>")
-        assert entered is True
-        assert detector.in_thinking is True
-
-        _, exited = detector.process_delta("</THINK>")
-        assert exited is True
-        assert detector.in_thinking is False
-
-    def test_case_insensitive_reasoning_tag(self) -> None:
-        detector = ThinkingBlockDetector()
-        entered, _ = detector.process_delta("<Reasoning")
-        assert entered is True
-
-        _, exited = detector.process_delta("</Reasoning>")
-        assert exited is True
-
-
-class TestThinkingBlockDetectorSplitTags:
-    """Tags split across multiple deltas are detected."""
-
-    def test_think_tag_split_across_two_deltas(self) -> None:
-        detector = ThinkingBlockDetector()
-        entered, _ = detector.process_delta("<thin")
-        # Not yet detected — partial tag
-        assert entered is False
-        assert detector.in_thinking is False
-
-        entered, _ = detector.process_delta("k>")
-        # Now the pending buffer contains "<think>" and triggers
-        assert entered is True
-        assert detector.in_thinking is True
-
-    def test_close_tag_split_across_deltas(self) -> None:
-        detector = ThinkingBlockDetector()
-        detector.process_delta("<think>")
-        assert detector.in_thinking is True
-
-        _, exited = detector.process_delta("</thi")
-        assert exited is False
-        assert detector.in_thinking is True
-
-        _, exited = detector.process_delta("nk>")
-        assert exited is True
-        assert detector.in_thinking is False
-
-    def test_tag_split_into_single_characters(self) -> None:
-        detector = ThinkingBlockDetector()
-        # Characters before the pattern completes don't trigger
-        for char in "<thin":
-            entered, _ = detector.process_delta(char)
-            assert entered is False
-
-        # "k" completes "<think" which matches the open pattern
-        entered, _ = detector.process_delta("k")
-        assert entered is True
-        assert detector.in_thinking is True
-
-
-class TestThinkingBlockDetectorMultipleBlocks:
-    """Multiple thinking blocks in sequence."""
-
-    def test_two_consecutive_thinking_blocks(self) -> None:
-        detector = ThinkingBlockDetector()
-
-        entered, _ = detector.process_delta("<think>")
-        assert entered is True
-
-        _, exited = detector.process_delta("</think>")
-        assert exited is True
-        assert detector.in_thinking is False
-
-        # Second block
-        entered, _ = detector.process_delta("<think>")
-        assert entered is True
-        assert detector.in_thinking is True
-
-        _, exited = detector.process_delta("</think>")
-        assert exited is True
-        assert detector.in_thinking is False
-
-
-class TestThinkingBlockDetectorBufferBounding:
-    """Pending buffer does not grow unbounded."""
-
-    def test_buffer_truncated_after_50_chars(self) -> None:
-        detector = ThinkingBlockDetector()
-        # Feed 60 plain characters — no tag detected
-        detector.process_delta("x" * 60)
-        # Internal buffer should have been truncated to last 20 chars
-        assert len(detector._pending) == 20
-
-    def test_buffer_cleared_on_match(self) -> None:
-        detector = ThinkingBlockDetector()
-        detector.process_delta("<think>")
-        # After a match, the pending buffer is cleared
-        assert detector._pending == ""
-
-    def test_tag_still_detected_after_buffer_truncation(self) -> None:
-        """A tag arriving after a large non-matching payload is still found."""
-        detector = ThinkingBlockDetector()
-        # Push nonsense past the truncation boundary
-        detector.process_delta("a" * 60)
-        assert len(detector._pending) == 20
-
-        # Now send a proper tag — should be detected fresh
-        entered, _ = detector.process_delta("<think>")
-        assert entered is True
+        assert emitted is True
+        output.stream_token.assert_any_await("fallback answer")
