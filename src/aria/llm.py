@@ -315,8 +315,10 @@ def get_chat_llm(
         max_tokens=16384,
         additional_kwargs={
             "top_p": 0.95,
-            "top_k": 20,
-            "repetition_penalty": 1.05,
+            "extra_body": {
+                "top_k": 20,
+                "repetition_penalty": 1.05,
+            },
         },
     )
     return llm
