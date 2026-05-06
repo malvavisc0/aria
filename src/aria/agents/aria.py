@@ -38,6 +38,22 @@ class ChatterAgent(FunctionAgent):
         """
         return load_agent_instructions(agent_name="aria", extras=extras)
 
+    @classmethod
+    def get_instructions(cls) -> str:
+        """Return the full system prompt as the agent would see it at runtime.
+
+        Composes all base sections + agent-specific markdown with the
+        runtime extras (date, OS, restricted builtins, agent ID) that
+        ``get_agent_workflow`` generates via ``get_instructions_extras``.
+
+        Returns:
+            The complete system prompt string.
+        """
+        from aria.llm import get_instructions_extras
+
+        extras = get_instructions_extras(agent_name="aria")
+        return cls.get_system_prompt(extras=extras)
+
 
 def get_agent(
     llm: LLM,

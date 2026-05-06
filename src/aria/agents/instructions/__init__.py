@@ -13,7 +13,6 @@ BASE_SECTIONS_DIR = INSTRUCTIONS_DIR / "base"
 ALL_BASE_SECTIONS: list[str] = [
     "core",
     "tools",
-    "evidence",
     "failure",
 ]
 
@@ -26,9 +25,9 @@ def load_agent_instructions(
 ) -> str:
     """Load agent instructions from a markdown file.
 
-    This function loads the system prompt for an agent from its
-    instruction file, optionally appending extra context and performing
-    template variable substitution.
+    Assembly order: agent identity first, then shared base sections,
+    then runtime extras. This ensures the model knows *who* it is
+    before absorbing operational rules.
 
     Args:
         agent_name: The name of the agent, used to find the instruction file
@@ -57,9 +56,16 @@ def load_agent_instructions(
 
     instructions_path = INSTRUCTIONS_DIR / f"{agent_name}.md"
     if instructions_path.exists():
+        # Agent identity and persona first
+        with open(instructions_path, encoding="utf-8") as file:
+            parts.append(file.read())
+
+        # Then shared operational rules
         if agent_name != "base":
             sections_to_load = (
-                base_sections if base_sections is not None else ALL_BASE_SECTIONS
+                base_sections
+                if base_sections is not None
+                else ALL_BASE_SECTIONS
             )
             for section in sections_to_load:
                 section_path = BASE_SECTIONS_DIR / f"{section}.md"
@@ -67,11 +73,8 @@ def load_agent_instructions(
                     with open(section_path, encoding="utf-8") as file:
                         parts.append(file.read())
 
-        with open(instructions_path, encoding="utf-8") as file:
-            parts.append(file.read())
-
     if extras:
-        parts.append(f"# Environment\n{extras}")
+        parts.append(f"## Environment\n{extras}")
 
     content = "\n\n".join(parts)
 

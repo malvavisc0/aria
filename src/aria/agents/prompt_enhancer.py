@@ -6,6 +6,7 @@ prompt engineering best practices to improve clarity, specificity, and overall
 quality of user prompts.
 """
 
+import platform
 from datetime import datetime
 
 from llama_index.core.agent import FunctionAgent
@@ -54,8 +55,38 @@ class PromptEnhancerAgent(FunctionAgent):
         return load_agent_instructions(
             "prompt_enhancer",
             extras,
-            base_sections=["core"],
+            base_sections=[],
         )
+
+    @classmethod
+    def get_instructions(cls) -> str:
+        """Return the full system prompt as the agent would see it at runtime.
+
+        Composes the agent-specific markdown with the runtime extras
+        (date, time, timezone) that ``get_agent`` generates.
+
+        Returns:
+            The complete system prompt string.
+        """
+
+        def _ordinal_suffix(day: int) -> str:
+            # 11th, 12th, 13th are special-cased.
+            if 11 <= (day % 100) <= 13:
+                return "th"
+            return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+        timestamp = datetime.now()
+        host = f"{platform.system()} {platform.release()}"
+
+        day = timestamp.day
+        date_str = f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
+
+        tz = timestamp.astimezone().tzinfo
+        lines: list[str] = [
+            f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
+            f"- **OS**: {host}",
+        ]
+        return cls.get_system_prompt("\n".join(lines))
 
 
 def get_agent(
@@ -82,13 +113,6 @@ def get_agent(
         >>> agent = get_agent(llm, extras="Focus on technical documentation")
         >>> # Agent is now ready to enhance prompts
     """
-    timestamp = datetime.now()
-    extras = (
-        f"- **Current date**: {timestamp.strftime('%B %dth')} "
-        + f"- **Current time**: {timestamp.strftime('%H:%M')} "
-        + f"- **Timezone**: {timestamp.astimezone().tzinfo}"
-    )
-
     tools = []
 
     agent = PromptEnhancerAgent(

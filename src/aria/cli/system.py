@@ -1,32 +1,29 @@
 """System information commands for the Aria CLI.
 
 Provides hardware inspection (CPU, RAM, GPU, OS), VRAM diagnostics,
-NVLink status, context-size calculation, and background process management.
+and NVLink status.
 
 Example:
     ```bash
     aria system hardware        # CPU, RAM, OS, GPU summary (JSON)
     aria system gpu             # Detailed NVIDIA GPU table
     aria system vram            # VRAM per GPU
-    aria system context         # Safe context-size estimate
-    aria system processes list  # Background process table
     ```
 """
 
 import json
 import platform
-from typing import Annotated
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from aria.helpers.nvidia import (
-    calculate_max_safe_context,
     check_nvidia_smi_available,
     detect_gpu_count,
     detect_gpus_with_details,
     detect_nvlink,
+    get_cuda_version,
     get_free_vram_per_gpu,
     get_nvidia_smi_version,
     get_total_vram_mb,
@@ -34,7 +31,7 @@ from aria.helpers.nvidia import (
 
 app = typer.Typer(
     name="system",
-    help="Hardware inspection, GPU diagnostics, and process management.",
+    help="Hardware inspection and GPU diagnostics.",
 )
 
 console = Console()
@@ -81,8 +78,12 @@ def show_gpu_info():
     summary_table.add_column("Value", style="green")
 
     summary_table.add_row("GPU Count", str(len(gpus)))
-    summary_table.add_row("Driver Version", gpus[0].driver_version if gpus else "N/A")
+    summary_table.add_row(
+        "Driver Version", gpus[0].driver_version if gpus else "N/A"
+    )
     summary_table.add_row("nvidia-smi Version", get_nvidia_smi_version())
+    cuda_ver = get_cuda_version()
+    summary_table.add_row("CUDA Version", cuda_ver if cuda_ver else "N/A")
 
     console.print(summary_table)
     console.print()
@@ -200,74 +201,6 @@ def check_nvlink():
     console.print(table)
 
 
-@app.command("context")
-def calculate_context(
-    model_size: Annotated[
-        int,
-        typer.Option(help="Model size in MiB (default: 0 for no model loaded)"),
-    ] = 0,
-    embedding: Annotated[
-        bool,
-        typer.Option(help="Calculate for embedding model (more conservative)"),
-    ] = False,
-):
-    """Calculate safe context size based on available VRAM.
-
-    Uses the tiered context calculation to determine the maximum safe
-    context size given the current free VRAM and optional model size.
-
-    Args:
-        model_size: Size of the model in MiB (subtracted from available VRAM)
-        embedding: Use embedding model tiers (more conservative limits)
-
-    Example:
-        ```bash
-        # Calculate for LLM with no model loaded
-        aria system context
-
-        # Calculate with 4GB model
-        aria system context --model-size 4096
-
-        # Calculate for embedding model
-        aria system context --embedding
-        ```
-    """
-    if not check_nvidia_smi_available():
-        error_console.print(
-            "[red]✗[/red] nvidia-smi not available. Ensure NVIDIA drivers are installed."
-        )
-        raise typer.Exit(1)
-
-    free_vram_list = get_free_vram_per_gpu()
-
-    if not free_vram_list:
-        console.print("[yellow]No GPUs detected.[/yellow]")
-        return
-
-    model_type = "Embedding" if embedding else "LLM"
-    console.print(f"[bold]Context Calculation ({model_type})[/bold]\n")
-
-    table = Table(show_header=True, header_style="bold cyan")
-    table.add_column("GPU Index", style="cyan", width=10)
-    table.add_column("Free VRAM (MiB)", style="green")
-    table.add_column("Max Context (tokens)", style="yellow")
-
-    total_context = 0
-    for i, free_vram in enumerate(free_vram_list):
-        context = calculate_max_safe_context(
-            free_vram_mb=free_vram,
-            model_size_mb=model_size,
-            is_embedding_model=embedding,
-        )
-        table.add_row(str(i), str(free_vram), f"{context:,}")
-        total_context = max(total_context, context)  # Use max for multi-GPU
-
-    console.print(table)
-    console.print(f"\n[dim]Model type: {model_type}[/dim]")
-    console.print(f"[dim]Model size: {model_size} MiB[/dim]")
-    console.print(f"[cyan]Recommended max context: {total_context:,} tokens[/cyan]")
-
-
 @app.command("info")
 def system_overview():
     """Display system overview with GPU and driver information.
@@ -292,14 +225,20 @@ def system_overview():
     if check_nvidia_smi_available():
         table.add_row("NVIDIA Driver", "[green]✓ Available[/green]")
         table.add_row("nvidia-smi Version", get_nvidia_smi_version())
+        cuda_ver = get_cuda_version()
+        table.add_row("CUDA Version", cuda_ver if cuda_ver else "N/A")
         table.add_row("GPU Count", str(detect_gpu_count()))
 
         total_vram = get_total_vram_mb()
-        table.add_row("Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)")
+        table.add_row(
+            "Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)"
+        )
 
         has_nvlink, bond_type = detect_nvlink()
         if has_nvlink:
-            nvlink_status = f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
+            nvlink_status = (
+                f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
+            )
         else:
             nvlink_status = "[red]✗ Not available[/red]"
         table.add_row("NVLink", nvlink_status)
@@ -380,25 +319,3 @@ def hardware_cmd():
         info["gpus"] = []
 
     typer.echo(json.dumps(info, indent=2))
-
-
-@app.command("processes")
-def processes_cmd(
-    action: str = typer.Argument(
-        "list", help="Action: start, stop, status, logs, list"
-    ),
-    name: str | None = typer.Option(None, "--name", "-n", help="Process name"),
-    command: str | None = typer.Option(
-        None, "--command", "-c", help="Command to execute (for start)"
-    ),
-):
-    """Manage background processes (start, stop, status, logs, list)."""
-    from aria.tools.process.functions import process
-
-    result = process(
-        reason="CLI process management",
-        action=action,
-        name=name,
-        command=command,
-    )
-    typer.echo(result)

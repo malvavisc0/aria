@@ -7,7 +7,6 @@ environment variables and stored as local snapshot directories.
 Commands:
     download: Download a model snapshot from HuggingFace Hub
     list: Show configured models and their download status
-    memory: Show memory requirements for all configured models
 
 Example:
     ```bash
@@ -22,9 +21,6 @@ Example:
 
     # List all configured models and their status
     aria models list
-
-    # Show memory requirements
-    aria models memory
     ```
 """
 
@@ -41,7 +37,7 @@ from aria.config.models import Chat, Embeddings
 
 app = typer.Typer(
     name="models",
-    help="Model management commands (download, list, memory).",
+    help="Model management commands (download, list).",
 )
 
 console = Console()
@@ -219,94 +215,3 @@ def list_command():
 
     console.print("[bold]Configured Models[/bold]\n")
     console.print(table)
-
-
-@app.command("memory")
-def memory_command():
-    """Show memory requirements for all configured models.
-
-    Displays GPU VRAM requirements and RAM requirements for the configured
-    models. Estimates are approximate and depend on the specific model
-    architecture and quantization.
-
-    Example:
-        ```bash
-        aria models memory
-        ```
-    """
-    from aria.helpers.memory import detect_system_ram
-    from aria.helpers.nvidia import (
-        detect_gpus_with_details,
-        get_free_vram_per_gpu,
-    )
-
-    # Model configurations
-    model_configs = [
-        ("chat", Chat.model_path),
-        ("embeddings", Embeddings.model_path),
-    ]
-
-    # Build model info table
-    model_table = Table(show_header=True, header_style="bold cyan")
-    model_table.add_column("Model", style="cyan")
-    model_table.add_column("Path", style="white")
-    model_table.add_column("Status", style="green", width=14)
-
-    for alias, model_path in model_configs:
-        if not model_path:
-            model_table.add_row(
-                alias,
-                "[dim]not configured[/dim]",
-                "[dim]Not configured[/dim]",
-            )
-            continue
-
-        downloaded = _is_model_downloaded(model_path)
-        status = (
-            "[green]✓ Downloaded[/green]" if downloaded else "[red]✗ Not downl.[/red]"
-        )
-        model_table.add_row(alias, model_path[:60], status)
-
-    console.print("[bold]Model Status[/bold]\n")
-    console.print(model_table)
-
-    # Hardware availability
-    gpus = detect_gpus_with_details()
-    total_ram_mb, avail_ram_mb = detect_system_ram()
-
-    hw_table = Table(show_header=True, header_style="bold cyan")
-    hw_table.add_column("Resource", style="cyan")
-    hw_table.add_column("Total", style="white", width=12)
-    hw_table.add_column("Available", style="green", width=12)
-
-    if gpus:
-        free_vram = get_free_vram_per_gpu()
-        for i, gpu in enumerate(gpus):
-            free_mb = free_vram[i] if i < len(free_vram) else 0
-            hw_table.add_row(
-                f"GPU {i}: {gpu.name}",
-                f"{gpu.total_memory} MB",
-                f"{free_mb} MB",
-            )
-    else:
-        hw_table.add_row(
-            "GPU",
-            "[dim]N/A[/dim]",
-            "[dim]N/A[/dim]",
-        )
-
-    if total_ram_mb > 0:
-        hw_table.add_row(
-            "System RAM",
-            f"{total_ram_mb} MB",
-            f"{avail_ram_mb} MB",
-        )
-    else:
-        hw_table.add_row(
-            "System RAM",
-            "[dim]N/A[/dim]",
-            "[dim]N/A[/dim]",
-        )
-
-    console.print("\n[bold]Hardware Availability[/bold]\n")
-    console.print(hw_table)

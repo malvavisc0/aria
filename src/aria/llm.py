@@ -257,17 +257,12 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     host = f"{platform.system()} {platform.release()}"
 
     day = timestamp.day
-    date_str = (
-        f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
-    )
-
-    from aria.tools.development.constants import RESTRICTED_BUILTINS
+    date_str = f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
 
     tz = timestamp.astimezone().tzinfo
     lines: list[str] = [
-        f"- **Date**: {date_str}, {timestamp.strftime('%H:%M')} ({tz})",
+        f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
         f"- **OS**: {host}",
-        f"- **Restricted builtins**: {', '.join(sorted(RESTRICTED_BUILTINS))}",
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")

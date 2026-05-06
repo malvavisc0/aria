@@ -132,8 +132,8 @@ On first launch, Aria automatically:
 - Creates required directories
 
 ```bash
-aria check       # Verify installation
-aria server run  # Start the web server
+aria check preflight  # Verify installation
+aria server run       # Start the web server
 ```
 
 ---
@@ -180,8 +180,10 @@ aria config paths         # Show configured paths
 aria config database      # Show database info
 aria config api           # Show API endpoints
 
-# Health check
-aria check                # Verify installation and connectivity
+# Health check & agent instructions
+aria check preflight      # Verify installation and connectivity
+aria check instructions   # View agent system prompts
+aria check instructions --agent aria  # View specific agent
 
 # Agent tool commands (CLI access to domain tools)
 aria search web "query"         # Web search

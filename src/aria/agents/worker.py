@@ -28,10 +28,25 @@ class WorkerAgent(FunctionAgent):
             base_sections=["core", "tools", "failure"],
         )
         if output_dir:
-            base += (
-                f"\n\n## Output Directory\nWrite all deliverables to: `{output_dir}`"
-            )
+            base += f"\n\n## Output Directory\nWrite all deliverables to: `{output_dir}`"
         return base
+
+    @classmethod
+    def get_instructions(cls) -> str:
+        """Return the full system prompt as the agent would see it at runtime.
+
+        Composes core + tools + failure base sections with worker-specific
+        markdown and the runtime extras (date, OS, restricted builtins,
+        agent ID) that ``get_worker_agent`` generates via
+        ``get_instructions_extras``.
+
+        Returns:
+            The complete system prompt string.
+        """
+        from aria.llm import get_instructions_extras
+
+        extras = get_instructions_extras(agent_name="worker")
+        return cls.get_system_prompt(extras=extras)
 
 
 def get_worker_agent(

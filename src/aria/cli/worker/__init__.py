@@ -79,6 +79,12 @@ def spawn(
         "-t",
         help="Conversation thread ID that spawned this worker, for session-scoped tracking.",
     ),
+    output_dir: str | None = typer.Option(
+        None,
+        "--output-dir",
+        "-o",
+        help="Directory for worker deliverables. If omitted, a UUID-based directory is created automatically.",
+    ),
 ):
     """Spawn a background worker agent.
 
@@ -86,7 +92,7 @@ def spawn(
     self-contained.
     """
     wid = _worker_id()
-    out_dir = _output_dir(wid)
+    out_dir = Path(output_dir) if output_dir else _output_dir(wid)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [
@@ -192,7 +198,9 @@ def status(
         raise typer.Exit(1)
 
     audit = load_state(path)
-    if audit.get("status") == "running" and not is_process_running(audit.get("pid", 0)):
+    if audit.get("status") == "running" and not is_process_running(
+        audit.get("pid", 0)
+    ):
         audit["status"] = "zombie"
         save_state(path, audit)
 

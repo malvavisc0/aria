@@ -12,15 +12,31 @@ app = typer.Typer(
 
 @app.command("run")
 def run_cmd(
-    code: str = typer.Argument(..., help="Python code to execute"),
-    timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
+    path: str = typer.Argument(..., help="Path to a Python file to execute"),
+    timeout: int = typer.Option(
+        30, "--timeout", "-t", help="Timeout in seconds"
+    ),
+    check_only: bool = typer.Option(
+        False,
+        "--check",
+        "-c",
+        help="Validate syntax only, do not execute",
+    ),
 ):
-    """Execute Python code in a sandboxed environment."""
+    """Execute a Python file in a sandboxed environment."""
+    from pathlib import Path
+
     from aria.tools.development.python import python
+
+    file_path = Path(path)
+    if not file_path.exists():
+        typer.echo(f"Error: file not found: {path}", err=True)
+        raise typer.Exit(1)
 
     result = python(
         reason="CLI Python execution",
-        code=code,
+        file=str(file_path.resolve()),
         timeout=timeout,
+        check_only=check_only,
     )
     typer.echo(result)

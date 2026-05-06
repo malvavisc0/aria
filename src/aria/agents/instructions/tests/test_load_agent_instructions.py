@@ -20,8 +20,15 @@ class TestLoadAgentInstructions:
         """Shared and role-specific sections should load for Aria."""
         result = load_agent_instructions("aria")
         assert "Core Rules" in result
-        assert "Rules" in result  # Aria-specific section
+        assert "Behavior" in result  # Aria-specific section
         assert "Delegation" in result  # Aria-specific section
+
+    def test_agent_identity_before_base(self):
+        """Agent identity should appear before base sections."""
+        result = load_agent_instructions("aria")
+        aria_pos = result.index("# Aria")
+        core_pos = result.index("## Core Rules")
+        assert aria_pos < core_pos
 
     def test_extras_appended(self):
         """Extras should appear in the output."""
@@ -57,14 +64,14 @@ class TestLoadAgentInstructions:
         """Worker should include core, tools, and failure sections."""
         result = load_agent_instructions("worker")
         assert "Core Rules" in result
-        assert "Execution discipline" in result
+        assert "Planning (mandatory)" in result
 
     def test_prompt_enhancer_no_response_style(self):
         """PromptEnhancer should remain specialized."""
         result = load_agent_instructions("prompt_enhancer")
         assert "Response Style" not in result
         assert "Prompt Enhancer" in result
-        assert "Aria Operating Model" in result
+        assert "AI Agent Capabilities" in result
 
     def test_variables_substituted(self):
         """Template variables should be replaced when present."""
@@ -80,8 +87,8 @@ class TestLoadAgentInstructions:
         """Only requested base sections should be included."""
         result = load_agent_instructions("aria", base_sections=["core"])
         assert "Core Rules" in result
-        assert "Direct Tools" not in result
-        assert "Evidence" not in result
+        assert "## Tools" not in result
+        assert "Failure Handling" not in result
 
     def test_base_sections_default_loads_all(self):
         """Default (None) should load all base sections."""
@@ -92,7 +99,11 @@ class TestLoadAgentInstructions:
             if section_path.exists():
                 content = section_path.read_text()
                 first_heading = next(
-                    (line for line in content.splitlines() if line.startswith("## ")),
+                    (
+                        line
+                        for line in content.splitlines()
+                        if line.startswith("## ")
+                    ),
                     None,
                 )
                 if first_heading:
