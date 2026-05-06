@@ -238,7 +238,7 @@ class VllmServerManager:
         cmd.extend(["--generation-config", "vllm"])
 
         # Skip multi-modal warmup — saves ~6s startup when not using vision
-        cmd.extend(["--limit-mm-per-prompt", "image=0"])
+        cmd.extend(["--limit-mm-per-prompt", '{"image": 0}'])
 
         # sentence-transformers models often need trust-remote-code
         cmd.extend(["--trust-remote-code"])
