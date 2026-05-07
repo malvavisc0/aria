@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,12 +19,20 @@ class TestStreamAgentResponse:
             for ev in events:
                 yield ev
 
-        handler = MagicMock()
-        handler.stream_events = _stream
-        handler.__await__ = lambda self: iter(
-            [MagicMock(response=MagicMock(content=None))]
-        )
-        return handler
+        _result = SimpleNamespace(response=SimpleNamespace(content=None))
+
+        async def _await_result():
+            return _result
+
+        class _MockHandler:
+            """Minimal awaitable mock for WorkflowHandler."""
+
+            stream_events = staticmethod(_stream)
+
+            def __await__(self):
+                return _await_result().__await__()
+
+        return _MockHandler()
 
     @staticmethod
     def _make_output():

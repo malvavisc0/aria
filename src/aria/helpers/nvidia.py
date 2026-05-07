@@ -80,15 +80,11 @@ def detect_gpus_with_details(log_errors: bool = False) -> list[GPUMetadata]:
 
             # Calculate memory utilization percentage (rounded to 2 decimals)
             memory_util = (
-                round((used_mem / total_mem * 100), 2)
-                if total_mem > 0
-                else 0.0
+                round((used_mem / total_mem * 100), 2) if total_mem > 0 else 0.0
             )
 
             # Helper function to safely parse numeric values with unit suffixes
-            def parse_numeric(
-                value: str, suffixes: list[str] | None = None
-            ) -> int:
+            def parse_numeric(value: str, suffixes: list[str] | None = None) -> int:
                 """Parse numeric value, optionally removing unit suffixes."""
                 if not value:
                     return 0
@@ -172,9 +168,7 @@ def detect_gpu_count() -> int:
         )
         # Filter empty lines to get accurate count
         lines = [
-            line.strip()
-            for line in result.stdout.strip().split("\n")
-            if line.strip()
+            line.strip() for line in result.stdout.strip().split("\n") if line.strip()
         ]
         return len(lines)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -208,9 +202,7 @@ def get_total_vram_mb() -> int:
         )
         # Filter empty lines before processing
         vram_values = [
-            vram.strip()
-            for vram in result.stdout.strip().split("\n")
-            if vram.strip()
+            vram.strip() for vram in result.stdout.strip().split("\n") if vram.strip()
         ]
         total_vram = sum(int(vram) for vram in vram_values)
         return total_vram
@@ -592,9 +584,7 @@ def _estimate_kv_cache_mb(
         return None
 
     num_layers = cfg.get("num_hidden_layers")
-    num_kv_heads = cfg.get("num_key_value_heads") or cfg.get(
-        "num_attention_heads"
-    )
+    num_kv_heads = cfg.get("num_key_value_heads") or cfg.get("num_attention_heads")
     head_dim = cfg.get("head_dim")
 
     if not head_dim:
@@ -714,9 +704,7 @@ def calculate_gpu_memory_utilization(
         model_size_mb = DEFAULT_MODEL_SIZE_MB
 
     # --- Step 2: Estimate KV cache size (architecture-aware) ---
-    kv_cache_mb = _estimate_kv_cache_mb(
-        model_path, context_size, kv_cache_dtype
-    )
+    kv_cache_mb = _estimate_kv_cache_mb(model_path, context_size, kv_cache_dtype)
 
     kv_source = "config.json"
     if kv_cache_mb is None:
@@ -730,18 +718,14 @@ def calculate_gpu_memory_utilization(
         kv_cache_mb = int(model_size_mb * context_factor * kv_dtype_factor)
 
     # --- Step 3: Compute total memory needed ---
-    raw_needed_mb = (
-        model_size_mb + kv_cache_mb + vllm_overhead_mb + headroom_mb
-    )
+    raw_needed_mb = model_size_mb + kv_cache_mb + vllm_overhead_mb + headroom_mb
     needed_mb = int(raw_needed_mb * safety_factor)
 
     # --- Step 4: Calculate utilization ---
     utilization = needed_mb / total_vram_mb
 
     # Clamp to safe bounds
-    utilization = max(
-        MIN_UTILIZATION, min(MAX_UTILIZATION, round(utilization, 2))
-    )
+    utilization = max(MIN_UTILIZATION, min(MAX_UTILIZATION, round(utilization, 2)))
 
     # --- Step 5: Log the reasoning ---
     logger.info(

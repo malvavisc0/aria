@@ -78,9 +78,7 @@ def show_gpu_info():
     summary_table.add_column("Value", style="green")
 
     summary_table.add_row("GPU Count", str(len(gpus)))
-    summary_table.add_row(
-        "Driver Version", gpus[0].driver_version if gpus else "N/A"
-    )
+    summary_table.add_row("Driver Version", gpus[0].driver_version if gpus else "N/A")
     summary_table.add_row("nvidia-smi Version", get_nvidia_smi_version())
     cuda_ver = get_cuda_version()
     summary_table.add_row("CUDA Version", cuda_ver if cuda_ver else "N/A")
@@ -230,15 +228,11 @@ def system_overview():
         table.add_row("GPU Count", str(detect_gpu_count()))
 
         total_vram = get_total_vram_mb()
-        table.add_row(
-            "Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)"
-        )
+        table.add_row("Total VRAM", f"{total_vram} MiB ({total_vram / 1024:.2f} GiB)")
 
         has_nvlink, bond_type = detect_nvlink()
         if has_nvlink:
-            nvlink_status = (
-                f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
-            )
+            nvlink_status = f"[green]✓ Available[/green] ({bond_type or 'unbonded'})"
         else:
             nvlink_status = "[red]✗ Not available[/red]"
         table.add_row("NVLink", nvlink_status)

@@ -124,7 +124,7 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=PromptEnhancerAgent.get_system_prompt(extras or ""),
+        system_prompt=PromptEnhancerAgent.get_system_prompt(),
         streaming=False,
         verbose=False,
         output_cls=PromptEnhancementResult,

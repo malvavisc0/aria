@@ -112,9 +112,7 @@ class TestCheckInstructions:
         """Should output raw markdown when --raw is passed."""
         mock_aria.return_value = "# Raw test"
 
-        result = runner.invoke(
-            app, ["instructions", "--agent", "aria", "--raw"]
-        )
+        result = runner.invoke(app, ["instructions", "--agent", "aria", "--raw"])
         assert result.exit_code == 0
         # Raw mode should not include Rich panel borders
         assert "╭" not in result.output
@@ -125,9 +123,7 @@ class TestCheckInstructions:
         """Should show the full prompt returned by get_instructions."""
         mock_aria.return_value = "# Base prompt\n\n- Date: Jan 1st 2026"
 
-        result = runner.invoke(
-            app, ["instructions", "--agent", "aria", "--raw"]
-        )
+        result = runner.invoke(app, ["instructions", "--agent", "aria", "--raw"])
         assert result.exit_code == 0
         assert "Base prompt" in result.output
         assert "Date: Jan 1st 2026" in result.output
@@ -137,9 +133,7 @@ class TestCheckInstructions:
         """Should call get_instructions on the agent class."""
         mock_worker.return_value = "# Worker prompt"
 
-        result = runner.invoke(
-            app, ["instructions", "--agent", "worker", "--raw"]
-        )
+        result = runner.invoke(app, ["instructions", "--agent", "worker", "--raw"])
         assert result.exit_code == 0
         mock_worker.assert_called_once()
         assert "Worker prompt" in result.output

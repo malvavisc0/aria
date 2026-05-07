@@ -28,7 +28,9 @@ class WorkerAgent(FunctionAgent):
             base_sections=["core", "tools", "failure"],
         )
         if output_dir:
-            base += f"\n\n## Output Directory\nWrite all deliverables to: `{output_dir}`"
+            base += (
+                f"\n\n## Output Directory\nWrite all deliverables to: `{output_dir}`"
+            )
         return base
 
     @classmethod

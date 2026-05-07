@@ -63,9 +63,7 @@ def load_agent_instructions(
         # Then shared operational rules
         if agent_name != "base":
             sections_to_load = (
-                base_sections
-                if base_sections is not None
-                else ALL_BASE_SECTIONS
+                base_sections if base_sections is not None else ALL_BASE_SECTIONS
             )
             for section in sections_to_load:
                 section_path = BASE_SECTIONS_DIR / f"{section}.md"

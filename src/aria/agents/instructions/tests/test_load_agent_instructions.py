@@ -99,11 +99,7 @@ class TestLoadAgentInstructions:
             if section_path.exists():
                 content = section_path.read_text()
                 first_heading = next(
-                    (
-                        line
-                        for line in content.splitlines()
-                        if line.startswith("## ")
-                    ),
+                    (line for line in content.splitlines() if line.startswith("## ")),
                     None,
                 )
                 if first_heading:

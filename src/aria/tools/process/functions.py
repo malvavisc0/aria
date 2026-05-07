@@ -49,12 +49,8 @@ class ManagedProcess:
     working_dir: str = ""
     use_shell: bool = False
     env: dict[str, str] | None = None
-    stdout_lines: deque = field(
-        default_factory=lambda: deque(maxlen=_MAX_LOG_LINES)
-    )
-    stderr_lines: deque = field(
-        default_factory=lambda: deque(maxlen=_MAX_LOG_LINES)
-    )
+    stdout_lines: deque = field(default_factory=lambda: deque(maxlen=_MAX_LOG_LINES))
+    stderr_lines: deque = field(default_factory=lambda: deque(maxlen=_MAX_LOG_LINES))
     _threads: list = field(default_factory=list)
     _timeout_timer: threading.Timer | None = field(default=None, repr=False)
 
@@ -114,9 +110,7 @@ def _resolve_working_dir(working_dir: str | None) -> Path:
         return Path.cwd()
     path = Path(working_dir).resolve()
     if not path.exists():
-        raise FileNotFoundError(
-            f"Working directory does not exist: {working_dir}"
-        )
+        raise FileNotFoundError(f"Working directory does not exist: {working_dir}")
     if not path.is_dir():
         raise NotADirectoryError(f"Not a directory: {working_dir}")
     return path
@@ -245,9 +239,7 @@ def _action_start(
                     data={"error": f"Process '{name}' is already running."},
                 )
 
-        active_count = sum(
-            1 for m in _processes.values() if m.proc.poll() is None
-        )
+        active_count = sum(1 for m in _processes.values() if m.proc.poll() is None)
         if active_count >= _MAX_PROCESSES:
             return tool_response(
                 tool="process",
@@ -507,9 +499,7 @@ def _action_restart(
         return tool_response(
             tool="process",
             reason=reason,
-            data={
-                "error": f"Process '{name}' not found. Use 'start' instead."
-            },
+            data={"error": f"Process '{name}' not found. Use 'start' instead."},
         )
 
     # Preserve original config for restart
@@ -560,9 +550,7 @@ _SIGNAL_MAP = {
 }
 
 
-def _action_signal(
-    reason: str, name: str | None, signal_name: str | None
-) -> str:
+def _action_signal(reason: str, name: str | None, signal_name: str | None) -> str:
     """Send a signal to a running process."""
     if not name:
         return tool_response(
@@ -605,9 +593,7 @@ def _action_signal(
 
     try:
         managed.proc.send_signal(sig)
-        logger.info(
-            f"Sent {sig_upper} to process '{name}' (PID: {managed.proc.pid})"
-        )
+        logger.info(f"Sent {sig_upper} to process '{name}' (PID: {managed.proc.pid})")
         return tool_response(
             tool="process",
             reason=reason,

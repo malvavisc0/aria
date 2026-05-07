@@ -24,9 +24,15 @@ Workarounds
 -----------
 1. Message Promotion: Assistant messages are promoted to root level
    (parentId=NULL) on read because Chainlit only displays root messages
-   in thread history. See _promote_assistant_messages().
+   in thread history. See _promote_assistant_messages(). This is applied
+   in get_all_user_threads() and list_threads() (display paths only).
 
-2. User ID from Context: get_all_user_threads() attempts to infer
+2. get_thread() intentionally bypasses _promote_assistant_messages() so
+   that restore_chat_history() sees the true parent-child structure from
+   the database. The base get_thread() delegates to get_all_user_threads(),
+   which would apply promotion and corrupt memory restoration on resume.
+
+3. User ID from Context: get_all_user_threads() attempts to infer
    user_id from Chainlit's context when not provided, supporting
    multi-user scenarios.
 """
@@ -42,7 +48,12 @@ from typing import Any, cast
 from chainlit import PersistedUser
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.step import StepDict
-from chainlit.types import PaginatedResponse, Pagination, ThreadFilter
+from chainlit.types import (
+    PaginatedResponse,
+    Pagination,
+    ThreadDict,
+    ThreadFilter,
+)
 from chainlit.user import User
 
 logger = logging.getLogger(__name__)
@@ -189,6 +200,30 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
                     f"(was child of {step.get('parentId')})"
                 )
                 step["parentId"] = None
+
+    async def get_thread(self, thread_id: str) -> ThreadDict | None:
+        """Return thread data without promoting assistant messages.
+
+        Unlike get_all_user_threads() and list_threads() (sidebar display),
+        this returns the raw parent-child structure so that
+        restore_chat_history() sees the true conversation tree.
+
+        The base get_thread() delegates to get_all_user_threads(), which
+        applies _promote_assistant_messages(). That in-place mutation
+        corrupts restore_chat_history() on resume because promoted steps
+        are treated as real conversation turns.
+        """
+        # Call parent directly to skip our get_all_user_threads override
+        # (which applies _promote_assistant_messages)
+        user_threads = await SQLAlchemyDataLayer.get_all_user_threads(
+            self, user_id=None, thread_id=thread_id
+        )
+        if not user_threads:
+            return None
+
+        thread = cast(dict[str, Any], user_threads[0])
+        self._deserialize_thread(thread)
+        return cast(ThreadDict, thread)
 
     async def create_user(self, user: User) -> PersistedUser | None:
         """Override create_user to include display_name in the INSERT.

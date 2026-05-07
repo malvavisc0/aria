@@ -33,7 +33,7 @@ class Vllm:
     tool_call_parser: str = get_optional_env(
         "ARIA_VLLM_TOOL_CALL_PARSER", "qwen3_coder"
     )
-    reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "qwen3")
+    reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "")
     chat_template_kwargs: str = get_optional_env("ARIA_VLLM_CHAT_TEMPLATE_KWARGS", "")
 
     # Context sizes for each model type

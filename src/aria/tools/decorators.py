@@ -80,8 +80,7 @@ def log_tool_call(func: Callable) -> Callable:
         except Exception as exc:
             elapsed = time.time() - start
             _tool_log.debug(
-                f"{name} → END | duration={elapsed:.2f}s | status=error"
-                f' | error="{exc}"'
+                f'{name} → END | duration={elapsed:.2f}s | status=error | error="{exc}"'
             )
             raise
 
@@ -108,8 +107,7 @@ def log_tool_call(func: Callable) -> Callable:
         except Exception as exc:
             elapsed = time.time() - start
             _tool_log.debug(
-                f"{name} → END | duration={elapsed:.2f}s | status=error"
-                f' | error="{exc}"'
+                f'{name} → END | duration={elapsed:.2f}s | status=error | error="{exc}"'
             )
             raise
 

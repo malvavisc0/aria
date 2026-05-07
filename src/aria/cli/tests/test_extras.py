@@ -23,8 +23,7 @@ class TestGetVenvExtras:
         """Should include the Additional Commands header."""
         result = get_venv_extras()
         assert (
-            "Additional Commands" in result
-            or "virtual environment" in result.lower()
+            "Additional Commands" in result or "virtual environment" in result.lower()
         )
 
     def test_excludes_python_internals(self):

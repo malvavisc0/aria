@@ -30,9 +30,7 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
-)
+LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -293,9 +291,7 @@ async def on_app_startup_handler() -> None:
         await asyncio.to_thread(_init_vllm_servers)
         _vllm_ready = True
     except Exception as e:
-        logger.warning(
-            f"vLLM servers failed to start: {e}. LLM features disabled."
-        )
+        logger.warning(f"vLLM servers failed to start: {e}. LLM features disabled.")
 
     # Await embeddings result (likely already done by now)
     try:

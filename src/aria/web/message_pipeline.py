@@ -13,13 +13,14 @@ whenever a user sends a message.
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
 
 import chainlit as cl
 import httpx
 from llama_index.core.agent.workflow import AgentOutput, AgentStream, ToolCall
 from llama_index.core.memory import Memory
 from loguru import logger
+from workflows.handler import WorkflowHandler
 
 from aria.agents.prompt_enhancer import PromptEnhancementResult
 from aria.config.models import Chat as ChatConfig
@@ -48,13 +49,12 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning(
-                "Prompt enhancer not available, returning original prompt"
-            )
+            logger.warning("Prompt enhancer not available, returning original prompt")
             return prompt
         try:
-            response = await _state.prompt_enhancer.run(
-                user_msg=message.content
+            response = await asyncio.wait_for(
+                _state.prompt_enhancer.run(user_msg=message.content),
+                timeout=30.0,
             )
             results: PromptEnhancementResult = response.structured_response
             prompt = results.enhanced
@@ -63,10 +63,11 @@ async def _handle_message(message: cl.Message) -> str:
             logger.error(f"Prompt enhancement failed: {e}")
             # Notify user so they know the original prompt was used
             await cl.ErrorMessage(
-                content="⚠️ Prompt enhancement failed, using original prompt.",
+                content="Prompt enhancement failed, using original prompt.",
             ).send()
 
-    file_paths = extract_file_paths(message)
+    # Deduplicate while preserving order (same file attached twice)
+    file_paths = list(dict.fromkeys(extract_file_paths(message)))
     if file_paths:
         paths_block = "\n".join(f"- {p}" for p in file_paths)
         prompt = f"{prompt}\n\n[Uploaded files]:\n{paths_block}"
@@ -82,7 +83,7 @@ async def _handle_message(message: cl.Message) -> str:
 
 
 async def _stream_agent_response(
-    handler: Any,
+    handler: WorkflowHandler,
     output: cl.Message,
 ) -> bool:
     """Stream agent events to the UI and return whether output was emitted.
@@ -121,9 +122,7 @@ async def _stream_agent_response(
                     await output.stream_token(_THINKING_OPEN)
                     thinking_opened = True
                     emitted = True
-                await output.stream_token(
-                    event.thinking_delta.replace("\n", "\n> ")
-                )
+                await output.stream_token(event.thinking_delta.replace("\n", "\n> "))
             elif event.delta:
                 if thinking_opened:
                     await output.stream_token(_THINKING_CLOSE)
@@ -132,18 +131,22 @@ async def _stream_agent_response(
                 emitted = True
 
         elif isinstance(event, AgentOutput) and not event.tool_calls:
-            await maybe_remove_step(current_step)
+            if current_step is not None:
+                await maybe_remove_step(current_step)
+                current_step = None
             if thinking_opened:
                 await output.stream_token(_THINKING_CLOSE)
                 thinking_opened = False
-            current_step = None
             if not emitted and event.response.content:
                 await output.stream_token(event.response.content)
                 emitted = True
 
-    # Fallback — try the final handler result if nothing was streamed
+    # Always await the handler to retrieve the final result and avoid
+    # unawaited-coroutine warnings.
+    handler_result = await handler
+
+    # Fallback — use the final result if nothing was streamed
     if not emitted:
-        handler_result = await handler
         content = getattr(handler_result.response, "content", None) or ""
         if content:
             await output.stream_token(content)
@@ -172,6 +175,7 @@ async def on_message_handler(message: cl.Message) -> None:
         message: The incoming Chainlit message from the user.
     """
     if not _state.agents_workflow:
+        logger.warning("Message received but agents_workflow is not configured")
         return
 
     try:
@@ -179,6 +183,8 @@ async def on_message_handler(message: cl.Message) -> None:
         prompt = await _handle_message(message)
 
         memory: Memory | None = cl.user_session.get("memory")
+        # Reuse existing memory only if it belongs to the same thread;
+        # Memory.session_id is set by create_memory() to the thread_id.
         if memory is None or memory.session_id != message.thread_id:
             memory = create_memory(message.thread_id)
             cl.user_session.set("memory", memory)

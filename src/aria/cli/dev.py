@@ -13,9 +13,7 @@ app = typer.Typer(
 @app.command("run")
 def run_cmd(
     path: str = typer.Argument(..., help="Path to a Python file to execute"),
-    timeout: int = typer.Option(
-        30, "--timeout", "-t", help="Timeout in seconds"
-    ),
+    timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
     check_only: bool = typer.Option(
         False,
         "--check",

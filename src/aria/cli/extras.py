@@ -269,8 +269,7 @@ def get_venv_extras(
 
     lines.append("")
     lines.append(
-        "Always run `<command> --help` before using any new command "
-        "for the first time."
+        "Always run `<command> --help` before using any new command for the first time."
     )
 
     return "\n".join(lines)

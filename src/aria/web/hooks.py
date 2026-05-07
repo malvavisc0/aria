@@ -55,9 +55,7 @@ def get_data_layer_handler() -> SQLiteSQLAlchemyDataLayer:
     return _cached_data_layer
 
 
-async def auth_callback_handler(
-    username: str, password: str
-) -> cl.User | None:
+async def auth_callback_handler(username: str, password: str) -> cl.User | None:
     """Authenticate a user with username and password.
 
     Called by Chainlit during login to verify user credentials
