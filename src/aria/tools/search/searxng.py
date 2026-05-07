@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 import httpx
 
 from aria.tools import (
+    Reason,
     get_function_name,
     tool_error_response,
     tool_success_response,
@@ -80,7 +81,7 @@ _CATEGORY_FIELD_MAP: dict[str, list[FieldSpec]] = {
 
 @log_tool_call
 def searxng_web_search(
-    reason: str,
+    reason: Reason,
     query: str,
     category: Categories = "general",
     time_range: TimeRange = "",
@@ -93,7 +94,7 @@ def searxng_web_search(
     results with text cleaning.
 
     Args:
-        reason: Short explanation of why the search is needed.
+        reason: Required. Brief explanation of why you are searching.
         query: Search query text.
         category: Result type to request. Use `general` for normal web search.
         time_range: Optional freshness filter (day/week/month/year).

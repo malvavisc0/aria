@@ -27,6 +27,7 @@ from imdbinfo import (
 from loguru import logger
 
 from aria.tools import (
+    Reason,
     get_function_name,
     tool_error_response,
     tool_success_response,
@@ -186,7 +187,7 @@ def search_imdb_titles(reason: str, query: str, title_type: str | None = None) -
         the IDs needed for detailed lookups via other IMDb tools.
 
     Args:
-        reason: Why you're searching (for logging/auditing).
+        reason: Required. Brief explanation of why you are searching IMDb.
         query: The title or name to search for.
         title_type: Optional filter — movie, series, episode, short,
             tv_movie, video.
@@ -259,7 +260,7 @@ def search_imdb_titles(reason: str, query: str, title_type: str | None = None) -
 
 @log_tool_call
 @_imdb_tool(ERROR_MOVIE_NOT_FOUND.format(imdb_id="{imdb_id}"))
-def get_movie_details(reason: str, imdb_id: str) -> str:
+def get_movie_details(reason: Reason, imdb_id: str) -> str:
     """Get comprehensive details for a movie or TV series.
 
     When to use:
@@ -274,7 +275,7 @@ def get_movie_details(reason: str, imdb_id: str) -> str:
         ratings, awards, box office, genres, and more — all in one call.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         imdb_id: IMDb ID with/without 'tt' prefix
             (e.g., "tt0133093").
 
@@ -360,7 +361,7 @@ def get_movie_details(reason: str, imdb_id: str) -> str:
     ERROR_PERSON_NOT_FOUND.format(person_id="{person_id}"),
     id_param="person_id",
 )
-def get_person_details(reason: str, person_id: str) -> str:
+def get_person_details(reason: Reason, person_id: str) -> str:
     """
     Get details about an actor, director, or other film industry person.
 
@@ -377,7 +378,7 @@ def get_person_details(reason: str, person_id: str) -> str:
         person's career.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         person_id: IMDb person ID with/without 'nm' prefix
             (e.g., "nm0000206").
 
@@ -415,7 +416,7 @@ def get_person_details(reason: str, person_id: str) -> str:
     ERROR_FILMOGRAPHY_NOT_FOUND.format(person_id="{person_id}"),
     id_param="person_id",
 )
-def get_person_filmography(reason: str, person_id: str) -> str:
+def get_person_filmography(reason: Reason, person_id: str) -> str:
     """
     Get the complete filmography for an actor, director, or crew member.
 
@@ -432,7 +433,7 @@ def get_person_filmography(reason: str, person_id: str) -> str:
         person's work as a director vs. actor vs. writer.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         person_id: IMDb person ID with/without 'nm' prefix.
 
     Returns:
@@ -471,7 +472,7 @@ def get_person_filmography(reason: str, person_id: str) -> str:
 
 @log_tool_call
 @_imdb_tool(ERROR_EPISODES_NOT_FOUND.format(imdb_id="{imdb_id}"))
-def get_all_series_episodes(reason: str, imdb_id: str) -> str:
+def get_all_series_episodes(reason: Reason, imdb_id: str) -> str:
     """
     Get all episodes for a TV series.
 
@@ -487,7 +488,7 @@ def get_all_series_episodes(reason: str, imdb_id: str) -> str:
         useful for episode guides or finding specific episodes.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         imdb_id: IMDb series ID with/without 'tt' prefix.
 
     Returns:
@@ -532,7 +533,7 @@ def get_all_series_episodes(reason: str, imdb_id: str) -> str:
 
 @log_tool_call
 @_imdb_tool(ERROR_REVIEWS_NOT_FOUND.format(imdb_id="{imdb_id}"))
-def get_movie_reviews(reason: str, imdb_id: str) -> str:
+def get_movie_reviews(reason: Reason, imdb_id: str) -> str:
     """
     Get user reviews for a movie or TV series.
 
@@ -549,7 +550,7 @@ def get_movie_reviews(reason: str, imdb_id: str) -> str:
         complement the numerical rating.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         imdb_id: IMDb ID with/without 'tt' prefix.
 
     Returns:
@@ -575,7 +576,7 @@ def get_movie_reviews(reason: str, imdb_id: str) -> str:
 
 @log_tool_call
 @_imdb_tool(ERROR_TRIVIA_NOT_FOUND.format(imdb_id="{imdb_id}"))
-def get_movie_trivia(reason: str, imdb_id: str) -> str:
+def get_movie_trivia(reason: Reason, imdb_id: str) -> str:
     """
     Get trivia and interesting facts about a movie or TV series.
 
@@ -592,7 +593,7 @@ def get_movie_trivia(reason: str, imdb_id: str) -> str:
         and production details not found in the main movie data.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         imdb_id: IMDb ID with/without 'tt' prefix.
 
     Returns:

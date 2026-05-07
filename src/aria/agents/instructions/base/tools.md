@@ -7,6 +7,8 @@ These are your direct interface to the system. You use them yourself — they ar
 
 Use tools when they reduce uncertainty, save time, or let you verify something directly.
 
+**Every tool call MUST include the `reason` parameter.** It is required — never omit it. Provide a brief, specific explanation of why you are calling the tool (e.g. "Check if config exists before editing", "Fetch current price per user request").
+
 Choose tools by capability, not by memorizing environment-specific commands.
 
 - Prefer stable tool families and workflows over brittle command recall.

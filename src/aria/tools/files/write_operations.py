@@ -4,6 +4,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from aria.tools import Reason
 from aria.tools.decorators import tool_function
 from aria.tools.files._internals import _create_backup, _secure_resolve_path
 from aria.tools.files._responses import file_success_response
@@ -123,7 +124,7 @@ def _modify_lines_streaming(
     validation_decorator=with_input_validation,
 )
 def write_file(
-    reason: str,
+    reason: Reason,
     file_name: str,
     contents: str,
     mode: str = "overwrite",
@@ -131,7 +132,7 @@ def write_file(
     """Write or append to a file (atomic, dirs auto-created, backup on overwrite).
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are writing this file.
         file_name: File path.
         contents: Content to write.
         mode: overwrite|append (default: overwrite).
@@ -225,7 +226,7 @@ def _write_file_append(reason: str, file_name: str, contents: str) -> str:
     validation_decorator=with_input_validation,
 )
 def edit_file(
-    reason: str,
+    reason: Reason,
     file_name: str,
     offset: int,
     length: int = 0,
@@ -237,7 +238,7 @@ def edit_file(
     length>0+new_lines=None→delete.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are editing this file.
         file_name: File path.
         offset: 0-indexed start line.
         length: Lines to replace/delete (0=insert only).

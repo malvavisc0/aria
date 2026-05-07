@@ -137,6 +137,12 @@ class VllmServerManager:
         tool_call_parser: str | None = None,
         reasoning_parser: str | None = None,
         chat_template_kwargs: str | None = None,
+        vision_enabled: bool = False,
+        data_parallel_size: int = 1,
+        expert_parallel: bool = False,
+        mm_encoder_tp_mode: str = "",
+        mm_processor_cache_type: str = "",
+        prefix_caching: bool = False,
     ) -> list[str]:
         """Build command to launch a vLLM server.
 
@@ -152,7 +158,17 @@ class VllmServerManager:
             chat_template_file: Optional Jinja2 chat template file path.
             chat_template_kwargs: JSON string of kwargs for the chat template
                 (e.g. ``'{"enable_thinking": true}'``).
-
+            vision_enabled: Enable multi-modal (vision) support. When
+                disabled (default), skips the multi-modal warmup to save
+                ~6s startup time.
+            data_parallel_size: Number of data-parallel replicas.
+            expert_parallel: Enable expert parallelism for MoE models.
+            mm_encoder_tp_mode: Multi-modal encoder tensor parallelism mode
+                (e.g. ``data``).
+            mm_processor_cache_type: Multi-modal processor cache type
+                (e.g. ``shm`` for shared memory).
+            prefix_caching: Enable automatic prefix caching for faster
+                inference with shared prompt prefixes.
         Returns:
             List of command arguments.
         """
@@ -226,11 +242,27 @@ class VllmServerManager:
         if chat_template_kwargs:
             cmd.extend(["--default-chat-template-kwargs", chat_template_kwargs])
 
+        if data_parallel_size > 1:
+            cmd.extend(["--data-parallel-size", str(data_parallel_size)])
+
+        if expert_parallel:
+            cmd.extend(["--enable-expert-parallel"])
+
+        if mm_encoder_tp_mode:
+            cmd.extend(["--mm-encoder-tp-mode", mm_encoder_tp_mode])
+
+        if mm_processor_cache_type:
+            cmd.extend(["--mm-processor-cache-type", mm_processor_cache_type])
+
+        if prefix_caching:
+            cmd.extend(["--enable-prefix-caching"])
+
         # Override model's generation_config.json (may cap max_tokens too low)
         cmd.extend(["--generation-config", "vllm"])
 
-        # Skip multi-modal warmup — saves ~6s startup when not using vision
-        cmd.extend(["--limit-mm-per-prompt", '{"image": 0}'])
+        if not vision_enabled:
+            # Skip multi-modal warmup — saves ~6s startup when not using vision
+            cmd.extend(["--limit-mm-per-prompt", '{"image": 0}'])
 
         # sentence-transformers models often need trust-remote-code
         cmd.extend(["--trust-remote-code"])
@@ -282,12 +314,19 @@ class VllmServerManager:
 
         return False
 
-    def start_all(self) -> None:
+    def start_all(self, force_restart: bool = False) -> None:
         """Start the chat vLLM server process.
+
+        Args:
+            force_restart: If True, stop any running vLLM servers before
+                starting fresh. Useful for reloading with new config.
 
         Raises:
             RuntimeError: If the server fails to start or become ready.
         """
+        if force_restart and self._pids:
+            logger.info("Force restart requested — stopping existing vLLM servers")
+            self.stop_all()
         from aria.config.api import Vllm as VllmConfig
         from aria.config.models import Chat
 
@@ -347,6 +386,12 @@ class VllmServerManager:
             tool_call_parser=VllmConfig.tool_call_parser,
             reasoning_parser=VllmConfig.reasoning_parser,
             chat_template_kwargs=VllmConfig.chat_template_kwargs or None,
+            vision_enabled=VllmConfig.vision_enabled,
+            data_parallel_size=VllmConfig.data_parallel_size,
+            expert_parallel=VllmConfig.expert_parallel,
+            mm_encoder_tp_mode=VllmConfig.mm_encoder_tp_mode,
+            mm_processor_cache_type=VllmConfig.mm_processor_cache_type,
+            prefix_caching=VllmConfig.prefix_caching,
         )
         servers.append(("chat", chat_cmd, Chat.get_port()))
 
@@ -415,14 +460,22 @@ class VllmServerManager:
 
         logger.info("All vLLM server instances are ready.")
 
-    def stop_all(self, timeout: float = 10.0) -> None:
+    def stop_all(self, timeout: float = 10.0, skip_vllm: bool = False) -> None:
         """Stop all running vLLM server processes.
 
         Sends SIGTERM, waits for graceful shutdown, then SIGKILL if needed.
 
         Args:
             timeout: Maximum seconds to wait for graceful shutdown per process.
+            skip_vllm: If True, clear PID tracking without killing the
+                vLLM processes. The processes will keep running as orphans.
+                Useful for rapid web UI restarts without model reload.
         """
+        if skip_vllm:
+            logger.info("Skipping vLLM shutdown — processes will keep running")
+            self._clear_pids()
+            return
+
         for role, pid in list(self._pids.items()):
             if is_process_running(pid):
                 logger.info(f"Stopping {role} server (PID {pid})...")

@@ -6,7 +6,7 @@ Auto-selects backend based on SEARXNG_URL environment variable.
 
 from loguru import logger
 
-from aria.tools import log_tool_call
+from aria.tools import Reason, log_tool_call
 
 # Lazy imports to avoid hard dependency on DDGS when SearXNG is available
 _SEARXNG_URL: str = ""
@@ -24,7 +24,7 @@ def _get_searxng_url() -> str:
 
 @log_tool_call
 def web_search(
-    reason: str,
+    reason: Reason,
     query: str,
     category: str | None = None,
     time_range: str | None = None,
@@ -45,7 +45,7 @@ def web_search(
         and time-range filters for more targeted results.
 
     Args:
-        reason: Why you're searching (for logging/auditing).
+        reason: Required. Brief explanation of why you are searching.
         query: Search query string.
         category: Optional category filter (SearXNG only): general,
             files, news, videos, images.

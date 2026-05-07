@@ -30,7 +30,9 @@ class ShellToolSchema(BaseModel):
     retry with incorrect argument formats.
     """
 
-    reason: str = Field(description="Why you are executing this command")
+    reason: str = Field(
+        description="Required. Brief explanation of why you are executing this command"
+    )
     commands: str = Field(description="The shell command string to execute")
     stop_on_error: bool = Field(default=True, description="Stop on first failure")
     timeout: int | None = Field(
@@ -152,7 +154,7 @@ def shell(
         - Do NOT use for long-running background processes — use `process`.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are executing this command.
         commands: str | list[str] | dict | list[dict].
             Dict keys: command, timeout, working_dir, env, continue_on_error.
         stop_on_error: Stop on first failure (default: True).

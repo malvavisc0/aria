@@ -14,6 +14,7 @@ from youtube_transcript_api import (
 from youtube_transcript_api.formatters import TextFormatter
 
 from aria.tools import (
+    Reason,
     get_function_name,
     tool_error_response,
     tool_success_response,
@@ -73,7 +74,7 @@ def _get_youtube_transcript(
 
 @log_tool_call
 def get_youtube_video_transcription(
-    reason: str,
+    reason: Reason,
     url: str,
     languages: list[str] | None = None,
 ) -> str:
@@ -93,8 +94,7 @@ def get_youtube_video_transcription(
         transcript afterward.
 
     Args:
-        reason: Why you're downloading the transcript
-            (for logging/auditing).
+        reason: Required. Brief explanation of why you are downloading this transcript.
         url: YouTube video URL.
         languages: Ordered list of language codes to try, e.g.
             ["de", "en"] to prefer German and fall back to English.

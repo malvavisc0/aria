@@ -11,7 +11,7 @@ the Chainlit UI database - Users, Threads, Steps, etc.
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, DateTime, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -47,3 +47,12 @@ class ScratchpadItemModel(Base):
         onupdate=lambda: datetime.now(UTC),
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "agent_id",
+            "key",
+            "is_active",
+            name="uq_scratchpad_agent_key_active",
+        ),
+    )

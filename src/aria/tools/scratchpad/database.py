@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.engine import CursorResult
 
 from aria.tools.database import get_tools_database
 from aria.tools.models import ScratchpadItemModel
@@ -137,20 +138,40 @@ class ScratchpadDatabase:
         Returns:
             Number of items cleared.
         """
+        from sqlalchemy import update as sa_update
+
         with self.get_session() as session:
-            stmt = select(ScratchpadItemModel).where(
-                ScratchpadItemModel.agent_id == agent_id,
-                ScratchpadItemModel.is_active.is_(True),
+            now = datetime.now(UTC)
+            stmt = (
+                sa_update(ScratchpadItemModel)
+                .where(
+                    ScratchpadItemModel.agent_id == agent_id,
+                    ScratchpadItemModel.is_active.is_(True),
+                )
+                .values(is_active=False, updated_at=now)
             )
-            items = session.execute(stmt).scalars().all()
-            count = len(items)
-
-            for item in items:
-                item.is_active = False
-                item.updated_at = datetime.now(UTC)
-
+            result: CursorResult = session.execute(stmt)  # type: ignore[assignment]
+            count = result.rowcount
             session.commit()
             logger.debug(f"Scratchpad cleared {count} items for agent {agent_id}")
+            return count
+
+    def cleanup_old_items(self, days: int = 30) -> int:
+        """Permanently delete inactive items older than specified days."""
+        from datetime import timedelta
+
+        from sqlalchemy import delete as sa_delete
+
+        with self.get_session() as session:
+            cutoff = datetime.now(UTC) - timedelta(days=days)
+            stmt = sa_delete(ScratchpadItemModel).where(
+                ScratchpadItemModel.is_active.is_(False),
+                ScratchpadItemModel.updated_at < cutoff,
+            )
+            result: CursorResult = session.execute(stmt)  # type: ignore[assignment]
+            count = result.rowcount
+            session.commit()
+            logger.info(f"Cleaned up {count} old scratchpad items")
             return count
 
 

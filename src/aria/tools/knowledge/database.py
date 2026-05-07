@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.engine import CursorResult
 
 from aria.tools.database import get_tools_database
 
@@ -136,7 +137,9 @@ class KnowledgeDatabase:
             )
 
             if tag:
-                stmt = stmt.where(KnowledgeEntryModel.tags.contains(tag))
+                # Match tag within JSON array string: "tag" with quotes
+                # to avoid substring false positives
+                stmt = stmt.where(KnowledgeEntryModel.tags.contains(f'"{tag}"'))
 
             stmt = stmt.order_by(KnowledgeEntryModel.updated_at.desc()).limit(
                 max_results
@@ -192,6 +195,24 @@ class KnowledgeDatabase:
             session.commit()
             logger.debug(f"Deleted knowledge entry {entry_id}")
             return True
+
+    def cleanup_old_entries(self, days: int = 30) -> int:
+        """Permanently delete inactive entries older than specified days."""
+        from datetime import timedelta
+
+        from sqlalchemy import delete as sa_delete
+
+        with self.get_session() as session:
+            cutoff = datetime.now(UTC) - timedelta(days=days)
+            stmt = sa_delete(KnowledgeEntryModel).where(
+                KnowledgeEntryModel.is_active.is_(False),
+                KnowledgeEntryModel.updated_at < cutoff,
+            )
+            result: CursorResult = session.execute(stmt)  # type: ignore[assignment]
+            count = result.rowcount
+            session.commit()
+            logger.info(f"Cleaned up {count} old knowledge entries")
+            return count
 
 
 def get_database() -> KnowledgeDatabase:

@@ -6,7 +6,7 @@ reasoning sessions and conversations.
 
 from typing import Any
 
-from aria.tools import utc_timestamp
+from aria.tools import Reason, utc_timestamp
 from aria.tools.decorators import log_tool_call
 
 from .database import get_database
@@ -16,7 +16,7 @@ _DEFAULT_AGENT_ID = "aria"
 
 @log_tool_call
 def scratchpad(
-    reason: str,
+    reason: Reason,
     key: str,
     value: str | None = None,
     operation: str = "get",
@@ -29,7 +29,7 @@ def scratchpad(
         - Use key="all" with delete to clear all entries.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are calling this tool (e.g. "Store intermediate calculation result").
         key: Key to operate on (ignored for list).
         value: Value to store (required for set).
         operation: get | set | delete | list (default: get).
@@ -137,7 +137,6 @@ def _op_set(
             "key": key,
             "value": value,
             "reason": reason,
-            "timestamp": now,
         },
     )
 
@@ -168,7 +167,6 @@ def _op_get(
             "tool": "get",
             "key": key,
             "value": item["value"],
-            "timestamp": now,
         },
     )
 
@@ -191,7 +189,6 @@ def _op_delete(
                 "tool": "delete",
                 "key": "all",
                 "deleted_count": count,
-                "timestamp": now,
             },
         )
 
@@ -211,7 +208,6 @@ def _op_delete(
         data={
             "tool": "delete",
             "key": key,
-            "timestamp": now,
         },
     )
 
@@ -231,6 +227,5 @@ def _op_list(
         data={
             "tool": "list",
             "items": items,
-            "timestamp": now,
         },
     )

@@ -1,7 +1,7 @@
 """Reasoning session class - no global state."""
 
-import hashlib
-from datetime import datetime
+import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .constants import (
@@ -25,14 +25,14 @@ class ReasoningSession:
             session_id: User-provided session identifier
             agent_id: Agent identifier for multi-agent isolation
         """
-        self.id = hashlib.md5(str(datetime.now()).encode()).hexdigest()
+        self.id = uuid.uuid4().hex
         self.session_id = session_id
         self.agent_id = agent_id
         self.steps: list[dict] = []
         self.reflections: list[dict] = []
         self.scratchpad: dict[str, dict] = {}
         self.tool_events: list[dict[str, Any]] = []
-        self.created_at = datetime.now().isoformat()
+        self.created_at = datetime.now(UTC).isoformat()
         self.confidence_trajectory: list[float] = []
         self._db: ReasoningDatabase | None = None
 
@@ -65,9 +65,7 @@ class ReasoningSession:
         if reasoning_type not in REASONING_TYPES:
             reasoning_type = "deductive"
 
-        biases = (
-            self._detect_biases(content + " ".join(evidence or [])) if evidence else []
-        )
+        biases = self._detect_biases(content + " " + " ".join(evidence or []))
 
         step = {
             "id": len(self.steps) + 1,
@@ -78,7 +76,7 @@ class ReasoningSession:
             "reason": reason,
             "evidence": evidence or [],
             "biases_detected": biases,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         self.steps.append(step)
@@ -146,7 +144,7 @@ class ReasoningSession:
             "content": reflection,
             "step_id": on_step,
             "reason": reason,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self.reflections.append(entry)
 
@@ -187,7 +185,7 @@ class ReasoningSession:
         Returns:
             Dict[str, Any]: JSON-compatible scratchpad operation result
         """
-        now = datetime.now().isoformat()
+        now = datetime.now(UTC).isoformat()
         match operation:
             case "set":
                 if value is None:
@@ -326,7 +324,7 @@ class ReasoningSession:
         if avg_conf < 0.6:
             recommendations.append("Low confidence — gather more evidence?")
 
-        now = datetime.now().isoformat()
+        now = datetime.now(UTC).isoformat()
         self.persist_tool_event(
             tool_name="evaluate_reasoning",
             reason=reason,
@@ -356,7 +354,7 @@ class ReasoningSession:
             if self.confidence_trajectory
             else 0
         )
-        now = datetime.now().isoformat()
+        now = datetime.now(UTC).isoformat()
         self.persist_tool_event(
             tool_name="get_reasoning_summary",
             reason=reason,
@@ -389,7 +387,7 @@ class ReasoningSession:
         self.confidence_trajectory.clear()
         # Persist reset to database
         self.reset_db()
-        now = datetime.now().isoformat()
+        now = datetime.now(UTC).isoformat()
         self.persist_tool_event(
             tool_name="reset_reasoning",
             reason=reason,

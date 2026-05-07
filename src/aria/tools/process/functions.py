@@ -15,7 +15,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from aria.tools import tool_response
+from aria.tools import Reason, tool_response
 from aria.tools.decorators import log_tool_call
 from aria.tools.shell.validation import _extract_all_command_names
 
@@ -132,7 +132,7 @@ def _auto_kill(name: str) -> None:
 
 @log_tool_call
 def process(
-    reason: str,
+    reason: Reason,
     action: str,
     name: str | None = None,
     command: str | None = None,
@@ -151,7 +151,7 @@ def process(
         - Do NOT use for one-off commands — use `shell`.
 
     Args:
-        reason: Why you're managing this process (for logging/auditing).
+        reason: Required. Brief explanation of why you are calling this tool (e.g. "Start dev server for testing").
         action: start | stop | status | logs | list | restart | signal.
         name: Unique name for the process (required for most actions).
         command: Command to execute (required for start).

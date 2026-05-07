@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from aria.tools.database import get_tools_database
@@ -90,7 +91,7 @@ class ReasoningDatabase:
             stmt = select(ReasoningSessionModel).where(
                 ReasoningSessionModel.session_id == session_id,
                 ReasoningSessionModel.agent_id == agent_id,
-                ReasoningSessionModel.is_active == True,
+                ReasoningSessionModel.is_active.is_(True),
             )
             session_model = session.execute(stmt).scalar_one_or_none()
 
@@ -339,28 +340,25 @@ class ReasoningDatabase:
 
     def reset_session(self, session_internal_id: str) -> None:
         """Clear all steps, reflections, and scratchpad for a session."""
+        from sqlalchemy import delete as sa_delete
+
         with self.get_session() as session:
-            # Delete all related data
-            stmt = select(ReasoningStepModel).where(
-                ReasoningStepModel.session_id == session_internal_id
+            # Bulk delete all related data
+            session.execute(
+                sa_delete(ReasoningStepModel).where(
+                    ReasoningStepModel.session_id == session_internal_id
+                )
             )
-            steps = session.execute(stmt).scalars().all()
-            for step in steps:
-                session.delete(step)
-
-            stmt = select(ReasoningReflectionModel).where(
-                ReasoningReflectionModel.session_id == session_internal_id
+            session.execute(
+                sa_delete(ReasoningReflectionModel).where(
+                    ReasoningReflectionModel.session_id == session_internal_id
+                )
             )
-            reflections = session.execute(stmt).scalars().all()
-            for refl in reflections:
-                session.delete(refl)
-
-            stmt = select(ReasoningScratchpadModel).where(
-                ReasoningScratchpadModel.session_id == session_internal_id
+            session.execute(
+                sa_delete(ReasoningScratchpadModel).where(
+                    ReasoningScratchpadModel.session_id == session_internal_id
+                )
             )
-            items = session.execute(stmt).scalars().all()
-            for item in items:
-                session.delete(item)
 
             # Update session timestamp
             stmt = select(ReasoningSessionModel).where(
@@ -376,7 +374,7 @@ class ReasoningDatabase:
         """List all active sessions, optionally filtered by agent."""
         with self.get_session() as session:
             stmt = select(ReasoningSessionModel).where(
-                ReasoningSessionModel.is_active == True
+                ReasoningSessionModel.is_active.is_(True)
             )
 
             if agent_id:
@@ -398,22 +396,21 @@ class ReasoningDatabase:
 
     def cleanup_old_sessions(self, days: int = 30, agent_id: str | None = None) -> int:
         """Permanently delete inactive sessions older than specified days."""
+        from sqlalchemy import delete as sa_delete
+
         with self.get_session() as session:
             cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
-            stmt = select(ReasoningSessionModel).where(
-                ReasoningSessionModel.is_active == False,
+            stmt = sa_delete(ReasoningSessionModel).where(
+                ReasoningSessionModel.is_active.is_(False),
                 ReasoningSessionModel.updated_at < cutoff_date,
             )
 
             if agent_id:
                 stmt = stmt.where(ReasoningSessionModel.agent_id == agent_id)
 
-            old_sessions = session.execute(stmt).scalars().all()
-            count = len(old_sessions)
-
-            for old_session in old_sessions:
-                session.delete(old_session)
+            result: CursorResult = session.execute(stmt)  # type: ignore[assignment]
+            count = result.rowcount
 
             session.commit()
             logger.info(f"Cleaned up {count} old sessions")
@@ -424,13 +421,6 @@ class ReasoningDatabase:
         pass
 
 
-# Global database instance
-_db_instance = None
-
-
 def get_database() -> ReasoningDatabase:
-    """Get global database instance."""
-    global _db_instance
-    if _db_instance is None:
-        _db_instance = ReasoningDatabase()
-    return _db_instance
+    """Get global database instance (singleton via ReasoningDatabase.__new__)."""
+    return ReasoningDatabase()

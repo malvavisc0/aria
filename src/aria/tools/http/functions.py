@@ -5,7 +5,7 @@ from uuid import uuid4
 import httpx
 from loguru import logger
 
-from aria.tools import tool_response
+from aria.tools import Reason, tool_response
 from aria.tools.constants import (
     BASE_DIR,
     DEFAULT_TIMEOUT,
@@ -32,7 +32,7 @@ _ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
 @log_tool_call
 def http_request(
-    reason: str,
+    reason: Reason,
     method: str,
     url: str,
     headers: dict[str, str] | None = None,
@@ -47,7 +47,7 @@ def http_request(
         - Do NOT use for downloading files — use `download`.
 
     Args:
-        reason: Why you're making this request (for logging/auditing).
+        reason: Required. Brief explanation of why you are making this request.
         method: GET | POST | PUT | DELETE | PATCH | HEAD | OPTIONS.
         url: The URL to request.
         headers: Optional request headers (dict).

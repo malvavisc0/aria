@@ -6,6 +6,7 @@ import traceback
 
 from loguru import logger
 
+from aria.tools import Reason
 from aria.tools.constants import DEFAULT_TIMEOUT, MAX_TIMEOUT
 from aria.tools.decorators import tool_function
 from aria.tools.development._internals import (
@@ -29,7 +30,7 @@ from aria.tools.development.exceptions import PythonSecurityError
     validation_decorator=with_input_validation,
 )
 def python(
-    reason: str,
+    reason: Reason,
     code: str | None = None,
     file: str | None = None,
     args: list[str] | None = None,
@@ -44,7 +45,7 @@ def python(
         - Do NOT use for shell commands (git, pip, npm) — use `shell`.
 
     Args:
-        reason: Why you're running this (for logging/auditing).
+        reason: Required. Brief explanation of why you are running this code.
         code: Python code string to execute or validate.
         file: Path to a Python file to execute or validate.
         args: CLI arguments for sys.argv (execution only).

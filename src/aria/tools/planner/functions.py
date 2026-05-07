@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from aria.tools import tool_response
+from aria.tools import Reason, tool_response
 from aria.tools.decorators import log_tool_call
 
 from . import registry
@@ -75,18 +75,6 @@ def _dict_to_plan(data: dict) -> Plan:
     )
 
 
-def _step_to_dict(step: PlanStep) -> dict:
-    """Serialize a single plan step for database storage."""
-    return {
-        "id": step.id,
-        "description": step.description,
-        "status": step.status.value,
-        "result": step.result,
-        "created_at": step.created_at,
-        "updated_at": step.updated_at,
-    }
-
-
 def _serialize_step(step: PlanStep) -> dict[str, object]:
     """Serialize a plan step for tool responses."""
     return {
@@ -108,6 +96,7 @@ def _serialize_plan(plan: Plan) -> dict[str, object]:
 
     return {
         "plan_id": plan.id,
+        "agent_id": plan.agent_id,
         "task": plan.task,
         "steps": [_serialize_step(step) for step in plan.steps],
         "total_steps": len(plan.steps),
@@ -184,7 +173,7 @@ def _action_create(
         # Create plan steps
         plan_steps = [
             PlanStep(
-                id=str(uuid.uuid4())[:8],
+                id=uuid.uuid4().hex[:8],
                 description=step_desc,
                 status=StepStatus.PENDING,
             )
@@ -201,7 +190,7 @@ def _action_create(
             plan_id=execution_id,
             agent_id=agent_id,
             task=task,
-            steps=[_step_to_dict(s) for s in plan.steps],
+            steps=[_serialize_step(s) for s in plan.steps],
             created_at=created_at,
         )
 
@@ -711,9 +700,120 @@ def _action_reorder(
         )
 
 
+def _action_list(reason: str, agent_id: str) -> str:
+    """List all active plans for an agent."""
+    timestamp = datetime.now(UTC).isoformat()
+
+    try:
+        db = registry.get_db()
+        plans = db.list_plans(agent_id)
+        return _ok(
+            tool="plan",
+            reason=reason,
+            result={"plans": plans, "total": len(plans)},
+            metadata={
+                "timestamp": timestamp,
+                "action": "list",
+                "agent_id": agent_id,
+            },
+        )
+    except Exception as exc:
+        return _err(
+            tool="plan",
+            reason=reason,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "list",
+                "success": False,
+            },
+        )
+
+
+def _action_delete(reason: str, execution_id: str) -> str:
+    """Soft-delete a plan."""
+    timestamp = datetime.now(UTC).isoformat()
+
+    try:
+        db = registry.get_db()
+        success = db.delete_plan(execution_id)
+
+        if not success:
+            return _err(
+                tool="plan",
+                reason=reason,
+                message=f"Plan '{execution_id}' not found.",
+                metadata={
+                    "timestamp": timestamp,
+                    "action": "delete",
+                    "execution_id": execution_id,
+                    "success": False,
+                },
+            )
+
+        return _ok(
+            tool="plan",
+            reason=reason,
+            result={
+                "plan_id": execution_id,
+                "message": "Plan deleted successfully",
+            },
+            metadata={
+                "timestamp": timestamp,
+                "action": "delete",
+                "execution_id": execution_id,
+                "success": True,
+            },
+        )
+    except Exception as exc:
+        return _err(
+            tool="plan",
+            reason=reason,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "delete",
+                "success": False,
+            },
+        )
+
+
+def _action_cleanup(reason: str, agent_id: str) -> str:
+    """Clean up old inactive plans."""
+    timestamp = datetime.now(UTC).isoformat()
+
+    try:
+        db = registry.get_db()
+        count = db.cleanup_old_plans(agent_id=agent_id)
+        return _ok(
+            tool="plan",
+            reason=reason,
+            result={
+                "cleaned_up": count,
+                "message": f"Cleaned up {count} old plans",
+            },
+            metadata={
+                "timestamp": timestamp,
+                "action": "cleanup",
+                "agent_id": agent_id,
+            },
+        )
+    except Exception as exc:
+        return _err(
+            tool="plan",
+            reason=reason,
+            message=str(exc),
+            metadata={
+                "timestamp": timestamp,
+                "action": "cleanup",
+                "success": False,
+            },
+        )
+
+
 @log_tool_call
 def plan(
-    reason: str,
+    reason: Reason,
     action: str,
     task: str | None = None,
     steps: list[str] | None = None,
@@ -731,7 +831,7 @@ def plan(
     Actions: create, get, update, add, remove, replace, reorder.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are calling this tool (e.g. "Create plan for migration task").
         action: create|get|update|add|remove|replace|reorder.
         task: Task description (required for create).
         steps: Ordered step descriptions (required for create).
@@ -868,20 +968,38 @@ def plan(
             )
         return _action_reorder(reason, execution_id, step_ids)
 
+    elif action == "list":
+        return _action_list(reason, agent_id)
+
+    elif action == "delete":
+        if execution_id is None:
+            return _err(
+                tool="plan",
+                reason=reason,
+                message="execution_id is required for delete action",
+                metadata={"action": "delete", "success": False},
+            )
+        return _action_delete(reason, execution_id)
+
+    elif action == "cleanup":
+        return _action_cleanup(reason, agent_id)
+
     else:
         return _err(
             tool="plan",
             reason=reason,
             message=(
                 f"Unknown action '{action}'. Valid actions: "
-                "create, get, update, add, remove, replace, reorder"
+                "create, get, update, add, remove, replace, reorder, "
+                "list, delete, cleanup"
             ),
             metadata={
                 "action": action,
                 "success": False,
                 "how_to_fix": (
                     "Use one of the valid actions: "
-                    "create, get, update, add, remove, replace, reorder"
+                    "create, get, update, add, remove, replace, reorder, "
+                    "list, delete, cleanup"
                 ),
             },
         )

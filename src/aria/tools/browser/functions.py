@@ -20,7 +20,7 @@ Example:
     ```
 """
 
-from aria.tools import get_function_name
+from aria.tools import Reason, get_function_name
 from aria.tools.browser.manager import get_browser_manager
 from aria.tools.decorators import log_tool_call
 
@@ -43,7 +43,7 @@ def _get_manager():
 
 
 @log_tool_call
-async def open_url(reason: str, url: str, content_mode: str = "text") -> str:
+async def open_url(reason: Reason, url: str, content_mode: str = "text") -> str:
     """Open a URL in the headless browser and get page content.
 
     When to use:
@@ -60,7 +60,7 @@ async def open_url(reason: str, url: str, content_mode: str = "text") -> str:
         modern websites. The browser is already running at server startup.
 
     Args:
-        reason: Why you are opening this URL (for logging/auditing).
+        reason: Required. Brief explanation of why you are opening this URL.
         url: The URL to navigate to.
         content_mode: Extraction mode: `text` for cleaned body text or
             `article` for likely main-content extraction.
@@ -86,7 +86,7 @@ async def open_url(reason: str, url: str, content_mode: str = "text") -> str:
 
 @log_tool_call
 async def browser_click(
-    reason: str,
+    reason: Reason,
     selector: str,
     content_mode: str = "text",
 ) -> str:
@@ -105,7 +105,7 @@ async def browser_click(
         interact with the page to reveal the content you need.
 
     Args:
-        reason: Why you are clicking this element (for logging/auditing).
+        reason: Required. Brief explanation of why you are clicking this element.
         selector: CSS selector for the element, e.g. 'button.accept',
             'a[href="/next"]', '#submit-button'.
         content_mode: Extraction mode for the updated page content.
@@ -128,7 +128,7 @@ async def browser_click(
 
 
 @log_tool_call
-async def browser_close(reason: str) -> str:
+async def browser_close(reason: Reason) -> str:
     """Close the current browser page.
 
     When to use:
@@ -138,7 +138,7 @@ async def browser_close(reason: str) -> str:
           browser itself stays running for future use.
 
     Args:
-        reason: Why you are closing the page (for logging/auditing).
+        reason: Required. Brief explanation of why you are closing the page.
 
     Returns:
         JSON confirming the page was closed.

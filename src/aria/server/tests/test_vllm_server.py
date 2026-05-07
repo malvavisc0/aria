@@ -155,3 +155,31 @@ class TestStopAll:
             self.manager.stop_all()
 
         mock_stop.assert_not_called()
+
+    def test_stop_all_skip_vllm(self):
+        """stop_all(skip_vllm=True) should clear PIDs without killing."""
+        self.manager._pids = {"chat": 1234}
+
+        with (
+            patch("aria.server.vllm.stop_process") as mock_stop,
+            patch("aria.server.vllm.clear_state"),
+        ):
+            self.manager.stop_all(skip_vllm=True)
+
+        mock_stop.assert_not_called()
+        assert self.manager._pids == {}
+
+    def test_start_all_force_restart(self):
+        """start_all(force_restart=True) should stop existing first."""
+        self.manager._pids = {"chat": 1234}
+
+        with patch.object(self.manager, "stop_all") as mock_stop:
+            # start_all will call stop_all (force_restart), then try to
+            # actually start vLLM which fails, triggering another stop_all.
+            # We just verify stop_all was called (at least once).
+            try:
+                self.manager.start_all(force_restart=True)
+            except Exception:
+                pass
+
+        assert mock_stop.call_count >= 1

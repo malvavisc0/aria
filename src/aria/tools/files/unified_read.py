@@ -16,6 +16,7 @@ from typing import Any
 
 from loguru import logger
 
+from aria.tools import Reason
 from aria.tools.constants import BASE_DIR
 from aria.tools.decorators import tool_function
 from aria.tools.files._internals import (
@@ -215,7 +216,7 @@ def _err(tool: str, reason: str, message: str, **metadata) -> str:
     error_handler=with_file_operation_error_handling,
 )
 def read_file(
-    reason: str,
+    reason: Reason,
     file_name: str,
     offset: int | None = 0,
     length: int | None = 0,
@@ -224,7 +225,7 @@ def read_file(
     """Read file contents, optionally in chunks.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are reading this file.
         file_name: Path relative to BASE_DIR.
         offset: Start line 0-indexed (default: 0).
         length: Lines to read; 0=all up to max_lines (default: 0).
@@ -317,11 +318,11 @@ def read_file(
     "file_info",
     error_handler=with_file_operation_error_handling,
 )
-def file_info(reason: str, file_name: str) -> str:
+def file_info(reason: Reason, file_name: str) -> str:
     """Get metadata for a file or directory (size, type, permissions, timestamps).
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you need this file's metadata.
         file_name: Path to the file or directory.
 
     Returns:
@@ -400,7 +401,7 @@ def file_info(reason: str, file_name: str) -> str:
     error_handler=with_file_operation_error_handling,
 )
 def list_files(
-    reason: str,
+    reason: Reason,
     pattern: str | None = "*",
     recursive: bool | None = False,
     max_depth: int | None = 3,
@@ -410,7 +411,7 @@ def list_files(
     """List files/dirs with optional recursive tree view.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are listing files.
         pattern: Glob filter (default: "*").
         recursive: Tree view if True (default: False).
         max_depth: Max depth for tree (default: 3).
@@ -535,7 +536,7 @@ def list_files(
     error_handler=with_file_operation_error_handling,
 )
 def search_files(
-    reason: str,
+    reason: Reason,
     pattern: str,
     mode: str | None = "name",
     file_pattern: str | None = "**/*",
@@ -547,7 +548,7 @@ def search_files(
     """Search files by name pattern or content regex.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are searching files.
         pattern: Regex to match filenames or content.
         mode: name|content (default: name).
         file_pattern: Glob filter for files (default: "**/*").

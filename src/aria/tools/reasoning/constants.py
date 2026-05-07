@@ -55,21 +55,3 @@ COGNITIVE_SCAFFOLDING = {
     "creative": "Generate alternatives and reframes.",
     "reflection": "Surface assumptions and possible bias.",
 }
-
-COGNITIVE_MODE_TRIGGERS = {
-    "planning": "Use when outlining steps, constraints, or contingencies",
-    "analysis": "Use when examining evidence, data, or tool results",
-    "evaluation": "Use when assessing quality, failures, or comparing options",
-    "synthesis": "Use when combining findings into a conclusion",
-    "creative": "Use when generating alternatives or reframing the problem",
-    "reflection": "Use when checking for bias, gaps, or assumptions",
-}
-
-ERROR_PATTERNS = {
-    "TOOL_NOT_FOUND": ["tool.*not found", "avail.*tool"],
-    "PERMISSION_DENIED": ["permission denied", "access denied"],
-    "TIMEOUT": ["timeout", "timed out", "took too long"],
-    "INVALID_INPUT": ["invalid.*input", "cannot.*parse", "invalid.*argument"],
-    "RATE_LIMIT": ["rate limit", "too many requests", "quota exceeded"],
-    "NETWORK": ["connection.*error", "network.*error", "unreachable"],
-}

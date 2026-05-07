@@ -3,18 +3,25 @@
 from ddgs import DDGS
 from loguru import logger
 
-from aria.tools import get_function_name, log_tool_call, tool_error_response
+from aria.tools import (
+    Reason,
+    get_function_name,
+    log_tool_call,
+    tool_error_response,
+)
 from aria.tools.constants import DEFAULT_TIMEOUT
 from aria.tools.search.constants import MAX_RESULTS_LIMIT
 
 
 @log_tool_call
-def duckduckgo_web_search(reason: str, query: str, max_results: int | None = 5) -> str:
+def duckduckgo_web_search(
+    reason: Reason, query: str, max_results: int | None = 5
+) -> str:
     """
     Search the web and return a small set of {title, href} results.
 
     Args:
-        reason: Why you're searching (e.g., "Finding documentation")
+        reason: Required. Brief explanation of why you are searching (e.g. "Finding documentation for X").
         query: Search query string
         max_results: Maximum results (default: 5, max: 50)
 

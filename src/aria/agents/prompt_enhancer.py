@@ -79,7 +79,9 @@ class PromptEnhancerAgent(FunctionAgent):
         host = f"{platform.system()} {platform.release()}"
 
         day = timestamp.day
-        date_str = f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
+        date_str = (
+            f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
+        )
 
         tz = timestamp.astimezone().tzinfo
         lines: list[str] = [

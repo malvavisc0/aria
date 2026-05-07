@@ -45,13 +45,13 @@ def get_chat_llm(
         api_key=api_key,
         is_chat_model=True,
         is_function_calling_model=True,
-        temperature=0.2,
+        temperature=0.3,
         max_tokens=8192,
         additional_kwargs={
             "top_p": 0.9,
             "extra_body": {
                 "top_k": 100,
-                "repetition_penalty": 1.20,
+                "repetition_penalty": 1.1,
             },
         },
     )

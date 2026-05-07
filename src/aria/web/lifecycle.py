@@ -23,6 +23,7 @@ from sqlalchemy import create_engine
 from aria.config.api import Vllm as VllmConfig
 from aria.config.database import ChromaDB as ChromaDBConfig
 from aria.config.database import SQLite as SQLiteConfig
+from aria.config.folders import Data as DataConfig
 from aria.config.folders import Debug as DebugConfig
 from aria.config.models import Chat as ChatConfig
 from aria.config.models import Embeddings as EmbeddingsConfig
@@ -343,10 +344,22 @@ async def on_app_shutdown_handler() -> None:
     global _log_sink_id, _tool_call_sink_id
     logger.info("Shutting down Aria web UI...")
 
+    # Check for sentinel file written by `aria server stop --skip-vllm`
+    _skip_sentinel = DataConfig.path / "skip_vllm_shutdown"
+    _skip_vllm = _skip_sentinel.is_file()
+    if _skip_vllm:
+        try:
+            _skip_sentinel.unlink()
+        except OSError:
+            pass
+
     if _state.vllm_manager:
         try:
-            _state.vllm_manager.stop_all()
-            logger.info("All vLLM servers stopped")
+            _state.vllm_manager.stop_all(skip_vllm=_skip_vllm)
+            if _skip_vllm:
+                logger.info("vLLM servers left running (--skip-vllm)")
+            else:
+                logger.info("All vLLM servers stopped")
         except Exception as e:
             logger.error(f"Error stopping vLLM servers: {e}")
 

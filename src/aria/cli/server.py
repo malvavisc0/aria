@@ -143,7 +143,13 @@ def server_run():
 
 
 @app.command("start")
-def server_start():
+def server_start(
+    force_restart_vllm: bool = typer.Option(
+        False,
+        "--force-restart-vllm",
+        help="Stop any running vLLM servers before starting the web UI.",
+    ),
+):
     """Start the Aria webserver in background.
 
     vLLM server processes are started automatically by the web_ui.
@@ -155,6 +161,14 @@ def server_start():
             "\n[red]✗ Preflight checks failed. Fix the issues above.[/red]"
         )
         raise typer.Exit(1)
+
+    if force_restart_vllm:
+        from aria.server.vllm import VllmServerManager
+
+        vllm = VllmServerManager()
+        if vllm._pids:
+            console.print("[dim]Stopping existing vLLM servers...[/dim]")
+            vllm.stop_all()
 
     manager = ServerManager()
     if manager.is_running():
@@ -183,11 +197,25 @@ def server_start():
 
 
 @app.command("stop")
-def server_stop():
+def server_stop(
+    skip_vllm: bool = typer.Option(
+        False,
+        "--skip-vllm",
+        help="Keep vLLM servers running (only stop the web UI).",
+    ),
+):
     """Stop the Aria webserver.
 
-    Also stops all vLLM server processes managed by the web_ui.
+    Also stops all vLLM server processes managed by the web_ui,
+    unless --skip-vllm is specified.
     """
+    if skip_vllm:
+        from aria.config.folders import Data as DataConfig
+
+        sentinel = DataConfig.path / "skip_vllm_shutdown"
+        sentinel.touch()
+        console.print("[dim]vLLM servers will be left running[/dim]")
+
     manager = ServerManager()
     if manager.stop():
         console.print("[green]✓[/green] Server stopped")

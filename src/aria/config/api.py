@@ -35,6 +35,20 @@ class Vllm:
     )
     reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "")
     chat_template_kwargs: str = get_optional_env("ARIA_VLLM_CHAT_TEMPLATE_KWARGS", "")
+    vision_enabled: bool = (
+        get_optional_env("ARIA_VLLM_VISION_ENABLED", "").lower() == "true"
+    )
+    data_parallel_size: int = int(get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1"))
+    expert_parallel: bool = (
+        get_optional_env("ARIA_VLLM_EXPERT_PARALLEL", "").lower() == "true"
+    )
+    mm_encoder_tp_mode: str = get_optional_env("ARIA_VLLM_MM_ENCODER_TP_MODE", "")
+    mm_processor_cache_type: str = get_optional_env(
+        "ARIA_VLLM_MM_PROCESSOR_CACHE_TYPE", ""
+    )
+    prefix_caching: bool = (
+        get_optional_env("ARIA_VLLM_PREFIX_CACHING", "").lower() == "true"
+    )
 
     # Context sizes for each model type
     # Use int(v) if v is non-empty, otherwise fall back to default

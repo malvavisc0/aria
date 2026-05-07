@@ -7,6 +7,7 @@ import yfinance
 from loguru import logger
 
 from aria.tools import (
+    Reason,
     get_function_name,
     log_tool_call,
     tool_error_response,
@@ -50,7 +51,7 @@ MAX_ARTICLES = 50
 
 
 @log_tool_call
-def fetch_current_stock_price(reason: str, ticker: str) -> str:
+def fetch_current_stock_price(reason: Reason, ticker: str) -> str:
     """
     Fetch the current market price for a stock or crypto ticker.
 
@@ -66,7 +67,7 @@ def fetch_current_stock_price(reason: str, ticker: str) -> str:
         including market state (open/closed) and day change calculations.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         ticker: Stock symbol (e.g., AAPL, GOOGL, BTC-USD).
 
     Returns:
@@ -166,7 +167,7 @@ def fetch_current_stock_price(reason: str, ticker: str) -> str:
 
 
 @log_tool_call
-def fetch_company_information(reason: str, ticker: str) -> str:
+def fetch_company_information(reason: Reason, ticker: str) -> str:
     """
     Fetch comprehensive company fundamentals and metadata for a ticker.
 
@@ -184,7 +185,7 @@ def fetch_company_information(reason: str, ticker: str) -> str:
         consensus — essential for investment research.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         ticker: Stock symbol (e.g., AAPL, GOOGL).
 
     Returns:
@@ -306,7 +307,7 @@ def fetch_company_information(reason: str, ticker: str) -> str:
 
 
 @log_tool_call
-def fetch_ticker_news(reason: str, ticker: str, max_articles: int = 10) -> str:
+def fetch_ticker_news(reason: Reason, ticker: str, max_articles: int = 10) -> str:
     """
     Fetch recent news articles for a stock or crypto ticker.
 
@@ -323,7 +324,7 @@ def fetch_ticker_news(reason: str, ticker: str, max_articles: int = 10) -> str:
         events.
 
     Args:
-        reason: Why you're fetching (for logging/auditing).
+        reason: Required. Brief explanation of why you are fetching this data.
         ticker: Stock symbol (e.g., AAPL, GOOGL).
         max_articles: Number of articles (default: 10, max: 50).
 

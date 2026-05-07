@@ -1,6 +1,7 @@
 """Download and convert content from a URL."""
 
 from aria.tools import (
+    Reason,
     get_function_name,
     log_tool_call,
     tool_error_response,
@@ -42,7 +43,7 @@ class ContentParsingError(Exception):
 
 @log_tool_call
 def download(
-    reason: str,
+    reason: Reason,
     url: str,
     output: str | None = "auto",
     custom_headers: dict[str, str] | None = None,
@@ -69,7 +70,7 @@ def download(
         HTML content.
 
     Args:
-        reason: Why you're downloading (for logging/auditing).
+        reason: Required. Brief explanation of why you are downloading this file.
         url: Direct URL to the file.
         output: Format — auto/markdown/text/binary (default: "auto").
         custom_headers: Optional HTTP headers.

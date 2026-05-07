@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.engine import CursorResult
 
 from aria.tools.database import get_tools_database
 
@@ -78,7 +79,7 @@ class PlannerDatabase:
         with self.get_session() as session:
             stmt = select(PlanModel).where(
                 PlanModel.id == plan_id,
-                PlanModel.is_active == True,
+                PlanModel.is_active.is_(True),
             )
             plan_model = session.execute(stmt).scalar_one_or_none()
 
@@ -115,7 +116,7 @@ class PlannerDatabase:
                 select(PlanModel)
                 .where(
                     PlanModel.agent_id == agent_id,
-                    PlanModel.is_active == True,
+                    PlanModel.is_active.is_(True),
                 )
                 .order_by(PlanModel.updated_at.desc())
             )
@@ -124,8 +125,28 @@ class PlannerDatabase:
             if not plan_model:
                 return None
 
-            # Reuse load_plan logic
-            return self.load_plan(plan_model.id)
+            steps = []
+            for step in plan_model.steps:
+                steps.append(
+                    {
+                        "id": step.step_id,
+                        "description": step.description,
+                        "status": step.status,
+                        "result": step.result,
+                        "created_at": step.created_at.isoformat(),
+                        "updated_at": step.updated_at.isoformat(),
+                    }
+                )
+
+            return {
+                "plan_id": plan_model.id,
+                "agent_id": plan_model.agent_id,
+                "task": plan_model.task,
+                "created_at": plan_model.created_at.isoformat(),
+                "updated_at": plan_model.updated_at.isoformat(),
+                "is_active": plan_model.is_active,
+                "steps": steps,
+            }
 
     def update_step(
         self,
@@ -333,7 +354,7 @@ class PlannerDatabase:
         with self.get_session() as session:
             stmt = (
                 select(PlanModel)
-                .where(PlanModel.is_active == True)
+                .where(PlanModel.is_active.is_(True))
                 .order_by(PlanModel.updated_at.desc())
             )
 
@@ -358,19 +379,18 @@ class PlannerDatabase:
         with self.get_session() as session:
             cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
-            stmt = select(PlanModel).where(
-                PlanModel.is_active == False,
+            from sqlalchemy import delete as sa_delete
+
+            stmt = sa_delete(PlanModel).where(
+                PlanModel.is_active.is_(False),
                 PlanModel.updated_at < cutoff_date,
             )
 
             if agent_id:
                 stmt = stmt.where(PlanModel.agent_id == agent_id)
 
-            old_plans = session.execute(stmt).scalars().all()
-            count = len(old_plans)
-
-            for old_plan in old_plans:
-                session.delete(old_plan)
+            result: CursorResult = session.execute(stmt)  # type: ignore[assignment]
+            count = result.rowcount
 
             session.commit()
             logger.info(f"Cleaned up {count} old plans")

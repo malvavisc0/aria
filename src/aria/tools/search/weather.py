@@ -8,6 +8,7 @@ import httpx
 from loguru import logger
 
 from aria.tools import (
+    Reason,
     get_function_name,
     log_tool_call,
     tool_error_response,
@@ -63,7 +64,7 @@ def _get_weather_text(code: int | None) -> str:
 
 
 @log_tool_call
-def get_current_weather(reason: str, location: str) -> str:
+def get_current_weather(reason: Reason, location: str) -> str:
     """Get current weather conditions for a city or location.
 
     When to use:
@@ -76,7 +77,7 @@ def get_current_weather(reason: str, location: str) -> str:
         city names to coordinates automatically via geocoding.
 
     Args:
-        reason: Why you're checking (for logging/auditing).
+        reason: Required. Brief explanation of why you are checking weather.
         location: City name (e.g., "Berlin") or free-form place name.
 
     Returns:

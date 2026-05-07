@@ -14,7 +14,7 @@ from typing import Any
 
 from loguru import logger
 
-from aria.tools import utc_timestamp
+from aria.tools import Reason, utc_timestamp
 from aria.tools.decorators import log_tool_call
 
 from . import registry
@@ -87,7 +87,7 @@ def _get_session(session_id: str, agent_id: str) -> ReasoningSession:
 
 @log_tool_call
 def reasoning(
-    reason: str,
+    reason: Reason,
     action: str,
     content: str | None = None,
     cognitive_mode: str | None = None,
@@ -102,7 +102,7 @@ def reasoning(
     Actions: start, step, reflect, evaluate, summary, end.
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are calling this tool (e.g. "Analyze tradeoffs between approach A and B").
         action: start|step|reflect|evaluate|summary|end.
         content: Reasoning content (required for step/reflect).
         cognitive_mode: planning|analysis|evaluation|synthesis|creative|reflection.
@@ -295,6 +295,7 @@ def _action_reflect(
             code="NO_ACTIVE_SESSION",
             message=f"No active reasoning session for agent '{agent_id}'.",
             how_to_fix="Call reasoning with action='start' first.",
+            recoverable=True,
         )
 
     try:

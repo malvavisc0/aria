@@ -4,6 +4,7 @@ from shutil import copy2
 
 from loguru import logger
 
+from aria.tools import Reason
 from aria.tools.decorators import tool_function
 from aria.tools.files._internals import (
     _create_backup,
@@ -23,7 +24,7 @@ from aria.tools.files.exceptions import FileOperationError
     error_handler=with_file_operation_error_handling,
 )
 def copy_file(
-    reason: str,
+    reason: Reason,
     source: str,
     destination: str,
     overwrite: bool | None = False,
@@ -31,7 +32,7 @@ def copy_file(
     """Copy a file to a new location (dirs auto-created).
 
     Args:
-        reason: Why (logging).
+        reason: Required. Brief explanation of why you are copying this file.
         source: Source file path.
         destination: Destination path.
         overwrite: Overwrite if exists (default: False).
@@ -76,7 +77,7 @@ def copy_file(
     "delete_file",
     error_handler=with_file_operation_error_handling,
 )
-def delete_file(reason: str, file_name: str) -> str:
+def delete_file(reason: Reason, file_name: str) -> str:
     """
     Delete a file with automatic backup.
 
@@ -89,7 +90,7 @@ def delete_file(reason: str, file_name: str) -> str:
         the file if the deletion was a mistake.
 
     Args:
-        reason: Why you're deleting (for logging/auditing).
+        reason: Required. Brief explanation of why you are deleting this file.
         file_name: Path relative to BASE_DIR.
 
     Returns:
@@ -124,7 +125,7 @@ def delete_file(reason: str, file_name: str) -> str:
     "rename_file",
     error_handler=with_file_operation_error_handling,
 )
-def rename_file(reason: str, old_name: str, new_name: str) -> str:
+def rename_file(reason: Reason, old_name: str, new_name: str) -> str:
     """
     Rename or move a file to a new location.
 
@@ -139,7 +140,7 @@ def rename_file(reason: str, old_name: str, new_name: str) -> str:
         standard way to reorganize files without duplicating data.
 
     Args:
-        reason: Why you're renaming (for logging/auditing).
+        reason: Required. Brief explanation of why you are renaming this file.
         old_name: Current path relative to BASE_DIR.
         new_name: New path relative to BASE_DIR.
 

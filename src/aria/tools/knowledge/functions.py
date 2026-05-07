@@ -1,20 +1,54 @@
 """Knowledge store tool for persistent key-value storage."""
 
 import uuid
+from typing import Any
 
-from loguru import logger
-
-from aria.tools import tool_response
+from aria.tools import Reason, tool_response
 from aria.tools.decorators import log_tool_call
 
-from .database import get_database
+from .database import KnowledgeDatabase, get_database
 
 _DEFAULT_AGENT_ID = "aria"
 
 
+def _ok(
+    *,
+    reason: str,
+    data: dict[str, Any],
+) -> str:
+    """Build a success response."""
+    return tool_response(
+        tool="knowledge",
+        reason=reason,
+        data=data,
+    )
+
+
+def _err(
+    *,
+    reason: str,
+    code: str,
+    message: str,
+    how_to_fix: str | None = None,
+) -> str:
+    """Build a structured error response."""
+    err: dict[str, Any] = {
+        "code": code,
+        "message": message,
+        "recoverable": True,
+    }
+    if how_to_fix:
+        err["how_to_fix"] = how_to_fix
+    return tool_response(
+        tool="knowledge",
+        reason=reason,
+        data={"error": err},
+    )
+
+
 @log_tool_call
 def knowledge(
-    reason: str,
+    reason: Reason,
     action: str,
     key: str | None = None,
     value: str | None = None,
@@ -49,7 +83,7 @@ def knowledge(
         - "delete": Remove an entry (requires entry_id).
 
     Args:
-        reason: Why you're using the knowledge store (for logging).
+        reason: Required. Brief explanation of why you are calling this tool (e.g. "Store user's preferred language").
         action: One of: store, recall, search, list, update, delete.
         key: Unique key for the entry (required for store/recall).
         value: Value to store (required for store/update).
@@ -82,18 +116,19 @@ def knowledge(
     elif action == "delete":
         return _action_delete(db, reason, agent_id, entry_id)
     else:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={
-                "error": f"Unknown action '{action}'. "
-                "Valid: store, recall, search, list, update, delete",
-            },
+            code="INVALID_ACTION",
+            message=(
+                f"Unknown action '{action}'. "
+                "Valid: store, recall, search, list, update, delete"
+            ),
+            how_to_fix="Use one of: store, recall, search, list, update, delete",
         )
 
 
 def _action_store(
-    db,
+    db: KnowledgeDatabase,
     reason: str,
     agent_id: str,
     key: str | None,
@@ -102,24 +137,24 @@ def _action_store(
 ) -> str:
     """Store a new knowledge entry."""
     if not key:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'key' parameter."},
+            code="MISSING_KEY",
+            message="Missing required 'key' parameter.",
+            how_to_fix="Provide the 'key' parameter.",
         )
     if value is None:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'value' parameter."},
+            code="MISSING_VALUE",
+            message="Missing required 'value' parameter.",
+            how_to_fix="Provide the 'value' parameter.",
         )
 
     entry_id = uuid.uuid4().hex
     db.store(entry_id, agent_id, key, value, tags)
 
-    logger.info(f"Stored knowledge: {key}")
-    return tool_response(
-        tool="knowledge",
+    return _ok(
         reason=reason,
         data={
             "action": "store",
@@ -131,36 +166,35 @@ def _action_store(
 
 
 def _action_recall(
-    db,
+    db: KnowledgeDatabase,
     reason: str,
     agent_id: str,
     key: str | None,
 ) -> str:
     """Recall a knowledge entry by key."""
     if not key:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'key' parameter."},
+            code="MISSING_KEY",
+            message="Missing required 'key' parameter.",
+            how_to_fix="Provide the 'key' parameter.",
         )
 
     entry = db.recall(agent_id, key)
     if entry is None:
-        return tool_response(
-            tool="knowledge",
+        return _ok(
             reason=reason,
             data={"action": "recall", "found": False, "key": key},
         )
 
-    return tool_response(
-        tool="knowledge",
+    return _ok(
         reason=reason,
         data={"action": "recall", "found": True, **entry},
     )
 
 
 def _action_search(
-    db,
+    db: KnowledgeDatabase,
     reason: str,
     agent_id: str,
     query: str | None,
@@ -168,15 +202,15 @@ def _action_search(
 ) -> str:
     """Search knowledge entries."""
     if not query:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'query' parameter."},
+            code="MISSING_QUERY",
+            message="Missing required 'query' parameter.",
+            how_to_fix="Provide the 'query' parameter.",
         )
 
     results = db.search(agent_id, query, max_results)
-    return tool_response(
-        tool="knowledge",
+    return _ok(
         reason=reason,
         data={
             "action": "search",
@@ -188,17 +222,34 @@ def _action_search(
 
 
 def _action_list(
-    db,
+    db: KnowledgeDatabase,
     reason: str,
     agent_id: str,
     tags: list[str] | None,
     max_results: int,
 ) -> str:
-    """List all knowledge entries."""
-    tag = tags[0] if tags else None
-    entries = db.list_entries(agent_id, tag=tag, max_results=max_results)
-    return tool_response(
-        tool="knowledge",
+    """List all knowledge entries, optionally filtered by tags.
+
+    When multiple tags are provided, returns entries matching ALL tags.
+    """
+    if tags and len(tags) > 1:
+        # Multi-tag: intersect results for each tag
+        result_sets = []
+        for t in tags:
+            entries = db.list_entries(agent_id, tag=t, max_results=max_results)
+            result_sets.append({e["id"] for e in entries})
+        # Keep entries that appear in all tag result sets
+        common_ids = result_sets[0]
+        for s in result_sets[1:]:
+            common_ids &= s
+        # Re-fetch with the first tag and filter
+        entries = db.list_entries(agent_id, tag=tags[0], max_results=max_results)
+        entries = [e for e in entries if e["id"] in common_ids]
+    else:
+        tag = tags[0] if tags else None
+        entries = db.list_entries(agent_id, tag=tag, max_results=max_results)
+
+    return _ok(
         reason=reason,
         data={
             "action": "list",
@@ -209,7 +260,7 @@ def _action_list(
 
 
 def _action_update(
-    db,
+    db: KnowledgeDatabase,
     reason: str,
     agent_id: str,
     entry_id: str | None,
@@ -217,28 +268,29 @@ def _action_update(
 ) -> str:
     """Update an existing knowledge entry."""
     if not entry_id:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'entry_id' parameter."},
+            code="MISSING_ENTRY_ID",
+            message="Missing required 'entry_id' parameter.",
+            how_to_fix="Provide the 'entry_id' from a previous store/search.",
         )
     if value is None:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'value' parameter."},
+            code="MISSING_VALUE",
+            message="Missing required 'value' parameter.",
+            how_to_fix="Provide the 'value' parameter.",
         )
 
     success = db.update(entry_id, agent_id, value)
     if not success:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": f"Entry '{entry_id}' not found."},
+            code="ENTRY_NOT_FOUND",
+            message=f"Entry '{entry_id}' not found.",
         )
 
-    return tool_response(
-        tool="knowledge",
+    return _ok(
         reason=reason,
         data={
             "action": "update",
@@ -249,29 +301,29 @@ def _action_update(
 
 
 def _action_delete(
-    db,
+    db: KnowledgeDatabase,
     reason: str,
     agent_id: str,
     entry_id: str | None,
 ) -> str:
     """Delete a knowledge entry."""
     if not entry_id:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": "Missing required 'entry_id' parameter."},
+            code="MISSING_ENTRY_ID",
+            message="Missing required 'entry_id' parameter.",
+            how_to_fix="Provide the 'entry_id' from a previous store/search.",
         )
 
     success = db.delete(entry_id, agent_id)
     if not success:
-        return tool_response(
-            tool="knowledge",
+        return _err(
             reason=reason,
-            data={"error": f"Entry '{entry_id}' not found."},
+            code="ENTRY_NOT_FOUND",
+            message=f"Entry '{entry_id}' not found.",
         )
 
-    return tool_response(
-        tool="knowledge",
+    return _ok(
         reason=reason,
         data={
             "action": "delete",
