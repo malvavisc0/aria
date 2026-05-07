@@ -66,6 +66,7 @@ All `ax` commands follow: `ax <family> <subcommand> ...`
 - When a URL points to a document or downloadable file, prefer the file/download path rather than browser-style page interaction.
 - PDF and common office/HTML documents may be convertible to text or markdown through the available environment tooling.
 - Do not promise a specific converter; verify what is available in the current environment first.
+- **Reading local PDF files:** The environment already includes additional commands as a CLI tool. When you need to read a local PDF file, convert it to markdown first via `shell` using one of the  additional commands available. Capture the output or redirect it to a temporary `.md` file, then read it with `read_file`. Do **not** attempt to install additional packages before confirming the available tools and commands, and also by asking the user.
 
 ## Memory
 
