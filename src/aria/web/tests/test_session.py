@@ -43,8 +43,8 @@ async def test_restore_chat_history_sorts_root_messages_chronologically(
     captured_messages = []
 
     class _FakeMemory:
-        async def aset(self, history):
-            captured_messages.extend(history)
+        async def aput_messages(self, messages):
+            captured_messages.extend(messages)
 
     monkeypatch.setattr(
         session_module, "create_memory", lambda thread_id: _FakeMemory()

@@ -25,9 +25,12 @@ from aria.tools.files._internals import (
 )
 from aria.tools.files.decorators import with_file_operation_error_handling
 from aria.tools.files.exceptions import FileOperationError
+from aria.tools.utils import _truncate_json
 
 
-def _read_lines_streaming(file_path: Path, offset: int, length: int) -> list[str]:
+def _read_lines_streaming(
+    file_path: Path, offset: int, length: int
+) -> list[str]:
     """Read lines from file using streaming.
 
     Args:
@@ -70,7 +73,9 @@ def _count_lines_efficiently(file_path: Path) -> int:
         FileOperationError: If path is a directory or file cannot be read
     """
     if file_path.is_dir():
-        raise FileOperationError(f"Path is a directory, not a file: {file_path}")
+        raise FileOperationError(
+            f"Path is a directory, not a file: {file_path}"
+        )
 
     count = 0
     last_byte = b""
@@ -172,7 +177,11 @@ def _format_permissions_symbolic(mode: int) -> str:
 
 
 def _ok(tool: str, reason: str, result: dict[str, Any], **metadata) -> str:
-    """Build a success response."""
+    """Build a success response.
+
+    Output is truncated to MAX_TOOL_OUTPUT_CHARS to prevent a single
+    tool call from consuming the entire context window.
+    """
     import json
 
     response = {
@@ -188,7 +197,7 @@ def _ok(tool: str, reason: str, result: dict[str, Any], **metadata) -> str:
             },
         },
     }
-    return json.dumps(response)
+    return _truncate_json(json.dumps(response))
 
 
 def _err(tool: str, reason: str, message: str, **metadata) -> str:
@@ -222,21 +231,24 @@ def read_file(
     length: int | None = 0,
     max_lines: int | None = 500,
 ) -> str:
-    """Read file contents, optionally in chunks.
+    """Read file contents in chunks. Never reads an entire file at once.
+
+    Output is capped to MAX_TOOL_OUTPUT_CHARS (~32k chars) to prevent a
+    single tool call from consuming the context window.
 
     Args:
         reason: Required. Brief explanation of why you are reading this file.
         file_name: Path relative to BASE_DIR.
         offset: Start line 0-indexed (default: 0).
         length: Lines to read; 0=all up to max_lines (default: 0).
-        max_lines: Max lines for full read (default: 500).
+        max_lines: Max lines per call (default: 200).
 
     Returns:
         JSON with lines/content, total_lines, has_more, next_offset.
     """
     offset_value = 0 if offset is None else offset
     length_value = 0 if length is None else length
-    max_lines_value = 500 if max_lines is None else max_lines
+    max_lines_value = 200 if max_lines is None else max_lines
 
     logger.info(
         f"Reading file: {file_name} (offset={offset_value}, length={length_value})"
@@ -249,61 +261,37 @@ def read_file(
         # Get total lines
         total_lines = _count_lines_efficiently(resolved_path)
 
-        # Determine if chunked or full read
+        # Always enforce chunked reading — cap lines to max_lines_value
         if offset_value == 0 and length_value == 0:
-            # Full file read
-            if total_lines > max_lines_value:
-                return _err(
-                    tool="read_file",
-                    reason=reason,
-                    message=(
-                        f"File has {total_lines} lines, exceeds limit of "
-                        f"{max_lines_value}. Use offset/length for chunked."
-                    ),
-                    file_name=file_name,
-                    total_lines=total_lines,
-                    max_lines=max_lines_value,
-                )
-
-            # Read full content
-            lines = _read_lines_streaming(resolved_path, 0, 0)
-            content = "\n".join(lines)
-
-            return _ok(
-                tool="read_file",
-                reason=reason,
-                result={
-                    "file_name": file_name,
-                    "content": content,
-                    "lines": lines,
-                    "total_lines": total_lines,
-                    "mode": "full",
-                },
-                file_name=file_name,
-            )
+            lines_to_read = min(total_lines, max_lines_value)
         else:
-            # Chunked read
-            lines_to_read = length_value if length_value > 0 else total_lines
-            lines = _read_lines_streaming(resolved_path, offset_value, lines_to_read)
-            lines_returned = len(lines)
-            next_offset = offset_value + lines_returned
-            has_more = next_offset < total_lines
-
-            return _ok(
-                tool="read_file",
-                reason=reason,
-                result={
-                    "file_name": file_name,
-                    "lines": lines,
-                    "offset": offset_value,
-                    "lines_returned": lines_returned,
-                    "total_lines": total_lines,
-                    "has_more": has_more,
-                    "next_offset": next_offset if has_more else None,
-                    "mode": "chunked",
-                },
-                file_name=file_name,
+            lines_to_read = (
+                length_value if length_value > 0 else max_lines_value
             )
+            lines_to_read = min(lines_to_read, max_lines_value)
+
+        lines = _read_lines_streaming(
+            resolved_path, offset_value, lines_to_read
+        )
+        lines_returned = len(lines)
+        next_offset = offset_value + lines_returned
+        has_more = next_offset < total_lines
+
+        return _ok(
+            tool="read_file",
+            reason=reason,
+            result={
+                "file_name": file_name,
+                "lines": lines,
+                "offset": offset_value,
+                "lines_returned": lines_returned,
+                "total_lines": total_lines,
+                "has_more": has_more,
+                "next_offset": next_offset if has_more else None,
+                "mode": "chunked",
+            },
+            file_name=file_name,
+        )
 
     except Exception as exc:
         return _err(
@@ -367,7 +355,9 @@ def file_info(reason: Reason, file_name: str) -> str:
                     "created": datetime.fromtimestamp(
                         file_stats.st_ctime, tz=UTC
                     ).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                    "permissions": _format_permissions_symbolic(file_stats.st_mode),
+                    "permissions": _format_permissions_symbolic(
+                        file_stats.st_mode
+                    ),
                     "mode_octal": oct(file_stats.st_mode)[-3:],
                 }
             )
@@ -436,7 +426,9 @@ def list_files(
         # Resolve the starting path
         resolved_path = _secure_resolve_dir(path_value)
         if not resolved_path.exists():
-            resolved_path = _secure_resolve_path(path_value, check_exists=False)
+            resolved_path = _secure_resolve_path(
+                path_value, check_exists=False
+            )
 
         if not resolved_path.exists():
             return _err(
@@ -579,7 +571,9 @@ def search_files(
         # Resolve the starting path
         resolved_path = _secure_resolve_dir(path_value)
         if not resolved_path.exists():
-            resolved_path = _secure_resolve_path(path_value, check_exists=False)
+            resolved_path = _secure_resolve_path(
+                path_value, check_exists=False
+            )
 
         if not resolved_path.exists():
             return _err(
@@ -604,7 +598,9 @@ def search_files(
             # Search file names
             matches = []
             paths = (
-                resolved_path.rglob("*") if recursive_value else resolved_path.glob("*")
+                resolved_path.rglob("*")
+                if recursive_value
+                else resolved_path.glob("*")
             )
 
             for file_path in paths:
@@ -671,7 +667,9 @@ def search_files(
                     # Read file line by line to avoid loading entire file
                     # into memory at once
                     lines = []
-                    with open(file_path, encoding="utf-8", errors="ignore") as f:
+                    with open(
+                        file_path, encoding="utf-8", errors="ignore"
+                    ) as f:
                         for line in f:
                             lines.append(line)
                             # Safety limit on lines per file
@@ -685,10 +683,13 @@ def search_files(
                         if regex.search(line):
                             # Get context
                             start = max(0, line_num - context_lines_value)
-                            end = min(len(lines), line_num + context_lines_value + 1)
+                            end = min(
+                                len(lines), line_num + context_lines_value + 1
+                            )
 
                             context_before = [
-                                lines[i].rstrip("\n\r") for i in range(start, line_num)
+                                lines[i].rstrip("\n\r")
+                                for i in range(start, line_num)
                             ]
                             context_after = [
                                 lines[i].rstrip("\n\r")
@@ -711,7 +712,10 @@ def search_files(
                 except (OSError, UnicodeDecodeError):
                     continue
 
-            truncated = len(matches) >= max_results_value or files_searched >= max_files
+            truncated = (
+                len(matches) >= max_results_value
+                or files_searched >= max_files
+            )
 
             return _ok(
                 tool="search_files",
@@ -732,7 +736,9 @@ def search_files(
             return _err(
                 tool="search_files",
                 reason=reason,
-                message=(f"Invalid mode '{mode_value}'. Use 'name' or 'content'."),
+                message=(
+                    f"Invalid mode '{mode_value}'. Use 'name' or 'content'."
+                ),
                 pattern=pattern,
             )
 

@@ -29,7 +29,9 @@ def temp_dir():
 def sample_files(temp_dir):
     """Create sample files for testing."""
     # Create some test files
-    (temp_dir / "test1.txt").write_text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
+    (temp_dir / "test1.txt").write_text(
+        "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n"
+    )
     (temp_dir / "test2.py").write_text("def hello():\n    print('hello')\n")
     (temp_dir / "subdir").mkdir()
     (temp_dir / "subdir" / "nested.txt").write_text("Nested content\n")
@@ -49,9 +51,9 @@ class TestReadFile:
         data = json.loads(result)
 
         assert data["data"]["metadata"]["success"] is True
-        assert data["data"]["result"]["mode"] == "full"
+        assert data["data"]["result"]["mode"] == "chunked"
         assert data["data"]["result"]["total_lines"] == 5
-        assert "Line 1" in data["data"]["result"]["content"]
+        assert "Line 1" in data["data"]["result"]["lines"][0]
 
     def test_read_file_chunk(self, sample_files):
         """Test reading file chunk."""
@@ -70,8 +72,8 @@ class TestReadFile:
         assert data["data"]["result"]["has_more"] is True
         assert data["data"]["result"]["lines"] == ["Line 2", "Line 3"]
 
-    def test_read_file_exceeds_max_lines(self, sample_files):
-        """Test error when file exceeds max_lines."""
+    def test_read_file_caps_at_max_lines(self, sample_files):
+        """Test that read_file caps lines instead of erroring."""
         result = read_file(
             reason="Testing max lines",
             file_name=str(sample_files / "test1.txt"),
@@ -79,8 +81,9 @@ class TestReadFile:
         )
         data = json.loads(result)
 
-        assert data["data"]["metadata"]["success"] is False
-        assert "exceeds limit" in data["data"]["error"]
+        assert data["data"]["metadata"]["success"] is True
+        assert data["data"]["result"]["lines_returned"] <= 3
+        assert data["data"]["result"]["has_more"] is True
 
     def test_read_nonexistent_file(self, temp_dir):
         """Test error for nonexistent file."""

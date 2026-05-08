@@ -96,9 +96,9 @@ def get_default_memory(
 ) -> Memory:
     """Create a Memory instance backed by a per-thread ChromaDB vector store.
 
-    Uses a hybrid approach: recent history buffer (80%) + vector retrieval
-    (20%). Older messages are flushed to long-term storage when the buffer
-    fills up.
+    Uses an embeddings-first approach: a small recent history buffer
+    (~10% of token_limit, ~3-4 interactions) plus vector retrieval and
+    fact extraction for older messages.
 
     Args:
         vector_db: ChromaDB client for the thread collection.
@@ -143,7 +143,7 @@ def get_default_memory(
         insert_method=InsertMethod.SYSTEM,
         memory_blocks=memory_blocks,
         token_limit=token_limit,
-        chat_history_token_ratio=0.7,
+        chat_history_token_ratio=EmbeddingsConfig.chat_history_token_ratio,
         token_flush_size=EmbeddingsConfig.context_size,
     )
 

@@ -3,24 +3,41 @@
 Provides full lifecycle control of background processes with support for
 shell mode (pipes/redirects), custom working directories, environment
 variables, signals, restart, and configurable concurrency limits.
+
+Process state is persisted to ``data/processes.json`` so the manager
+can track processes started by other invocations (e.g. CLI to agent).
+stdout/stderr are redirected to log files so child processes survive
+parent exit.
 """
 
 import os
 import signal
 import subprocess
 import threading
-from collections import deque
-from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 from loguru import logger
 
+from aria.config.folders import Data
+from aria.server.process_utils import (
+    is_process_running,
+    load_state,
+    save_state,
+    stop_process,
+)
 from aria.tools import Reason, tool_response
 from aria.tools.decorators import log_tool_call
 from aria.tools.shell.validation import _extract_all_command_names
 
-# Maximum lines of output to retain per stream
-_MAX_LOG_LINES = 500
+# State file for cross-invocation persistence
+_STATE_FILE = Data.path / "processes.json"
+
+# Directory for stdout/stderr log files
+_LOG_DIR = Data.path / "process_logs"
+
+# Maximum bytes to return from log files (last N bytes to keep response small)
+_MAX_LOG_BYTES = 10_000
 
 # Configurable concurrency limit (default: 10)
 _MAX_PROCESSES = int(os.environ.get("ARIA_MAX_PROCESSES", "10"))
@@ -38,60 +55,56 @@ _BLOCKED_COMMANDS = [
 ]
 
 
-@dataclass
-class ManagedProcess:
-    """A background process with non-blocking output capture."""
+# ---------------------------------------------------------------------------
+# State helpers
+# ---------------------------------------------------------------------------
 
-    proc: subprocess.Popen
-    command: str = ""
-    raw_command: str = ""
-    raw_args: list[str] | None = None
-    working_dir: str = ""
-    use_shell: bool = False
-    env: dict[str, str] | None = None
-    stdout_lines: deque = field(default_factory=lambda: deque(maxlen=_MAX_LOG_LINES))
-    stderr_lines: deque = field(default_factory=lambda: deque(maxlen=_MAX_LOG_LINES))
-    _threads: list = field(default_factory=list)
-    _timeout_timer: threading.Timer | None = field(default=None, repr=False)
 
-    def start_capture(self) -> None:
-        """Start background threads to capture stdout/stderr."""
-        if self.proc.stdout:
-            t = threading.Thread(
-                target=self._reader,
-                args=(self.proc.stdout, self.stdout_lines),
-                daemon=True,
-            )
-            t.start()
-            self._threads.append(t)
-        if self.proc.stderr:
-            t = threading.Thread(
-                target=self._reader,
-                args=(self.proc.stderr, self.stderr_lines),
-                daemon=True,
-            )
-            t.start()
-            self._threads.append(t)
+def _load_processes() -> dict[str, dict]:
+    """Load persisted process entries from disk.
 
-    @staticmethod
-    def _reader(stream, buf: deque) -> None:
-        """Read lines from *stream* into *buf* until EOF."""
+    Dead processes are kept in state so logs remain accessible.
+    Use _prune_stale() explicitly when cleanup is desired.
+    """
+    state = load_state(_STATE_FILE)
+    return dict(state.get("processes", {}))
+
+
+def _prune_stale(entries: dict[str, dict]) -> dict[str, dict]:
+    """Remove entries for processes that are no longer running."""
+    pruned = False
+    for name in list(entries):
+        pid = entries[name].get("pid")
+        if pid is None or not is_process_running(pid):
+            _cleanup_logs(name)
+            del entries[name]
+            pruned = True
+
+    if pruned:
+        _save_processes(entries)
+
+    return entries
+
+
+def _save_processes(entries: dict[str, dict]) -> None:
+    """Persist process entries to disk."""
+    save_state(_STATE_FILE, {"processes": entries})
+
+
+def _cleanup_logs(name: str) -> None:
+    """Remove log files for a process."""
+    for suffix in (".stdout.log", ".stderr.log"):
+        log_file = _LOG_DIR / f"{name}{suffix}"
         try:
-            for line in stream:
-                buf.append(line)
-        except (ValueError, OSError):
+            if log_file.exists():
+                log_file.unlink()
+        except OSError:
             pass
 
-    def cancel_timeout(self) -> None:
-        """Cancel any pending timeout timer."""
-        if self._timeout_timer is not None:
-            self._timeout_timer.cancel()
-            self._timeout_timer = None
 
-
-# In-memory process registry
-_processes: dict[str, ManagedProcess] = {}
-_processes_lock = threading.Lock()
+# ---------------------------------------------------------------------------
+# Validation helpers
+# ---------------------------------------------------------------------------
 
 
 def _is_command_blocked(command: str) -> bool:
@@ -110,24 +123,41 @@ def _resolve_working_dir(working_dir: str | None) -> Path:
         return Path.cwd()
     path = Path(working_dir).resolve()
     if not path.exists():
-        raise FileNotFoundError(f"Working directory does not exist: {working_dir}")
+        raise FileNotFoundError(
+            f"Working directory does not exist: {working_dir}"
+        )
     if not path.is_dir():
         raise NotADirectoryError(f"Not a directory: {working_dir}")
     return path
 
 
-def _auto_kill(name: str) -> None:
-    """Callback fired when a process exceeds its timeout."""
-    managed = _processes.get(name)
-    if managed is None:
-        return
-    if managed.proc.poll() is None:
-        logger.warning(f"Process '{name}' exceeded timeout — terminating")
-        managed.proc.terminate()
+# ---------------------------------------------------------------------------
+# Timeout helper (works with PIDs since we detach)
+# ---------------------------------------------------------------------------
+
+
+def _auto_kill(pid: int, name: str) -> None:
+    """Callback fired when a process exceeds its timeout.
+
+    Uses SIGKILL directly since the timeout has already expired —
+    no need for a graceful shutdown grace period.
+    """
+    if is_process_running(pid):
+        logger.warning(f"Process '{name}' exceeded timeout — killing")
         try:
-            managed.proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            managed.proc.kill()
+            os.kill(pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+    # Remove from state after kill
+    entries = _load_processes()
+    entries.pop(name, None)
+    _save_processes(entries)
+    _cleanup_logs(name)
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
 
 
 @log_tool_call
@@ -198,6 +228,11 @@ def process(
     return handler()
 
 
+# ---------------------------------------------------------------------------
+# Actions
+# ---------------------------------------------------------------------------
+
+
 def _action_start(
     reason: str,
     name: str | None,
@@ -229,28 +264,36 @@ def _action_start(
             data={"error": "Command contains blocked patterns."},
         )
 
-    with _processes_lock:
-        if name in _processes:
-            managed = _processes[name]
-            if managed.proc.poll() is None:
-                return tool_response(
-                    tool="process",
-                    reason=reason,
-                    data={"error": f"Process '{name}' is already running."},
-                )
-
-        active_count = sum(1 for m in _processes.values() if m.proc.poll() is None)
-        if active_count >= _MAX_PROCESSES:
+    # Check if already running (from persisted state)
+    entries = _load_processes()
+    if name in entries:
+        pid = entries[name].get("pid")
+        if pid and is_process_running(pid):
             return tool_response(
                 tool="process",
                 reason=reason,
                 data={
-                    "error": (
-                        f"Maximum of {_MAX_PROCESSES} concurrent processes "
-                        f"reached ({active_count} running). Stop one first."
-                    ),
+                    "error": f"Process '{name}' is already running (PID: {pid})."
                 },
             )
+
+    # Concurrency check
+    active_count = sum(
+        1
+        for e in entries.values()
+        if e.get("pid") and is_process_running(e["pid"])
+    )
+    if active_count >= _MAX_PROCESSES:
+        return tool_response(
+            tool="process",
+            reason=reason,
+            data={
+                "error": (
+                    f"Maximum of {_MAX_PROCESSES} concurrent processes "
+                    f"reached ({active_count} running). Stop one first."
+                ),
+            },
+        )
 
     # Resolve working directory
     try:
@@ -269,7 +312,6 @@ def _action_start(
 
     # Build command
     if use_shell:
-        # Shell mode: command is a string, args are ignored
         full_command = command
         run_target = command
     else:
@@ -277,38 +319,54 @@ def _action_start(
         full_command = " ".join(cmd_list)
         run_target = cmd_list
 
+    # Prepare log files
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    stdout_log = _LOG_DIR / f"{name}.stdout.log"
+    stderr_log = _LOG_DIR / f"{name}.stderr.log"
+
     try:
+        stdout_fh = open(stdout_log, "w")
+        stderr_fh = open(stderr_log, "w")
+
         proc = subprocess.Popen(
             run_target,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=stdout_fh,
+            stderr=stderr_fh,
             text=True,
             cwd=resolved_dir,
             env=proc_env,
             shell=use_shell,
+            start_new_session=True,  # Detach from parent process group
         )
-        managed = ManagedProcess(
-            proc=proc,
-            command=full_command,
-            raw_command=command,
-            raw_args=args,
-            working_dir=str(resolved_dir),
-            use_shell=use_shell,
-            env=env,
-        )
-        managed.start_capture()
+
+        # Close file handles in parent — child owns them now
+        stdout_fh.close()
+        stderr_fh.close()
+
+        # Persist to disk
+        entries[name] = {
+            "pid": proc.pid,
+            "command": full_command,
+            "raw_command": command,
+            "raw_args": args,
+            "working_dir": str(resolved_dir),
+            "use_shell": use_shell,
+            "env": env,
+            "stdout_log": str(stdout_log),
+            "stderr_log": str(stderr_log),
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _save_processes(entries)
 
         # Set up auto-kill timer if timeout specified
         if timeout is not None and timeout > 0:
-            timer = threading.Timer(timeout, _auto_kill, args=(name,))
+            timer = threading.Timer(timeout, _auto_kill, args=(proc.pid, name))
             timer.daemon = True
             timer.start()
-            managed._timeout_timer = timer
 
-        with _processes_lock:
-            _processes[name] = managed
-
-        logger.info(f"Started process '{name}': {full_command}")
+        logger.info(
+            f"Started process '{name}': {full_command} (PID: {proc.pid})"
+        )
         return tool_response(
             tool="process",
             reason=reason,
@@ -346,29 +404,42 @@ def _action_stop(reason: str, name: str | None) -> str:
             data={"error": "Missing required 'name' parameter."},
         )
 
-    managed = _processes.get(name)
-    if managed is None or managed.proc.poll() is not None:
+    entries = _load_processes()
+    entry = entries.get(name)
+    if entry is None:
+        return tool_response(
+            tool="process",
+            reason=reason,
+            data={"error": f"Process '{name}' not found."},
+        )
+
+    pid = entry.get("pid")
+    if pid is None or not is_process_running(pid):
+        # Already dead — clean up state
+        entries.pop(name, None)
+        _save_processes(entries)
+        _cleanup_logs(name)
         return tool_response(
             tool="process",
             reason=reason,
             data={"error": f"Process '{name}' is not running."},
         )
 
-    managed.cancel_timeout()
-    managed.proc.terminate()
-    try:
-        managed.proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        managed.proc.kill()
-        managed.proc.wait()
+    stopped = stop_process(pid, timeout=5)
 
-    logger.info(f"Stopped process '{name}'")
+    # Remove from state
+    entries.pop(name, None)
+    _save_processes(entries)
+    _cleanup_logs(name)
+
+    logger.info(f"Stopped process '{name}' (PID: {pid})")
     return tool_response(
         tool="process",
         reason=reason,
         data={
             "action": "stop",
             "name": name,
+            "pid": pid,
             "message": f"Process '{name}' stopped",
         },
     )
@@ -383,36 +454,38 @@ def _action_status(reason: str, name: str | None) -> str:
             data={"error": "Missing required 'name' parameter."},
         )
 
-    managed = _processes.get(name)
-    if managed is None:
+    entries = _load_processes()
+    entry = entries.get(name)
+    if entry is None:
         return tool_response(
             tool="process",
             reason=reason,
             data={"error": f"Process '{name}' not found."},
         )
 
-    return_code = managed.proc.poll()
-    status = "running" if return_code is None else f"exited ({return_code})"
+    pid = entry.get("pid")
+    running = pid is not None and is_process_running(pid)
+
     return tool_response(
         tool="process",
         reason=reason,
         data={
             "action": "status",
             "name": name,
-            "pid": managed.proc.pid,
-            "status": status,
-            "return_code": return_code,
-            "command": managed.command,
-            "working_dir": managed.working_dir,
+            "pid": pid,
+            "status": "running" if running else "exited",
+            "command": entry.get("command", ""),
+            "working_dir": entry.get("working_dir", ""),
+            "started_at": entry.get("started_at", ""),
         },
     )
 
 
 def _action_logs(reason: str, name: str | None) -> str:
-    """Get recent output from a process (non-blocking).
+    """Get recent output from a process by reading log files.
 
-    Returns the last _MAX_LOG_LINES lines captured by background
-    reader threads. Never blocks, even if the process is still running.
+    Returns the tail of stdout/stderr log files. Works across CLI
+    invocations since output is written to disk.
     """
     if not name:
         return tool_response(
@@ -421,23 +494,17 @@ def _action_logs(reason: str, name: str | None) -> str:
             data={"error": "Missing required 'name' parameter."},
         )
 
-    managed = _processes.get(name)
-    if managed is None:
+    entries = _load_processes()
+    entry = entries.get(name)
+    if entry is None:
         return tool_response(
             tool="process",
             reason=reason,
             data={"error": f"Process '{name}' not found."},
         )
 
-    stdout = "".join(managed.stdout_lines)
-    stderr = "".join(managed.stderr_lines)
-
-    # Truncate to last 10 KB to keep response size reasonable
-    max_size = 10_000
-    if len(stdout) > max_size:
-        stdout = stdout[-max_size:]
-    if len(stderr) > max_size:
-        stderr = stderr[-max_size:]
+    stdout = _read_log_tail(entry.get("stdout_log", ""))
+    stderr = _read_log_tail(entry.get("stderr_log", ""))
 
     return tool_response(
         tool="process",
@@ -451,19 +518,41 @@ def _action_logs(reason: str, name: str | None) -> str:
     )
 
 
+def _read_log_tail(path: str) -> str:
+    """Read the last N bytes of a log file."""
+    if not path:
+        return ""
+    log_file = Path(path)
+    if not log_file.exists():
+        return ""
+    try:
+        size = log_file.stat().st_size
+        with open(log_file) as f:
+            if size > _MAX_LOG_BYTES:
+                f.seek(size - _MAX_LOG_BYTES)
+                # Skip partial line
+                f.readline()
+                return f.read()
+            return f.read()
+    except OSError:
+        return ""
+
+
 def _action_list(reason: str) -> str:
     """List all managed processes."""
-    entries = []
-    for name, managed in _processes.items():
-        return_code = managed.proc.poll()
-        entries.append(
+    entries = _load_processes()
+    result_entries = []
+    for name, entry in entries.items():
+        pid = entry.get("pid")
+        running = pid is not None and is_process_running(pid)
+        result_entries.append(
             {
                 "name": name,
-                "pid": managed.proc.pid,
-                "status": "running" if return_code is None else "exited",
-                "return_code": return_code,
-                "command": managed.command,
-                "working_dir": managed.working_dir,
+                "pid": pid,
+                "status": "running" if running else "exited",
+                "command": entry.get("command", ""),
+                "working_dir": entry.get("working_dir", ""),
+                "started_at": entry.get("started_at", ""),
             }
         )
 
@@ -472,8 +561,8 @@ def _action_list(reason: str) -> str:
         reason=reason,
         data={
             "action": "list",
-            "count": len(entries),
-            "processes": entries,
+            "count": len(result_entries),
+            "processes": result_entries,
         },
     )
 
@@ -494,39 +583,38 @@ def _action_restart(
             data={"error": "Missing required 'name' parameter."},
         )
 
-    managed = _processes.get(name)
-    if managed is None:
+    entries = _load_processes()
+    entry = entries.get(name)
+    if entry is None:
         return tool_response(
             tool="process",
             reason=reason,
-            data={"error": f"Process '{name}' not found. Use 'start' instead."},
+            data={
+                "error": f"Process '{name}' not found. Use 'start' instead."
+            },
         )
 
-    # Preserve original config for restart
-    original_raw_command = managed.raw_command
-    original_raw_args = managed.raw_args
-    original_working_dir = managed.working_dir
-    original_use_shell = managed.use_shell
-    original_env = managed.env
+    # Preserve original config
+    original_raw_command = entry.get("raw_command", entry.get("command", ""))
+    original_raw_args = entry.get("raw_args")
+    original_working_dir = entry.get("working_dir", "")
+    original_use_shell = entry.get("use_shell", False)
+    original_env = entry.get("env")
 
     # Stop if running
-    if managed.proc.poll() is None:
-        managed.cancel_timeout()
-        managed.proc.terminate()
-        try:
-            managed.proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            managed.proc.kill()
-            managed.proc.wait()
+    pid = entry.get("pid")
+    if pid and is_process_running(pid):
+        stop_process(pid, timeout=5)
+
+    # Remove from state
+    entries.pop(name, None)
+    _save_processes(entries)
+    _cleanup_logs(name)
 
     # Use original config unless overrides provided
     restart_working_dir = working_dir or original_working_dir
     restart_env = env if env is not None else original_env
     restart_shell = use_shell if use_shell else original_use_shell
-
-    # Remove from registry so start doesn't see it as "already running"
-    with _processes_lock:
-        _processes.pop(name, None)
 
     return _action_start(
         reason=reason,
@@ -550,7 +638,9 @@ _SIGNAL_MAP = {
 }
 
 
-def _action_signal(reason: str, name: str | None, signal_name: str | None) -> str:
+def _action_signal(
+    reason: str, name: str | None, signal_name: str | None
+) -> str:
     """Send a signal to a running process."""
     if not name:
         return tool_response(
@@ -583,8 +673,17 @@ def _action_signal(reason: str, name: str | None, signal_name: str | None) -> st
             },
         )
 
-    managed = _processes.get(name)
-    if managed is None or managed.proc.poll() is not None:
+    entries = _load_processes()
+    entry = entries.get(name)
+    if entry is None:
+        return tool_response(
+            tool="process",
+            reason=reason,
+            data={"error": f"Process '{name}' not found."},
+        )
+
+    pid = entry.get("pid")
+    if pid is None or not is_process_running(pid):
         return tool_response(
             tool="process",
             reason=reason,
@@ -592,8 +691,8 @@ def _action_signal(reason: str, name: str | None, signal_name: str | None) -> st
         )
 
     try:
-        managed.proc.send_signal(sig)
-        logger.info(f"Sent {sig_upper} to process '{name}' (PID: {managed.proc.pid})")
+        os.kill(pid, sig)
+        logger.info(f"Sent {sig_upper} to process '{name}' (PID: {pid})")
         return tool_response(
             tool="process",
             reason=reason,
@@ -601,7 +700,7 @@ def _action_signal(reason: str, name: str | None, signal_name: str | None) -> st
                 "action": "signal",
                 "name": name,
                 "signal": sig_upper,
-                "pid": managed.proc.pid,
+                "pid": pid,
                 "message": f"Sent {sig_upper} to '{name}'",
             },
         )

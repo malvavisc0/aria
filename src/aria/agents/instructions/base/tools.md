@@ -53,6 +53,55 @@ All `ax` commands follow: `ax <family> <subcommand> ...`
 | `ax processes` | `start`, `stop`, `status`, `logs`, `list`, `restart` | Manage long-running background processes (dev servers, build watchers, pipelines). Use this instead of `shell` for anything that needs to run in the background |
 | `ax check` | `preflight`, `instructions`, `extras` | Verify prerequisites, inspect instructions, and list available CLI commands |
 
+### read_file — always reads in chunks
+
+`read_file` never returns an entire file. It reads up to **200 lines per
+call** and returns `has_more: true` with `next_offset` when there is more
+content. Use the `offset` and `length` parameters to read specific chunks.
+
+**Workflow for reading a file:**
+
+1. First call: `read_file(reason="...", file_name="path/to/file")`
+   → Returns lines 0–199, `total_lines`, `has_more`, `next_offset`
+2. If `has_more` is true: `read_file(reason="...", file_name="...", offset=<next_offset>)`
+   → Returns the next chunk
+3. Repeat until `has_more` is false
+
+**Do NOT:**
+- Try to read an entire large file in one call — it will be capped at 200 lines
+- Set `max_lines` to a very large number — output is also truncated at ~32k chars
+- Read files you don't need — use `search_files` or `list_files` first to find what you're looking for
+
+**Do:**
+- Read only the sections you need using `offset` and `length`
+- Use `search_files` to find relevant lines, then `read_file` with `offset` to read context around them
+- Use `file_info` to check `total_lines` before reading
+
+### HTML/XML files — convert to markdown first
+
+Raw HTML/XML is extremely verbose — tags, attributes, CSS, and JavaScript
+inflate token count by 5-10× compared to the actual content. A 269k-char
+HTML file may contain only 30k chars of meaningful text.
+
+**Before reading the content of any HTML file, convert it to markdown:**
+
+```bash
+# Via shell — one-liner using markdownify (available in the environment)
+python -c "from markdownify import markdownify as md; print(md(open('file.html').read()))" > file.md
+```
+
+Then `read_file` the `.md` file instead. This typically reduces tokens by
+**85-90%**.
+
+**For web content:**
+- Use `ax web fetch` which already returns clean markdown — do NOT download
+  raw HTML and then try to read it
+- If you must download a page, pipe through markdownify before reading
+
+**For XML/JSON data files:**
+- Use `python` to extract only the fields you need
+- Do NOT read entire data dumps — filter first, then read
+
 ### Tool selection heuristics
 
 - Use the built-in file tools for reading, writing, editing, listing, and searching project files.

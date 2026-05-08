@@ -9,21 +9,34 @@ import time
 import pytest
 
 from aria.tools.process import process
-from aria.tools.process.functions import _processes
+from aria.tools.process.functions import (
+    _STATE_FILE,
+    _cleanup_logs,
+    _load_processes,
+    _save_processes,
+)
 
 
 @pytest.fixture(autouse=True)
 def clean_processes():
-    """Clean up any processes after each test."""
+    """Clean up any processes and persisted state after each test."""
     yield
-    for name, managed in list(_processes.items()):
-        if managed.proc.poll() is None:
-            managed.proc.terminate()
+    # Kill any remaining processes from persisted state
+    entries = _load_processes()
+    for name, entry in list(entries.items()):
+        pid = entry.get("pid")
+        if pid:
             try:
-                managed.proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                managed.proc.kill()
-    _processes.clear()
+                subprocess.run(
+                    ["kill", str(pid)],
+                    capture_output=True,
+                    timeout=2,
+                )
+            except Exception:
+                pass
+        _cleanup_logs(name)
+    # Clear state file
+    _save_processes({})
 
 
 class TestProcessManager:
@@ -185,10 +198,8 @@ class TestProcessManager:
     def test_logs_nonblocking_on_running_process(self):
         """Test that logs returns immediately even for a running process.
 
-        This is the key regression test: the old implementation called
-        proc.stdout.read() which blocks until EOF on a running process.
-        The new implementation uses background reader threads so logs
-        returns instantly.
+        With the disk-based implementation, logs are read from log files
+        so they never block, even if the process is still running.
         """
         # Start a process that prints output and keeps running
         process(
@@ -207,7 +218,7 @@ class TestProcessManager:
             ],
         )
 
-        # Give the reader threads a moment to capture the output
+        # Give the process a moment to produce output
         time.sleep(0.3)
 
         # This must return immediately (not block for 30 seconds)
@@ -227,7 +238,7 @@ class TestProcessManager:
             args=["-c", "print('done')"],
         )
 
-        # Wait for process to finish and reader threads to drain
+        # Wait for process to finish
         time.sleep(0.5)
 
         result = process("Get logs", action="logs", name="exited_logs")
@@ -386,7 +397,7 @@ class TestProcessNewFeatures:
         assert "unknown" in data["data"]["error"].lower()
 
     def test_timeout_auto_kill(self):
-        """Test that timeout auto-kills the process."""
+        """Test that timeout auto-kills the process and cleans up state."""
         process(
             "Timeout test",
             action="start",
@@ -395,11 +406,13 @@ class TestProcessNewFeatures:
             args=["-c", "import time; time.sleep(30)"],
             timeout=1,
         )
-        # Wait for timeout + grace period
+        # Wait for timeout + SIGKILL + cleanup
         time.sleep(2.5)
+        # After auto-kill, the process is removed from state entirely
         result = process("Check status", action="status", name="timeout_test")
         data = json.loads(result)
-        assert "exited" in data["data"]["status"]
+        assert "error" in data["data"]
+        assert "not found" in data["data"]["error"].lower()
 
     def test_status_shows_command_and_working_dir(self):
         """Test that status includes command and working_dir."""
@@ -427,7 +440,48 @@ class TestProcessNewFeatures:
         result = process("List", action="list")
         data = json.loads(result)
         proc_entry = next(
-            p for p in data["data"]["processes"] if p["name"] == "list_info_test"
+            p
+            for p in data["data"]["processes"]
+            if p["name"] == "list_info_test"
         )
         assert "command" in proc_entry
         assert "working_dir" in proc_entry
+
+    def test_persistence_across_invocations(self):
+        """Test that a process can be found from a different 'invocation'.
+
+        Simulates CLI behavior: start a process, then verify status/logs
+        work by reading from disk (not in-memory registry).
+        """
+        result = process(
+            "Start for persistence",
+            action="start",
+            name="persist_test",
+            command=sys.executable,
+            args=[
+                "-c",
+                "import sys, time; print('persistent output', flush=True); time.sleep(10)",
+            ],
+        )
+        data = json.loads(result)
+        pid = data["data"]["pid"]
+
+        # Verify the state file exists on disk
+        assert _STATE_FILE.exists()
+
+        # Verify we can read state from disk
+        entries = _load_processes()
+        assert "persist_test" in entries
+        assert entries["persist_test"]["pid"] == pid
+
+        # Verify status works (reads from disk)
+        time.sleep(0.3)
+        result = process("Check status", action="status", name="persist_test")
+        status_data = json.loads(result)
+        assert status_data["data"]["status"] == "running"
+        assert status_data["data"]["pid"] == pid
+
+        # Verify logs work (reads from disk)
+        result = process("Get logs", action="logs", name="persist_test")
+        logs_data = json.loads(result)
+        assert "persistent output" in logs_data["data"]["stdout"]

@@ -107,7 +107,9 @@ def extract_file_paths(message: cl.Message) -> list[str]:
             shutil.copy2(path_str, dest)
             path_str = str(dest)
         except OSError:
-            logger.warning(f"Failed to copy uploaded file {path_str} to {dest}")
+            logger.warning(
+                f"Failed to copy uploaded file {path_str} to {dest}"
+            )
 
         paths.append(path_str)
     return paths
@@ -133,7 +135,9 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
         raise ValueError("Thread dictionary must contain a valid 'id' field")
 
     thread_name = thread.get("name", "Unnamed")
-    logger.debug(f"Restoring chat history for thread {thread_id} ({thread_name})")
+    logger.debug(
+        f"Restoring chat history for thread {thread_id} ({thread_name})"
+    )
 
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
@@ -141,7 +145,9 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
     root_messages = [m for m in chat_steps if m.get("parentId") is None]
     root_messages.sort(
         key=lambda message_step: (
-            message_step.get("createdAt") or message_step.get("created_at") or "",
+            message_step.get("createdAt")
+            or message_step.get("created_at")
+            or "",
             message_step.get("id") or "",
         )
     )
@@ -164,7 +170,15 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
         )
         chat_history.append(ChatMessage(role=role, content=content))
 
-    await memory.aset(chat_history)
+    # Use aput_messages instead of aset to enforce token_limit.
+    # aset() bypasses _manage_queue() and dumps ALL messages unbounded.
+    # aput_messages() triggers the waterfall logic: when the buffer
+    # exceeds token_limit * chat_history_token_ratio, oldest messages
+    # are flushed to memory blocks (FactExtraction, Vector).
+    if chat_history:
+        await memory.aput_messages(chat_history)
 
-    logger.info(f"Restored {len(chat_history)} messages for thread {thread_id}")
+    logger.info(
+        f"Restored {len(chat_history)} messages for thread {thread_id}"
+    )
     return memory

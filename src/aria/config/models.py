@@ -109,7 +109,12 @@ class Embeddings:
         lambda: float(get_optional_env("TOKEN_LIMIT_RATIO", "0.85"))
     )
     token_limit = _Lazy(
-        lambda: int(VllmConfig.chat_context_size * Embeddings.token_limit_ratio)
+        lambda: int(
+            VllmConfig.chat_context_size * Embeddings.token_limit_ratio
+        )
+    )
+    chat_history_token_ratio = _Lazy(
+        lambda: float(get_optional_env("CHAT_HISTORY_TOKEN_RATIO", "0.10"))
     )
     model_path = _Lazy(
         lambda: _resolve_model_path(get_optional_env("EMBED_MODEL_PATH", ""))
