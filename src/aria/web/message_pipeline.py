@@ -49,14 +49,18 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning("Prompt enhancer not available, returning original prompt")
+            logger.warning(
+                "Prompt enhancer not available, returning original prompt"
+            )
             return prompt
         try:
             response = await asyncio.wait_for(
                 _state.prompt_enhancer.run(user_msg=message.content),
                 timeout=30.0,
             )
-            results: PromptEnhancementResult = response.structured_response
+            results = response.structured_response
+            if isinstance(results, dict):
+                results = PromptEnhancementResult(**results)
             prompt = results.enhanced
             logger.debug("Prompt enhancement completed successfully")
         except Exception as e:
@@ -122,7 +126,9 @@ async def _stream_agent_response(
                     await output.stream_token(_BLOCKQUOTE_PREFIX)
                     thinking_opened = True
                     emitted = True
-                await output.stream_token(event.thinking_delta.replace("\n", "\n> "))
+                await output.stream_token(
+                    event.thinking_delta.replace("\n", "\n> ")
+                )
             elif event.delta:
                 if thinking_opened:
                     await output.stream_token(_BLOCKQUOTE_END)
@@ -175,7 +181,9 @@ async def on_message_handler(message: cl.Message) -> None:
         message: The incoming Chainlit message from the user.
     """
     if not _state.agents_workflow:
-        logger.warning("Message received but agents_workflow is not configured")
+        logger.warning(
+            "Message received but agents_workflow is not configured"
+        )
         await cl.Message(
             content=(
                 "The system is not fully initialized (LLM unavailable). "
