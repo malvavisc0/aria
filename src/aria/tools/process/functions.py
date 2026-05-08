@@ -123,9 +123,7 @@ def _resolve_working_dir(working_dir: str | None) -> Path:
         return Path.cwd()
     path = Path(working_dir).resolve()
     if not path.exists():
-        raise FileNotFoundError(
-            f"Working directory does not exist: {working_dir}"
-        )
+        raise FileNotFoundError(f"Working directory does not exist: {working_dir}")
     if not path.is_dir():
         raise NotADirectoryError(f"Not a directory: {working_dir}")
     return path
@@ -272,16 +270,12 @@ def _action_start(
             return tool_response(
                 tool="process",
                 reason=reason,
-                data={
-                    "error": f"Process '{name}' is already running (PID: {pid})."
-                },
+                data={"error": f"Process '{name}' is already running (PID: {pid})."},
             )
 
     # Concurrency check
     active_count = sum(
-        1
-        for e in entries.values()
-        if e.get("pid") and is_process_running(e["pid"])
+        1 for e in entries.values() if e.get("pid") and is_process_running(e["pid"])
     )
     if active_count >= _MAX_PROCESSES:
         return tool_response(
@@ -364,9 +358,7 @@ def _action_start(
             timer.daemon = True
             timer.start()
 
-        logger.info(
-            f"Started process '{name}': {full_command} (PID: {proc.pid})"
-        )
+        logger.info(f"Started process '{name}': {full_command} (PID: {proc.pid})")
         return tool_response(
             tool="process",
             reason=reason,
@@ -589,9 +581,7 @@ def _action_restart(
         return tool_response(
             tool="process",
             reason=reason,
-            data={
-                "error": f"Process '{name}' not found. Use 'start' instead."
-            },
+            data={"error": f"Process '{name}' not found. Use 'start' instead."},
         )
 
     # Preserve original config
@@ -638,9 +628,7 @@ _SIGNAL_MAP = {
 }
 
 
-def _action_signal(
-    reason: str, name: str | None, signal_name: str | None
-) -> str:
+def _action_signal(reason: str, name: str | None, signal_name: str | None) -> str:
     """Send a signal to a running process."""
     if not name:
         return tool_response(

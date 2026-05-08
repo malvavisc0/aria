@@ -168,9 +168,7 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
             for tc in raw_tool_calls:
                 # ChoiceDeltaToolCall is a Pydantic model; .function.arguments
                 # is the raw string we need to fix.
-                if hasattr(tc, "function") and hasattr(
-                    tc.function, "arguments"
-                ):
+                if hasattr(tc, "function") and hasattr(tc.function, "arguments"):
                     raw_args = tc.function.arguments
                     fixed = _sanitize_tool_call_arguments_json(raw_args)
                     if fixed != raw_args:

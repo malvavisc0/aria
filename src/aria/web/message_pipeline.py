@@ -28,9 +28,9 @@ from aria.helpers.ui import maybe_remove_step, send_tool_step
 from aria.web.session import create_memory, extract_file_paths
 from aria.web.state import AppStateNotInitializedError, _state
 
-# Markdown wrappers for thinking content (blockquote style)
-_THINKING_OPEN = "> "
-_THINKING_CLOSE = "\n\n"
+# Markdown formatting for thinking/reasoning content (blockquote style)
+_BLOCKQUOTE_PREFIX = "> "
+_BLOCKQUOTE_END = "\n\n"
 
 
 async def _handle_message(message: cl.Message) -> str:
@@ -49,9 +49,7 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning(
-                "Prompt enhancer not available, returning original prompt"
-            )
+            logger.warning("Prompt enhancer not available, returning original prompt")
             return prompt
         try:
             response = await asyncio.wait_for(
@@ -111,7 +109,7 @@ async def _stream_agent_response(
         if isinstance(event, ToolCall):
             await maybe_remove_step(current_step)
             if thinking_opened:
-                await output.stream_token(_THINKING_CLOSE)
+                await output.stream_token(_BLOCKQUOTE_END)
                 thinking_opened = False
             current_step = await send_tool_step(event)
 
@@ -121,15 +119,13 @@ async def _stream_agent_response(
                 if not thinking_opened:
                     await maybe_remove_step(current_step)
                     current_step = None
-                    await output.stream_token(_THINKING_OPEN)
+                    await output.stream_token(_BLOCKQUOTE_PREFIX)
                     thinking_opened = True
                     emitted = True
-                await output.stream_token(
-                    event.thinking_delta.replace("\n", "\n> ")
-                )
+                await output.stream_token(event.thinking_delta.replace("\n", "\n> "))
             elif event.delta:
                 if thinking_opened:
-                    await output.stream_token(_THINKING_CLOSE)
+                    await output.stream_token(_BLOCKQUOTE_END)
                     thinking_opened = False
                 await output.stream_token(event.delta)
                 emitted = True
@@ -139,7 +135,7 @@ async def _stream_agent_response(
                 await maybe_remove_step(current_step)
                 current_step = None
             if thinking_opened:
-                await output.stream_token(_THINKING_CLOSE)
+                await output.stream_token(_BLOCKQUOTE_END)
                 thinking_opened = False
             if not emitted and event.response.content:
                 await output.stream_token(event.response.content)
@@ -157,7 +153,7 @@ async def _stream_agent_response(
             emitted = True
 
     if thinking_opened:
-        await output.stream_token(_THINKING_CLOSE)
+        await output.stream_token(_BLOCKQUOTE_END)
 
     if not emitted:
         logger.warning("No assistant output emitted for message.")
@@ -179,9 +175,13 @@ async def on_message_handler(message: cl.Message) -> None:
         message: The incoming Chainlit message from the user.
     """
     if not _state.agents_workflow:
-        logger.warning(
-            "Message received but agents_workflow is not configured"
-        )
+        logger.warning("Message received but agents_workflow is not configured")
+        await cl.Message(
+            content=(
+                "The system is not fully initialized (LLM unavailable). "
+                "Please check server logs and try again later."
+            )
+        ).send()
         return
 
     try:

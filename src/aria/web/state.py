@@ -11,6 +11,7 @@ by the lifecycle handlers in `lifecycle.py`.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from chromadb.api import ClientAPI
@@ -72,6 +73,7 @@ class AppState(BaseModel):
     browser_manager: Any = None
     db_engine: Engine | None = None
     startup_complete: bool = False
+    startup_event: asyncio.Event = asyncio.Event()
 
     def is_initialized(self) -> bool:
         """Check if the application state is fully initialized.

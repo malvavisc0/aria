@@ -26,9 +26,7 @@ app = typer.Typer(
 @app.command("start")
 def start_cmd(
     name: str = typer.Option(..., "--name", "-n", help="Unique process name"),
-    command: str = typer.Option(
-        ..., "--command", "-c", help="Command to execute"
-    ),
+    command: str = typer.Option(..., "--command", "-c", help="Command to execute"),
     args: list[str] | None = typer.Option(
         None, "--args", "-a", help="Command arguments (repeatable)"
     ),
@@ -128,9 +126,7 @@ def list_cmd():
 
 @app.command("restart")
 def restart_cmd(
-    name: str = typer.Option(
-        ..., "--name", "-n", help="Process name to restart"
-    ),
+    name: str = typer.Option(..., "--name", "-n", help="Process name to restart"),
     timeout: int | None = typer.Option(
         None, "--timeout", "-t", help="Auto-kill timeout in seconds"
     ),

@@ -30,6 +30,12 @@ from aria.web.state import _state
 _cached_data_layer: SQLiteSQLAlchemyDataLayer | None = None
 
 
+def reset_data_layer_cache() -> None:
+    """Clear the cached data layer (called on shutdown)."""
+    global _cached_data_layer
+    _cached_data_layer = None
+
+
 def get_data_layer_handler() -> SQLiteSQLAlchemyDataLayer:
     """Return a cached SQLite data layer instance.
 

@@ -440,9 +440,7 @@ class TestProcessNewFeatures:
         result = process("List", action="list")
         data = json.loads(result)
         proc_entry = next(
-            p
-            for p in data["data"]["processes"]
-            if p["name"] == "list_info_test"
+            p for p in data["data"]["processes"] if p["name"] == "list_info_test"
         )
         assert "command" in proc_entry
         assert "working_dir" in proc_entry

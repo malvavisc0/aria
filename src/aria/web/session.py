@@ -12,7 +12,6 @@ persistent conversation state across messages and sessions.
 
 from __future__ import annotations
 
-import asyncio
 import shutil
 import uuid
 from pathlib import Path
@@ -43,10 +42,7 @@ def create_memory(thread_id: str) -> Memory:
 
     Raises:
         ValueError: If thread_id is None or empty.
-        AppStateNotInitializedError: If app state is not initialized.
     """
-    _state.validate_initialized()
-
     if not thread_id:
         raise ValueError("thread_id cannot be None or empty")
 
@@ -59,34 +55,30 @@ def create_memory(thread_id: str) -> Memory:
     )
 
 
-async def wait_for_initialization(
-    timeout: float = 30.0, poll_interval: float = 0.1
-) -> bool:
+async def wait_for_initialization(timeout: float = 30.0) -> bool:
     """Wait for the application state to be fully initialized.
-
-    Polls the application state at regular intervals until initialization
-    completes or the timeout is reached.
 
     Args:
         timeout: Maximum time to wait in seconds (default: 30.0).
-        poll_interval: Time between checks in seconds (default: 0.1).
 
     Returns:
         bool: True if initialization completed, False if timeout reached.
     """
-    start_time = asyncio.get_running_loop().time()
-    while not _state.is_initialized():
-        elapsed = asyncio.get_running_loop().time() - start_time
-        if elapsed >= timeout:
-            return False
-        await asyncio.sleep(poll_interval)
-    return True
+    import asyncio
+
+    try:
+        await asyncio.wait_for(_state.startup_event.wait(), timeout=timeout)
+        return True
+    except asyncio.TimeoutError:
+        return False
 
 
 def extract_file_paths(message: cl.Message) -> list[str]:
     """Extract file paths from uploaded file elements in a message."""
     if not message.elements:
         return []
+
+    UploadsConfig.path.mkdir(parents=True, exist_ok=True)
 
     paths = []
     for element in message.elements:
@@ -107,9 +99,7 @@ def extract_file_paths(message: cl.Message) -> list[str]:
             shutil.copy2(path_str, dest)
             path_str = str(dest)
         except OSError:
-            logger.warning(
-                f"Failed to copy uploaded file {path_str} to {dest}"
-            )
+            logger.warning(f"Failed to copy uploaded file {path_str} to {dest}")
 
         paths.append(path_str)
     return paths
@@ -135,9 +125,7 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
         raise ValueError("Thread dictionary must contain a valid 'id' field")
 
     thread_name = thread.get("name", "Unnamed")
-    logger.debug(
-        f"Restoring chat history for thread {thread_id} ({thread_name})"
-    )
+    logger.debug(f"Restoring chat history for thread {thread_id} ({thread_name})")
 
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
@@ -145,9 +133,7 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
     root_messages = [m for m in chat_steps if m.get("parentId") is None]
     root_messages.sort(
         key=lambda message_step: (
-            message_step.get("createdAt")
-            or message_step.get("created_at")
-            or "",
+            message_step.get("createdAt") or message_step.get("created_at") or "",
             message_step.get("id") or "",
         )
     )
@@ -178,7 +164,5 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
     if chat_history:
         await memory.aput_messages(chat_history)
 
-    logger.info(
-        f"Restored {len(chat_history)} messages for thread {thread_id}"
-    )
+    logger.info(f"Restored {len(chat_history)} messages for thread {thread_id}")
     return memory

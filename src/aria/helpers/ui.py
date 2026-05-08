@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import chainlit as cl
 from llama_index.core.agent.workflow import ToolCall
 
@@ -59,8 +61,6 @@ def _make_tool_step(label: str, tool_name: str = "tool") -> cl.Step:
     Returns:
         A configured cl.Step instance
     """
-    import re
-
     # Strip non-ASCII characters for avatar compatibility
     # Chainlit's avatar endpoint requires: ^[a-zA-Z0-9_ .-]+$
     # Keep ASCII letters, numbers, spaces, underscores, dots, and hyphens

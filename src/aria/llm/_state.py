@@ -15,6 +15,7 @@ from llama_index.core.agent.workflow import (
     ToolCall,
     ToolCallResult,
 )
+from llama_index.core.tools.types import ToolOutput
 from typing_extensions import TypedDict
 
 
@@ -185,11 +186,31 @@ class StatefulAgentWorkflow(AgentWorkflow):
     async def call_tool(self, ctx: Any, ev: ToolCall) -> ToolCallResult:
         """Run the parent tool call step and synchronize custom state.
 
-        This override preserves the original event contract of
-        ``AgentWorkflow.call_tool()`` so workflow validation still sees
-        :class:`ToolCallResult` as a produced event.
+        If the parent ``call_tool`` raises unexpectedly (e.g. a failure in
+        tool lookup, event streaming, or an uncaught tool exception), the
+        error is caught and wrapped in an error :class:`ToolCallResult` so
+        the agent can surface it to the user instead of crashing the
+        workflow.
         """
-        result = await super().call_tool(ctx, ev)
+        try:
+            result = await super().call_tool(ctx, ev)
+        except Exception as exc:
+            # Build an error result so the workflow survives and the agent
+            # can report the failure to the user.
+            result = ToolCallResult(
+                tool_name=ev.tool_name,
+                tool_kwargs=ev.tool_kwargs,
+                tool_id=ev.tool_id,
+                tool_output=ToolOutput(
+                    content=f"Tool execution failed: {exc}",
+                    tool_name=ev.tool_name,
+                    raw_input=ev.tool_kwargs,
+                    raw_output=str(exc),
+                    is_error=True,
+                    exception=exc,
+                ),
+                return_direct=False,
+            )
         await self.reduce_state(ctx, result)
         return result
 

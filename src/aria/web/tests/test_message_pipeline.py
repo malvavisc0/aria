@@ -73,7 +73,7 @@ class TestStreamAgentResponse:
         emitted = await pipeline._stream_agent_response(handler, output)
         assert emitted is True
 
-        output.stream_token.assert_any_await(pipeline._THINKING_OPEN)
+        output.stream_token.assert_any_await(pipeline._BLOCKQUOTE_PREFIX)
         output.stream_token.assert_any_await("pondering")
 
     @pytest.mark.asyncio
@@ -99,9 +99,9 @@ class TestStreamAgentResponse:
         assert emitted is True
         calls = [c.args[0] for c in output.stream_token.call_args_list]
         assert calls == [
-            pipeline._THINKING_OPEN,
+            pipeline._BLOCKQUOTE_PREFIX,
             "thought",
-            pipeline._THINKING_CLOSE,
+            pipeline._BLOCKQUOTE_END,
             "answer",
         ]
 

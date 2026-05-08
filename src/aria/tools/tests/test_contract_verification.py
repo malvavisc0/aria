@@ -53,12 +53,12 @@ class TestFilesPackageContract:
         # copy_file should have src, dest
         sig = inspect.signature(file_management.copy_file)
         params = list(sig.parameters.keys())
-        assert "src" in params or "source" in params, (
-            "copy_file should have 'src' or 'source' parameter"
-        )
-        assert "dest" in params or "destination" in params, (
-            "copy_file should have 'dest' or 'destination' parameter"
-        )
+        assert (
+            "src" in params or "source" in params
+        ), "copy_file should have 'src' or 'source' parameter"
+        assert (
+            "dest" in params or "destination" in params
+        ), "copy_file should have 'dest' or 'destination' parameter"
 
 
 class TestReasoningPackageContract:
@@ -92,9 +92,9 @@ class TestToolSuccessResponseContract:
         import json
 
         response = json.loads(response_str)
-        assert response["reason"] == "my_test_reason", (
-            "tool_success_response should preserve the reason parameter"
-        )
+        assert (
+            response["reason"] == "my_test_reason"
+        ), "tool_success_response should preserve the reason parameter"
 
     def test_tool_success_response_falls_back_for_empty_reason(self):
         """Verify tool_success_response handles empty reason gracefully."""
@@ -106,9 +106,9 @@ class TestToolSuccessResponseContract:
         import json
 
         response = json.loads(response_str)
-        assert response["reason"] == "unspecified_test_tool_operation", (
-            "tool_success_response should use fallback reason when empty"
-        )
+        assert (
+            response["reason"] == "unspecified_test_tool_operation"
+        ), "tool_success_response should use fallback reason when empty"
 
 
 class TestPathContractConsistency:

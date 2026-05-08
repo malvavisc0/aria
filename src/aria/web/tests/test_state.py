@@ -66,10 +66,10 @@ class TestIsInitialized:
         assert state.is_initialized() is False
 
     def test_optional_fields_do_not_affect_initialization(self) -> None:
-        """prompt_enhancer, llama_manager, browser_manager are optional."""
+        """prompt_enhancer, vllm_manager, browser_manager are optional."""
         state = _fully_initialized_state()
         object.__setattr__(state, "prompt_enhancer", None)
-        object.__setattr__(state, "llama_manager", None)
+        object.__setattr__(state, "vllm_manager", None)
         object.__setattr__(state, "browser_manager", None)
         assert state.is_initialized() is True
 

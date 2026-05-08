@@ -16,7 +16,6 @@ import logging
 import os
 
 from chromadb import PersistentClient as ChromaDBPersistentClient
-from chromadb.config import Settings as ChromaDBSettings
 from loguru import logger
 from sqlalchemy import create_engine
 
@@ -160,14 +159,7 @@ def _load_embeddings_sync() -> None:
 
 def _init_vector_db() -> None:
     """Initialize the ChromaDB persistent vector database."""
-    _state.vector_db = ChromaDBPersistentClient(
-        path=ChromaDBConfig.db_path,
-        settings=ChromaDBSettings(
-            is_persistent=True,
-            persist_directory=ChromaDBConfig.db_path.absolute().as_posix(),
-            anonymized_telemetry=False,
-        ),
-    )
+    _state.vector_db = ChromaDBPersistentClient(path=str(ChromaDBConfig.db_path))
 
 
 def _init_agent_workflows() -> None:
@@ -328,6 +320,7 @@ async def on_app_startup_handler() -> None:
         logger.warning(f"Browser failed to start: {e}.")
 
     _state.startup_complete = True
+    _state.startup_event.set()
     logger.info("Aria web UI startup complete")
 
 
@@ -339,10 +332,15 @@ async def on_app_shutdown_handler() -> None:
     - vLLM inference servers
     - Lightpanda browser
     - Database connections
+    - Data layer cache
     - Logging sinks
     """
     global _log_sink_id, _tool_call_sink_id
     logger.info("Shutting down Aria web UI...")
+
+    from aria.web.hooks import reset_data_layer_cache
+
+    reset_data_layer_cache()
 
     # Check for sentinel file written by `aria server stop --skip-vllm`
     _skip_sentinel = DataConfig.path / "skip_vllm_shutdown"
@@ -382,6 +380,7 @@ async def on_app_shutdown_handler() -> None:
     _state.agents_workflow = None
     _state.prompt_enhancer = None
     _state.startup_complete = False
+    _state.startup_event.clear()
 
     if _state.db_engine:
         _state.db_engine.dispose()

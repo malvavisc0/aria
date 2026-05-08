@@ -28,9 +28,7 @@ from aria.tools.files.exceptions import FileOperationError
 from aria.tools.utils import _truncate_json
 
 
-def _read_lines_streaming(
-    file_path: Path, offset: int, length: int
-) -> list[str]:
+def _read_lines_streaming(file_path: Path, offset: int, length: int) -> list[str]:
     """Read lines from file using streaming.
 
     Args:
@@ -73,9 +71,7 @@ def _count_lines_efficiently(file_path: Path) -> int:
         FileOperationError: If path is a directory or file cannot be read
     """
     if file_path.is_dir():
-        raise FileOperationError(
-            f"Path is a directory, not a file: {file_path}"
-        )
+        raise FileOperationError(f"Path is a directory, not a file: {file_path}")
 
     count = 0
     last_byte = b""
@@ -265,14 +261,10 @@ def read_file(
         if offset_value == 0 and length_value == 0:
             lines_to_read = min(total_lines, max_lines_value)
         else:
-            lines_to_read = (
-                length_value if length_value > 0 else max_lines_value
-            )
+            lines_to_read = length_value if length_value > 0 else max_lines_value
             lines_to_read = min(lines_to_read, max_lines_value)
 
-        lines = _read_lines_streaming(
-            resolved_path, offset_value, lines_to_read
-        )
+        lines = _read_lines_streaming(resolved_path, offset_value, lines_to_read)
         lines_returned = len(lines)
         next_offset = offset_value + lines_returned
         has_more = next_offset < total_lines
@@ -355,9 +347,7 @@ def file_info(reason: Reason, file_name: str) -> str:
                     "created": datetime.fromtimestamp(
                         file_stats.st_ctime, tz=UTC
                     ).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                    "permissions": _format_permissions_symbolic(
-                        file_stats.st_mode
-                    ),
+                    "permissions": _format_permissions_symbolic(file_stats.st_mode),
                     "mode_octal": oct(file_stats.st_mode)[-3:],
                 }
             )
@@ -426,9 +416,7 @@ def list_files(
         # Resolve the starting path
         resolved_path = _secure_resolve_dir(path_value)
         if not resolved_path.exists():
-            resolved_path = _secure_resolve_path(
-                path_value, check_exists=False
-            )
+            resolved_path = _secure_resolve_path(path_value, check_exists=False)
 
         if not resolved_path.exists():
             return _err(
@@ -571,9 +559,7 @@ def search_files(
         # Resolve the starting path
         resolved_path = _secure_resolve_dir(path_value)
         if not resolved_path.exists():
-            resolved_path = _secure_resolve_path(
-                path_value, check_exists=False
-            )
+            resolved_path = _secure_resolve_path(path_value, check_exists=False)
 
         if not resolved_path.exists():
             return _err(
@@ -598,9 +584,7 @@ def search_files(
             # Search file names
             matches = []
             paths = (
-                resolved_path.rglob("*")
-                if recursive_value
-                else resolved_path.glob("*")
+                resolved_path.rglob("*") if recursive_value else resolved_path.glob("*")
             )
 
             for file_path in paths:
@@ -667,9 +651,7 @@ def search_files(
                     # Read file line by line to avoid loading entire file
                     # into memory at once
                     lines = []
-                    with open(
-                        file_path, encoding="utf-8", errors="ignore"
-                    ) as f:
+                    with open(file_path, encoding="utf-8", errors="ignore") as f:
                         for line in f:
                             lines.append(line)
                             # Safety limit on lines per file
@@ -683,13 +665,10 @@ def search_files(
                         if regex.search(line):
                             # Get context
                             start = max(0, line_num - context_lines_value)
-                            end = min(
-                                len(lines), line_num + context_lines_value + 1
-                            )
+                            end = min(len(lines), line_num + context_lines_value + 1)
 
                             context_before = [
-                                lines[i].rstrip("\n\r")
-                                for i in range(start, line_num)
+                                lines[i].rstrip("\n\r") for i in range(start, line_num)
                             ]
                             context_after = [
                                 lines[i].rstrip("\n\r")
@@ -712,10 +691,7 @@ def search_files(
                 except (OSError, UnicodeDecodeError):
                     continue
 
-            truncated = (
-                len(matches) >= max_results_value
-                or files_searched >= max_files
-            )
+            truncated = len(matches) >= max_results_value or files_searched >= max_files
 
             return _ok(
                 tool="search_files",
@@ -736,9 +712,7 @@ def search_files(
             return _err(
                 tool="search_files",
                 reason=reason,
-                message=(
-                    f"Invalid mode '{mode_value}'. Use 'name' or 'content'."
-                ),
+                message=(f"Invalid mode '{mode_value}'. Use 'name' or 'content'."),
                 pattern=pattern,
             )
 
