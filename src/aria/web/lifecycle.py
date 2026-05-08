@@ -30,7 +30,9 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+)
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -158,8 +160,75 @@ def _load_embeddings_sync() -> None:
 
 
 def _init_vector_db() -> None:
-    """Initialize the ChromaDB persistent vector database."""
-    _state.vector_db = ChromaDBPersistentClient(path=str(ChromaDBConfig.db_path))
+    """Initialize the ChromaDB persistent vector database.
+
+    Validates the path is accessible before creating the client.
+    If the database is corrupted, removes the directory and retries
+    with a fresh instance.
+    """
+    db_path = ChromaDBConfig.db_path
+    db_path.mkdir(parents=True, exist_ok=True)
+
+    # Verify the directory is writable
+    test_file = db_path / ".aria_write_test"
+    try:
+        test_file.touch()
+        test_file.unlink()
+    except OSError as e:
+        raise RuntimeError(
+            f"ChromaDB path '{db_path}' is not writable: {e}"
+        ) from e
+
+    try:
+        _state.vector_db = ChromaDBPersistentClient(path=str(db_path))
+    except Exception as e:
+        logger.warning(
+            f"ChromaDB failed to open (possible corruption): {e}. "
+            f"Resetting database at '{db_path}'..."
+        )
+        import shutil
+
+        shutil.rmtree(db_path, ignore_errors=True)
+        db_path.mkdir(parents=True, exist_ok=True)
+        _state.vector_db = ChromaDBPersistentClient(path=str(db_path))
+        logger.info("ChromaDB reset successfully with fresh database")
+
+
+def _cleanup_orphaned_collections() -> None:
+    """Remove ChromaDB collections for threads that no longer exist in SQLite.
+
+    This prevents unbounded disk growth from deleted/expired conversations.
+    Should be called after both the database and vector_db are initialized.
+    """
+    if _state.vector_db is None or _state.db_engine is None:
+        return
+
+    from sqlalchemy import text
+
+    try:
+        collections = _state.vector_db.list_collections()
+        if not collections:
+            return
+
+        # Get all existing thread IDs from SQLite
+        with _state.db_engine.connect() as conn:
+            result = conn.execute(text("SELECT id FROM threads"))
+            active_thread_ids = {row[0] for row in result}
+
+        # Remove collections whose name isn't a known thread
+        orphaned = [
+            c.name for c in collections if c.name not in active_thread_ids
+        ]
+
+        for name in orphaned:
+            _state.vector_db.delete_collection(name)
+
+        if orphaned:
+            logger.info(
+                f"Cleaned up {len(orphaned)} orphaned ChromaDB collections"
+            )
+    except Exception as e:
+        logger.warning(f"ChromaDB collection cleanup failed: {e}")
 
 
 def _init_agent_workflows() -> None:
@@ -284,7 +353,9 @@ async def on_app_startup_handler() -> None:
         await asyncio.to_thread(_init_vllm_servers)
         _vllm_ready = True
     except Exception as e:
-        logger.warning(f"vLLM servers failed to start: {e}. LLM features disabled.")
+        logger.warning(
+            f"vLLM servers failed to start: {e}. LLM features disabled."
+        )
 
     # Await embeddings result (likely already done by now)
     try:
@@ -306,6 +377,9 @@ async def on_app_startup_handler() -> None:
         _init_vector_db()
     except Exception as e:
         logger.warning(f"Vector database failed to initialize: {e}.")
+
+    # Clean up ChromaDB collections for deleted threads
+    _cleanup_orphaned_collections()
 
     if _llm_ready and _state.llm is not None:
         try:
