@@ -106,10 +106,6 @@ def info_command():
         str(VllmConfig.gpu_memory_utilization),
     )
     table.add_row(
-        "Max Model Length (chat)",
-        str(VllmConfig.chat_context_size),
-    )
-    table.add_row(
         "Quantization",
         VllmConfig.quantization or "[dim]none[/dim]",
     )
