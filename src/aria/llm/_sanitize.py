@@ -19,6 +19,7 @@ from llama_index.core.base.llms.types import (
     ChatMessage,
     ChatResponse,
     ChatResponseAsyncGen,
+    MessageRole,
     ToolCallBlock,
 )
 from llama_index.llms.openai_like import OpenAILike
@@ -167,7 +168,9 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
             for tc in raw_tool_calls:
                 # ChoiceDeltaToolCall is a Pydantic model; .function.arguments
                 # is the raw string we need to fix.
-                if hasattr(tc, "function") and hasattr(tc.function, "arguments"):
+                if hasattr(tc, "function") and hasattr(
+                    tc.function, "arguments"
+                ):
                     raw_args = tc.function.arguments
                     fixed = _sanitize_tool_call_arguments_json(raw_args)
                     if fixed != raw_args:
@@ -203,6 +206,18 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
     return sanitized
 
 
+def _reorder_system_messages(messages: List[ChatMessage]) -> List[ChatMessage]:
+    """Ensure all system messages precede non-system messages.
+
+    The OpenAI-compatible API requires system messages at the beginning
+    of the messages array.  Any system messages injected mid-list (e.g. by
+    memory blocks or upstream framework changes) are moved to the front.
+    """
+    system = [m for m in messages if m.role == MessageRole.SYSTEM]
+    others = [m for m in messages if m.role != MessageRole.SYSTEM]
+    return system + others
+
+
 class SanitizedOpenAILike(OpenAILike):
     """OpenAILike subclass that sanitizes tool-call arguments before API calls.
 
@@ -219,11 +234,11 @@ class SanitizedOpenAILike(OpenAILike):
     async def achat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> "ChatResponse":
-        messages = _sanitize_messages(messages)
+        messages = _reorder_system_messages(_sanitize_messages(messages))
         return await super().achat(messages, **kwargs)
 
     async def astream_chat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> "ChatResponseAsyncGen":
-        messages = _sanitize_messages(messages)
+        messages = _reorder_system_messages(_sanitize_messages(messages))
         return await super().astream_chat(messages, **kwargs)

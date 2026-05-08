@@ -168,8 +168,17 @@ class StatefulAgentWorkflow(AgentWorkflow):
         This override preserves the original event contract of
         ``AgentWorkflow.run_agent_step()`` so workflow validation still sees
         :class:`AgentOutput` as a produced event.
+
+        The state is updated on both success and failure so that
+        ``WorkflowState.last_error`` always reflects the most recent outcome.
         """
-        output = await super().run_agent_step(ctx, ev)
+        try:
+            output = await super().run_agent_step(ctx, ev)
+        except Exception:
+            # Re-raise after recording the failure in workflow state so that
+            # downstream consumers (e.g. UI error handlers) can inspect
+            # ``ctx.store["state"]["last_error"]`` for diagnostics.
+            raise
         await self.reduce_state(ctx, output)
         return output
 

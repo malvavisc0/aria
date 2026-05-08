@@ -49,7 +49,9 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning("Prompt enhancer not available, returning original prompt")
+            logger.warning(
+                "Prompt enhancer not available, returning original prompt"
+            )
             return prompt
         try:
             response = await asyncio.wait_for(
@@ -122,7 +124,9 @@ async def _stream_agent_response(
                     await output.stream_token(_THINKING_OPEN)
                     thinking_opened = True
                     emitted = True
-                await output.stream_token(event.thinking_delta.replace("\n", "\n> "))
+                await output.stream_token(
+                    event.thinking_delta.replace("\n", "\n> ")
+                )
             elif event.delta:
                 if thinking_opened:
                     await output.stream_token(_THINKING_CLOSE)
@@ -175,7 +179,9 @@ async def on_message_handler(message: cl.Message) -> None:
         message: The incoming Chainlit message from the user.
     """
     if not _state.agents_workflow:
-        logger.warning("Message received but agents_workflow is not configured")
+        logger.warning(
+            "Message received but agents_workflow is not configured"
+        )
         return
 
     try:
@@ -197,8 +203,14 @@ async def on_message_handler(message: cl.Message) -> None:
         )
 
         output = cl.Message(content="")
-        await _stream_agent_response(handler, output)
-        await output.send()
+        try:
+            await _stream_agent_response(handler, output)
+        finally:
+            # Always attempt to send/close the output message so Chainlit
+            # doesn't keep an empty placeholder bubble if an error occurs
+            # mid-stream.  If the message has no content, ``.send()`` is
+            # still safe — it simply finalises the streaming context.
+            await output.send()
 
     except AppStateNotInitializedError as e:
         logger.error(f"App state not initialized: {e}")

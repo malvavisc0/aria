@@ -140,7 +140,7 @@ def get_default_memory(
 
     memory = Memory.from_defaults(
         session_id=thread_id,
-        insert_method=InsertMethod.SYSTEM,
+        insert_method=InsertMethod.USER,
         memory_blocks=memory_blocks,
         token_limit=token_limit,
         chat_history_token_ratio=EmbeddingsConfig.chat_history_token_ratio,
