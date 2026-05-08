@@ -4,6 +4,7 @@ This module provides internal helpers for command execution and
 response building.
 """
 
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -11,9 +12,16 @@ from typing import Any
 
 from loguru import logger
 
-from aria.tools import get_function_name, utc_timestamp
 from aria.tools.shell.constants import CURRENT_OS, MAX_OUTPUT_SIZE
 from aria.tools.shell.validation import _extract_command_name
+
+# Strip ANSI escape sequences (colors, cursor movement, etc.)
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\].*?\x07")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from text."""
+    return _ANSI_RE.sub("", text) if text else ""
 
 
 def _build_response(
@@ -27,10 +35,12 @@ def _build_response(
     execution_time: float = 0.0,
     timed_out: bool = False,
 ) -> dict[str, Any]:
-    """Build a standard command execution response dict.
+    """Build a lean command execution response dict.
+
+    Only includes non-empty fields to minimize token usage.
 
     Args:
-        operation: The operation name (e.g. "execute_command").
+        operation: The operation name (unused, kept for API compat).
         command: The command that was executed.
         working_dir: The resolved working directory path.
         stdout: Captured standard output.
@@ -40,24 +50,27 @@ def _build_response(
         timed_out: Whether the command timed out.
 
     Returns:
-        Response dictionary with operation, result, and metadata.
+        Response dictionary with minimal data payload.
     """
-    return {
-        "status": "success",
-        "tool": get_function_name(),
-        "reason": "",
-        "timestamp": utc_timestamp(),
-        "data": {
-            "stdout": stdout[:MAX_OUTPUT_SIZE] if stdout else "",
-            "stderr": stderr[:MAX_OUTPUT_SIZE] if stderr else "",
-            "return_code": return_code,
-            "execution_time": round(execution_time, 3),
-            "timed_out": timed_out,
-            "command": command,
-            "platform": CURRENT_OS,
-            "working_dir": working_dir,
-        },
+    # Clean and truncate output
+    clean_stdout = _strip_ansi(stdout)[:MAX_OUTPUT_SIZE].rstrip()
+    clean_stderr = _strip_ansi(stderr)[:MAX_OUTPUT_SIZE].rstrip()
+
+    data: dict[str, Any] = {
+        "command": command,
+        "return_code": return_code,
+        "execution_time": round(execution_time, 3),
     }
+
+    # Only include non-empty fields
+    if clean_stdout:
+        data["stdout"] = clean_stdout
+    if clean_stderr:
+        data["stderr"] = clean_stderr
+    if timed_out:
+        data["timed_out"] = True
+
+    return {"data": data}
 
 
 def _execute_command_internal(

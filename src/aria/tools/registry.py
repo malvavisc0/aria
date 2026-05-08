@@ -25,6 +25,7 @@ CORE_LITE = "core_lite"
 FILES_LITE = "files_lite"
 CORE = "core"
 FILES = "files"
+AX = "ax"
 WEB = "web"
 DEVELOPMENT = "development"
 FINANCE = "finance"
@@ -34,6 +35,7 @@ SYSTEM = "system"
 ALL_CATEGORIES = [
     CORE,
     FILES,
+    AX,
     WEB,
     DEVELOPMENT,
     FINANCE,
@@ -201,11 +203,19 @@ def _get_system_tools() -> list[FunctionTool]:
     ]
 
 
+def _get_ax_tools() -> list[FunctionTool]:
+    """Single unified ax dispatcher tool."""
+    from aria.tools.ax import ax
+
+    return [FunctionTool.from_defaults(async_fn=ax)]
+
+
 _CATEGORY_LOADERS: dict[str, Callable[[], list[FunctionTool]]] = {
     CORE_LITE: _get_core_lite_tools,
     FILES_LITE: _get_file_lite_tools,
     CORE: _get_core_tools,
     FILES: _get_file_tools,
+    AX: _get_ax_tools,
     WEB: _get_web_tools,
     DEVELOPMENT: _get_development_tools,
     FINANCE: _get_finance_tools,

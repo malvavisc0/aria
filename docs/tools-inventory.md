@@ -697,41 +697,136 @@ Recent news. Returns `articles[{title, publisher, link, publish_time}]`. Max 50 
 
 **Package:** `aria.tools.shell` -- **Category:** CORE (always loaded)
 
-Consolidates `execute_command`, `execute_command_batch`, `execute_safe_command` into one tool.
+Execute shell commands with timeout handling, output capture, and security constraints.
 
-### `shell(reason, commands, stop_on_error=True, timeout?, working_dir?)`
+### `shell(reason, commands, stop_on_error=True, timeout?, working_dir?, env?)`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `reason` | `str` | -- | Why |
-| `commands` | `Dict` or `List[Dict]` | -- | Command dict(s) |
+| `commands` | `str`, `List[str]`, `Dict`, or `List[Dict]` | -- | Command(s) to execute |
 | `stop_on_error` | `bool` | `True` | Stop batch on failure |
 | `timeout` | `int` | `30` | Default timeout (max: 300) |
 | `working_dir` | `str` | `BASE_DIR` | Default working directory |
+| `env` | `Dict[str, str]` | `None` | Additional environment variables |
+
+**Input formats:**
+
+| Format | Example |
+|--------|---------|
+| Single string | `"git status"` |
+| List of strings | `["git pull", "pip install -r reqs"]` |
+| Single dict | `{"command": "git status"}` |
+| List of dicts | `[{"command": "git pull"}, {"command": "pytest"}]` |
 
 **Command dict fields:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `command_name` | `str` | Yes | Command to execute |
-| `args` | `List[str]` | No | Arguments |
+| `command` | `str` | Yes | Full command string (supports pipes, redirects, chaining) |
 | `timeout` | `int` | No | Per-command timeout |
 | `working_dir` | `str` | No | Per-command directory |
+| `env` | `Dict[str, str]` | No | Per-command environment variables |
 | `continue_on_error` | `bool` | No | Continue batch on failure |
-| `command` | `str` | No | Legacy: full string (parsed via `shlex`) |
 
-**Returns:** `results[]`, `total_execution_time`, `success_count`, `failure_count`, `stopped_early`. Each result has `stdout`, `stderr`, `return_code`, `execution_time`, `timed_out`, `command`, `platform`, `working_dir`.
+**Response format:**
 
-Commands resolved via `shutil.which()`. Blocked commands rejected.
+Single commands return a **flat response** (no wrapper):
+
+```json
+{
+  "command": "echo hello",
+  "return_code": 0,
+  "execution_time": 0.001,
+  "stdout": "hello"
+}
+```
+
+Batch commands (2+) return a **results array**:
+
+```json
+{
+  "results": [
+    {"command": "echo hello", "return_code": 0, "stdout": "hello", "execution_time": 0.001},
+    {"command": "echo world", "return_code": 0, "stdout": "world", "execution_time": 0.001}
+  ],
+  "execution_time": 0.002,
+  "stopped_early": false
+}
+```
+
+Blocked commands return `return_code: 1` with an `error` field. Timed-out commands include `timed_out: true`.
 
 ```python
-shell("Git status", commands={"command_name": "git", "args": ["status"]})
+shell("Git status", commands="git status")
 shell("Building", commands=[
-    {"command_name": "git", "args": ["pull"]},
-    {"command_name": "pip", "args": ["install", "-r", "requirements.txt"]},
-    {"command_name": "python", "args": ["-m", "pytest"]},
+    "git pull",
+    "pip install -r requirements.txt",
+    "python -m pytest",
 ])
 ```
+
+---
+
+## 14. ax Dispatcher
+
+**Module:** `aria.tools.ax` -- **Agent interface** (not exposed as a LlamaIndex tool)
+
+Unified dispatcher that routes `family`/`command` pairs to native Python functions. Replaces shell-based `ax <family> <command>` calls with direct function dispatch — same structured JSON responses, zero subprocess overhead.
+
+### `ax(reason, family, command, args?)`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `reason` | `str` | Yes | Why you are calling this |
+| `family` | `str` | Yes | Command family (see table below) |
+| `command` | `str` | Yes | Subcommand within the family. Use `"help"` to list available commands |
+| `args` | `Dict[str, Any]` | No | Keyword arguments for the target function (excluding `reason`) |
+
+### Command Matrix
+
+| Family | Commands | Description |
+|--------|----------|-------------|
+| `web` | `search`, `fetch`, `open`, `click`, `close`, `weather`, `youtube` | Web search, page browsing, content download, weather, YouTube transcripts |
+| `knowledge` | `store`, `recall`, `search`, `list`, `update`, `delete` | Persistent key-value memory across sessions (SQLite-backed) |
+| `finance` | `stock`, `company`, `news` | Stock/crypto prices, company fundamentals, ticker news |
+| `imdb` | `search`, `movie`, `person`, `filmography`, `episodes`, `reviews`, `trivia` | Movies, shows, people via IMDb |
+| `http` | `request` | REST API calls (GET/POST/PUT/DELETE/PATCH). Responses persisted to disk |
+| `dev` | `run` | Execute Python code or file in a sandboxed subprocess |
+| `processes` | `start`, `stop`, `status`, `logs`, `list`, `restart`, `signal` | Manage background processes (dev servers, build watchers, pipelines) |
+| `check` | `extras` | Discover additional CLI tools available in the virtual environment |
+
+### Examples
+
+```python
+# Web search
+ax(reason="Find Python tutorials", family="web", command="search", args={"query": "python asyncio tutorial"})
+
+# Stock price
+ax(reason="Check AAPL price", family="finance", command="stock", args={"ticker": "AAPL"})
+
+# Knowledge store
+ax(reason="Save preference", family="knowledge", command="store", args={"key": "lang", "value": "Python", "tags": ["prefs"]})
+
+# Process management
+ax(reason="Start dev server", family="processes", command="start", args={"name": "dev", "command": "python", "args": ["-m", "http.server"]})
+
+# Discover available CLI tools
+ax(reason="Check available tools", family="check", command="extras")
+
+# Help
+ax(reason="List web commands", family="web", command="help")
+```
+
+### Error Handling
+
+| Error Code | Meaning |
+|------------|---------|
+| `unknown_family` | Invalid family name. Lists available families. |
+| `unknown_command` | Invalid command for the family. Lists available commands. |
+| `import_error` | Could not load the target module. |
+| `invalid_args` | Wrong arguments passed to the target function. |
+| `execution_error` | Runtime error in the target function. |
 
 ---
 
@@ -825,23 +920,25 @@ graph TB
 
 ## CLI Access
 
-Domain tools are also accessible via CLI commands through the `shell` tool. This is the primary way the agent invokes domain-specific functionality.
+Domain tools are accessible via two interfaces:
+
+1. **`ax` dispatcher** (preferred) — Direct Python function dispatch, no subprocess overhead. Use `ax(family="...", command="...", args={...})`.
+2. **CLI commands** (fallback) — Via `shell` tool for commands not yet in the dispatcher.
 
 | CLI Command | Domain | Description |
 |-------------|--------|-------------|
-| `aria search web "query"` | Search | Web search |
-| `aria search fetch "url"` | Search | Fetch URL content (auto-detects file vs website) |
-| `aria search weather "city"` | Search | Weather forecast |
-| `aria search youtube "url"` | Search | YouTube transcript |
-| `aria knowledge store/recall/search` | Knowledge | Persistent knowledge store |
-| `aria finance stock/company/news` | Finance | Stock prices, company info, news |
-| `aria imdb search/movie/person/...` | Entertainment | Movie/TV database |
-| `aria web click "selector"` | Browser | Click element on current page |
+| `aria web search "query"` | Web | Web search |
+| `aria web fetch "url"` | Web | Fetch URL content (auto-detects file vs website) |
+| `aria web weather "city"` | Web | Weather forecast |
+| `aria web youtube "url"` | Web | YouTube transcript |
+| `aria web open "url"` | Web | Open page in browser |
+| `aria web click "selector"` | Web | Click element on current page |
+| `aria web close` | Web | Close browser page |
+| `aria knowledge store/recall/search/list` | Knowledge | Persistent knowledge store |
 | `aria dev run "code"` | Development | Execute Python code |
-| `aria http request METHOD "url"` | System | HTTP requests |
-| `aria system hardware/processes` | System | Hardware info, process management |
-| `aria worker spawn/status/list` | Workers | Background worker agents |
-| `aria self test-tools` | Self | Verify tool loading |
+| `aria system info/gpu/vram` | System | Hardware info |
+| `aria processes start/stop/status/list` | System | Background process management |
+| `aria worker spawn/list` | Workers | Background worker agents |
 
 ---
 

@@ -2,6 +2,7 @@
 
 from aria.tools.registry import (
     ALL_CATEGORIES,
+    AX,
     CORE,
     DEVELOPMENT,
     ENTERTAINMENT,
@@ -39,6 +40,7 @@ class TestToolRegistry:
         expected = {
             CORE,
             FILES,
+            AX,
             WEB,
             DEVELOPMENT,
             FINANCE,

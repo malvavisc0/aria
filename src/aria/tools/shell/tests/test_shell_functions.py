@@ -99,9 +99,9 @@ class TestShellSingleCommand:
     """Tests for shell function with a single command."""
 
     def _get_result_data(self, result: str) -> dict:
-        """Parse result and return the first command's data dict."""
+        """Parse result and return the command data dict (flat for single)."""
         data = json.loads(result)
-        return data["data"]["results"][0]["data"]
+        return data["data"]
 
     def _get_result_envelope(self, result: str) -> dict:
         """Parse result and return the top-level envelope."""
@@ -120,7 +120,6 @@ class TestShellSingleCommand:
         assert envelope["tool"] == "shell"
         assert cmd_data["return_code"] == 0
         assert "hello" in cmd_data["stdout"]
-        assert cmd_data["timed_out"] is False
 
     def test_execute_dict_command(self):
         """Test executing a command via dict format."""
@@ -149,15 +148,15 @@ class TestShellSingleCommand:
         """Test command execution with custom working directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = shell(
-                reason="Test ls in temp dir",
-                commands="ls",
+                reason="Test pwd in temp dir",
+                commands="pwd",
                 timeout=5,
                 working_dir=tmpdir,
             )
             cmd_data = self._get_result_data(result)
 
             assert cmd_data["return_code"] == 0
-            assert tmpdir in cmd_data["working_dir"]
+            assert tmpdir in cmd_data["stdout"]
 
     def test_execute_command_timeout(self):
         """Test command execution timeout."""
@@ -190,9 +189,8 @@ class TestShellSingleCommand:
         )
         data = json.loads(result)
 
-        assert data["data"]["failure_count"] == 1
-        assert data["data"]["success_count"] == 0
-        assert "blocked" in data["data"]["results"][0]["error"].lower()
+        assert data["data"]["return_code"] == 1
+        assert "blocked" in data["data"]["error"].lower()
 
     def test_response_has_timestamp(self):
         """Test that response includes timestamp at top level."""
@@ -205,17 +203,17 @@ class TestShellSingleCommand:
 
         assert "timestamp" in envelope
 
-    def test_response_has_platform(self):
-        """Test that response includes platform info."""
+    def test_response_has_execution_time(self):
+        """Test that response includes execution time."""
         result = shell(
-            reason="Test platform in response",
+            reason="Test execution time in response",
             commands="echo test",
             timeout=5,
         )
         cmd_data = self._get_result_data(result)
 
-        assert "platform" in cmd_data
-        assert cmd_data["platform"] in ["windows", "linux", "darwin"]
+        assert "execution_time" in cmd_data
+        assert cmd_data["execution_time"] >= 0
 
     def test_execute_command_with_args(self):
         """Test executing command with arguments."""
@@ -245,19 +243,18 @@ class TestShellSingleCommand:
 
         assert cmd_data["return_code"] != 0
 
-    def test_single_command_has_batch_metadata(self):
-        """Test that single string input returns batch metadata."""
+    def test_single_command_returns_flat_response(self):
+        """Test that single string input returns flat response (no results array)."""
         result = shell(
-            reason="Test batch metadata for single",
+            reason="Test flat response for single",
             commands="echo test",
             timeout=5,
         )
         data = json.loads(result)
 
-        assert data["data"]["success_count"] == 1
-        assert data["data"]["failure_count"] == 0
-        assert data["data"]["stopped_early"] is False
-        assert len(data["data"]["results"]) == 1
+        assert "results" not in data["data"]
+        assert data["data"]["return_code"] == 0
+        assert "test" in data["data"]["stdout"]
 
     def test_shell_pipe(self):
         """Test that shell pipes work."""
@@ -325,9 +322,9 @@ class TestShellBatch:
         data = json.loads(result)
 
         assert data["tool"] == "shell"
-        assert data["data"]["success_count"] == 2
-        assert data["data"]["failure_count"] == 0
-        assert data["data"]["stopped_early"] is False
+        assert len(data["data"]["results"]) == 2
+        assert all(r["return_code"] == 0 for r in data["data"]["results"])
+        assert data["data"].get("stopped_early", False) is False
 
     def test_execute_batch_with_dicts(self):
         """Test executing a batch of dict commands."""
@@ -342,8 +339,8 @@ class TestShellBatch:
         )
         data = json.loads(result)
 
-        assert data["data"]["success_count"] == 2
-        assert data["data"]["failure_count"] == 0
+        assert len(data["data"]["results"]) == 2
+        assert all(r["return_code"] == 0 for r in data["data"]["results"])
 
     def test_execute_batch_with_error(self):
         """Test executing a batch with one failing command."""
@@ -359,8 +356,10 @@ class TestShellBatch:
         )
         data = json.loads(result)
 
-        assert data["data"]["success_count"] == 1
-        assert data["data"]["failure_count"] >= 1
+        results = data["data"]["results"]
+        assert len(results) == 2  # stopped after "exit 1"
+        assert results[0]["return_code"] == 0
+        assert results[1]["return_code"] != 0
         assert data["data"]["stopped_early"] is True
 
     def test_execute_batch_continue_on_error(self):
@@ -377,12 +376,16 @@ class TestShellBatch:
         )
         data = json.loads(result)
 
-        assert data["data"]["success_count"] == 2
-        assert data["data"]["stopped_early"] is False
+        results = data["data"]["results"]
+        assert len(results) == 3
+        assert results[0]["return_code"] == 0
+        assert results[1]["return_code"] != 0
+        assert results[2]["return_code"] == 0
+        assert data["data"].get("stopped_early", False) is False
 
     def test_execute_batch_has_timestamp(self):
         """Test that batch response includes timestamp."""
-        commands = ["echo test"]
+        commands = ["echo test", "echo world"]
         result = shell(
             reason="Test batch metadata",
             commands=commands,
@@ -390,7 +393,7 @@ class TestShellBatch:
         data = json.loads(result)
 
         assert "timestamp" in data
-        assert data["data"]["success_count"] == 1
+        assert len(data["data"]["results"]) == 2
 
     def test_execute_empty_commands(self):
         """Test that empty commands list returns valid response."""
@@ -400,5 +403,4 @@ class TestShellBatch:
         )
         data = json.loads(result)
 
-        assert data["data"]["success_count"] == 0
-        assert data["data"]["failure_count"] == 0
+        assert "error" in data["data"]

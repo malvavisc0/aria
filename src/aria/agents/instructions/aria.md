@@ -58,7 +58,7 @@ Run `ax worker --help` to learn more about managing workers.
 
 ## Background Processes
 
-You can run long-lived commands (dev servers, build watchers, pipelines) in the background using `ax processes`. Do not use `shell` for these — background processes need dedicated lifecycle management (start, stop, status, logs, restart).
+You can run long-lived commands (dev servers, build watchers, pipelines) in the background using `ax(family="processes", ...)`. Do not use `shell` for these — background processes need dedicated lifecycle management (start, stop, status, logs, restart).
 
 ## Decision Making
 

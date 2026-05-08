@@ -92,7 +92,7 @@ Tools are organized into **6 categories** (25 tools) managed by a centralized re
 | 🎬 **Entertainment** | On-demand | search_imdb_titles, get_movie_details, get_person_details, get_person_filmography, get_all_series_episodes, get_movie_reviews, get_movie_trivia, get_youtube_video_transcription |
 | 🖥️ **System** | On-demand | http_request, process |
 
-Domain tools are also accessible via CLI commands (e.g., `aria search web`, `aria finance stock`, `aria imdb search`).
+Domain tools are also accessible via CLI commands (e.g., `aria web search`, `aria knowledge store`, `aria dev run`).
 
 For the full inventory with parameter reference, see [`docs/tools-inventory.md`](docs/tools-inventory.md).
 
@@ -185,26 +185,24 @@ aria check preflight      # Verify installation and connectivity
 aria check instructions   # View agent system prompts
 aria check instructions --agent aria  # View specific agent
 
-# Agent tool commands (CLI access to domain tools)
-aria search web "query"         # Web search
-aria search fetch "url"         # Fetch URL content (auto-detects file vs website)
-aria search weather "city"      # Weather forecast
-aria search youtube "url"       # YouTube transcript
+# Web & research
+aria web search "query"         # Web search
+aria web fetch "url"            # Fetch URL content (auto-detects file vs website)
+aria web weather "city"         # Weather forecast
+aria web youtube "url"          # YouTube transcript
+aria web open "url"             # Open page in browser
+aria web click "selector"       # Click browser element
+aria web close                  # Close browser page
+
+# Knowledge
 aria knowledge store "key" "v"  # Store a fact
 aria knowledge recall "key"     # Retrieve a fact
 aria knowledge search "query"   # Search stored facts
-aria finance stock TICKER       # Stock price
-aria finance company TICKER     # Company info
-aria finance news TICKER        # Recent news
-aria imdb search "title"        # Search movies/TV
-aria imdb movie ID              # Movie details
-aria web click "selector"       # Click browser element
+
+# Development & workers
 aria dev run "code"             # Execute Python code
-aria http request GET "url"     # HTTP request
-aria system hardware            # System hardware info
 aria worker spawn --prompt "..." # Launch background worker
 aria worker list                # List workers
-aria self test-tools            # Verify tool loading
 ```
 
 ---

@@ -1,9 +1,8 @@
 """Chatter agent module.
 
 This module provides the unified Aria agent — a single conversational agent
-that handles all tasks using core + file tools. Domain-specific capabilities
-(web search, finance, IMDb, etc.) are accessed via CLI commands through
-the ``shell`` tool.
+that handles all tasks using core + file tools + the ``ax`` dispatcher for
+domain-specific capabilities (web search, finance, IMDb, etc.).
 """
 
 from llama_index.core.agent import FunctionAgent
@@ -11,7 +10,7 @@ from llama_index.core.llms import LLM
 from loguru import logger
 
 from aria.agents.instructions import load_agent_instructions
-from aria.tools.registry import CORE_LITE, FILES_LITE, get_tools
+from aria.tools.registry import AX, CORE_LITE, FILES_LITE, get_tools
 
 
 class ChatterAgent(FunctionAgent):
@@ -61,9 +60,9 @@ def get_agent(
 ) -> ChatterAgent:
     """Factory function to create and return a ChatterAgent instance.
 
-    Loads only core + file tools from the registry. Domain tools
-    (web, finance, imdb, http, process, browser, development)
-    are accessed via CLI commands through the ``shell`` tool.
+    Loads core + file tools + the unified ``ax`` dispatcher from the
+    registry. Domain tools (web, finance, imdb, http, process, browser,
+    development) are accessed through the ``ax`` tool directly.
 
     Args:
         llm: The language model to use for generating responses.
@@ -74,7 +73,7 @@ def get_agent(
         A configured ChatterAgent instance ready for conversation.
     """
 
-    tools = get_tools([CORE_LITE, FILES_LITE])  # Lean tool set for Aria
+    tools = get_tools([CORE_LITE, FILES_LITE, AX])
 
     logger.debug(f"Creating ChatterAgent with {len(tools)} tools")
 

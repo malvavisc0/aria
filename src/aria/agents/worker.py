@@ -56,10 +56,10 @@ def get_worker_agent(
     extras: str | None = None,
     output_dir: str | None = None,
 ) -> WorkerAgent:
-    """Create a WorkerAgent with full tool set (plan, scratchpad included)."""
-    from aria.tools.registry import CORE, FILES
+    """Create a WorkerAgent with full tool set (plan, scratchpad, ax included)."""
+    from aria.tools.registry import AX, CORE, FILES
 
-    tools = get_tools([CORE, FILES])
+    tools = get_tools([CORE, FILES, AX])
 
     logger.debug(f"Creating WorkerAgent with {len(tools)} tools")
 

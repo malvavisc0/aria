@@ -14,11 +14,8 @@ Sub-commands:
     system: Hardware inspection and process management
     processes: Background process management
     knowledge: Persistent key-value memory (store, recall, search, list)
-    finance: Stock prices, company info, and ticker news
-    imdb: Movie/TV database search
     web: Web search, browsing, weather, YouTube
     dev: Python code execution
-    http: HTTP API requests
     worker: Background worker agent management
 
 Example:
@@ -43,9 +40,6 @@ from aria.cli import (
     config,
 )
 from aria.cli import dev as dev_cli
-from aria.cli import finance as finance_cli
-from aria.cli import http_cmd as http_cli
-from aria.cli import imdb as imdb_cli
 from aria.cli import knowledge as knowledge_cli
 from aria.cli import (
     lightpanda,
@@ -82,13 +76,9 @@ app.add_typer(config.app, name="config")
 app.add_typer(server.app, name="server")
 app.add_typer(system.app, name="system")
 app.add_typer(processes_cli.app, name="processes")
-# CLI tool architecture
 app.add_typer(knowledge_cli.app, name="knowledge")
-app.add_typer(finance_cli.app, name="finance")
-app.add_typer(imdb_cli.app, name="imdb")
 app.add_typer(web_cli.app, name="web")
 app.add_typer(dev_cli.app, name="dev")
-app.add_typer(http_cli.app, name="http")
 app.add_typer(worker_cli.app, name="worker")
 
 console = Console()
@@ -158,9 +148,6 @@ COMMAND_GROUPS = [
         "title": "Research",
         "commands": [
             ("web", "Search, fetch pages, get weather"),
-            ("finance", "Look up stocks and company data"),
-            ("http", "Make API requests"),
-            ("imdb", "Look up movies, shows, people"),
         ],
     },
     {

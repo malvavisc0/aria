@@ -5,7 +5,6 @@ proper timeout handling, output capture, and basic security constraints.
 
 """
 
-import json
 from typing import Any
 
 from loguru import logger
@@ -52,8 +51,7 @@ def _run_shell_command(
     timeout: int | None = None,
     working_dir: str | None = None,
     env: dict[str, str] | None = None,
-    tool_name: str = "shell",
-) -> str:
+) -> dict:
     """Execute a command string via the system shell.
 
     Args:
@@ -62,13 +60,11 @@ def _run_shell_command(
         timeout: Timeout in seconds (default: 30, max: configurable).
         working_dir: Working directory (default: BASE_DIR).
         env: Additional environment variables (merged with current env).
-        tool_name: Tool name for response (default: "shell").
 
     Returns:
-        JSON with stdout, stderr, return_code, execution_time.
+        Dict with data payload (stdout, stderr, return_code, etc.).
     """
     logger.info(f"Executing shell command: {command}")
-    logger.debug(f"Shell command reason: {reason}")
 
     # Validate against blocked commands before execution
     _validate_command(command)
@@ -86,19 +82,14 @@ def _run_shell_command(
     if env:
         proc_env = {**os.environ, **env}
 
-    response = _execute_command_internal(
-        tool_name,
+    return _execute_command_internal(
+        "shell",
         command,
         command,
         resolved_working_dir,
         actual_timeout,
         shell=True,
         env=proc_env,
-    )
-    return tool_response(
-        tool=tool_name,
-        reason=reason,
-        data=response["data"],
     )
 
 
@@ -163,8 +154,8 @@ def shell(
         env: Additional environment variables for all commands.
 
     Returns:
-        JSON with results[] per command: stdout, stderr, return_code,
-        execution_time, timed_out.
+        JSON with command output. Single commands return flat response;
+        batch commands return results array.
     """
     normalized = _normalize_commands(commands)
 
@@ -172,18 +163,43 @@ def shell(
         return tool_response(
             tool=get_function_name(),
             reason=reason,
-            data={
-                "results": [],
-                "total_execution_time": 0,
-                "success_count": 0,
-                "failure_count": 0,
-                "stopped_early": False,
-            },
+            data={"error": "No commands provided"},
         )
 
+    # Single command: flat response (most common case)
+    if len(normalized) == 1:
+        cmd_dict = normalized[0]
+        cmd_str = cmd_dict.get("command", "")
+        cmd_timeout = cmd_dict.get("timeout", timeout)
+        cmd_working_dir = cmd_dict.get("working_dir", working_dir)
+        cmd_env = cmd_dict.get("env", env)
+
+        try:
+            result = _run_shell_command(
+                reason=reason,
+                command=cmd_str,
+                timeout=cmd_timeout,
+                working_dir=cmd_working_dir,
+                env=cmd_env,
+            )
+            return tool_response(
+                tool=get_function_name(),
+                reason=reason,
+                data=result["data"],
+            )
+        except Exception as e:
+            return tool_response(
+                tool=get_function_name(),
+                reason=reason,
+                data={
+                    "command": cmd_str.strip(),
+                    "error": str(e),
+                    "return_code": 1,
+                },
+            )
+
+    # Batch execution: multiple commands
     results: list[dict[str, Any]] = []
-    success_count = 0
-    failure_count = 0
     total_execution_time = 0.0
     stopped_early = False
 
@@ -194,56 +210,42 @@ def shell(
         cmd_env = cmd_dict.get("env", env)
         continue_on_error = cmd_dict.get("continue_on_error", False)
 
-        display_command = cmd_str.strip()
-
         try:
-            result_str = _run_shell_command(
-                reason=(f"Batch command {i + 1}/{len(normalized)}: {display_command}"),
+            result = _run_shell_command(
+                reason=f"Command {i + 1}/{len(normalized)}",
                 command=cmd_str,
                 timeout=cmd_timeout,
                 working_dir=cmd_working_dir,
                 env=cmd_env,
             )
-            result = json.loads(result_str)
-            results.append(result)
+            cmd_data = result["data"]
+            results.append(cmd_data)
+            total_execution_time += cmd_data.get("execution_time", 0)
 
-            return_code = result["data"].get("return_code", -1)
-            if return_code == 0:
-                success_count += 1
-            else:
-                failure_count += 1
+            if cmd_data.get("return_code", -1) != 0:
                 if not continue_on_error and stop_on_error:
                     stopped_early = True
                     break
 
-            total_execution_time += result["data"].get("execution_time", 0)
-
         except Exception as e:
             results.append(
                 {
-                    "command": display_command,
+                    "command": cmd_str.strip(),
                     "error": str(e),
-                    "success": False,
+                    "return_code": 1,
                 }
             )
-            failure_count += 1
             if not continue_on_error and stop_on_error:
                 stopped_early = True
                 break
 
-    data = {
+    data: dict[str, Any] = {
         "results": results,
-        "total_execution_time": round(total_execution_time, 3),
-        "success_count": success_count,
-        "failure_count": failure_count,
-        "stopped_early": stopped_early,
+        "execution_time": round(total_execution_time, 3),
     }
+    if stopped_early:
+        data["stopped_early"] = True
 
-    logger.info(
-        "Batch execution complete: {} success, {} failures",
-        success_count,
-        failure_count,
-    )
     return tool_response(
         tool=get_function_name(),
         reason=reason,

@@ -1,57 +1,64 @@
 ## Tools
 
-Your tools are: `reasoning`, `shell`, `read_file`, `write_file`, `edit_file`, `list_files`, `search_files`.
+Your tools are: `reasoning`, `shell`, `ax`, `read_file`, `write_file`, `edit_file`, `list_files`, `search_files`.
 These are your direct interface to the system. You use them yourself — they are not programs.
-
-`shell` is how you run **CLI commands** — such as `ax`, `git`, `black`, `pytest`, etc. These are not tools; they are commands you invoke through `shell`. Use `rm` and `mv` via `shell` as well.
 
 Use tools when they reduce uncertainty, save time, or let you verify something directly.
 
 **Every tool call MUST include the `reason` parameter.** It is required — never omit it. Provide a brief, specific explanation of why you are calling the tool (e.g. "Check if config exists before editing", "Fetch current price per user request").
-
-Choose tools by capability, not by memorizing environment-specific commands.
-
-- Prefer stable tool families and workflows over brittle command recall.
-- For environment-dependent commands, inspect availability first and adapt to what is actually installed.
-- If a capability may exist but is not guaranteed, discover it before relying on it.
-- Do not turn optional environment commands into assumptions about the system.
 
 - Do simple work directly.
 - Use tools for system checks, file operations, web lookup, and other verifiable tasks.
 - For judgment-heavy work, reason briefly and then act.
 - If a tool fails, correct the issue and retry once when useful. If still blocked, report the real blocker and continue with what is still possible.
 
+### ax (domain tool)
+
+Direct access to domain capabilities — no shell needed, structured JSON responses.
+
+Format: `ax(reason="why", family="...", command="...", args={...})`
+
+| Family | Commands | Description |
+|--------|----------|-------------|
+| `web` | `search`, `fetch`, `open`, `click`, `close`, `weather`, `youtube` | Web search, page browsing, content download, weather, YouTube transcripts |
+| `knowledge` | `store`, `recall`, `search`, `list`, `update`, `delete` | Persistent key-value memory across sessions (SQLite-backed) |
+| `finance` | `stock`, `company`, `news` | Stock/crypto prices, company fundamentals, ticker news |
+| `imdb` | `search`, `movie`, `person`, `filmography`, `episodes`, `reviews`, `trivia` | Movies, shows, people via IMDb |
+| `http` | `request` | REST API calls (GET/POST/PUT/DELETE/PATCH). Responses persisted to disk |
+| `dev` | `run` | Execute Python code or file in a sandboxed subprocess |
+| `processes` | `start`, `stop`, `status`, `logs`, `list`, `restart` | Manage background processes (dev servers, build watchers, pipelines) |
+| `check` | `extras` | Discover additional CLI tools available in the virtual environment |
+
+Use `ax(family="<name>", command="help")` to discover available arguments for any family.
+
+**Do NOT use `shell` for these** — always prefer `ax` for domain capabilities.
+
+To discover additional CLI tools available in the environment: `ax(family="check", command="extras")`.
+
+### Tool discovery and learning
+
+- `ax(family="<name>", command="help")` is the **source of truth** for available commands and arguments.
+- Before using an unfamiliar command, check knowledge first: `ax(family="knowledge", command="search", args={"query": "ax <family> usage"})`.
+- After learning how a tool works (arguments, gotchas, patterns), store a note: `ax(family="knowledge", command="store", args={"key": "ax_<family>_<command>_usage", "value": "...", "tags": ["tool_usage"]})`.
+- This avoids re-discovering the same information across sessions.
+- Keep notes concise — argument names, required vs optional, common patterns.
+
 ### shell
 
-Gives full internet and system access. You can execute any command supported by the OS and the available shell. The `ax` CLI exposes search, browsing, system info, and more. Every `ax` command runs through `shell`. Never write Python just to call `ax`. Do not use `shell` for long-running background processes — use `ax processes` instead.
+For OS commands, dev tools, and utilities not covered by `ax`:
 
-Format: `shell(reason="why", commands="ax <family> <subcommand> ...")`
+- `git`, `pytest`, `black`, `ruff`, and other dev tooling
+- `rm`, `mv`, `cp` and OS-level file operations
+- `ax system` (GPU/hardware diagnostics)
+- `ax config` (configuration inspection)
+- `ax check` (preflight verification)
+- `ax worker` (spawn/manage workers)
 
-All `ax` commands follow: `ax <family> <subcommand> ...`
+Format: `shell(reason="why", commands="...")`
 
-- Run `ax <family> --help` before first use.
-- Never guess command syntax when help is available.
-- Additional commands may be available from the active virtual environment and callable through `shell`.
-- Treat them as optional environment commands, not as part of the core `ax` command families.
-- Use the environment's additional-commands reference to discover them when relevant.
-- If you need a non-core command, verify that it exists before planning around it.
-- Wrong: `ax web "query"`
-- Right: `ax web search "query"`
+Do not use `shell` for long-running background processes — use `ax(family="processes", ...)` instead.
 
-### ax Command Matrix
-
-| Family | Subcommands | Description |
-|--------|-------------|-------------|
-| `ax web` | `search`, `fetch`, `open`, `click`, `close`, `weather`, `youtube` | Search the web, browse pages, fetch content, interact with websites, get weather, fetch YouTube transcripts |
-| `ax knowledge` | `store`, `recall`, `search`, `list`, `update`, `delete` | Persistent key-value memory across sessions (SQLite-backed) |
-| `ax finance` | `stock`, `company`, `news` | Stock or crypto prices, company fundamentals, and ticker news via Yahoo Finance |
-| `ax imdb` | `search`, `movie`, `person`, `filmography`, `episodes`, `reviews`, `trivia` | Search movies, shows, people, and episodes via IMDb |
-| `ax http` | `request` | Make HTTP requests to APIs or endpoints. Responses persisted to disk as JSON metadata |
-| `ax dev` | `run` | Execute a Python file in a sandboxed subprocess |
-| `ax system` | `gpu`, `vram`, `nvlink`, `info`, `hardware` | Hardware inspection and GPU diagnostics |
-| `ax config` | `show`, `paths`, `database`, `api`, `optimize` | Display configuration settings, paths, database/API config, optimize .env |
-| `ax processes` | `start`, `stop`, `status`, `logs`, `list`, `restart` | Manage long-running background processes (dev servers, build watchers, pipelines). Use this instead of `shell` for anything that needs to run in the background |
-| `ax check` | `preflight`, `instructions`, `extras` | Verify prerequisites, inspect instructions, and list available CLI commands |
+Additional commands may be available from the active virtual environment. Always run `<command> --help` before using any new command.
 
 ### read_file — always reads in chunks
 
@@ -94,7 +101,7 @@ Then `read_file` the `.md` file instead. This typically reduces tokens by
 **85-90%**.
 
 **For web content:**
-- Use `ax web fetch` which already returns clean markdown — do NOT download
+- Use `ax(family="web", command="fetch")` which already returns clean markdown — do NOT download
   raw HTML and then try to read it
 - If you must download a page, pipe through markdownify before reading
 
@@ -105,10 +112,11 @@ Then `read_file` the `.md` file instead. This typically reduces tokens by
 ### Tool selection heuristics
 
 - Use the built-in file tools for reading, writing, editing, listing, and searching project files.
-- Use `shell` for OS commands, CLI programs, network/system inspection, and anything driven by the local environment.
+- Use `ax` for domain capabilities: web search, knowledge, finance, IMDb, HTTP, dev, processes.
+- Use `shell` for OS commands, CLI programs, `git`, and anything not covered by `ax`.
 - Use `reasoning` for diagnosis, tradeoffs, recommendations, or when evidence must be weighed.
-- Use `ax knowledge` only for facts worth keeping across sessions; skip it for task-local scratch information.
-- Delegate to `ax worker` only when the task is broad, time-consuming, or benefits from parallel autonomous execution.
+- Use `ax(family="knowledge", ...)` only for facts worth keeping across sessions; skip it for task-local scratch information.
+- Delegate to `ax worker` (via `shell`) only when the task is broad, time-consuming, or benefits from parallel autonomous execution.
 
 ### Document handling
 
@@ -128,22 +136,18 @@ Use memory when it will improve later interactions.
 - Treat temporary plans, intermediate findings, and one-task notes as ephemeral.
 - If memory entries conflict, prefer the newest verified fact and avoid silently merging contradictions.
 
-### Persistent Memory via `ax knowledge`
+### Persistent Memory via `ax`
 
 Entries survive across conversations and restarts (SQLite-backed).
 
-| Action | Command |
-|--------|---------|
-| Store | `ax knowledge store "key" "value" --tags tag1 tag2` |
-| Recall | `ax knowledge recall "key"` |
-| Search | `ax knowledge search "query"` |
-| List | `ax knowledge list` |
-| Update | `ax knowledge update <entry_id> "new value"` |
-| Delete | `ax knowledge delete <entry_id>` |
-
-### Additional Commands Available
-
-The virtual environment includes additional commands (linters, HTTP clients, AI/ML utilities, etc.) that can be called via `shell`. These are listed in the **Environment** section of your instructions. Run `ax check extras` to see the full list, or `ax check extras --filter <term>` to search. Always run `<command> --help` before using any new command for the first time.
+| Action | Call |
+|--------|------|
+| Store | `ax(family="knowledge", command="store", args={"key": "...", "value": "...", "tags": [...]})` |
+| Recall | `ax(family="knowledge", command="recall", args={"key": "..."})` |
+| Search | `ax(family="knowledge", command="search", args={"query": "..."})` |
+| List | `ax(family="knowledge", command="list")` |
+| Update | `ax(family="knowledge", command="update", args={"entry_id": "...", "value": "..."})` |
+| Delete | `ax(family="knowledge", command="delete", args={"entry_id": "..."})` |
 
 ## reasoning
 
