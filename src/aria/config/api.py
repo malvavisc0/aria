@@ -49,6 +49,7 @@ class Vllm:
     prefix_caching: bool = (
         get_optional_env("ARIA_VLLM_PREFIX_CACHING", "").lower() == "true"
     )
+    max_tokens: int = int(get_optional_env("ARIA_MAX_TOKENS", "8192"))
 
     # Context sizes for each model type
     # Use int(v) if v is non-empty, otherwise fall back to default

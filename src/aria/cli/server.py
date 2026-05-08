@@ -142,6 +142,41 @@ def server_run():
         console.print("\n[yellow]Server stopped[/yellow]")
 
 
+def _is_vllm_healthy() -> bool:
+    """Check if the vLLM chat server is responding to health checks."""
+    from aria.config.models import Chat
+
+    port = Chat.get_port()
+    try:
+        with urlopen(f"http://localhost:{port}/health", timeout=2) as resp:
+            return resp.status == 200
+    except (URLError, OSError):
+        return False
+
+
+def _ensure_vllm_running() -> None:
+    """Start vLLM servers if they are not already running.
+
+    This is a safety net for two scenarios:
+    1. The web UI is already running but vLLM crashed or was never started.
+    2. The web UI just started but its lifecycle hook failed to start vLLM.
+    """
+    if _is_vllm_healthy():
+        console.print("[green]✓[/green] vLLM servers running")
+        return
+
+    from aria.server.vllm import VllmServerManager
+
+    console.print("[dim]vLLM not running — starting...[/dim]")
+    try:
+        vllm = VllmServerManager()
+        vllm.start_all()
+        console.print("[green]✓[/green] vLLM servers started")
+    except Exception as e:
+        error_console.print(f"[red]Failed to start vLLM: {e}[/red]")
+        raise typer.Exit(1)
+
+
 @app.command("start")
 def server_start(
     force_restart_vllm: bool = typer.Option(
@@ -172,8 +207,9 @@ def server_start(
 
     manager = ServerManager()
     if manager.is_running():
-        error_console.print("[yellow]Server is already running[/yellow]")
-        raise typer.Exit(1)
+        # Server already running — check if vLLM needs to be started.
+        _ensure_vllm_running()
+        return
 
     console.print(
         f"\n[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
@@ -194,6 +230,10 @@ def server_start(
         error_console.print("[red]Server failed to start within timeout[/red]")
         manager.stop()
         raise typer.Exit(1)
+
+    # Verify vLLM is running after web UI is up (safety net in case
+    # the Chainlit lifecycle hook failed to start it).
+    _ensure_vllm_running()
 
 
 @app.command("stop")
@@ -222,6 +262,18 @@ def server_stop(
     else:
         error_console.print("[yellow]Server is not running[/yellow]")
         raise typer.Exit(1)
+
+    # Safety net: directly stop vLLM processes in case the web UI's
+    # on_app_shutdown_handler did not run (e.g. SIGKILL after timeout,
+    # or Chainlit failed to invoke the lifecycle hook).
+    if not skip_vllm:
+        from aria.server.vllm import VllmServerManager
+
+        vllm = VllmServerManager()
+        if vllm._pids:
+            console.print("[dim]Stopping vLLM servers...[/dim]")
+            vllm.stop_all()
+            console.print("[green]✓[/green] vLLM servers stopped")
 
 
 @app.command("status")

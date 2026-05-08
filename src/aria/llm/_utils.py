@@ -69,10 +69,19 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     shell_path = shutil.which("bash") or shutil.which("zsh") or "unknown"
     shell_name = Path(shell_path).name if shell_path != "unknown" else "unknown"
 
+    # Include generation token budget so the model is aware of its limit.
+    try:
+        from aria.config.api import Vllm as VllmConfig
+
+        max_tok = VllmConfig.max_tokens
+    except Exception:
+        max_tok = 8192
+
     lines: list[str] = [
         f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
         f"- **System OS**: {host}",
         f"- **Shell**: {shell_name}",
+        f"- **Max output tokens**: {max_tok} (thinking + response combined — keep responses concise to avoid truncation)",
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")

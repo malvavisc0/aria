@@ -39,6 +39,8 @@ def get_chat_llm(
         An :class:`OpenAILike` LLM instance configured to talk to
         ``api_base``.
     """
+    from aria.config.api import Vllm as VllmConfig
+
     llm = SanitizedOpenAILike(
         api_base=api_base,
         model=model,
@@ -46,12 +48,11 @@ def get_chat_llm(
         is_chat_model=True,
         is_function_calling_model=True,
         temperature=0.3,
-        max_tokens=8192,
+        max_tokens=VllmConfig.max_tokens,
         additional_kwargs={
             "top_p": 0.9,
             "extra_body": {
-                "top_k": 100,
-                "repetition_penalty": 1.1,
+                "top_k": 50,
             },
         },
     )
