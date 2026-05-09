@@ -405,6 +405,28 @@ class VllmServerManager:
         if chat_template_file and task != "embed":
             cmd.extend(["--chat-template", chat_template_file])
 
+        # When KV offloading is active with the native backend, force
+        # kv_cache_dtype to fp16 ("auto").  The OffloadingConnector
+        # doesn't support HMA, so we disable it, but HMA-disabled mode
+        # requires all KV cache specs to be one unified type.  fp8 on
+        # GPU + fp16 for offloading = two types → crash.  fp16 everywhere
+        # avoids the conflict.
+        offloading_active = (
+            kv_offload_mode in ("auto", "ram")
+            and kv_offloading_size_gb is not None
+            and kv_offloading_size_gb > 0
+        )
+        if offloading_active and kv_offloading_backend == "native":
+            if kv_cache_dtype and kv_cache_dtype != "auto":
+                logger.info(
+                    "KV offloading with native backend: forcing "
+                    "kv_cache_dtype from {orig} to auto (fp16) — "
+                    "native OffloadingConnector is incompatible with "
+                    "fp8 KV cache and HMA-disabled mode.",
+                    orig=kv_cache_dtype,
+                )
+                kv_cache_dtype = "auto"
+
         if kv_cache_dtype and kv_cache_dtype != "auto":
             cmd.extend(["--kv-cache-dtype", kv_cache_dtype])
             if kv_cache_dtype.startswith("fp8"):
@@ -449,6 +471,9 @@ class VllmServerManager:
             if kv_offloading_size_gb > 0:
                 cmd.extend(["--kv-offloading-size", str(kv_offloading_size_gb)])
                 cmd.extend(["--kv-offloading-backend", kv_offloading_backend])
+                # OffloadingConnector is incompatible with HMA (Hybrid
+                # KV Cache Manager) in vLLM v0.20+.
+                cmd.extend(["--disable-hybrid-kv-cache-manager"])
                 logger.info(
                     "KV cache offload enabled: {size} GiB via {backend} "
                     "backend (mode={mode})",
