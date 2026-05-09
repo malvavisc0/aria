@@ -92,6 +92,44 @@ ARIA_VLLM_KV_CACHE_DTYPE = fp8   # Recommended for 8 GB GPUs
 # ARIA_VLLM_KV_CACHE_DTYPE = auto  # Use model default (FP16)
 ```
 
+## KV Cache RAM Offloading
+
+When GPU VRAM is insufficient for the full KV cache (especially with large
+context sizes or small GPUs), vLLM can offload KV cache blocks to system RAM.
+
+### When to Use
+
+- Your model weights fit in VRAM but the KV cache does not
+- You need large context windows (>32K) on 8-12 GB GPUs
+- You have abundant system RAM (32+ GB recommended)
+
+### Configuration
+
+```bash
+ARIA_VLLM_KV_OFFLOAD_MODE = auto   # off | auto | ram
+# ARIA_VLLM_KV_OFFLOADING_SIZE_GB = 8   # Override auto-calculated size (GiB)
+# ARIA_VLLM_KV_OFFLOADING_BACKEND = native  # native | lmcache
+```
+
+| Mode | Behavior |
+|------|----------|
+| `off` | Default. GPU-only. Preflight warns if KV cache may not fit in VRAM. |
+| `auto` | Aria calculates KV cache size from model architecture, and if VRAM is insufficient, automatically enables RAM offload. Preflight fails if RAM is also insufficient. |
+| `ram` | Force RAM offload. Uses `ARIA_VLLM_KV_OFFLOADING_SIZE_GB` if set, otherwise auto-calculates. For testing or permanently constrained GPUs. |
+
+### Expected Impact
+
+- **Latency:** 10-30% slower for long contexts (CPU-GPU transfer overhead)
+- **Throughput:** Minimal impact for short conversations
+- **System RAM usage:** Equal to KV cache size + 2 GB headroom
+
+### How It Works
+
+1. Aria estimates KV cache size from model architecture (`config.json`)
+2. In `auto` mode, if VRAM cannot hold model weights + KV cache, offload is enabled automatically
+3. Preflight validates that system RAM is sufficient before starting
+4. If RAM is also insufficient, preflight fails with a clear error
+
 ## Checking Memory Requirements
 
 Use the CLI command to see current requirements:

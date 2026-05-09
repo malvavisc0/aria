@@ -15,6 +15,7 @@ from urllib.request import urlopen
 
 import aria
 from aria.config.folders import Data as DataConfig
+from aria.config.folders import Debug as DebugConfig
 from aria.config.service import Server
 from aria.server.process_utils import (
     clear_state,
@@ -96,6 +97,33 @@ class ServerManager:
     """
 
     PID_FILE = DataConfig.path / "server.json"
+
+    @staticmethod
+    def get_startup_error() -> str | None:
+        """Return a captured startup error summary, if available."""
+        path = DebugConfig.startup_error_path
+        if not path.is_file():
+            return None
+
+        try:
+            content = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+
+        if not content:
+            return None
+
+        parsed: dict[str, str] = {}
+        for line in content.splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                parsed[key.strip()] = value.strip()
+
+        phase = parsed.get("phase")
+        error = parsed.get("error")
+        if phase and error:
+            return f"{phase} startup failed: {error}"
+        return content
 
     def __init__(self, host: str = Server.host, port: int = Server.port):
         """Initialize the ServerManager.
@@ -280,15 +308,29 @@ class ServerManager:
             return
 
         cmd = self._build_command()
+        log_path = DebugConfig.logs_path
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         self._started_at = datetime.now()
         self._save_state()
+        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess lifetime
         try:
             from aria.config.folders import get_augmented_env
 
             env = get_augmented_env()
             env["DEBUG"] = "false"
-            subprocess.run(cmd, env=env)
+            result = subprocess.run(
+                cmd,
+                env=env,
+                stdout=log_file,
+                stderr=log_file,
+            )
+            if result.returncode != 0:
+                startup_error = self.get_startup_error()
+                if startup_error:
+                    raise RuntimeError(startup_error)
+                raise RuntimeError(f"Web UI exited with status {result.returncode}")
         finally:
+            log_file.close()
             self._clear_state()
 
     def stop(self, timeout: float = 10.0) -> bool:

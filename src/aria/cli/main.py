@@ -32,6 +32,7 @@ Example:
 """
 
 import typer
+from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
 
@@ -89,6 +90,9 @@ def _configure_logging():
     import logging
 
     logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
+
+    # Keep CLI entry points clean: Loguru logs go to files, not stdout/stderr.
+    logger.remove()
 
     # Always silence noisy low-level loggers — never useful in CLI output.
     for _name in (

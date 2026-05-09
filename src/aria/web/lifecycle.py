@@ -93,7 +93,7 @@ def _init_logging() -> None:
     # Filter uses the bound "tool_call" extra field set by log_tool_call
     # decorator — precise match instead of fragile string search.
     _tool_call_sink_id = logger.add(
-        DebugConfig.logs_path.parent / "tool-calls.log",
+        DebugConfig.logs_path.parent / "tools.log",
         rotation="10 MB",
         level="DEBUG",
         filter=lambda r: r["extra"].get("tool_call", False),
@@ -294,16 +294,26 @@ async def _cleanup_on_failure() -> None:
         _tool_call_sink_id = None
 
 
+async def _abort_startup(exc: Exception, phase: str) -> None:
+    """Clean up and terminate startup with a process-fatal exit."""
+    DebugConfig.path.mkdir(parents=True, exist_ok=True)
+    DebugConfig.startup_error_path.write_text(
+        f"phase={phase}\nerror={exc}\n",
+        encoding="utf-8",
+    )
+    logger.exception(f"Failed to start Aria web UI ({phase}): {exc}")
+    await _cleanup_on_failure()
+    raise SystemExit(1) from exc
+
+
 async def on_app_startup_handler() -> None:
     """Initialize the application on startup.
 
     Called by Chainlit when the application starts. Orchestrates a
-    sequence of initialization steps.  Critical infrastructure
-    (logging, storage, database) failures are fatal and trigger a
-    full rollback.  Non-critical subsystems (LLM servers, vector
-    database, browser) are best-effort: failures are logged but do
-    **not** prevent the app from starting so that core features
-    (e.g. authentication) remain available.
+    sequence of initialization steps. Critical infrastructure
+    (logging, storage, database, vLLM startup) failures are fatal and
+    trigger a full rollback. Non-critical subsystems (vector database,
+    browser) are best-effort.
     """
     # ------------------------------------------------------------------
     # Phase 1 – Critical infrastructure (failure is fatal)
@@ -312,6 +322,8 @@ async def on_app_startup_handler() -> None:
         from chainlit.config import FILES_DIRECTORY
 
         FILES_DIRECTORY.mkdir(parents=True, exist_ok=True)
+        DebugConfig.path.mkdir(parents=True, exist_ok=True)
+        DebugConfig.startup_error_path.unlink(missing_ok=True)
 
         _init_langfuse()
         _init_logging()
@@ -322,14 +334,10 @@ async def on_app_startup_handler() -> None:
         logger.info("Initializing database...")
         _init_database()
     except Exception as e:
-        logger.exception(f"Failed to start Aria web UI (critical): {e}")
-        await _cleanup_on_failure()
-        raise
+        await _abort_startup(e, "critical")
 
     # ------------------------------------------------------------------
-    # Phase 2 – Non-critical subsystems (failure is tolerated)
-    # Each subsystem is initialized independently so that a failure in
-    # one does not prevent others from starting.
+    # Phase 2 – vLLM startup (failure is fatal)
     # ------------------------------------------------------------------
     _vllm_ready = False
     _llm_ready = False
@@ -345,7 +353,16 @@ async def on_app_startup_handler() -> None:
         await asyncio.to_thread(_init_vllm_servers)
         _vllm_ready = True
     except Exception as e:
-        logger.warning(f"vLLM servers failed to start: {e}. LLM features disabled.")
+        embed_task.cancel()
+        try:
+            await embed_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        await _abort_startup(e, "vLLM")
+
+    # ------------------------------------------------------------------
+    # Phase 3 – Remaining subsystems (best effort)
+    # ------------------------------------------------------------------
 
     # Await embeddings result (likely already done by now)
     try:
@@ -385,6 +402,7 @@ async def on_app_startup_handler() -> None:
 
     _state.startup_complete = True
     _state.startup_event.set()
+    DebugConfig.startup_error_path.unlink(missing_ok=True)
     logger.info("Aria web UI startup complete")
 
 

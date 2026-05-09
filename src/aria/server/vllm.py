@@ -133,6 +133,116 @@ class VllmServerManager:
         return requested_context
 
     @staticmethod
+    def _clamp_context_to_gpu_kv(
+        model_path: str,
+        requested_context: int,
+        gpu_memory_utilization: float,
+        kv_cache_dtype: str,
+    ) -> int:
+        """Clamp ``max_model_len`` to what the GPU KV cache can hold.
+
+        vLLM requires the GPU KV cache to hold at least **one** request
+        at ``max_model_len``.  KV offloading to CPU RAM only helps with
+        *concurrent* requests — it cannot extend the per-request maximum.
+
+        This method estimates the available GPU KV cache memory and
+        auto-reduces ``max_model_len`` if the requested context would
+        overflow.  A warning is logged with the full breakdown so the
+        user understands why the clamp occurred.
+
+        Args:
+            model_path: Path to the model directory.
+            requested_context: Desired ``max_model_len``.
+            gpu_memory_utilization: vLLM ``gpu_memory_utilization`` fraction.
+            kv_cache_dtype: KV cache data type (``auto``, ``fp8``, etc.).
+
+        Returns:
+            Effective ``max_model_len`` — either the requested value or
+            the maximum the GPU can support, whichever is smaller.
+        """
+        from pathlib import Path
+
+        from aria.helpers.memory import get_model_file_size
+        from aria.helpers.nvidia import (
+            _estimate_kv_cache_mb,
+            get_total_vram_mb,
+        )
+
+        total_vram_mb = get_total_vram_mb()
+        if total_vram_mb <= 0:
+            return requested_context  # Cannot detect VRAM — skip check
+
+        model_size_mb = get_model_file_size(Path(model_path))
+        if model_size_mb <= 0:
+            return requested_context  # Model not on disk — skip check
+
+        # vLLM overhead: CUDA graphs (~800 MiB) + scratch buffers + headroom
+        overhead_mb = 1536
+
+        managed_vram_mb = int(total_vram_mb * gpu_memory_utilization)
+        available_kv_mb = managed_vram_mb - model_size_mb - overhead_mb
+
+        if available_kv_mb <= 0:
+            return requested_context  # Not enough info — let vLLM handle it
+
+        # Estimate KV cache for the requested context
+        kv_mb = _estimate_kv_cache_mb(model_path, requested_context, kv_cache_dtype)
+        if kv_mb is None or kv_mb <= 0:
+            return requested_context  # Cannot estimate — skip check
+
+        if kv_mb <= available_kv_mb:
+            return requested_context  # Fits — no clamping needed
+
+        # --- Requested context doesn't fit — find the maximum that does ---
+        # Use a small reference context to derive bytes-per-token
+        reference_ctx = 4096
+        kv_ref_mb = _estimate_kv_cache_mb(model_path, reference_ctx, kv_cache_dtype)
+        if kv_ref_mb is None or kv_ref_mb <= 0:
+            return requested_context  # Cannot estimate — skip check
+
+        kv_bytes_per_token = (kv_ref_mb * 1024 * 1024) / reference_ctx
+        max_context = int((available_kv_mb * 1024 * 1024) / kv_bytes_per_token)
+
+        # Align down to 256 (vLLM's KV cache block size) for clean allocation
+        max_context = (max_context // 256) * 256
+
+        if max_context >= requested_context:
+            return requested_context  # After rounding, still fits
+
+        kv_clamped_mb = int(max_context * kv_bytes_per_token / (1024 * 1024))
+        logger.warning(
+            "Auto-clamping max_model_len: {requested:,} → {clamped:,}\n"
+            "  Reason: GPU KV cache cannot fit {requested:,} tokens.\n"
+            "  vLLM requires the GPU KV cache to hold at least one\n"
+            "  request at max_model_len.  KV offloading to CPU RAM\n"
+            "  only helps with concurrent requests, not per-request\n"
+            "  context length.\n"
+            "  ─────────────────────────────────────────────\n"
+            "  Total VRAM:          {vram:>8,} MiB\n"
+            "  GPU utilization:     {util:>8.0%}\n"
+            "  Managed VRAM:        {managed:>8,} MiB\n"
+            "  Model weights:       {model:>8,} MiB\n"
+            "  vLLM overhead:       {overhead:>8,} MiB\n"
+            "  Available for KV:    {avail:>8,} MiB\n"
+            "  KV needed (orig):    {kv_orig:>8,} MiB  "
+            "({requested:,} tokens, {dtype})\n"
+            "  KV needed (clamped): {kv_clmp:>8,} MiB  "
+            "({clamped:,} tokens, {dtype})",
+            requested=requested_context,
+            clamped=max_context,
+            vram=total_vram_mb,
+            util=gpu_memory_utilization,
+            managed=managed_vram_mb,
+            model=model_size_mb,
+            overhead=overhead_mb,
+            avail=available_kv_mb,
+            kv_orig=kv_mb,
+            kv_clmp=kv_clamped_mb,
+            dtype=kv_cache_dtype,
+        )
+        return max_context
+
+    @staticmethod
     def _kv_offloading_backend_available(backend: str) -> bool:
         """Return whether the requested KV offloading backend is usable."""
         if backend == "native":
@@ -466,6 +576,17 @@ class VllmServerManager:
                 kv_cache_dtype=VllmConfig.kv_cache_dtype,
             )
 
+        # --- Clamp max_model_len to GPU KV cache capacity ---
+        # vLLM requires the GPU KV cache to hold at least one request at
+        # max_model_len.  KV offloading to CPU RAM helps with concurrent
+        # requests but cannot extend the per-request maximum.
+        max_model_len = self._clamp_context_to_gpu_kv(
+            model_path=Chat.model_path,
+            requested_context=max_model_len,
+            gpu_memory_utilization=gpu_mem,
+            kv_cache_dtype=VllmConfig.kv_cache_dtype,
+        )
+
         # --- Resolve KV offload size ---
         # Explicit value > auto-calculated from model config > None
         kv_offload_size = VllmConfig.kv_offloading_size_gb
@@ -529,7 +650,7 @@ class VllmServerManager:
         procs: dict[str, subprocess.Popen] = {}
         log_files: dict[str, Path] = {}
         for role, cmd, port in servers:
-            log_file = DebugConfig.logs_path.parent / f"vllm-{role}.log"
+            log_file = DebugConfig.logs_path.parent / "vllm.log"
             log_files[role] = log_file
             logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
             logger.info(f"  stderr → {log_file}")

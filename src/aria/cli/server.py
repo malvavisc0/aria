@@ -29,8 +29,10 @@ from urllib.request import urlopen
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
+from aria.config.folders import Debug as DebugConfig
 from aria.preflight import run_preflight_checks
 from aria.server import ServerManager
 
@@ -44,6 +46,54 @@ error_console = Console(stderr=True, style="bold red")
 # Health check settings
 HEALTH_CHECK_TIMEOUT = 180  # seconds (vLLM model loading can take 30s+)
 HEALTH_CHECK_INTERVAL = 0.5  # seconds
+
+
+def _print_startup_banner(host: str, port: int, background: bool = False) -> None:
+    mode = "Background" if background else "Foreground"
+    action = "Starting Aria Web UI"
+    console.print()
+    console.print(
+        Panel(
+            f"[bold cyan]{action}[/bold cyan]\n"
+            f"[white]{host}:{port}[/white] • [dim]{mode} mode[/dim]",
+            border_style="cyan",
+            expand=False,
+            padding=(0, 2),
+        )
+    )
+
+
+def _print_startup_failure(message: str) -> None:
+    error_console.print()
+    error_console.print(
+        Panel(
+            f"[bold red]Startup failed[/bold red]\n{message}\n\n"
+            f"[dim]See logs:[/dim] {DebugConfig.logs_path}\n"
+            f"[dim]vLLM log:[/dim] {DebugConfig.logs_path.parent / 'vllm.log'}",
+            border_style="red",
+            expand=False,
+            padding=(0, 2),
+        )
+    )
+
+
+def _get_captured_startup_error() -> str | None:
+    return ServerManager.get_startup_error()
+
+
+def _print_vllm_startup_failure(exc: Exception) -> None:
+    _print_startup_failure(
+        _get_captured_startup_error() or f"Failed to start vLLM: {exc}"
+    )
+
+
+def _get_startup_failure_message(exc: Exception | None = None) -> str:
+    captured = _get_captured_startup_error()
+    if captured:
+        return captured
+    if exc is not None:
+        return str(exc)
+    return "Aria Web UI failed to start. Check the log files for details."
 
 
 def _print_preflight_result(result) -> bool:
@@ -134,14 +184,23 @@ def server_run():
         raise typer.Exit(1)
 
     manager = ServerManager()
-    console.print(
-        f"\n[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
-    )
+    _print_startup_banner(manager.host, manager.port)
     console.print("[dim]Press Ctrl+C to stop[/dim]")
     try:
         manager.run()
     except KeyboardInterrupt:
         console.print("\n[yellow]Server stopped[/yellow]")
+    except RuntimeError as e:
+        _print_startup_failure(_get_startup_failure_message(e))
+        raise typer.Exit(1)
+    except Exception as e:
+        _print_startup_failure(_get_startup_failure_message(e))
+        raise typer.Exit(1)
+
+    post_run_error = _get_captured_startup_error()
+    if post_run_error:
+        _print_startup_failure(post_run_error)
+        raise typer.Exit(1)
 
 
 def _is_vllm_healthy() -> bool:
@@ -197,7 +256,7 @@ def _ensure_vllm_running() -> None:
         vllm.start_all()
         console.print("[green]✓[/green] vLLM servers started")
     except Exception as e:
-        error_console.print(f"[red]Failed to start vLLM: {e}[/red]")
+        _print_vllm_startup_failure(e)
         raise typer.Exit(1)
 
 
@@ -236,9 +295,7 @@ def server_start(
         _ensure_vllm_running()
         return
 
-    console.print(
-        f"\n[cyan]Starting server on http://{manager.host}:{manager.port}[/cyan]"
-    )
+    _print_startup_banner(manager.host, manager.port, background=True)
 
     if not manager.start():
         error_console.print("[red]Failed to start server process[/red]")
@@ -252,7 +309,10 @@ def server_start(
         )
         console.print(f"[dim]PID: {manager.pid}[/dim]")
     else:
-        error_console.print("[red]Server failed to start within timeout[/red]")
+        _print_startup_failure(
+            _get_captured_startup_error()
+            or "Server failed to become healthy within the startup timeout."
+        )
         manager.stop()
         raise typer.Exit(1)
 

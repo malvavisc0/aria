@@ -48,6 +48,7 @@ class Debug:
 
     path = _ARIA_HOME / "logs"
     logs_path = path / "debug.log"
+    startup_error_path = path / "startup-error.txt"
 
 
 class Storage:

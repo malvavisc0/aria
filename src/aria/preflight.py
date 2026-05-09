@@ -571,7 +571,20 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
             )
         )
     elif mode in ("auto", "ram"):
-        if ram_sufficient:
+        # Check if GPU can hold at least one request at max_model_len.
+        # vLLM requires this — offloading only helps with concurrency.
+        gpu_mem = VllmConfig.gpu_memory_utilization
+        if gpu_mem is None:
+            gpu_mem = 0.90  # Conservative estimate for preflight
+        clamped_context = VllmServerManager._clamp_context_to_gpu_kv(
+            model_path=Chat.model_path,
+            requested_context=effective_context_size,
+            gpu_memory_utilization=gpu_mem,
+            kv_cache_dtype=VllmConfig.kv_cache_dtype,
+        )
+        will_be_clamped = clamped_context < effective_context_size
+
+        if ram_sufficient and not will_be_clamped:
             checks.append(
                 CheckResult(
                     name="KV cache memory",
@@ -581,6 +594,21 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
                         f"KV cache offloaded to RAM ({kv_cache_gb:.1f} GiB). "
                         f"Available RAM: {avail_ram_mb // 1024} GB. "
                         f"Latency may increase vs GPU-only."
+                    ),
+                )
+            )
+        elif ram_sufficient and will_be_clamped:
+            checks.append(
+                CheckResult(
+                    name="KV cache memory",
+                    passed=True,  # Will auto-clamp at launch
+                    category="hardware",
+                    details=(
+                        f"Requested context ({effective_context_size:,}) "
+                        f"exceeds GPU KV cache capacity. Will auto-clamp "
+                        f"to ~{clamped_context:,} at launch. "
+                        f"KV offloading to RAM supports concurrent "
+                        f"requests but cannot extend per-request context."
                     ),
                 )
             )
