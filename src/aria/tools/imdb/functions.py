@@ -75,7 +75,6 @@ def _get_title_type(title_type: str | None) -> ImdbTitleType | None:
             ERROR_INVALID_TITLE_TYPE.format(value=title_type, valid_types=valid_types)
         )
 
-    # Get the imdbinfo TitleType enum value
     enum_name = VALID_TITLE_TYPES[title_type_lower]
     return getattr(ImdbTitleType, enum_name)
 
@@ -92,22 +91,18 @@ def _classify_error(error: Exception) -> str:
     """
     error_str = str(error).lower()
 
-    # Network/connection errors
     if any(
         term in error_str
         for term in ["connection", "network", "dns", "resolve", "unreachable"]
     ):
         return ERROR_NETWORK
 
-    # Timeout errors
     if any(term in error_str for term in ["timeout", "timed out"]):
         return ERROR_TIMEOUT
 
-    # Rate limiting
     if any(term in error_str for term in ["rate limit", "429", "too many"]):
         return ERROR_RATE_LIMIT
 
-    # Default to unknown error
     return ERROR_UNKNOWN.format(error=str(error))
 
 

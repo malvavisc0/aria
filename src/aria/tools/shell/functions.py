@@ -65,8 +65,6 @@ def _run_shell_command(
         Dict with data payload (stdout, stderr, return_code, etc.).
     """
     logger.info(f"Executing shell command: {command}")
-
-    # Validate against blocked commands before execution
     _validate_command(command)
 
     actual_timeout = min(
@@ -75,7 +73,6 @@ def _run_shell_command(
     )
     resolved_working_dir = _validate_working_dir(working_dir)
 
-    # Build environment: merge additional vars with current env
     import os
     import sys
 
@@ -88,7 +85,6 @@ def _run_shell_command(
         if _bin_dir not in _path.split(os.pathsep):
             proc_env["PATH"] = _bin_dir + os.pathsep + _path
 
-    # Merge any additional env vars the caller requested
     if env:
         proc_env.update(env)
 
@@ -187,7 +183,6 @@ def shell(
             data={"error": "No commands provided"},
         )
 
-    # Single command: flat response (most common case)
     if len(normalized) == 1:
         cmd_dict = normalized[0]
         cmd_str = cmd_dict.get("command", "")
@@ -219,7 +214,6 @@ def shell(
                 },
             )
 
-    # Batch execution: multiple commands
     results: list[dict[str, Any]] = []
     total_execution_time = 0.0
     stopped_early = False

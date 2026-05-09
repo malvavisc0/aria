@@ -251,10 +251,8 @@ def read_file(
     )
 
     try:
-        # Resolve path
         resolved_path = _secure_resolve_path(file_name)
 
-        # Get total lines
         total_lines = _count_lines_efficiently(resolved_path)
 
         # Always enforce chunked reading — cap lines to max_lines_value
@@ -312,15 +310,12 @@ def file_info(reason: Reason, file_name: str) -> str:
     logger.info(f"Getting file info for: {file_name}")
 
     try:
-        # Resolve path - use _secure_resolve_dir for directories
-        # First try as a file path
         try:
             resolved_path = _secure_resolve_path(file_name, check_exists=False)
         except FileOperationError:
             # If it fails (e.g., is a directory), try as a directory
             resolved_path = _secure_resolve_dir(file_name, check_exists=False)
 
-        # Check existence and type
         exists = resolved_path.exists()
         is_file = resolved_path.is_file() if exists else False
         is_directory = resolved_path.is_dir() if exists else False
@@ -413,7 +408,6 @@ def list_files(
     )
 
     try:
-        # Resolve the starting path
         resolved_path = _secure_resolve_dir(path_value)
         if not resolved_path.exists():
             resolved_path = _secure_resolve_path(path_value, check_exists=False)
@@ -427,7 +421,6 @@ def list_files(
             )
 
         if resolved_path.is_file():
-            # Single file - return info about it
             return _ok(
                 tool="list_files",
                 reason=reason,
@@ -441,9 +434,7 @@ def list_files(
                 path=path_value,
             )
 
-        # Directory listing
         if recursive_value and pattern_value == "*":
-            # Tree view for recursive listing with default pattern
             tree = _build_directory_tree(resolved_path, 0, max_depth_value)
             total_files, total_directories = _count_tree_items(tree)
 
@@ -461,7 +452,6 @@ def list_files(
                 path=path_value,
             )
         else:
-            # Flat list (with optional recursive glob)
             matches = list(
                 resolved_path.rglob(pattern_value)
                 if recursive_value
@@ -472,7 +462,6 @@ def list_files(
             for match in matches:
                 if match.is_file():
                     try:
-                        # Try relative to resolved_path first
                         try:
                             rel_path = match.relative_to(resolved_path)
                         except ValueError:
@@ -481,7 +470,6 @@ def list_files(
                         if len(files) >= max_results_value:
                             break
                     except ValueError:
-                        # If neither works, use the absolute path
                         files.append(str(match))
                         if len(files) >= max_results_value:
                             break
@@ -556,7 +544,6 @@ def search_files(
     )
 
     try:
-        # Resolve the starting path
         resolved_path = _secure_resolve_dir(path_value)
         if not resolved_path.exists():
             resolved_path = _secure_resolve_path(path_value, check_exists=False)
@@ -569,7 +556,6 @@ def search_files(
                 path=path_value,
             )
 
-        # Compile regex pattern
         try:
             regex = re.compile(pattern)
         except re.error as exc:
@@ -581,7 +567,6 @@ def search_files(
             )
 
         if mode_value == "name":
-            # Search file names
             matches = []
             paths = (
                 resolved_path.rglob("*") if recursive_value else resolved_path.glob("*")
@@ -614,10 +599,9 @@ def search_files(
             )
 
         elif mode_value == "content":
-            # Search file contents
             matches = []
             files_searched = 0
-            max_files = 100  # Limit files to search
+            max_files = 100
 
             paths = list(
                 resolved_path.rglob(file_pattern_value)
@@ -648,8 +632,6 @@ def search_files(
                 try:
                     rel_path = str(file_path.relative_to(resolved_path))
 
-                    # Read file line by line to avoid loading entire file
-                    # into memory at once
                     lines = []
                     with open(file_path, encoding="utf-8", errors="ignore") as f:
                         for line in f:

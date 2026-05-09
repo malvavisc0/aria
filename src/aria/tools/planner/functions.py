@@ -184,7 +184,6 @@ def _action_create(
         execution_id = plan.id
         created_at = plan.created_at
 
-        # Save to database
         db = registry.get_db()
         db.save_plan(
             plan_id=execution_id,
@@ -294,7 +293,6 @@ def _action_update(
                 },
             )
 
-        # Update in database
         db = registry.get_db()
         success = db.update_step(execution_id, step_id, new_status.value, result)
 
@@ -311,7 +309,6 @@ def _action_update(
                 },
             )
 
-        # Reload to get updated step data
         current_plan = _get_current_plan(execution_id)
         step = next((s for s in current_plan.steps if s.id == step_id), None)
 
@@ -368,7 +365,6 @@ def _action_add(
     timestamp = datetime.now(UTC).isoformat()
 
     try:
-        # Create new step
         step_id = str(uuid.uuid4())
 
         db = registry.get_db()
@@ -390,11 +386,9 @@ def _action_add(
                 },
             )
 
-        # Convert status string to StepStatus enum
         step_data["status"] = StepStatus(step_data["status"])
         step = PlanStep(**step_data)
 
-        # Reload plan to get updated step count
         current_plan = _get_current_plan(execution_id)
 
         return _ok(
@@ -458,7 +452,6 @@ def _action_remove(
                 },
             )
 
-        # Reload to get remaining step count
         current_plan = _get_current_plan(execution_id)
 
         return _ok(
@@ -501,7 +494,6 @@ def _action_replace(
     timestamp = datetime.now(UTC).isoformat()
 
     try:
-        # Load current plan to get old description
         current_plan = _get_current_plan(execution_id)
         old_description = None
         for s in current_plan.steps:
@@ -522,7 +514,6 @@ def _action_replace(
                 },
             )
 
-        # Update in database
         db = registry.get_db()
         success = db.update_step(execution_id, step_id, description=description)
 
@@ -539,7 +530,6 @@ def _action_replace(
                 },
             )
 
-        # Reload to get updated step
         current_plan = _get_current_plan(execution_id)
         step = next((s for s in current_plan.steps if s.id == step_id), None)
 
@@ -630,7 +620,6 @@ def _action_reorder(
                 },
             )
 
-        # Validate all step IDs are present
         current_ids = {s.id for s in current_plan.steps}
         requested_ids = set(step_ids)
 
@@ -654,7 +643,6 @@ def _action_reorder(
                 },
             )
 
-        # Reorder in database
         db = registry.get_db()
         reordered_data = db.reorder_steps(execution_id, step_ids)
 

@@ -68,7 +68,6 @@ def fetch_current_stock_price(reason: Reason, ticker: str) -> str:
     try:
         ticker = _validate_ticker(ticker)
         logger.debug(f"Ticker validated: {ticker}")
-        # Logging handled by @log_tool_call decorator
 
         ticker_obj = _get_ticker(ticker)
         logger.debug(f"Ticker object created for {ticker}")
@@ -170,7 +169,6 @@ def fetch_company_information(reason: Reason, ticker: str) -> str:
     try:
         ticker = _validate_ticker(ticker)
         logger.debug(f"Ticker validated: {ticker}")
-        # Logging handled by @log_tool_call decorator
 
         ticker_obj = _get_ticker(ticker)
         info = _get_ticker_info(ticker_obj, ticker)
@@ -302,8 +300,6 @@ def fetch_ticker_news(reason: Reason, ticker: str, max_articles: int = 10) -> st
 
         max_articles = max(MIN_ARTICLES, min(MAX_ARTICLES, max_articles))
         logger.debug(f"Max articles set to: {max_articles}")
-
-        # Logging handled by @log_tool_call decorator
 
         ticker_obj = _get_ticker(ticker)
 

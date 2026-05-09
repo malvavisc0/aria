@@ -158,7 +158,6 @@ def reasoning(
 
 def _action_start(reason: str, agent_id: str) -> dict[str, Any]:
     """Start a new reasoning session."""
-    # Auto-generate unique session ID using UUID for collision resistance
     session_id = f"{agent_id}_session_{uuid.uuid4().hex[:12]}"
 
     # If agent already has active session, we'll mark it inactive AFTER
@@ -166,12 +165,10 @@ def _action_start(reason: str, agent_id: str) -> dict[str, Any]:
     # on creation failure (atomic replacement).
     old_session_id = registry.get_active_session_id(agent_id)
 
-    # Create new session
     session = ReasoningSession(session_id=session_id, agent_id=agent_id)
     session.set_database(registry.get_db())
     session.persist_metadata()
 
-    # Now safe to mark old session as inactive (after new one succeeds)
     if old_session_id is not None:
         logger.info(
             f"Replacing active session {old_session_id} with {session_id} "
@@ -181,7 +178,6 @@ def _action_start(reason: str, agent_id: str) -> dict[str, Any]:
 
     logger.success(f"Started reasoning session for agent '{agent_id}'")
     now = utc_timestamp()
-    # Audit event
     session.persist_tool_event(
         tool_name="reasoning",
         reason=reason,

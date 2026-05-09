@@ -55,7 +55,6 @@ def python(
     Returns:
         JSON with result data (stdout, stderr, traceback, etc.).
     """
-    # Validate mutual exclusivity
     if code is None and file is None:
         raise PythonSecurityError("Provide exactly one of 'code' or 'file'.")
     if code is not None and file is not None:
@@ -131,19 +130,16 @@ def _python_execute(
         f"{filename} (timeout={timeout}s)"
     )
 
-    # Validate timeout
     if not timeout:
         raise ValueError(
             f"Invalid timeout: {timeout} (must be 1-{MAX_TIMEOUT} seconds)"
         )
     _validate_timeout(timeout)
 
-    # Use absolute path if file exists
     if is_file:
         filename = os.path.abspath(file) if os.path.exists(file) else file
 
     try:
-        # Create safe execution environment
         safe_globals = _create_safe_globals()
 
         # Add __file__ and __dir__ for file context
@@ -152,7 +148,6 @@ def _python_execute(
             safe_globals["__dir__"] = os.path.dirname(os.path.abspath(filename))
             logger.debug(f"Set __file__ to: {safe_globals['__file__']}")
 
-        # Execute with output capture
         stdout_text, stderr_text = _capture_execution_output(
             source,  # type: ignore[arg-type]
             safe_globals,
@@ -274,10 +269,3 @@ def _python_execute(
             timeout=timeout,
             source="file" if is_file else "code",
         )
-
-
-# Backward-compatible aliases (used by tests during transition)
-check_python_syntax = None  # Removed — use python(check_only=True)
-check_python_file_syntax = None  # Removed — use python(check_only=True, file=...)
-execute_python_code = None  # Removed — use python(code=...)
-execute_python_file = None  # Removed — use python(file=...)

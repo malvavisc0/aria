@@ -93,8 +93,6 @@ def get_current_weather(reason: Reason, location: str) -> str:
     if not location_value:
         return _err(reason, "location must be a non-empty string")
 
-    # Logging handled by @log_tool_call decorator
-
     try:
         # 1) Geocode
         geo = httpx.get(

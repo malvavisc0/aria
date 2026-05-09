@@ -268,13 +268,11 @@ async def ax(
     command = command.lower().strip()
     call_args: dict[str, Any] = args or {}
 
-    # Help subcommand
     if command == "help":
         return _build_help(family)
     if family == "help":
         return _build_help(None)
 
-    # Lookup family
     family_commands = _DISPATCH.get(family)
     if family_commands is None:
         available = list(_DISPATCH.keys())
@@ -291,7 +289,6 @@ async def ax(
             },
         )
 
-    # Lookup command
     entry = family_commands.get(command)
     if entry is None:
         available_cmds = list(family_commands.keys())
@@ -310,7 +307,6 @@ async def ax(
 
     loader, inject_action = entry
 
-    # Load the actual function
     try:
         fn = loader()
     except ImportError as exc:
@@ -327,7 +323,6 @@ async def ax(
             },
         )
 
-    # Build kwargs
     kwargs: dict[str, Any] = {"reason": reason, **call_args}
     if inject_action:
         kwargs["action"] = command

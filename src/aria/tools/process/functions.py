@@ -257,7 +257,6 @@ def _action_start(
             data={"error": "Command contains blocked patterns."},
         )
 
-    # Check if already running (from persisted state)
     entries = _load_processes()
     if name in entries:
         pid = entries[name].get("pid")
@@ -268,7 +267,6 @@ def _action_start(
                 data={"error": f"Process '{name}' is already running (PID: {pid})."},
             )
 
-    # Concurrency check
     active_count = sum(
         1 for e in entries.values() if e.get("pid") and is_process_running(e["pid"])
     )
@@ -284,7 +282,6 @@ def _action_start(
             },
         )
 
-    # Resolve working directory
     try:
         resolved_dir = _resolve_working_dir(working_dir)
     except (FileNotFoundError, NotADirectoryError) as exc:
@@ -294,7 +291,6 @@ def _action_start(
             data={"error": str(exc)},
         )
 
-    # Build environment
     proc_env = {**os.environ}
 
     # Ensure the current Python environment's bin directory is on PATH
@@ -304,11 +300,9 @@ def _action_start(
         if _bin_dir not in _path.split(os.pathsep):
             proc_env["PATH"] = _bin_dir + os.pathsep + _path
 
-    # Merge any additional env vars the caller requested
     if env:
         proc_env.update(env)
 
-    # Build command
     if use_shell:
         full_command = command
         run_target = command
@@ -317,7 +311,6 @@ def _action_start(
         full_command = " ".join(cmd_list)
         run_target = cmd_list
 
-    # Prepare log files
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
     stdout_log = _LOG_DIR / f"{name}.stdout.log"
     stderr_log = _LOG_DIR / f"{name}.stderr.log"
@@ -341,7 +334,6 @@ def _action_start(
         stdout_fh.close()
         stderr_fh.close()
 
-        # Persist to disk
         entries[name] = {
             "pid": proc.pid,
             "command": full_command,
@@ -356,7 +348,6 @@ def _action_start(
         }
         _save_processes(entries)
 
-        # Set up auto-kill timer if timeout specified
         if timeout is not None and timeout > 0:
             timer = threading.Timer(timeout, _auto_kill, args=(proc.pid, name))
             timer.daemon = True
@@ -423,7 +414,6 @@ def _action_stop(reason: str, name: str | None) -> str:
 
     stopped = stop_process(pid, timeout=5)
 
-    # Remove from state
     entries.pop(name, None)
     _save_processes(entries)
     _cleanup_logs(name)
@@ -588,24 +578,20 @@ def _action_restart(
             data={"error": f"Process '{name}' not found. Use 'start' instead."},
         )
 
-    # Preserve original config
     original_raw_command = entry.get("raw_command", entry.get("command", ""))
     original_raw_args = entry.get("raw_args")
     original_working_dir = entry.get("working_dir", "")
     original_use_shell = entry.get("use_shell", False)
     original_env = entry.get("env")
 
-    # Stop if running
     pid = entry.get("pid")
     if pid and is_process_running(pid):
         stop_process(pid, timeout=5)
 
-    # Remove from state
     entries.pop(name, None)
     _save_processes(entries)
     _cleanup_logs(name)
 
-    # Use original config unless overrides provided
     restart_working_dir = working_dir or original_working_dir
     restart_env = env if env is not None else original_env
     restart_shell = use_shell if use_shell else original_use_shell
