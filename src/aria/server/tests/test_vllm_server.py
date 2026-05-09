@@ -117,13 +117,19 @@ class TestStopAll:
         with patch("aria.server.vllm.load_state", return_value={}):
             self.manager = VllmServerManager()
 
-    def test_stop_all_calls_stop_process(self):
-        """stop_all() should call stop_process for each tracked PID."""
+    def test_stop_all_calls_stop_process_group(self):
+        """stop_all() should call stop_process_group for each tracked PID."""
         self.manager._pids = {"chat": 1234, "embeddings": 5678}
 
         with (
             patch("aria.server.vllm.is_process_running", return_value=True),
-            patch("aria.server.vllm.stop_process") as mock_stop,
+            patch(
+                "aria.server.vllm.VllmServerManager._find_orphan_pids",
+                return_value=[],
+            ),
+            patch(
+                "aria.server.vllm.stop_process_group", return_value=True
+            ) as mock_stop,
             patch("aria.server.vllm.clear_state"),
         ):
             self.manager.stop_all()
@@ -134,9 +140,14 @@ class TestStopAll:
         """stop_all() should clear the PID dict after stopping."""
         self.manager._pids = {"chat": 1234}
 
+        # is_process_running returns True initially (so stop is attempted),
+        # then False after kill (so it's considered dead)
         with (
-            patch("aria.server.vllm.is_process_running", return_value=True),
-            patch("aria.server.vllm.stop_process"),
+            patch(
+                "aria.server.vllm.is_process_running",
+                side_effect=[True, False],
+            ),
+            patch("aria.server.vllm.stop_process_group", return_value=True),
             patch("aria.server.vllm.clear_state"),
         ):
             self.manager.stop_all()
@@ -144,24 +155,43 @@ class TestStopAll:
         assert self.manager._pids == {}
 
     def test_stop_all_skips_dead_processes(self):
-        """stop_all() should not call stop_process for already-dead processes."""
+        """stop_all() should not call stop_process_group for dead processes."""
         self.manager._pids = {"chat": 9999}
 
         with (
             patch("aria.server.vllm.is_process_running", return_value=False),
-            patch("aria.server.vllm.stop_process") as mock_stop,
+            patch("aria.server.vllm.stop_process_group") as mock_stop,
             patch("aria.server.vllm.clear_state"),
         ):
             self.manager.stop_all()
 
         mock_stop.assert_not_called()
 
+    def test_stop_all_preserves_survivors(self):
+        """stop_all() should keep PIDs in file if processes survive."""
+        self.manager._pids = {"chat": 1234}
+
+        with (
+            patch("aria.server.vllm.is_process_running", return_value=True),
+            patch(
+                "aria.server.vllm.VllmServerManager._find_orphan_pids",
+                return_value=[],
+            ),
+            patch("aria.server.vllm.stop_process_group", return_value=False),
+            patch("aria.server.vllm.save_state") as mock_save,
+        ):
+            self.manager.stop_all()
+
+        # PID should still be tracked
+        assert self.manager._pids == {"chat": 1234}
+        mock_save.assert_called_once()
+
     def test_stop_all_skip_vllm(self):
         """stop_all(skip_vllm=True) should clear PIDs without killing."""
         self.manager._pids = {"chat": 1234}
 
         with (
-            patch("aria.server.vllm.stop_process") as mock_stop,
+            patch("aria.server.vllm.stop_process_group") as mock_stop,
             patch("aria.server.vllm.clear_state"),
         ):
             self.manager.stop_all(skip_vllm=True)

@@ -45,6 +45,7 @@ class TestDispatchTable:
             "dev",
             "processes",
             "check",
+            "worker",
         }
         assert set(_DISPATCH.keys()) == expected
 

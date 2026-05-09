@@ -201,9 +201,8 @@ def server_start(
         from aria.server.vllm import VllmServerManager
 
         vllm = VllmServerManager()
-        if vllm._pids:
-            console.print("[dim]Stopping existing vLLM servers...[/dim]")
-            vllm.stop_all()
+        console.print("[dim]Stopping existing vLLM servers...[/dim]")
+        vllm.stop_all()
 
     manager = ServerManager()
     if manager.is_running():
@@ -256,24 +255,39 @@ def server_stop(
         sentinel.touch()
         console.print("[dim]vLLM servers will be left running[/dim]")
 
+    # Snapshot vLLM PIDs BEFORE stopping the web server, because the
+    # Chainlit shutdown handler may clear the PID file during teardown.
+    vllm_pids: dict[str, int] = {}
+    if not skip_vllm:
+        from aria.server.vllm import VllmServerManager
+
+        vllm_pids = VllmServerManager()._pids.copy()
+
     manager = ServerManager()
-    if manager.stop():
+    web_stopped = manager.stop()
+    if web_stopped:
         console.print("[green]✓[/green] Server stopped")
     else:
-        error_console.print("[yellow]Server is not running[/yellow]")
-        raise typer.Exit(1)
+        console.print("[yellow]Server is not running[/yellow]")
 
-    # Safety net: directly stop vLLM processes in case the web UI's
-    # on_app_shutdown_handler did not run (e.g. SIGKILL after timeout,
-    # or Chainlit failed to invoke the lifecycle hook).
+    # Always attempt to stop vLLM — even if the web server was already dead,
+    # vLLM may still be alive as an orphan process.
     if not skip_vllm:
         from aria.server.vllm import VllmServerManager
 
         vllm = VllmServerManager()
-        if vllm._pids:
-            console.print("[dim]Stopping vLLM servers...[/dim]")
-            vllm.stop_all()
-            console.print("[green]✓[/green] vLLM servers stopped")
+        # Merge pre-snapshot PIDs with any currently tracked PIDs
+        live_pids = {**vllm_pids, **vllm._pids}
+        if live_pids:
+            vllm._pids = live_pids
+        # Always call stop_all — it now scans for orphaned processes
+        # even when the PID file is stale or empty.
+        console.print("[dim]Stopping vLLM servers...[/dim]")
+        vllm.stop_all()
+        console.print("[green]✓[/green] vLLM servers stopped")
+
+    if not web_stopped and not vllm_pids:
+        raise typer.Exit(1)
 
 
 @app.command("status")

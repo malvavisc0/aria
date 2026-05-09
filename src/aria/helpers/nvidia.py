@@ -583,18 +583,35 @@ def _estimate_kv_cache_mb(
     except (json.JSONDecodeError, OSError):
         return None
 
-    num_layers = cfg.get("num_hidden_layers")
-    num_kv_heads = cfg.get("num_key_value_heads") or cfg.get("num_attention_heads")
-    head_dim = cfg.get("head_dim")
+    # Architecture parameters may live at the top level (e.g. Llama, Mistral-7B)
+    # or nested inside "text_config" for multimodal / vision models (e.g.
+    # Mistral3 / Pixtral, LLaVA).  Check both locations.
+    text_cfg = cfg.get("text_config") or {}
+
+    num_layers = cfg.get("num_hidden_layers") or text_cfg.get("num_hidden_layers")
+    num_kv_heads = (
+        cfg.get("num_key_value_heads")
+        or cfg.get("num_attention_heads")
+        or text_cfg.get("num_key_value_heads")
+        or text_cfg.get("num_attention_heads")
+    )
+    head_dim = cfg.get("head_dim") or text_cfg.get("head_dim")
 
     if not head_dim:
-        hidden_size = cfg.get("hidden_size")
-        num_heads = cfg.get("num_attention_heads")
+        hidden_size = cfg.get("hidden_size") or text_cfg.get("hidden_size")
+        num_heads = cfg.get("num_attention_heads") or text_cfg.get(
+            "num_attention_heads"
+        )
         if hidden_size and num_heads:
             head_dim = hidden_size // num_heads
 
     if not all((num_layers, num_kv_heads, head_dim)):
         return None
+
+    # Type narrowing for static analysis (all() check above guarantees these)
+    assert num_layers is not None
+    assert num_kv_heads is not None
+    assert head_dim is not None
 
     bytes_per_elem = 1 if kv_cache_dtype == "fp8" else 2
     # 2 tensors (K + V) per layer

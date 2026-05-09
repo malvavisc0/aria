@@ -27,10 +27,10 @@ Workarounds
    in thread history. See _promote_assistant_messages(). This is applied
    in get_all_user_threads() and list_threads() (display paths only).
 
-2. get_thread() intentionally bypasses _promote_assistant_messages() so
-   that restore_chat_history() sees the true parent-child structure from
-   the database. The base get_thread() delegates to get_all_user_threads(),
-   which would apply promotion and corrupt memory restoration on resume.
+2. get_thread() intentionally bypasses _promote_assistant_messages()
+   to avoid in-place mutation of the thread dict. restore_chat_history()
+   no longer depends on parentId filtering — it collects all user/assistant
+   message steps regardless of their parent.
 
 3. User ID from Context: get_all_user_threads() attempts to infer
    user_id from Chainlit's context when not provided, supporting
@@ -205,13 +205,13 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
         """Return thread data without promoting assistant messages.
 
         Unlike get_all_user_threads() and list_threads() (sidebar display),
-        this returns the raw parent-child structure so that
-        restore_chat_history() sees the true conversation tree.
+        this returns the raw parent-child structure.  Promotion is
+        intentionally skipped here to avoid in-place mutation of the
+        thread dict that Chainlit re-uses for the resume UI.
 
-        The base get_thread() delegates to get_all_user_threads(), which
-        applies _promote_assistant_messages(). That in-place mutation
-        corrupts restore_chat_history() on resume because promoted steps
-        are treated as real conversation turns.
+        ``restore_chat_history()`` no longer depends on ``parentId``
+        filtering — it collects *all* user/assistant message steps
+        regardless of their parent, so the raw tree is safe to pass.
         """
         # Call parent directly to skip our get_all_user_threads override
         # (which applies _promote_assistant_messages)

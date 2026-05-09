@@ -49,9 +49,7 @@ async def _handle_message(message: cl.Message) -> str:
 
     if message.command == "Enhance":
         if not _state.prompt_enhancer:
-            logger.warning(
-                "Prompt enhancer not available, returning original prompt"
-            )
+            logger.warning("Prompt enhancer not available, returning original prompt")
             return prompt
         try:
             response = await asyncio.wait_for(
@@ -126,9 +124,7 @@ async def _stream_agent_response(
                     await output.stream_token(_BLOCKQUOTE_PREFIX)
                     thinking_opened = True
                     emitted = True
-                await output.stream_token(
-                    event.thinking_delta.replace("\n", "\n> ")
-                )
+                await output.stream_token(event.thinking_delta.replace("\n", "\n> "))
             elif event.delta:
                 if thinking_opened:
                     await output.stream_token(_BLOCKQUOTE_END)
@@ -136,13 +132,16 @@ async def _stream_agent_response(
                 await output.stream_token(event.delta)
                 emitted = True
 
-        elif isinstance(event, AgentOutput) and not event.tool_calls:
-            if current_step is not None:
-                await maybe_remove_step(current_step)
-                current_step = None
-            if thinking_opened:
-                await output.stream_token(_BLOCKQUOTE_END)
-                thinking_opened = False
+        elif isinstance(event, AgentOutput):
+            if not event.tool_calls:
+                # Final output — clean up UI state
+                if current_step is not None:
+                    await maybe_remove_step(current_step)
+                    current_step = None
+                if thinking_opened:
+                    await output.stream_token(_BLOCKQUOTE_END)
+                    thinking_opened = False
+            # Emit any text that wasn't already streamed
             if not emitted and event.response.content:
                 await output.stream_token(event.response.content)
                 emitted = True
@@ -163,6 +162,10 @@ async def _stream_agent_response(
 
     if not emitted:
         logger.warning("No assistant output emitted for message.")
+        await output.stream_token(
+            "I wasn't able to generate a response. Please try rephrasing your request."
+        )
+        emitted = True
 
     return emitted
 
@@ -181,9 +184,7 @@ async def on_message_handler(message: cl.Message) -> None:
         message: The incoming Chainlit message from the user.
     """
     if not _state.agents_workflow:
-        logger.warning(
-            "Message received but agents_workflow is not configured"
-        )
+        logger.warning("Message received but agents_workflow is not configured")
         await cl.Message(
             content=(
                 "The system is not fully initialized (LLM unavailable). "

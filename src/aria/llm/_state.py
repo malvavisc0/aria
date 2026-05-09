@@ -6,6 +6,7 @@ pure function, and :class:`StatefulAgentWorkflow` which wires them into
 the LlamaIndex :class:`AgentWorkflow` run-loop.
 """
 
+import copy
 from typing import Any, cast
 
 from llama_index.core.agent.workflow import (
@@ -16,6 +17,7 @@ from llama_index.core.agent.workflow import (
     ToolCallResult,
 )
 from llama_index.core.tools.types import ToolOutput
+from loguru import logger
 from typing_extensions import TypedDict
 
 
@@ -143,7 +145,33 @@ class StatefulAgentWorkflow(AgentWorkflow):
     but it does not provide a reducer hook for streamed workflow events. This
     subclass closes that gap by applying :func:`state_reducer` to the live
     context state.
+
+    A pristine copy of the initial state is kept in ``_state_template`` so
+    that every new workflow run receives a fresh, un-mutated state —
+    preventing cross-conversation leakage of accumulated tool-call records.
     """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # Store a deep copy that is never mutated, so each run can start
+        # from a clean slate regardless of how many tool calls happened
+        # in previous conversations.
+        self._state_template: dict = copy.deepcopy(self.initial_state)
+
+    async def _init_context(self, ctx: Any, ev: Any) -> None:
+        """Initialise context with a *fresh* copy of the initial state.
+
+        The parent ``_init_context`` sets ``ctx.store["state"]`` to
+        ``self.initial_state`` — a single dict instance that is shared
+        across all runs.  Because :func:`state_reducer` mutates that
+        dict in-place (appending to ``tool_calls``), the state silently
+        accumulates records from every previous conversation.
+
+        Overriding here to deep-copy from the pristine ``_state_template``
+        ensures each run starts with an empty ``tool_calls`` list.
+        """
+        await super()._init_context(ctx, ev)
+        await ctx.store.set("state", copy.deepcopy(self._state_template))
 
     async def reduce_state(self, ctx: Any, ev: Any) -> "WorkflowState":
         """Apply :func:`state_reducer` to the stored state.
@@ -172,7 +200,18 @@ class StatefulAgentWorkflow(AgentWorkflow):
 
         The state is updated on both success and failure so that
         ``WorkflowState.last_error`` always reflects the most recent outcome.
+        If the LLM produces an empty terminal response after a tool failure,
+        a single retry is attempted before injecting a synthesized error report.
         """
+        # DIAGNOSTIC: log what's being sent
+        msg_count = len(ev.input)
+        approx_tokens = sum(len(str(m.content or "")) // 4 for m in ev.input)
+        logger.info(
+            f"run_agent_step: {msg_count} messages, ~{approx_tokens} tokens "
+            f"(roles: {[m.role.value for m in ev.input[:5]]}...)"
+        )
+        # END DIAGNOSTIC
+
         try:
             output = await super().run_agent_step(ctx, ev)
         except Exception:
@@ -181,6 +220,32 @@ class StatefulAgentWorkflow(AgentWorkflow):
             # ``ctx.store["state"]["last_error"]`` for diagnostics.
             raise
         await self.reduce_state(ctx, output)
+
+        # Guard against empty terminal responses after a tool failure.
+        # Some local models occasionally produce no text after receiving a
+        # tool error result — retry once, then synthesize a fallback reply.
+        if not output.tool_calls and not (output.response.content or "").strip():
+            state = await ctx.store.get("state", default=None)
+            last_err = (state or {}).get("last_error")
+            if last_err:
+                # Retry the agent step once to give the model another chance.
+                try:
+                    output = await super().run_agent_step(ctx, ev)
+                    await self.reduce_state(ctx, output)
+                except Exception:
+                    pass
+
+                # If still empty after retry, inject synthesized response.
+                if (
+                    not output.tool_calls
+                    and not (output.response.content or "").strip()
+                ):
+                    output.response.content = (
+                        f"The tool call encountered an error:\n\n"
+                        f"```\n{last_err}\n```\n\n"
+                        "I'll try a different approach if you'd like — "
+                        "just let me know how to proceed."
+                    )
         return output
 
     async def call_tool(self, ctx: Any, ev: ToolCall) -> ToolCallResult:

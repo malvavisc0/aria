@@ -151,6 +151,12 @@ def _extras():
     return get_venv_extras_json
 
 
+def _worker():
+    from aria.tools.worker.functions import worker
+
+    return worker
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table: family → command → (loader, inject_action?)
 # inject_action means the command name is passed as action= parameter
@@ -205,6 +211,14 @@ _DISPATCH: dict[str, dict[str, tuple[Callable, bool]]] = {
     },
     "check": {
         "extras": (_extras, False),
+    },
+    "worker": {
+        "spawn": (_worker, True),
+        "list": (_worker, True),
+        "status": (_worker, True),
+        "logs": (_worker, True),
+        "cancel": (_worker, True),
+        "clean": (_worker, True),
     },
 }
 

@@ -159,7 +159,11 @@ class TestValidateCommand:
         _validate_command("git status")
         _validate_command("cat file.txt")
         _validate_command("chmod 755 file")
-        _validate_command("pip install requests")
+
+    def test_pip_blocked(self):
+        """Test that pip install is blocked."""
+        with pytest.raises(CommandBlockedError):
+            _validate_command("pip install requests")
 
 
 class TestValidateWorkingDir:

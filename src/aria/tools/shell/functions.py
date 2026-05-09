@@ -77,10 +77,20 @@ def _run_shell_command(
 
     # Build environment: merge additional vars with current env
     import os
+    import sys
 
-    proc_env = None
+    proc_env = {**os.environ}
+
+    # Ensure the current Python environment's bin directory is on PATH
+    _bin_dir = os.path.join(sys.prefix, "Scripts" if os.name == "nt" else "bin")
+    if os.path.isdir(_bin_dir):
+        _path = proc_env.get("PATH", "")
+        if _bin_dir not in _path.split(os.pathsep):
+            proc_env["PATH"] = _bin_dir + os.pathsep + _path
+
+    # Merge any additional env vars the caller requested
     if env:
-        proc_env = {**os.environ, **env}
+        proc_env.update(env)
 
     return _execute_command_internal(
         "shell",
@@ -101,6 +111,7 @@ def _normalize_commands(
     Supported formats:
         - ``"git status"`` — single string
         - ``["git status", "git push"]`` — list of strings
+        - ``'["git status", "git push"]'`` — JSON array string
         - ``{"command": "git status"}`` — single dict with command key
         - ``[{"command": "git status"}, {"command": "git push"}]`` — list of dicts
 
@@ -111,6 +122,17 @@ def _normalize_commands(
         List of dicts, each with at least a ``command`` key.
     """
     if isinstance(commands, str):
+        # LLMs sometimes pass a JSON array as a string — try to parse it
+        import json as json_mod
+
+        stripped = commands.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = json_mod.loads(stripped)
+                if isinstance(parsed, list):
+                    return _normalize_commands(parsed)
+            except (json_mod.JSONDecodeError, ValueError):
+                pass
         return [{"command": commands}]
 
     if isinstance(commands, dict):
@@ -140,9 +162,8 @@ def shell(
     """Execute shell commands with timeout and security constraints.
 
     When to use:
-        - Run shell commands (git, pip, npm, system utilities, etc.).
+        - Run shell commands.
         - Batch multiple commands with per-command timeout and error handling.
-        - Do NOT use for long-running background processes — use `process`.
 
     Args:
         reason: Required. Brief explanation of why you are executing this command.

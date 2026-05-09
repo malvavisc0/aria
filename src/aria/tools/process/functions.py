@@ -13,6 +13,7 @@ parent exit.
 import os
 import signal
 import subprocess
+import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -176,7 +177,6 @@ def process(
     When to use:
         - Start, stop, inspect, restart, signal, or read logs of
           background processes (dev servers, build watchers, pipelines).
-        - Do NOT use for one-off commands — use `shell`.
 
     Args:
         reason: Required. Brief explanation of why you are calling this tool (e.g. "Start dev server for testing").
@@ -300,9 +300,18 @@ def _action_start(
         )
 
     # Build environment
-    proc_env = None
+    proc_env = {**os.environ}
+
+    # Ensure the current Python environment's bin directory is on PATH
+    _bin_dir = os.path.join(sys.prefix, "Scripts" if os.name == "nt" else "bin")
+    if os.path.isdir(_bin_dir):
+        _path = proc_env.get("PATH", "")
+        if _bin_dir not in _path.split(os.pathsep):
+            proc_env["PATH"] = _bin_dir + os.pathsep + _path
+
+    # Merge any additional env vars the caller requested
     if env:
-        proc_env = {**os.environ, **env}
+        proc_env.update(env)
 
     # Build command
     if use_shell:

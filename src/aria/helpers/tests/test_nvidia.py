@@ -1247,6 +1247,188 @@ class TestArchitectureAwareKvEstimation:
             )
         assert result == 0.95
 
+    # ------------------------------------------------------------------
+    # Multimodal / text_config nesting regression tests
+    # ------------------------------------------------------------------
+
+    def _make_multimodal_model_dir(self, tmp_path, text_config: dict):
+        """Create a multimodal model directory with text_config nesting.
+
+        Mimics models like Mistral3/Pixtral/LLaVA where the LLM architecture
+        parameters live inside a nested ``text_config`` key rather than at
+        the top level of config.json.
+        """
+        import json
+
+        model_dir = tmp_path / "multimodal-model"
+        model_dir.mkdir(exist_ok=True)
+        config = {
+            "model_type": "mistral3",
+            "architectures": ["Mistral3ForConditionalGeneration"],
+            "text_config": text_config,
+            "vision_config": {
+                "model_type": "pixtral",
+                "num_hidden_layers": 24,
+                "hidden_size": 1024,
+            },
+        }
+        (model_dir / "config.json").write_text(json.dumps(config))
+        return str(model_dir)
+
+    def test_multimodal_text_config_kv_estimation(self, tmp_path):
+        """Mistral3 multimodal model: architecture params in text_config.
+
+        text_config: 34 layers, 8 KV heads, head_dim=128, 196608 ctx, auto (fp16)
+        KV = 2 × 34 × 8 × 128 × 196608 × 2 = 27,262,976 B ≈ 26,000 MiB
+        raw = 6490 + 26000 + 512 + 1024 = 34026
+        needed = 34026 × 1.2 = 40831
+        On 32 GB GPU (32768 MiB): util ≈ 40831/32768 → clamped to 0.95
+        """
+        text_config = {
+            "num_hidden_layers": 34,
+            "num_attention_heads": 32,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+            "hidden_size": 4096,
+            "max_position_embeddings": 262144,
+        }
+        model_path = self._make_multimodal_model_dir(tmp_path, text_config)
+        with patch("aria.helpers.memory.get_model_file_size", return_value=6490):
+            result = calculate_gpu_memory_utilization(
+                32768,
+                model_path=model_path,
+                context_size=196608,
+                kv_cache_dtype="auto",
+            )
+        assert result >= 0.90
+
+    def test_multimodal_text_config_fp8_lower_than_auto(self, tmp_path):
+        """fp8 KV in text_config model should produce lower utilization."""
+        text_config = {
+            "num_hidden_layers": 34,
+            "num_attention_heads": 32,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+            "hidden_size": 4096,
+        }
+        model_path = self._make_multimodal_model_dir(tmp_path, text_config)
+        with patch("aria.helpers.memory.get_model_file_size", return_value=6490):
+            result_fp8 = calculate_gpu_memory_utilization(
+                32768,
+                model_path=model_path,
+                context_size=131072,
+                kv_cache_dtype="fp8",
+            )
+            result_auto = calculate_gpu_memory_utilization(
+                32768,
+                model_path=model_path,
+                context_size=131072,
+                kv_cache_dtype="auto",
+            )
+        assert result_fp8 < result_auto
+
+    def test_multimodal_text_config_estimates_correctly(self, tmp_path):
+        """Verify exact KV estimate from text_config params.
+
+        34 layers, 8 kv_heads, head_dim=128, 131072 ctx, fp8
+        KV = 2 × 34 × 8 × 128 × 131072 × 1 = 9,113,600,000 B ≈ 8,691 MiB
+        raw = 5000 + 8691 + 512 + 1024 = 15227
+        needed = 15227 × 1.2 = 18272
+        On 33 GB GPU: util ≈ 18272/33400 ≈ 0.55
+        """
+        text_config = {
+            "num_hidden_layers": 34,
+            "num_attention_heads": 32,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+            "hidden_size": 4096,
+        }
+        model_path = self._make_multimodal_model_dir(tmp_path, text_config)
+        with patch("aria.helpers.memory.get_model_file_size", return_value=5000):
+            result = calculate_gpu_memory_utilization(
+                33400,
+                model_path=model_path,
+                context_size=131072,
+                kv_cache_dtype="fp8",
+            )
+        assert 0.50 <= result <= 0.60
+
+    def test_multimodal_with_only_hidden_size_and_heads(self, tmp_path):
+        """text_config with no head_dim (derived from hidden_size / num_heads)."""
+        text_config = {
+            "num_hidden_layers": 40,
+            "num_attention_heads": 32,
+            "num_key_value_heads": 8,
+            "hidden_size": 4096,
+            # head_dim = 4096 / 32 = 128
+        }
+        model_path = self._make_multimodal_model_dir(tmp_path, text_config)
+        with patch("aria.helpers.memory.get_model_file_size", return_value=5000):
+            result = calculate_gpu_memory_utilization(
+                33400,
+                model_path=model_path,
+                context_size=131072,
+                kv_cache_dtype="fp8",
+            )
+        # Same KV as qwen_9b_config: 2×40×8×128×131072×1 = 10240 MiB
+        # raw = 5000 + 10240 + 1536 = 16776, needed = 20131
+        # util = 20131/33400 ≈ 0.60
+        assert 0.55 <= result <= 0.65
+
+    def test_top_level_params_take_precedence_over_text_config(self, tmp_path):
+        """When both top-level and text_config have params, top-level wins."""
+        import json
+
+        model_dir = tmp_path / "both-levels-model"
+        model_dir.mkdir(exist_ok=True)
+        config = {
+            "num_hidden_layers": 20,
+            "num_key_value_heads": 4,
+            "head_dim": 64,
+            "text_config": {
+                "num_hidden_layers": 40,
+                "num_key_value_heads": 8,
+                "head_dim": 128,
+            },
+        }
+        (model_dir / "config.json").write_text(json.dumps(config))
+        model_path = str(model_dir)
+
+        with patch("aria.helpers.memory.get_model_file_size", return_value=5000):
+            result = calculate_gpu_memory_utilization(
+                33400,
+                model_path=model_path,
+                context_size=131072,
+                kv_cache_dtype="fp8",
+            )
+        # Top-level: KV = 2×20×4×64×131072×1 = 2,684,354,560 B ≈ 2560 MiB
+        # raw = 5000 + 2560 + 1536 = 9096, needed = 10915
+        # util = 10915/33400 ≈ 0.33 → clamped to 0.50
+        assert result == 0.50
+
+    def test_multimodal_empty_text_config_uses_fallback(self, tmp_path):
+        """Empty text_config should trigger heuristic fallback."""
+        import json
+
+        model_dir = tmp_path / "empty-text-config-model"
+        model_dir.mkdir(exist_ok=True)
+        config = {
+            "model_type": "some_model",
+            "text_config": {},
+        }
+        (model_dir / "config.json").write_text(json.dumps(config))
+        model_path = str(model_dir)
+
+        with patch("aria.helpers.memory.get_model_file_size", return_value=5000):
+            result = calculate_gpu_memory_utilization(
+                33400,
+                model_path=model_path,
+                context_size=131072,
+                kv_cache_dtype="fp8",
+            )
+        # Heuristic fallback: kv = 5000 × 4 × 0.5 = 10000
+        assert 0.50 <= result <= 0.65
+
 
 # ============================================================================
 # Integration Tests

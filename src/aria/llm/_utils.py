@@ -77,11 +77,40 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     except Exception:
         max_tok = 8192
 
+    # Include iteration budget so the agent can self-regulate tool usage.
+    try:
+        from aria.config.models import Chat as ChatConfig
+
+        max_iter = ChatConfig.max_iteration
+    except Exception:
+        max_iter = 50
+
+    # Vision support — so the agent knows if it can analyze images.
+    try:
+        from aria.config.api import Vllm as VllmConfig
+
+        vision = VllmConfig.vision_enabled
+    except Exception:
+        vision = False
+
+    # Browser availability — so the agent knows if browser tools work.
+    try:
+        from aria.config.api import Lightpanda
+
+        browser = Lightpanda.is_available()
+    except Exception:
+        browser = False
+
     lines: list[str] = [
+        "The following runtime context is always active — factor it into every response and tool use.",
+        "",
         f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
         f"- **System OS**: {host}",
         f"- **Shell**: {shell_name}",
-        f"- **Max output tokens**: {max_tok} (thinking + response combined — keep responses concise to avoid truncation)",
+        f"- **Vision Enabled**: {'Yes' if vision else 'No'}",
+        f"- **Browser Available**: {'Yes' if browser else 'No'}",
+        f"- **Max Output Tokens**: {max_tok} (keep responses concise to avoid truncation)",
+        f"- **Max Iterations (tool calls)**: {max_iter} (plan and batch work efficiently to stay within this limit)",
     ]
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")

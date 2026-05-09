@@ -105,11 +105,63 @@ def extract_file_paths(message: cl.Message) -> list[str]:
     return paths
 
 
+def _sanitize_chat_history(
+    chat_history: list[ChatMessage],
+) -> list[ChatMessage]:
+    """Ensure chat history has strictly alternating user/assistant roles.
+
+    The OpenAI-compatible API requires that after the optional system
+    message, conversation roles must strictly alternate between user and
+    assistant.  This helper enforces that invariant by:
+
+    1. Collapsing consecutive messages of the same role into one
+       (keeping the *last* message of each run).
+    2. Dropping any leading assistant messages (conversation must start
+       with a user message after the system prompt).
+    3. Dropping any trailing user messages (so the next user turn
+       maintains alternation).
+
+    Args:
+        chat_history: Raw chat messages (may have consecutive duplicates).
+
+    Returns:
+        A sanitised list with strictly alternating ``user → assistant``
+        roles.
+    """
+    if not chat_history:
+        return chat_history
+
+    # Step 1: Collapse consecutive duplicate roles (keep last of each run).
+    deduplicated: list[ChatMessage] = []
+    for msg in chat_history:
+        if deduplicated and deduplicated[-1].role == msg.role:
+            deduplicated[-1] = msg  # replace — keep latest
+        else:
+            deduplicated.append(msg)
+
+    # Step 2: Ensure it starts with a user message.
+    while deduplicated and deduplicated[0].role != MessageRole.USER:
+        deduplicated.pop(0)
+
+    # Step 3: Ensure it ends with an assistant message so the next user
+    # turn maintains alternation.
+    while deduplicated and deduplicated[-1].role != MessageRole.ASSISTANT:
+        deduplicated.pop()
+
+    return deduplicated
+
+
 async def restore_chat_history(thread: ThreadDict) -> Memory:
     """Restore conversation history from a thread dictionary.
 
     Creates memory for the thread and populates it with messages
     from the thread's history.
+
+    Steps are collected regardless of their ``parentId`` because
+    ``get_thread()`` returns the raw parent-child structure where
+    assistant messages are children of user messages (not root-level).
+    The history is then sanitised to guarantee strictly alternating
+    ``user → assistant`` roles required by the LLM API.
 
     Args:
         thread: Thread dictionary containing conversation steps.
@@ -130,23 +182,27 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
     chat_steps = thread.get("steps", [])
     logger.debug(f"Thread contains {len(chat_steps)} total steps")
 
-    root_messages = [m for m in chat_steps if m.get("parentId") is None]
-    root_messages.sort(
+    # Include ALL user/assistant messages regardless of parentId.
+    # get_thread() returns the raw tree where assistant messages are
+    # children of user messages (parentId != None), so filtering on
+    # parentId == None would silently drop every assistant reply.
+    conversation_steps = [m for m in chat_steps if m.get("type") in ROOT_MESSAGE_TYPES]
+    conversation_steps.sort(
         key=lambda message_step: (
             message_step.get("createdAt") or message_step.get("created_at") or "",
             message_step.get("id") or "",
         )
     )
-    logger.debug(f"Found {len(root_messages)} root-level messages")
+    logger.debug(f"Found {len(conversation_steps)} conversation messages")
 
     memory = create_memory(thread_id)
 
-    chat_history: list[ChatMessage] = []
-    for message_step in root_messages:
+    raw_history: list[ChatMessage] = []
+    for message_step in conversation_steps:
         content = message_step.get("output", "")
         message_type = message_step.get("type")
 
-        if not content or message_type not in ROOT_MESSAGE_TYPES:
+        if not content:
             continue
 
         role = (
@@ -154,7 +210,14 @@ async def restore_chat_history(thread: ThreadDict) -> Memory:
             if message_type == "user_message"
             else MessageRole.ASSISTANT
         )
-        chat_history.append(ChatMessage(role=role, content=content))
+        raw_history.append(ChatMessage(role=role, content=content))
+
+    chat_history = _sanitize_chat_history(raw_history)
+    if len(raw_history) != len(chat_history):
+        logger.debug(
+            f"Sanitised chat history: {len(raw_history)} → {len(chat_history)} "
+            f"messages (removed non-alternating roles)"
+        )
 
     # Use aput_messages instead of aset to enforce token_limit.
     # aset() bypasses _manage_queue() and dumps ALL messages unbounded.

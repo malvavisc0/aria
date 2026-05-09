@@ -18,6 +18,7 @@ Example:
 """
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -33,7 +34,7 @@ from aria.server.process_utils import (
     is_process_running,
     load_state,
     save_state,
-    stop_process,
+    stop_process_group,
 )
 
 
@@ -102,13 +103,16 @@ class VllmServerManager:
         try:
             with open(config_path) as f:
                 config = json.load(f)
-            # Try fields in order of preference
+            # Architecture parameters may live at the top level (e.g. Llama,
+            # Mistral-7B) or nested inside "text_config" for multimodal /
+            # vision models (e.g. Mistral3 / Pixtral, LLaVA).
+            text_cfg = config.get("text_config") or {}
             for key in (
                 "max_position_embeddings",
                 "model_max_length",
                 "max_seq_len",
             ):
-                val = config.get(key)
+                val = config.get(key) or text_cfg.get(key)
                 if isinstance(val, (int, float)) and val > 0:
                     return int(val)
         except (json.JSONDecodeError, OSError) as e:
@@ -119,6 +123,47 @@ class VllmServerManager:
         """Clear state file and reset in-memory PIDs."""
         self._pids.clear()
         clear_state(self.PID_FILE)
+
+    @staticmethod
+    def _find_orphan_pids() -> list[int]:
+        """Scan for running vLLM processes not tracked by the PID file.
+
+        Uses ``pgrep`` to find processes matching the vLLM entrypoint
+        command pattern. Returns only the group-leader PIDs (lowest PID
+        per process group) so that ``stop_process_group`` can kill the
+        entire tree.
+
+        Returns:
+            Sorted list of vLLM group-leader PIDs found on the system.
+        """
+        try:
+            result = subprocess.run(
+                ["pgrep", "-f", "vllm.entrypoints.openai.api_server"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return []
+        except (FileNotFoundError, OSError):
+            return []
+
+        pids = [int(p) for p in result.stdout.strip().split("\n") if p.strip()]
+        if not pids:
+            return []
+
+        # Determine group leaders: for each PID get its PGID, keep only
+        # those where PID == PGID (i.e. group leaders started with
+        # start_new_session=True).
+        leaders: set[int] = set()
+        for pid in pids:
+            try:
+                pgid = os.getpgid(pid)
+                leaders.add(pgid)
+            except (OSError, ProcessLookupError):
+                # Process vanished between pgrep and getpgid
+                continue
+
+        return sorted(leaders)
 
     def _build_vllm_cmd(
         self,
@@ -415,6 +460,7 @@ class VllmServerManager:
                 cmd,
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
+                start_new_session=True,
             )
             log_fh.close()
             self._pids[role] = proc.pid
@@ -463,7 +509,9 @@ class VllmServerManager:
     def stop_all(self, timeout: float = 10.0, skip_vllm: bool = False) -> None:
         """Stop all running vLLM server processes.
 
-        Sends SIGTERM, waits for graceful shutdown, then SIGKILL if needed.
+        Sends SIGTERM to the process group, waits for graceful shutdown,
+        then SIGKILL if needed. Falls back to scanning for orphaned vLLM
+        processes when the PID file is stale or empty.
 
         Args:
             timeout: Maximum seconds to wait for graceful shutdown per process.
@@ -476,10 +524,43 @@ class VllmServerManager:
             self._clear_pids()
             return
 
+        killed_pids: set[int] = set()
+        survivors: dict[str, int] = {}
+
+        # Phase 1: Stop tracked PIDs from state file
         for role, pid in list(self._pids.items()):
             if is_process_running(pid):
-                logger.info(f"Stopping {role} server (PID {pid})...")
-                stop_process(pid, timeout)
+                logger.info(f"Stopping {role} server (PID/PGID {pid})...")
+                stopped = stop_process_group(pid, timeout)
+                if not stopped and is_process_running(pid):
+                    logger.warning(
+                        f"{role} server (PID {pid}) did not stop — "
+                        "PID preserved for retry"
+                    )
+                    survivors[role] = pid
+                else:
+                    killed_pids.add(pid)
 
-        self._clear_pids()
-        logger.info("All vLLM server instances stopped.")
+        # Phase 2: Scan for orphaned vLLM processes not in the PID file
+        orphans = self._find_orphan_pids()
+        orphan_leaders = [p for p in orphans if p not in killed_pids]
+        if orphan_leaders:
+            logger.info(
+                f"Found {len(orphan_leaders)} orphaned vLLM process "
+                f"group(s): {orphan_leaders}"
+            )
+            for pid in orphan_leaders:
+                if is_process_running(pid):
+                    stopped = stop_process_group(pid, timeout)
+                    if stopped or not is_process_running(pid):
+                        killed_pids.add(pid)
+                    else:
+                        survivors[f"orphan-{pid}"] = pid
+
+        if survivors:
+            self._pids = survivors
+            self._save_pids()
+            logger.warning(f"Some vLLM processes survived shutdown: {survivors}")
+        else:
+            self._clear_pids()
+            logger.info("All vLLM server instances stopped.")

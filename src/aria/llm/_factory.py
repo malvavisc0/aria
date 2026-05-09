@@ -47,14 +47,8 @@ def get_chat_llm(
         api_key=api_key,
         is_chat_model=True,
         is_function_calling_model=True,
-        temperature=0.3,
         max_tokens=VllmConfig.max_tokens,
-        additional_kwargs={
-            "top_p": 0.9,
-            "extra_body": {
-                "top_k": 50,
-            },
-        },
+        temperature=0.05,
     )
     return llm
 

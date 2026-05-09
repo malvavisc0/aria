@@ -51,6 +51,14 @@ BLOCKED_COMMANDS = [
     "dd",
     "shred",
     "wipe",
+    # Package managers — agents must not install/remove packages silently
+    "pip",
+    "pip3",
+    "apt",
+    "apt-get",
+    "yum",
+    "dnf",
+    "pacman",
 ]
 
 # Default working directory for shell commands.

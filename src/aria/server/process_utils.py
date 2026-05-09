@@ -106,3 +106,48 @@ def stop_process(pid: int, timeout: float = 10.0) -> bool:
         return False
     except ProcessLookupError:
         return True  # Process already gone
+
+
+def stop_process_group(pid: int, timeout: float = 10.0) -> bool:
+    """Stop an entire process group by sending signals to the group leader.
+
+    Use this for processes started with ``start_new_session=True`` where
+    the PID equals the PGID. Sends SIGTERM to the entire group first,
+    then SIGKILL if processes don't stop within the timeout.
+
+    Args:
+        pid: Process (group leader) ID — also used as the PGID.
+        timeout: Maximum seconds to wait for graceful shutdown.
+
+    Returns:
+        True if the group was stopped, False if no process was found.
+    """
+    if not is_process_running(pid):
+        return False
+
+    try:
+        # Send SIGTERM to the entire process group
+        os.killpg(pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        # Group already gone or not a group leader — fall back to single PID
+        return stop_process(pid, timeout)
+
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if not is_process_running(pid):
+            return True
+        time.sleep(0.1)
+
+    # Force kill entire group
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+    kill_start = time.time()
+    while time.time() - kill_start < 2.0:
+        if not is_process_running(pid):
+            return True
+        time.sleep(0.1)
+
+    return False

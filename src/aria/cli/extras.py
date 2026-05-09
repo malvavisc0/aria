@@ -30,6 +30,8 @@ _EXCLUDED_BINARIES: set[str] = {
     "aria",
     "aria-gui",
     "ax",
+    # AI
+    "huggingface-cli",
     # Package managers / build internals
     "pip",
     "pip3",
@@ -114,7 +116,7 @@ _DEPENDENCY_CHECKS: dict[str, list[str]] = {
 
 # Category groupings for display.
 _CATEGORIES: dict[str, list[str]] = {
-    "AI / ML": [
+    "AI": [
         "hf",
         "huggingface-cli",
         "openai",
@@ -127,17 +129,15 @@ _CATEGORIES: dict[str, list[str]] = {
         "torchrun",
         "numba",
         "flashinfer",
-        "proton",
-        "proton-viewer",
     ],
-    "Web / HTTP": [
+    "Web": [
         "httpx",
         "fastapi",
         "uvicorn",
         "playwright",
         "websockets",
     ],
-    "Search / Content": [
+    "Search": [
         "ddgs",
         "markitdown",
         "markdownify",
@@ -146,14 +146,14 @@ _CATEGORIES: dict[str, list[str]] = {
         "youtube_transcript_api",
         "filetype",
     ],
-    "Linting / Formatting": [
+    "Linting": [
         "black",
         "blackd",
         "ruff",
         "flake8",
         "isort",
     ],
-    "Data / Serialization": [
+    "Data": [
         "jsonschema",
         "pwiz",
         "gguf-convert-endian",
@@ -162,7 +162,7 @@ _CATEGORIES: dict[str, list[str]] = {
         "gguf-new-metadata",
         "gguf-set-metadata",
     ],
-    "Build / Packaging": [
+    "Build": [
         "ninja",
         "pyproject-build",
         "griffe",
@@ -170,7 +170,7 @@ _CATEGORIES: dict[str, list[str]] = {
     "NLP": [
         "nltk",
     ],
-    "System / CLI": [
+    "System": [
         "cpuinfo",
         "distro",
         "tqdm",
@@ -308,6 +308,7 @@ def get_venv_extras_list(
 
 
 def get_venv_extras_json(
+    reason: str = "",
     excluded: set[str] | None = None,
     filter_term: str | None = None,
 ) -> dict:
