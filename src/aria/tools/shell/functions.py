@@ -73,18 +73,10 @@ def _run_shell_command(
     )
     resolved_working_dir = _validate_working_dir(working_dir)
 
-    import os
-    import sys
+    # Ensure ~/.aria/bin and the current Python env bin are on PATH
+    from aria.config.folders import get_augmented_env
 
-    proc_env = {**os.environ}
-
-    # Ensure the current Python environment's bin directory is on PATH
-    _bin_dir = os.path.join(sys.prefix, "Scripts" if os.name == "nt" else "bin")
-    if os.path.isdir(_bin_dir):
-        _path = proc_env.get("PATH", "")
-        if _bin_dir not in _path.split(os.pathsep):
-            proc_env["PATH"] = _bin_dir + os.pathsep + _path
-
+    proc_env = get_augmented_env()
     if env:
         proc_env.update(env)
 

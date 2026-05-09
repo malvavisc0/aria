@@ -15,7 +15,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from aria.config.folders import Data, Storage
+from aria.config.folders import Data, Debug, Storage
 from aria.server.process_utils import (
     is_process_running,
     load_state,
@@ -113,7 +113,9 @@ def spawn(
     if instructions:
         cmd.extend(["--instructions", instructions])
 
-    log_handle = open(out_dir / "stdout.log", "w")
+    logs_dir = Debug.path / "workers"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_handle = open(logs_dir / f"{wid}.log", "w")
     process = subprocess.Popen(
         cmd,
         stdout=log_handle,
@@ -211,7 +213,7 @@ def logs(
     tail: int = typer.Option(50, "--tail", "-n"),
 ):
     """View worker logs."""
-    log_file = _output_dir(worker_id) / "stdout.log"
+    log_file = Debug.path / "workers" / f"{worker_id}.log"
     if not log_file.exists():
         typer.echo(json.dumps({"error": "No logs found"}))
         raise typer.Exit(1)

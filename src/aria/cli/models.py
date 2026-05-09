@@ -51,9 +51,9 @@ _MODEL_CONFIGS: dict[str, tuple] = {
 
 
 def _is_model_downloaded(model_path: str) -> bool:
-    """Check if a model directory exists under DATA_FOLDER/models/.
+    """Check if a model directory exists under ~/.aria/models/.
 
-    All models must reside under DATA_FOLDER/models/. This function
+    All models must reside under ~/.aria/models/. This function
     checks for local directory existence only — HF cache is not used.
 
     Args:
@@ -77,7 +77,7 @@ def _resolve_model_config(alias: str) -> tuple[str, str]:
     Returns:
         Tuple of (repo_id, local_path) where repo_id is the raw env var
         value (HuggingFace repo ID) and local_path is the resolved path
-        under DATA_FOLDER/models/.
+        under ~/.aria/models/.
 
     Raises:
         typer.BadParameter: If the alias is unknown or config is not set.
@@ -129,10 +129,10 @@ def download_command(
         ),
     ] = False,
 ):
-    """Download a model snapshot from HuggingFace Hub to DATA_FOLDER/models/.
+    """Download a model snapshot from HuggingFace Hub to ~/.aria/models/.
 
     Reads the HF repo ID from the .env config and downloads to the
-    resolved local path under DATA_FOLDER/models/.
+    resolved local path under ~/.aria/models/.
 
     Example:
         ```bash

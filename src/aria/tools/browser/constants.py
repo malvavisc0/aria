@@ -5,7 +5,7 @@ Lightpanda with Playwright CDP. For shared constants, imports from
 aria.tools.constants.
 """
 
-from aria.tools.constants import BASE_DIR
+from aria.config.folders import Workspace
 
 # Timeout for individual browser commands (seconds)
 # Long enough for slow pages but not so long that failures waste time
@@ -19,6 +19,6 @@ DEFAULT_WAIT_STRATEGY = "domcontentloaded"
 # Default CDP port for Lightpanda serve
 LIGHTPANDA_DEFAULT_PORT = 9222
 
-# Persisted browser page-content captures
-BROWSER_CONTENT_DIR = BASE_DIR / "browser"
+# Persisted browser page-content captures — stored under ~/.aria/workspace/browser
+BROWSER_CONTENT_DIR = Workspace.path / "browser"
 BROWSER_CONTENT_DIR.mkdir(parents=True, exist_ok=True)

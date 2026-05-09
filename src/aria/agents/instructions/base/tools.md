@@ -26,6 +26,21 @@ Use for judgment-heavy work: diagnosis, tradeoffs, comparisons, synthesizing con
 
 For OS commands, dev tools, and utilities not covered by `ax` — `git`, `pytest`, `ruff`, file operations, etc.
 
+#### Working Directory
+
+File operations (`read_file`, `write_file`, `list_files`, `search_files`) are confined to `~/.aria/workspace/`. Shell commands default to the same directory.
+
+#### Binary Management
+
+Download and install binaries to `~/.aria/bin` — this directory is automatically on PATH for all shell and process executions. Examples: browser tools, CLI utilities, language servers.
+
+To install a binary:
+1. Download to `~/.aria/bin/`
+2. Make executable: `chmod +x ~/.aria/bin/<name>`
+3. Verify: `<name> --help`
+
+Binaries in this directory persist across sessions and are shared between the main agent and workers. Do not place executables in the workspace.
+
 Pass `reason` and `commands` as parameters to `shell`.
 
 Do not use `shell` for long-running background processes — use the `processes` family in `ax` instead. Always run `<command> --help` before first use of any new command.

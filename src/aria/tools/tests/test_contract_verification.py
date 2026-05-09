@@ -125,15 +125,10 @@ class TestPathContractConsistency:
         sig = inspect.signature(_secure_resolve_path)
         params = sig.parameters
 
-        # Document the expected behavior
-        # If enforce_base_dir defaults to False, this is a security issue
-        # The fix should either:
-        # 1. Change default to True, OR
-        # 2. Document that absolute paths outside BASE_DIR are allowed
+        # enforce_base_dir must default to True to confine agent file
+        # operations to the workspace directory.
         enforce_param = params.get("enforce_base_dir")
         if enforce_param:
             default = enforce_param.default
-            # This test documents the current state
-            # A proper fix would change default to True
-            msg = "enforce_base_dir default is False (security risk)"
-            assert default is False, msg
+            msg = "enforce_base_dir default should be True (workspace confinement)"
+            assert default is True, msg

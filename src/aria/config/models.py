@@ -20,7 +20,7 @@ from typing import Any
 
 from aria.config import get_optional_env, get_required_env
 from aria.config.api import Vllm as VllmConfig
-from aria.config.folders import Data
+from aria.config.folders import Models
 
 _SENTINEL = object()
 
@@ -47,15 +47,15 @@ class _Lazy:
 
 
 def _resolve_model_path(path: str) -> str:
-    """Resolve a model path against DATA_FOLDER/models/.
+    """Resolve a model path against ~/.aria/models/.
 
-    All models must reside under DATA_FOLDER/models/. For HuggingFace
+    All models must reside under ~/.aria/models/. For HuggingFace
     repo IDs (e.g. ``Stffens/bge-small-rrf-v4``), only the model name
     (last segment) is used as the local directory name.
 
     - Empty string → return as-is (not configured)
     - Absolute path → use as-is
-    - Otherwise → resolve against DATA_FOLDER/models/ using last segment
+    - Otherwise → resolve against ~/.aria/models/ using last segment
     """
     if not path:
         return path
@@ -63,7 +63,7 @@ def _resolve_model_path(path: str) -> str:
         return path
     # For HF repo IDs like "org/model-name", use only "model-name"
     model_name = path.rsplit("/", maxsplit=1)[-1].lower()
-    return str(Data.path / "models" / model_name)
+    return str(Models.path / model_name)
 
 
 _random_port: int | None = None

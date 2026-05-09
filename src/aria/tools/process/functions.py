@@ -20,7 +20,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from aria.config.folders import Data
+from aria.config.folders import Data, Debug
 from aria.server.process_utils import (
     is_process_running,
     load_state,
@@ -34,8 +34,8 @@ from aria.tools.shell.validation import _extract_all_command_names
 # State file for cross-invocation persistence
 _STATE_FILE = Data.path / "processes.json"
 
-# Directory for stdout/stderr log files
-_LOG_DIR = Data.path / "process_logs"
+# Directory for stdout/stderr log files — under ~/.aria/logs/processes/
+_LOG_DIR = Debug.path / "processes"
 
 # Maximum bytes to return from log files (last N bytes to keep response small)
 _MAX_LOG_BYTES = 10_000
@@ -94,7 +94,7 @@ def _save_processes(entries: dict[str, dict]) -> None:
 
 def _cleanup_logs(name: str) -> None:
     """Remove log files for a process."""
-    for suffix in (".stdout.log", ".stderr.log"):
+    for suffix in (".log", ".err"):
         log_file = _LOG_DIR / f"{name}{suffix}"
         try:
             if log_file.exists():
@@ -291,15 +291,10 @@ def _action_start(
             data={"error": str(exc)},
         )
 
-    proc_env = {**os.environ}
+    # Ensure ~/.aria/bin and the current Python env bin are on PATH
+    from aria.config.folders import get_augmented_env
 
-    # Ensure the current Python environment's bin directory is on PATH
-    _bin_dir = os.path.join(sys.prefix, "Scripts" if os.name == "nt" else "bin")
-    if os.path.isdir(_bin_dir):
-        _path = proc_env.get("PATH", "")
-        if _bin_dir not in _path.split(os.pathsep):
-            proc_env["PATH"] = _bin_dir + os.pathsep + _path
-
+    proc_env = get_augmented_env()
     if env:
         proc_env.update(env)
 
@@ -312,8 +307,8 @@ def _action_start(
         run_target = cmd_list
 
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
-    stdout_log = _LOG_DIR / f"{name}.stdout.log"
-    stderr_log = _LOG_DIR / f"{name}.stderr.log"
+    stdout_log = _LOG_DIR / f"{name}.log"
+    stderr_log = _LOG_DIR / f"{name}.err"
 
     try:
         stdout_fh = open(stdout_log, "w")

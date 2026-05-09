@@ -41,7 +41,15 @@ from rich.console import Console
 from rich.table import Table
 
 from aria.config.database import ChromaDB, SQLite
-from aria.config.folders import Data, Debug, Storage
+from aria.config.folders import (
+    DB,
+    Bin,
+    Data,
+    Debug,
+    Models,
+    Storage,
+    Workspace,
+)
 from aria.config.models import Chat, Embeddings
 
 app = typer.Typer(
@@ -93,9 +101,13 @@ def show_paths():
     table.add_column("Exists", style="yellow", width=8)
 
     paths = [
-        ("Data Folder", Data.path),
-        ("Storage Path", Storage.path),
-        ("Debug Logs", Debug.logs_path),
+        ("Home", Data.path),
+        ("Workspace", Workspace.path),
+        ("Bin", Bin.path),
+        ("DB", DB.path),
+        ("Storage", Storage.path),
+        ("Logs", Debug.logs_path),
+        ("Models", Models.path),
         ("Database File", SQLite.file_path),
         ("ChromaDB Path", ChromaDB.db_path),
     ]

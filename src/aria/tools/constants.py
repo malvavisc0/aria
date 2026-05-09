@@ -9,14 +9,14 @@ import os
 from pathlib import Path
 
 from aria.config import get_optional_env
-from aria.config.folders import Data
+from aria.config.folders import Workspace
 
 # ============================================================================
 # Directory Configuration
 # ============================================================================
 
-# Base directory for all file operations
-BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Data.path))).resolve()
+# Base directory for all file operations (agent workspace)
+BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Workspace.path))).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Derived directories

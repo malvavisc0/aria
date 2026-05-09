@@ -4,7 +4,6 @@ Provides Python-callable worker management (spawn, list, status, logs,
 cancel, clean) for use via the ax dispatcher.
 """
 
-import json
 import shutil
 import subprocess
 import sys
@@ -15,7 +14,7 @@ from typing import Any
 
 from loguru import logger
 
-from aria.config.folders import Data, Storage
+from aria.config.folders import Data, Debug, Storage
 from aria.server.process_utils import (
     is_process_running,
     load_state,
@@ -178,7 +177,9 @@ def _spawn(
     if instructions:
         cmd.extend(["--instructions", instructions])
 
-    log_handle = open(out_dir / "stdout.log", "w")
+    logs_dir = Debug.path / "workers"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_handle = open(logs_dir / f"{wid}.log", "w")
     process = subprocess.Popen(
         cmd,
         stdout=log_handle,
@@ -289,7 +290,7 @@ def _logs(reason: str, worker_id: str | None = None, tail: int = 50) -> str:
             },
         )
 
-    log_file = _output_dir(worker_id) / "stdout.log"
+    log_file = Debug.path / "workers" / f"{worker_id}.log"
     if not log_file.exists():
         return tool_response(
             tool="worker",

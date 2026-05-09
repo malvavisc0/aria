@@ -41,7 +41,11 @@ async def _run(args):
     worker_id = args.worker_id
     output_dir = Path(args.output_dir)
 
-    log_file = output_dir / "worker.log"
+    from aria.config.folders import Debug
+
+    logs_dir = Debug.path / "workers"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_file = logs_dir / f"{worker_id}.log"
     logger.add(str(log_file), rotation="10 MB", level="DEBUG")
     logger.info(f"Worker {worker_id} starting (PID {os.getpid()})")
 

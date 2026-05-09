@@ -196,6 +196,19 @@ def _get_venv_bin_dir() -> Path | None:
     return None
 
 
+def _get_aria_bin_dir() -> Path | None:
+    """Return the ~/.aria/bin directory, or None if not available."""
+    try:
+        from aria.config.folders import Bin
+
+        bin_path = Bin.path
+        if bin_path.exists():
+            return bin_path
+    except Exception:
+        pass
+    return None
+
+
 def get_venv_extras(
     excluded: set[str] | None = None,
     filter_term: str | None = None,
@@ -257,13 +270,41 @@ def get_venv_extras(
     if uncategorized:
         rows.append(("Other", "`, `".join(uncategorized)))
 
-    lines = [
-        "### Additional Commands Available\n",
+    lines: list[str] = []
+
+    # Scan ~/.aria/bin for Aria-managed binaries
+    aria_bin_dir = _get_aria_bin_dir()
+    if aria_bin_dir:
+        aria_bins = sorted(
+            f.name
+            for f in aria_bin_dir.iterdir()
+            if f.is_file() and os.access(f, os.X_OK) and not f.name.startswith(".")
+        )
+        if aria_bins:
+            lines.append("### Aria-Managed Binaries\n")
+            lines.append(
+                f"These binaries are installed in `{aria_bin_dir}` "
+                "(automatically on PATH).\n"
+            )
+            lines.append(f"`{'`, `'.join(aria_bins)}`")
+            lines.append("")
+            lines.append(
+                "Download additional binaries to this directory — "
+                "they will be available on PATH for all shell commands."
+            )
+            lines.append("")
+
+    lines.append("### Virtual Environment Commands\n")
+    lines.append(
         "These commands are available in the active virtual environment "
-        "and can be called via `shell`.\n",
+        "and can be called via `shell`.\n"
+    )
+    lines.append(
         "| Category | Commands |",
+    )
+    lines.append(
         "|----------|----------|",
-    ]
+    )
     for category, commands in rows:
         lines.append(f"| {category} | `{commands}` |")
 

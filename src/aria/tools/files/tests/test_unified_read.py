@@ -17,12 +17,14 @@ from aria.tools.files.unified_read import (
 
 @pytest.fixture
 def temp_dir():
-    """Create a temporary directory for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        old_cwd = os.getcwd()
-        os.chdir(tmpdir)
-        yield Path(tmpdir)
-        os.chdir(old_cwd)
+    """Create a temporary directory for testing within the workspace."""
+    from aria.tools.constants import BASE_DIR
+
+    tmpdir = Path(tempfile.mkdtemp(dir=str(BASE_DIR)))
+    old_cwd = os.getcwd()
+    os.chdir(tmpdir)
+    yield tmpdir
+    os.chdir(old_cwd)
 
 
 @pytest.fixture

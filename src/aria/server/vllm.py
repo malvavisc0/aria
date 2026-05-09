@@ -456,11 +456,14 @@ class VllmServerManager:
             logger.info(f"  stderr → {log_file}")
 
             log_fh = open(log_file, "w")
+            from aria.config.folders import get_augmented_env
+
             proc = subprocess.Popen(
                 cmd,
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                env=get_augmented_env(),
             )
             log_fh.close()
             self._pids[role] = proc.pid

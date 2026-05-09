@@ -13,7 +13,6 @@ from unittest.mock import patch
 import pytest
 
 from aria.tools import safe_json, utc_timestamp
-from aria.tools.constants import BASE_DIR
 from aria.tools.files._internals import (
     _create_backup,
     _error_response,
@@ -204,10 +203,17 @@ class TestSafeJson:
 class TestSecureResolvePath:
     """Test suite for _secure_resolve_path function."""
 
+    @staticmethod
+    def _workspace():
+        """Get the current (possibly monkeypatched) workspace path."""
+        from aria.tools.constants import BASE_DIR
+
+        return BASE_DIR
+
     def test_resolve_existing_file(self):
         """Test resolving path to existing file."""
         # Create file within BASE_DIR
-        temp_path = BASE_DIR / f"test_resolve_{id(self)}.txt"
+        temp_path = self._workspace() / f"test_resolve_{id(self)}.txt"
         temp_path.write_text("test")
 
         try:
@@ -225,19 +231,20 @@ class TestSecureResolvePath:
             outside_file = tmpdir_path / "outside.txt"
             outside_file.write_text("content")
 
-            # With enforce_base_dir=False (default), path should be allowed
-            result = _secure_resolve_path(str(outside_file))
+            # With enforce_base_dir=False, path should be allowed
+            result = _secure_resolve_path(str(outside_file), enforce_base_dir=False)
             assert result == outside_file.resolve()
 
-            # With enforce_base_dir=True, path should be blocked
+            # With enforce_base_dir=True (default), path should be blocked
             with pytest.raises(FileSecurityError, match="Path traversal"):
-                _secure_resolve_path(str(outside_file), enforce_base_dir=True)
+                _secure_resolve_path(str(outside_file))
 
     def test_resolve_symlink(self):
         """Test that symlinks are detected (resolve follows them)."""
-        target = BASE_DIR / f"test_target_{id(self)}.txt"
+        ws = self._workspace()
+        target = ws / f"test_target_{id(self)}.txt"
         target.write_text("content")
-        link = BASE_DIR / f"test_link_{id(self)}.txt"
+        link = ws / f"test_link_{id(self)}.txt"
         link.symlink_to(target)
 
         try:
@@ -250,7 +257,7 @@ class TestSecureResolvePath:
 
     def test_resolve_disallowed_extension(self):
         """Test that disallowed file extensions are blocked."""
-        file_path = BASE_DIR / f"test_{id(self)}.exe"
+        file_path = self._workspace() / f"test_{id(self)}.exe"
         file_path.write_text("content")
 
         try:
@@ -262,14 +269,14 @@ class TestSecureResolvePath:
 
     def test_resolve_nonexistent_file_check_exists_true(self):
         """Test error when file doesn't exist and check_exists=True."""
-        file_path = BASE_DIR / f"nonexistent_{id(self)}.txt"
+        file_path = self._workspace() / f"nonexistent_{id(self)}.txt"
         # Test with absolute path
         with pytest.raises(FileOperationError, match="File not found"):
             _secure_resolve_path(str(file_path), check_exists=True)
 
     def test_resolve_nonexistent_file_check_exists_false(self):
         """Test resolving nonexistent file with check_exists=False."""
-        file_path = BASE_DIR / f"nonexistent_{id(self)}.txt"
+        file_path = self._workspace() / f"nonexistent_{id(self)}.txt"
         # Should not raise with check_exists=False
         result = _secure_resolve_path(str(file_path), check_exists=False)
         assert isinstance(result, Path)
@@ -285,8 +292,8 @@ class TestSecureResolveDir:
             subdir = tmpdir_path / "subdir"
             subdir.mkdir()
 
-            # With enforce_base_dir=False (default), absolute paths work anywhere
-            result = _secure_resolve_dir(str(subdir))
+            # With enforce_base_dir=False, absolute paths work anywhere
+            result = _secure_resolve_dir(str(subdir), enforce_base_dir=False)
             assert result.is_dir()
 
     def test_resolve_dir_path_traversal(self):
@@ -297,13 +304,14 @@ class TestSecureResolveDir:
             outside_dir = tmpdir_path / "outside"
             outside_dir.mkdir()
 
-            # With enforce_base_dir=False (default), absolute paths work anywhere
-            result = _secure_resolve_dir(str(outside_dir))
+            # With enforce_base_dir=False, absolute paths work anywhere
+            result = _secure_resolve_dir(str(outside_dir), enforce_base_dir=False)
             assert result.is_dir()
 
-            # With enforce_base_dir=True, path outside BASE_DIR should be blocked
+            # With enforce_base_dir=True (default), path outside BASE_DIR
+            # should be blocked
             with pytest.raises(FileSecurityError, match="Path traversal"):
-                _secure_resolve_dir(str(outside_dir), enforce_base_dir=True)
+                _secure_resolve_dir(str(outside_dir))
 
     def test_resolve_dir_symlink(self):
         """Test that symlinked directories are blocked."""
@@ -605,9 +613,15 @@ class TestFormatPermissionsSymbolic:
 class TestValidateAndResolveFile:
     """Test suite for validate_and_resolve_file function."""
 
+    @staticmethod
+    def _workspace():
+        from aria.tools.constants import BASE_DIR
+
+        return BASE_DIR
+
     def test_validate_and_resolve_success(self):
         """Test successful validation and resolution."""
-        file_path = BASE_DIR / f"test_validate_{id(self)}.txt"
+        file_path = self._workspace() / f"test_validate_{id(self)}.txt"
         file_path.write_text("content")
 
         try:
@@ -626,11 +640,18 @@ class TestValidateAndResolveFile:
 class TestValidateAndResolveTwoFiles:
     """Test suite for validate_and_resolve_two_files function."""
 
+    @staticmethod
+    def _workspace():
+        from aria.tools.constants import BASE_DIR
+
+        return BASE_DIR
+
     def test_validate_two_files_success(self):
         """Test successful validation of two files."""
-        source = BASE_DIR / f"test_source_{id(self)}.txt"
+        ws = self._workspace()
+        source = ws / f"test_source_{id(self)}.txt"
         source.write_text("content")
-        dest = BASE_DIR / f"test_dest_{id(self)}.txt"
+        dest = ws / f"test_dest_{id(self)}.txt"
 
         try:
             src_path, dest_path = validate_and_resolve_two_files(
@@ -643,14 +664,14 @@ class TestValidateAndResolveTwoFiles:
 
     def test_validate_two_files_invalid_source(self):
         """Test validation with invalid source."""
-        dest = BASE_DIR / f"test_dest_{id(self)}.txt"
+        dest = self._workspace() / f"test_dest_{id(self)}.txt"
         # Path traversal attempt - should be blocked
         with pytest.raises(FileSecurityError, match="Path traversal"):
             validate_and_resolve_two_files("../etc/passwd", str(dest))
 
     def test_validate_two_files_invalid_dest(self):
         """Test validation with invalid destination."""
-        source = BASE_DIR / f"test_source_{id(self)}.txt"
+        source = self._workspace() / f"test_source_{id(self)}.txt"
         source.write_text("content")
         # Path traversal attempt - should be blocked
         with pytest.raises(FileSecurityError, match="Path traversal"):

@@ -255,11 +255,15 @@ class ServerManager:
 
         cmd = self._build_command()
         log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess
+        from aria.config.folders import get_augmented_env
+
+        env = get_augmented_env()
+        env["DEBUG"] = "false"
         self._process = subprocess.Popen(
             cmd,
             stdout=log_file,
             stderr=log_file,
-            env={**os.environ, "DEBUG": "false"},
+            env=env,
         )
         log_file.close()  # safe: the OS dup'd the fd into the child process
         self._started_at = datetime.now()
@@ -279,7 +283,11 @@ class ServerManager:
         self._started_at = datetime.now()
         self._save_state()
         try:
-            subprocess.run(cmd, env={**os.environ, "DEBUG": "false"})
+            from aria.config.folders import get_augmented_env
+
+            env = get_augmented_env()
+            env["DEBUG"] = "false"
+            subprocess.run(cmd, env=env)
         finally:
             self._clear_state()
 

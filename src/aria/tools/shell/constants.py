@@ -8,7 +8,7 @@ import os
 import platform
 from pathlib import Path
 
-from aria.config.folders import Data
+from aria.config.folders import Workspace
 
 CURRENT_OS = platform.system().lower()  # windows, linux, darwin
 IS_WINDOWS = CURRENT_OS == "windows"
@@ -61,9 +61,6 @@ BLOCKED_COMMANDS = [
     "pacman",
 ]
 
-# Default working directory for shell commands.
-# Uses the project root (Data.path's parent) so that `aria` CLI subcommands
-# resolve DATA_FOLDER correctly (relative to the project, not to data/).
-_PROJECT_ROOT = Data.path.parent
-BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(_PROJECT_ROOT))).resolve()
+# Default working directory for shell commands — the agent workspace.
+BASE_DIR = Path(os.environ.get("TOOLS_DATA_FOLDER", str(Workspace.path))).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)

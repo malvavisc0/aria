@@ -79,9 +79,7 @@ class PreflightResult:
 
 # Required environment variables for the application to start
 REQUIRED_ENV_VARS = [
-    "DATA_FOLDER",
     "ARIA_DB_FILENAME",
-    "LOCAL_STORAGE_PATH",
     "CHROMADB_PERSISTENT_PATH",
     "CHAT_MODEL",
     "CHAT_MODEL_PATH",
@@ -204,9 +202,9 @@ def _check_lightpanda(checks: list[CheckResult]) -> None:
 
 
 def _check_model_exists(model_path: str) -> bool:
-    """Check if a model directory exists under DATA_FOLDER/models/.
+    """Check if a model directory exists under ~/.aria/models/.
 
-    All models must reside under DATA_FOLDER/models/. Only local
+    All models must reside under ~/.aria/models/. Only local
     directory existence is checked — HF cache is not used.
 
     Args:
@@ -513,7 +511,7 @@ def _check_knowledge_db(checks: list[CheckResult]) -> None:
                 passed=False,
                 category="storage",
                 error=str(e),
-                hint="Check DATA_FOLDER and ARIA_DB_FILENAME in .env",
+                hint="Check ARIA_HOME and ARIA_DB_FILENAME in .env",
             )
         )
 

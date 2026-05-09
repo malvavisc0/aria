@@ -11,11 +11,11 @@ from loguru import logger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from aria.config.folders import Data
+from aria.config.folders import DB
 
 from .models import Base
 
-_DEFAULT_DB_PATH = str(Data.path / "tools.db")
+_DEFAULT_DB_PATH = str(DB.path / "tools.db")
 
 
 class ToolsDatabase:

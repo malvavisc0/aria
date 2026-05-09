@@ -115,6 +115,26 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     if add_agent_id:
         lines.append(f"- **Agent ID**: {generate_agent_id(agent_name)}")
 
+    # Aria-managed binaries directory
+    try:
+        from aria.config.folders import Bin
+
+        bin_path = Bin.path
+        bin_path.mkdir(parents=True, exist_ok=True)
+        installed = (
+            sorted(
+                f.name
+                for f in bin_path.iterdir()
+                if f.is_file() and not f.name.startswith(".")
+            )
+            if bin_path.exists()
+            else []
+        )
+        bin_listing = ", ".join(installed) if installed else "(empty)"
+        lines.append(f"- **Managed Binaries**: `{bin_path}` — {bin_listing}")
+    except Exception:
+        pass
+
     # Inject available CLI extras from the virtual environment
     try:
         from aria.cli.extras import get_venv_extras

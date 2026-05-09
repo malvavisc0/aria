@@ -24,7 +24,7 @@ def _find_project_root() -> Path:
 
     Mirrors the same helper in ``aria.config.folders`` — kept separate to
     avoid importing that module before the ``.env`` file exists (its module-
-    level code reads ``DATA_FOLDER`` from the environment).
+    level code reads ``ARIA_HOME`` from the environment).
     """
     current = Path(__file__).resolve().parent
     for parent in [current, *current.parents]:
@@ -97,12 +97,25 @@ def setup_directories() -> None:
     load_dotenv()
 
     from aria.config.database import ChromaDB
-    from aria.config.folders import Data, Storage
+    from aria.config.folders import (
+        DB,
+        Bin,
+        Data,
+        Debug,
+        Models,
+        Storage,
+        Workspace,
+    )
 
     Data.path.mkdir(parents=True, exist_ok=True)
+    Workspace.path.mkdir(parents=True, exist_ok=True)
+    Bin.path.mkdir(parents=True, exist_ok=True)
+    Debug.path.mkdir(parents=True, exist_ok=True)
     Storage.path.mkdir(parents=True, exist_ok=True)
+    DB.path.mkdir(parents=True, exist_ok=True)
+    Models.path.mkdir(parents=True, exist_ok=True)
     ChromaDB.db_path.mkdir(parents=True, exist_ok=True)
-    console.print("   [green]✓[/green] Created data directory")
+    console.print("   [green]✓[/green] Created data directories")
     console.print("   [green]✓[/green] Created chromadb directory")
 
 

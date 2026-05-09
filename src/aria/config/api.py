@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from aria.config import get_optional_env
-from aria.config.folders import Data
+from aria.config.folders import Bin
 
 
 class Vllm:
@@ -79,14 +79,13 @@ class Lightpanda:
     Run 'aria lightpanda download' to install.
     """
 
-    bin_dir: str = get_optional_env("LIGHTPANDA_BIN_DIR", "bin/lightpanda")
     version: str = get_optional_env("LIGHTPANDA_VERSION", "nightly")
     port: int = int(get_optional_env("LIGHTPANDA_PORT", "9222"))
 
     @classmethod
     def get_bin_path(cls) -> Path:
         """Get the resolved binary directory path."""
-        return Data.path / Path(cls.bin_dir)
+        return Bin.path / "lightpanda"
 
     @classmethod
     def get_binary_path(cls) -> Path | None:

@@ -138,7 +138,7 @@ def _validate_inputs(
 
 
 def _secure_resolve_path(
-    file_name: str, check_exists: bool = True, enforce_base_dir: bool = False
+    file_name: str, check_exists: bool = True, enforce_base_dir: bool = True
 ) -> Path:
     """Secure path resolution with validation.
 
@@ -198,7 +198,7 @@ def _secure_resolve_path(
 
 
 def _secure_resolve_dir(
-    dir_name: str, enforce_base_dir: bool = False, check_exists: bool = True
+    dir_name: str, enforce_base_dir: bool = True, check_exists: bool = True
 ) -> Path:
     """Secure directory path resolution.
 
