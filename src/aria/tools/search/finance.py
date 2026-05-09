@@ -52,32 +52,16 @@ MAX_ARTICLES = 50
 
 @log_tool_call
 def fetch_current_stock_price(reason: Reason, ticker: str) -> str:
-    """
-    Fetch the current market price for a stock or crypto ticker.
+    """Fetch the current price for a stock, ETF, or crypto ticker.
 
-    When to use:
-        - Use this when the user asks for the current price of a stock,
-          ETF, or cryptocurrency.
-        - Use this to get the day's change (absolute and percentage).
-        - Do NOT use this for company fundamentals — use
-          `fetch_company_information`.
-
-    Why:
-        Provides real-time and previous-close pricing via Yahoo Finance,
-        including market state (open/closed) and day change calculations.
+    Use this for price and day-change questions, not company fundamentals.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        ticker: Stock symbol (e.g., AAPL, GOOGL, BTC-USD).
+        ticker: Symbol such as ``AAPL`` or ``BTC-USD``.
 
     Returns:
-        JSON with current_price, currency, market_state, day_change,
-        day_change_percent, previous_close.
-
-    Important:
-        - Supports stocks, ETFs, and crypto (use BTC-USD format for
-          crypto pairs).
-        - Market state indicates whether the exchange is currently open.
+        JSON with current price, currency, market state, and day change.
     """
     logger.info(f"fetch_current_stock_price called with ticker='{ticker}'")
     raw_ticker = ticker
@@ -168,33 +152,18 @@ def fetch_current_stock_price(reason: Reason, ticker: str) -> str:
 
 @log_tool_call
 def fetch_company_information(reason: Reason, ticker: str) -> str:
-    """
-    Fetch comprehensive company fundamentals and metadata for a ticker.
+    """Fetch company fundamentals and metadata for a ticker.
 
-    When to use:
-        - Use this when the user asks about a company's business,
-          financials, valuation, or analyst recommendations.
-        - Use this to get sector, industry, market cap, P/E ratio,
-          revenue growth, and other fundamental data.
-        - Do NOT use this for just the current price — use
-          `fetch_current_stock_price`.
-
-    Why:
-        Aggregates all key company data into one response: basic info,
-        financial metrics, price data, financial health, and analyst
-        consensus — essential for investment research.
+    Use this for business, valuation, financial-health, or analyst questions,
+    not simple price lookups.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        ticker: Stock symbol (e.g., AAPL, GOOGL).
+        ticker: Stock symbol such as ``AAPL``.
 
     Returns:
-        JSON with basic_info, financial_metrics, price_data,
-        financial_health, analyst_data, location.
-
-    Important:
-        - Data source is Yahoo Finance.
-        - Some fields may be None if not available for the ticker.
+        JSON bundle with company info, financial metrics, price data,
+        analyst data, and location.
     """
     logger.info(f"fetch_company_information called with ticker='{ticker}'")
     raw_ticker = ticker
@@ -308,32 +277,17 @@ def fetch_company_information(reason: Reason, ticker: str) -> str:
 
 @log_tool_call
 def fetch_ticker_news(reason: Reason, ticker: str, max_articles: int = 10) -> str:
-    """
-    Fetch recent news articles for a stock or crypto ticker.
+    """Fetch recent news for a stock or crypto ticker.
 
-    When to use:
-        - Use this when the user asks about recent news or events
-          related to a specific stock or company.
-        - Use this to gauge market sentiment around a ticker.
-        - Do NOT use this for company fundamentals — use
-          `fetch_company_information`.
-
-    Why:
-        Provides the latest news headlines with publisher info and
-        timestamps, helping users stay informed about market-moving
-        events.
+    Use this for recent-events or sentiment questions, not fundamentals.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        ticker: Stock symbol (e.g., AAPL, GOOGL).
-        max_articles: Number of articles (default: 10, max: 50).
+        ticker: Stock symbol such as ``AAPL``.
+        max_articles: Maximum number of articles to return.
 
     Returns:
-        JSON with articles[{title, publisher, link, publish_time}].
-
-    Important:
-        - Data source is Yahoo Finance news feed.
-        - Articles are sorted by recency (most recent first).
+        JSON with recent article metadata.
     """
     logger.info(
         f"fetch_ticker_news called with ticker='{ticker}', max_articles={max_articles}"

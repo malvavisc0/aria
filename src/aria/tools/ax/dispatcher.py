@@ -249,18 +249,17 @@ async def ax(
     command: str,
     args: dict[str, Any] | None = None,
 ) -> str:
-    """Execute an ax command directly — no shell, structured I/O.
+    """Dispatch to a domain tool family with structured I/O.
 
-    Routes to the underlying Python tool function based on family + command.
-    Returns the same structured JSON as calling the function directly.
+    Use this for web, knowledge, finance, IMDb, HTTP, Python sandbox,
+    and background-process actions. Use ``command="help"`` to list
+    families or subcommands.
 
     Args:
         reason: Required. Brief explanation of why you are calling this.
-        family: Command family (web, knowledge, finance, imdb, http, dev, processes).
-        command: Subcommand within the family (e.g. search, stock, store).
-            Use "help" to list available commands for a family.
-        args: Keyword arguments for the target function (excluding reason).
-            Pass as a dict. Example: {"query": "python tutorials", "max_results": 5}
+        family: Tool family name.
+        command: Subcommand within the family.
+        args: Target function arguments as a dict (excluding ``reason``).
 
     Returns:
         Structured JSON response from the target function.

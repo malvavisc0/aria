@@ -37,7 +37,7 @@ class TestLoadAgentInstructions:
             extras="Custom extra note",
         )
         assert "Custom extra note" in result
-        assert "Environment" in result
+        assert "Runtime Context" in result
 
     def test_unknown_agent_returns_empty(self):
         """Unknown agent name should return empty string."""
@@ -99,7 +99,11 @@ class TestLoadAgentInstructions:
             if section_path.exists():
                 content = section_path.read_text()
                 first_heading = next(
-                    (line for line in content.splitlines() if line.startswith("## ")),
+                    (
+                        line
+                        for line in content.splitlines()
+                        if line.startswith("## ")
+                    ),
                     None,
                 )
                 if first_heading:

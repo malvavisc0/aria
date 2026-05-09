@@ -44,36 +44,18 @@ def _get_manager():
 
 @log_tool_call
 async def open_url(reason: Reason, url: str, content_mode: str = "text") -> str:
-    """Open a URL in the headless browser and get page content.
+    """Open a URL in the headless browser and capture rendered content.
 
-    When to use:
-        - Use this when you need to browse a website that requires JavaScript
-          rendering, cookie consent, or anti-bot bypass.
-        - Use this when you need the rendered DOM content of a page.
-        - Do NOT use this to download files (PDFs, images, archives) — use
-          the `download` tool instead.
-        - Do NOT use this for simple HTTP API calls — use `http_request`.
-
-    Why:
-        Lightpanda provides a real browser via CDP that bypasses anti-bot
-        protection, unlike plain HTTP requests which get blocked by many
-        modern websites. The browser is already running at server startup.
+    Use this for JavaScript-heavy pages, consent flows, or sites that need
+    real browser rendering. Do not use it for plain API calls.
 
     Args:
         reason: Required. Brief explanation of why you are opening this URL.
-        url: The URL to navigate to.
-        content_mode: Extraction mode: `text` for cleaned body text or
-            `article` for likely main-content extraction.
+        url: URL to navigate to.
+        content_mode: ``text`` for cleaned page text or ``article`` for main content.
 
     Returns:
-        JSON with URL, title, and persisted content metadata
-        (content_file, content_preview, content_size).
-
-    Important:
-        - The browser is already running — this just navigates to the URL.
-        - Page content is persisted to disk; the response contains a preview
-          and file path, not the full content inline.
-        - Requires Lightpanda to be installed (`aria lightpanda download`).
+        JSON with page metadata and a saved content file path.
     """
     manager = _get_manager()
     return await manager.navigate(
@@ -90,33 +72,18 @@ async def browser_click(
     selector: str,
     content_mode: str = "text",
 ) -> str:
-    """Click an element on the current page by CSS selector.
+    """Click an element on the current browser page.
 
-    When to use:
-        - Use this after `open_url` to interact with page elements such as
-          accepting cookie consent banners, clicking 'Load more' buttons,
-          navigating pagination, or following links.
-        - Do NOT use this without first calling `open_url` — there must be
-          an active page in the browser.
-
-    Why:
-        Many websites hide content behind interactions (consent walls,
-        lazy-loaded sections, paginated results). This tool lets you
-        interact with the page to reveal the content you need.
+    Use this after ``open_url`` for consent banners, pagination, or reveal
+    interactions. An active page must already exist.
 
     Args:
         reason: Required. Brief explanation of why you are clicking this element.
-        selector: CSS selector for the element, e.g. 'button.accept',
-            'a[href="/next"]', '#submit-button'.
+        selector: CSS selector for the target element.
         content_mode: Extraction mode for the updated page content.
 
     Returns:
-        JSON with updated page content metadata after the click.
-
-    Important:
-        - Always call `open_url` first to navigate to a page before clicking.
-        - Use specific selectors (class, ID, data attributes) rather than
-          generic tag selectors to avoid clicking the wrong element.
+        JSON with updated page metadata after the click.
     """
     manager = _get_manager()
     return await manager.click(

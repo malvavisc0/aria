@@ -826,26 +826,27 @@ def plan(
     execution_id: str | None = None,
     agent_id: str = "default",
 ) -> str:
-    """Create and manage ordered execution plans (SQLite-backed).
+    """Create and manage ordered execution plans.
 
-    Actions: create, get, update, add, remove, replace, reorder.
+    Actions: ``create``, ``get``, ``update``, ``add``, ``remove``,
+    ``replace``, ``reorder``, ``list``, ``delete``.
 
     Args:
-        reason: Required. Brief explanation of why you are calling this tool (e.g. "Create plan for migration task").
-        action: create|get|update|add|remove|replace|reorder.
-        task: Task description (required for create).
-        steps: Ordered step descriptions (required for create).
-        step_id: Step ID for update/remove/replace.
-        status: pending|in_progress|completed|failed (for update).
-        result: Result message for update.
-        description: Step description for add/replace.
-        after_step_id: Insert after this step ID (for add).
-        step_ids: New step order (for reorder).
-        execution_id: Plan ID from create; required for all others.
-        agent_id: Agent isolation key (default: "default").
+        reason: Required. Brief explanation of why you are calling this tool.
+        action: Plan action to perform.
+        task: Task description for ``create``.
+        steps: Ordered step descriptions for ``create``.
+        step_id: Step ID for ``update``/``remove``/``replace``.
+        status: Step status for ``update``.
+        result: Result text for ``update``.
+        description: Step description for ``add``/``replace``.
+        after_step_id: Insert position for ``add``.
+        step_ids: New step order for ``reorder``.
+        execution_id: Plan ID for non-``create`` actions.
+        agent_id: Agent isolation key.
 
     Returns:
-        JSON with plan data, step info, progress.
+        JSON with plan data and progress.
     """
     action = action.lower().strip()
 

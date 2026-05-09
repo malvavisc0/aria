@@ -22,21 +22,19 @@ def scratchpad(
     operation: str = "get",
     agent_id: str = _DEFAULT_AGENT_ID,
 ) -> dict[str, Any]:
-    """Ephemeral key-value working memory (SQLite-backed).
+    """Small persistent key-value working memory.
 
-    When to use:
-        - Store/retrieve small data across reasoning sessions.
-        - Use key="all" with delete to clear all entries.
+    Use this to store or retrieve short intermediate data across steps.
 
     Args:
-        reason: Required. Brief explanation of why you are calling this tool (e.g. "Store intermediate calculation result").
-        key: Key to operate on (ignored for list).
-        value: Value to store (required for set).
-        operation: get | set | delete | list (default: get).
+        reason: Required. Brief explanation of why you are calling this tool.
+        key: Key to operate on (ignored for ``list``).
+        value: Value to store for ``set``.
+        operation: ``get`` | ``set`` | ``delete`` | ``list``.
         agent_id: Auto-set, do not provide.
 
     Returns:
-        Operation result with stored/retrieved value.
+        Operation result with stored or retrieved value.
     """
     operation = operation.lower().strip()
     now = utc_timestamp()

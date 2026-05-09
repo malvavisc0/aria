@@ -172,33 +172,17 @@ def _imdb_tool(error_not_found_msg_template: str, *, id_param: str = "imdb_id"):
 
 @log_tool_call
 def search_imdb_titles(reason: str, query: str, title_type: str | None = None) -> str:
-    """
-    Search for movies, TV series, and other titles on IMDb.
+    """Search IMDb titles or people and get IDs for follow-up lookups.
 
-    When to use:
-        - Use this as the entry point for any movie/TV query when you
-          don't have an IMDb ID yet.
-        - Use this to find the IMDb ID needed for other IMDb tools
-          (get_movie_details, get_movie_reviews, etc.).
-        - Use this to search for people (actors, directors) by name.
-
-    Why:
-        IMDb search returns both title and name matches, giving you
-        the IDs needed for detailed lookups via other IMDb tools.
+    Use this first when you do not already have an IMDb ID.
 
     Args:
         reason: Required. Brief explanation of why you are searching IMDb.
-        query: The title or name to search for.
-        title_type: Optional filter — movie, series, episode, short,
-            tv_movie, video.
+        query: Title or person name to search for.
+        title_type: Optional title filter.
 
     Returns:
-        JSON with titles[{imdbId, title, year, kind, rating}],
-        names[{imdbId, name, job}].
-
-    Important:
-        - Always use this first to get an IMDb ID before calling
-          detail tools.
+        JSON with matching titles and people.
     """
     logger.info(f"search_imdb_titles called with query='{query}'")
 
@@ -261,27 +245,16 @@ def search_imdb_titles(reason: str, query: str, title_type: str | None = None) -
 @log_tool_call
 @_imdb_tool(ERROR_MOVIE_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_details(reason: Reason, imdb_id: str) -> str:
-    """Get comprehensive details for a movie or TV series.
+    """Get detailed data for a movie or TV series by IMDb ID.
 
-    When to use:
-        - Use this to get full information about a specific movie or
-          TV series (requires IMDb ID from search_imdb_titles).
-        - Use this when the user asks "tell me about [movie]".
-        - Do NOT use this without an IMDb ID — call search_imdb_titles
-          first.
-
-    Why:
-        Returns the most complete data for a title: cast, crew, plot,
-        ratings, awards, box office, genres, and more — all in one call.
+    Use this after ``search_imdb_titles`` when the user wants full title details.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        imdb_id: IMDb ID with/without 'tt' prefix
-            (e.g., "tt0133093").
+        imdb_id: IMDb title ID.
 
     Returns:
-        JSON with title, year, rating, genres, plot, runtime,
-        directors, writers, cast, stars, awards, and more.
+        JSON with core title metadata, credits, plot, ratings, and awards.
     """
     logger.info(f"get_movie_details called with imdb_id='{imdb_id}'")
 
@@ -362,29 +335,16 @@ def get_movie_details(reason: Reason, imdb_id: str) -> str:
     id_param="person_id",
 )
 def get_person_details(reason: Reason, person_id: str) -> str:
-    """
-    Get details about an actor, director, or other film industry person.
+    """Get details for an actor, director, or other IMDb person.
 
-    When to use:
-        - Use this to get biographical info and career highlights for
-          a person (requires person ID from search_imdb_titles).
-        - Use this when the user asks "tell me about [actor/director]".
-        - Do NOT use this without a person ID — call search_imdb_titles
-          first.
-
-    Why:
-        Returns bio, birth/death dates, known-for titles, primary
-        professions, and physical attributes — the key facts about a
-        person's career.
+    Use this after ``search_imdb_titles`` when you have a person ID.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        person_id: IMDb person ID with/without 'nm' prefix
-            (e.g., "nm0000206").
+        person_id: IMDb person ID.
 
     Returns:
-        JSON with imdbId, name, bio, image_url, birth_date,
-        birth_place, knownfor[], primary_profession[], height.
+        JSON with biography, dates, known-for titles, and profession data.
     """
     logger.info(f"get_person_details called with person_id='{person_id}'")
 
@@ -417,28 +377,16 @@ def get_person_details(reason: Reason, person_id: str) -> str:
     id_param="person_id",
 )
 def get_person_filmography(reason: Reason, person_id: str) -> str:
-    """
-    Get the complete filmography for an actor, director, or crew member.
+    """Get the filmography for an IMDb person by ID.
 
-    When to use:
-        - Use this to get a full list of a person's work across all
-          roles (director, actor, producer, writer).
-        - Use this when the user asks "what movies did [person] direct"
-          or "what has [person] been in".
-        - Do NOT use this without a person ID — call search_imdb_titles
-          first.
-
-    Why:
-        Filmography is organized by role, making it easy to see a
-        person's work as a director vs. actor vs. writer.
+    Use this after ``search_imdb_titles`` for role-based credits.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        person_id: IMDb person ID with/without 'nm' prefix.
+        person_id: IMDb person ID.
 
     Returns:
-        JSON with filmography{director[], actor[], producer[],
-        writer[]}. Each entry has imdbId, title, year, kind, rating.
+        JSON with credits grouped by role.
     """
     logger.info(f"get_person_filmography called with person_id='{person_id}'")
 
@@ -473,31 +421,16 @@ def get_person_filmography(reason: Reason, person_id: str) -> str:
 @log_tool_call
 @_imdb_tool(ERROR_EPISODES_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_all_series_episodes(reason: Reason, imdb_id: str) -> str:
-    """
-    Get all episodes for a TV series.
+    """Get all episodes for a TV series by IMDb ID.
 
-    When to use:
-        - Use this to get a complete episode list for a TV series
-          (requires series IMDb ID from search_imdb_titles).
-        - Use this when the user asks "list all episodes of [show]".
-        - Do NOT use this without a series ID — call search_imdb_titles
-          first.
-
-    Why:
-        Returns every episode with title, rating, plot, and air date —
-        useful for episode guides or finding specific episodes.
+    Use this after ``search_imdb_titles`` for series episode lists.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        imdb_id: IMDb series ID with/without 'tt' prefix.
+        imdb_id: IMDb series ID.
 
     Returns:
-        JSON with series_id, episode_count, episodes[{imdbId, title,
-        year, rating, votes, plot, release_date, duration, genres}].
-
-    Important:
-        - No season/episode numbers in this endpoint — episodes are
-          listed chronologically.
+        JSON with episode metadata in chronological order.
     """
     logger.info(f"get_all_series_episodes called with imdb_id='{imdb_id}'")
 
@@ -534,28 +467,16 @@ def get_all_series_episodes(reason: Reason, imdb_id: str) -> str:
 @log_tool_call
 @_imdb_tool(ERROR_REVIEWS_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_reviews(reason: Reason, imdb_id: str) -> str:
-    """
-    Get user reviews for a movie or TV series.
+    """Get user reviews for a movie or TV series by IMDb ID.
 
-    When to use:
-        - Use this to see what viewers think about a title
-          (requires IMDb ID from search_imdb_titles).
-        - Use this when the user asks "is [movie] good?" or wants
-          to know public opinion.
-        - Do NOT use this without an IMDb ID — call search_imdb_titles
-          first.
-
-    Why:
-        User reviews provide sentiment and detailed opinions that
-        complement the numerical rating.
+    Use this after ``search_imdb_titles`` for audience-opinion questions.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        imdb_id: IMDb ID with/without 'tt' prefix.
+        imdb_id: IMDb title ID.
 
     Returns:
-        JSON with imdb_id, review_count, reviews[{spoiler, summary,
-        text, authorRating, upVotes, downVotes}].
+        JSON with review metadata and text.
     """
     logger.info(f"get_movie_reviews called with imdb_id='{imdb_id}'")
 
@@ -577,28 +498,16 @@ def get_movie_reviews(reason: Reason, imdb_id: str) -> str:
 @log_tool_call
 @_imdb_tool(ERROR_TRIVIA_NOT_FOUND.format(imdb_id="{imdb_id}"))
 def get_movie_trivia(reason: Reason, imdb_id: str) -> str:
-    """
-    Get trivia and interesting facts about a movie or TV series.
+    """Get trivia for a movie or TV series by IMDb ID.
 
-    When to use:
-        - Use this to find behind-the-scenes facts, easter eggs, and
-          production details (requires IMDb ID from search_imdb_titles).
-        - Use this when the user asks for fun facts or trivia about a
-          title.
-        - Do NOT use this without an IMDb ID — call search_imdb_titles
-          first.
-
-    Why:
-        Trivia entries contain behind-the-scenes information, goofs,
-        and production details not found in the main movie data.
+    Use this after ``search_imdb_titles`` for fun-facts or behind-the-scenes queries.
 
     Args:
         reason: Required. Brief explanation of why you are fetching this data.
-        imdb_id: IMDb ID with/without 'tt' prefix.
+        imdb_id: IMDb title ID.
 
     Returns:
-        JSON with imdb_id, trivia_count, trivia[{text,
-        related_titles}].
+        JSON with trivia entries and related titles.
     """
     logger.info(f"get_movie_trivia called with imdb_id='{imdb_id}'")
 

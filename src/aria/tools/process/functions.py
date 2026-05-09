@@ -174,25 +174,20 @@ def process(
 ) -> str:
     """Manage long-running background processes.
 
-    When to use:
-        - Start, stop, inspect, restart, signal, or read logs of
-          background processes (dev servers, build watchers, pipelines).
+    Actions: ``start``, ``stop``, ``status``, ``logs``, ``list``,
+    ``restart``, ``signal``.
 
     Args:
-        reason: Required. Brief explanation of why you are calling this tool (e.g. "Start dev server for testing").
-        action: start | stop | status | logs | list | restart | signal.
-        name: Unique name for the process (required for most actions).
-        command: Command to execute (required for start).
-            When use_shell=True, supports pipes, redirects, env vars.
-        args: Optional command arguments (ignored when use_shell=True).
-        timeout: Auto-kill timeout in seconds. Process is terminated after
-            this duration. None means run indefinitely.
-        working_dir: Working directory for the process (default: cwd).
-        env: Additional environment variables (merged with current env).
-        use_shell: If True, execute via system shell (enables pipes,
-            redirects, globs). Default: False.
-        signal_name: Signal to send (for action="signal").
-            Supports: SIGTERM, SIGINT, SIGHUP, SIGUSR1, SIGUSR2.
+        reason: Required. Brief explanation of why you are calling this tool.
+        action: Process action to perform.
+        name: Process name (required for most actions).
+        command: Command to execute (required for ``start``).
+        args: Optional command arguments when ``use_shell`` is False.
+        timeout: Optional auto-kill timeout in seconds.
+        working_dir: Working directory for the process.
+        env: Additional environment variables.
+        use_shell: Execute through the system shell.
+        signal_name: Signal to send for ``action="signal"``.
 
     Returns:
         JSON with action-specific process data.
