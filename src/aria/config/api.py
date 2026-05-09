@@ -34,21 +34,15 @@ class Vllm:
         "ARIA_VLLM_TOOL_CALL_PARSER", "qwen3_coder"
     )
     reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "")
-    chat_template_kwargs: str = get_optional_env(
-        "ARIA_VLLM_CHAT_TEMPLATE_KWARGS", ""
-    )
+    chat_template_kwargs: str = get_optional_env("ARIA_VLLM_CHAT_TEMPLATE_KWARGS", "")
     vision_enabled: bool = (
         get_optional_env("ARIA_VLLM_VISION_ENABLED", "").lower() == "true"
     )
-    data_parallel_size: int = int(
-        get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1")
-    )
+    data_parallel_size: int = int(get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1"))
     expert_parallel: bool = (
         get_optional_env("ARIA_VLLM_EXPERT_PARALLEL", "").lower() == "true"
     )
-    mm_encoder_tp_mode: str = get_optional_env(
-        "ARIA_VLLM_MM_ENCODER_TP_MODE", ""
-    )
+    mm_encoder_tp_mode: str = get_optional_env("ARIA_VLLM_MM_ENCODER_TP_MODE", "")
     mm_processor_cache_type: str = get_optional_env(
         "ARIA_VLLM_MM_PROCESSOR_CACHE_TYPE", ""
     )
@@ -61,9 +55,7 @@ class Vllm:
     """KV cache offload strategy: 'off' (GPU-only), 'auto' (enable when VRAM
     is tight), 'ram' (force RAM offload).  Default: 'off'."""
 
-    _kv_offloading_size_raw = get_optional_env(
-        "ARIA_VLLM_KV_OFFLOADING_SIZE_GB", ""
-    )
+    _kv_offloading_size_raw = get_optional_env("ARIA_VLLM_KV_OFFLOADING_SIZE_GB", "")
     kv_offloading_size_gb: float | None = (
         float(_kv_offloading_size_raw) if _kv_offloading_size_raw else None
     )

@@ -442,9 +442,7 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
                     name="Unified Memory",
                     passed=True,
                     category="hardware",
-                    details=(
-                        f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"
-                    ),
+                    details=(f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"),
                 )
             )
     else:
@@ -507,8 +505,7 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
                 passed=True,
                 category="hardware",
                 details=(
-                    "Could not estimate (no config.json) "
-                    "— will use heuristic at launch"
+                    "Could not estimate (no config.json) — will use heuristic at launch"
                 ),
             )
         )

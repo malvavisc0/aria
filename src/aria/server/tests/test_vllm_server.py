@@ -204,13 +204,8 @@ class TestKvCacheOffload:
 
     def test_lmcache_backend_availability_check(self):
         """lmcache backend should require the lmcache package."""
-        with patch(
-            "aria.server.vllm.importlib.util.find_spec", return_value=None
-        ):
-            assert (
-                self.manager._kv_offloading_backend_available("lmcache")
-                is False
-            )
+        with patch("aria.server.vllm.importlib.util.find_spec", return_value=None):
+            assert self.manager._kv_offloading_backend_available("lmcache") is False
 
 
 class TestStopAll:

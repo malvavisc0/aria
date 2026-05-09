@@ -202,11 +202,7 @@ def _read_env_file(env_path: Path) -> dict[str, str]:
                 value = value[: value.index(" #")]
             # Strip quotes from value
             value = value.strip()
-            if (
-                len(value) >= 2
-                and value[0] == value[-1]
-                and value[0] in ('"', "'")
-            ):
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
                 value = value[1:-1]
             env_vars[key.strip()] = value
     return env_vars
@@ -246,9 +242,7 @@ def _update_env_file(env_path: Path, updates: dict[str, str]) -> list[str]:
                 prefix = match.group(1) or ""
                 replacement = f"{prefix}{key}={new_value}{comment}"
                 content = (
-                    content[: match.start()]
-                    + replacement
-                    + content[match.end() :]
+                    content[: match.start()] + replacement + content[match.end() :]
                 )
                 changed.append(key)
         else:
@@ -482,6 +476,4 @@ def optimize_config(
             f"optimized value(s): {', '.join(changed_keys)}[/green]"
         )
     else:
-        console.print(
-            "\n[dim]✓ .env is already optimal — no changes needed.[/dim]"
-        )
+        console.print("\n[dim]✓ .env is already optimal — no changes needed.[/dim]")
