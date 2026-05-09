@@ -41,14 +41,29 @@ def get_chat_llm(
     """
     from aria.config.api import Vllm as VllmConfig
 
+    max_tokens = None
+    if VllmConfig.max_tokens > -1:
+        max_tokens = VllmConfig.max_tokens
+
     llm = SanitizedOpenAILike(
         api_base=api_base,
         model=model,
         api_key=api_key,
         is_chat_model=True,
         is_function_calling_model=True,
-        max_tokens=VllmConfig.max_tokens,
-        temperature=0.05,
+        max_tokens=max_tokens,
+        temperature=0.1,
+        additional_kwargs={
+            "extra_body": {
+                "top_p": 0.95,
+                "top_k": 20,
+                "min_p": 0.0,
+                "presence_penalty": 0.0,
+                "repetition_penalty": 1.0,
+                "min_p": 0.0,
+                "seed": 42,
+            },
+        },
     )
     return llm
 

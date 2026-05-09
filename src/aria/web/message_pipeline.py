@@ -18,6 +18,7 @@ import asyncio
 import chainlit as cl
 import httpx
 from llama_index.core.agent.workflow import AgentOutput, AgentStream, ToolCall
+from llama_index.core.base.llms.types import MessageRole
 from llama_index.core.memory import Memory
 from loguru import logger
 from workflows.handler import WorkflowHandler
@@ -25,12 +26,58 @@ from workflows.handler import WorkflowHandler
 from aria.agents.prompt_enhancer import PromptEnhancementResult
 from aria.config.models import Chat as ChatConfig
 from aria.helpers.ui import maybe_remove_step, send_tool_step
-from aria.web.session import create_memory, extract_file_paths
+from aria.web.session import (
+    _sanitize_chat_history,
+    create_memory,
+    extract_file_paths,
+)
 from aria.web.state import AppStateNotInitializedError, _state
 
 # Markdown formatting for thinking/reasoning content (blockquote style)
 _BLOCKQUOTE_PREFIX = "> "
 _BLOCKQUOTE_END = "\n\n"
+
+
+async def _sanitize_memory(memory: Memory) -> None:
+    """Ensure memory chat history has valid user/assistant alternation.
+
+    After a failed live turn the ``Memory`` chat store may contain a
+    trailing user message with no matching assistant reply (or other
+    alternation violations).  This normalises the history so the next
+    model invocation sees strictly alternating roles.
+
+    Uses ``memory.set()`` (bypasses token-limit waterfall) because this
+    is a corrective rewrite, not a new-message insertion.
+    """
+    messages = await memory.aget()
+    if not messages:
+        return
+    sanitized = _sanitize_chat_history(messages)
+    if len(sanitized) != len(messages):
+        logger.debug(
+            f"Sanitized memory chat history: {len(messages)} → "
+            f"{len(sanitized)} messages (repaired alternation)"
+        )
+        memory.set(sanitized)
+
+
+async def _rollback_memory(memory: Memory | None) -> None:
+    """Remove a dangling user message left by a failed workflow run.
+
+    When an LLM/infrastructure error occurs after ``AgentWorkflow.run()``
+    has persisted the user message but before the assistant reply is
+    generated, the memory ends with a user message — breaking
+    alternation on the next turn.  This removes it.
+    """
+    if memory is None:
+        return
+    messages = await memory.aget()
+    if messages and messages[-1].role == MessageRole.USER:
+        logger.debug(
+            "Rolling back dangling user message from memory "
+            f"({len(messages)} → {len(messages) - 1} messages)"
+        )
+        memory.set(messages[:-1])
 
 
 async def _handle_message(message: cl.Message) -> str:
@@ -193,17 +240,22 @@ async def on_message_handler(message: cl.Message) -> None:
         ).send()
         return
 
+    memory: Memory | None = None
     try:
         _state.validate_initialized()
         prompt = await _handle_message(message)
 
-        memory: Memory | None = cl.user_session.get("memory")
+        memory = cl.user_session.get("memory")
         # Reuse existing memory only if it belongs to the same thread;
         # Memory.session_id is set by create_memory() to the thread_id.
         if memory is None or memory.session_id != message.thread_id:
             memory = create_memory(message.thread_id)
             cl.user_session.set("memory", memory)
             logger.debug(f"Created new Memory for thread {message.thread_id}")
+
+        # Repair broken alternation left by a previous failed turn
+        # before handing the memory to the workflow.
+        await _sanitize_memory(memory)
 
         handler = _state.agents_workflow.run(
             user_msg=prompt,
@@ -212,17 +264,21 @@ async def on_message_handler(message: cl.Message) -> None:
         )
 
         output = cl.Message(content="")
+        _run_succeeded = False
         try:
             await _stream_agent_response(handler, output)
+            _run_succeeded = True
         finally:
-            # Always attempt to send/close the output message so Chainlit
-            # doesn't keep an empty placeholder bubble if an error occurs
-            # mid-stream.  If the message has no content, ``.send()`` is
-            # still safe — it simply finalises the streaming context.
-            await output.send()
+            if _run_succeeded:
+                await output.send()
+            else:
+                # Don't persist partial/incomplete assistant content to
+                # the data layer — remove the placeholder instead.
+                await output.remove()
 
     except AppStateNotInitializedError as e:
         logger.error(f"App state not initialized: {e}")
+        await _rollback_memory(memory)
         await cl.Message(
             content=(
                 "The application is not fully initialized. "
@@ -232,6 +288,7 @@ async def on_message_handler(message: cl.Message) -> None:
 
     except httpx.TimeoutException as e:
         logger.error(f"Request timed out: {e}")
+        await _rollback_memory(memory)
         await cl.Message(
             content="The model took too long to respond. Please try again."
         ).send()
@@ -239,6 +296,7 @@ async def on_message_handler(message: cl.Message) -> None:
     except Exception as e:
         error_msg = str(e)
         logger.exception(f"Error processing message: {e}")
+        await _rollback_memory(memory)
 
         if "maximum context length" in error_msg.lower():
             error_content = (
