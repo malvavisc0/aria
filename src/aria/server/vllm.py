@@ -17,6 +17,7 @@ Example:
     ```
 """
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -116,8 +117,33 @@ class VllmServerManager:
                 if isinstance(val, (int, float)) and val > 0:
                     return int(val)
         except (json.JSONDecodeError, OSError) as e:
-            logger.warning(f"Could not read model config at {config_path}: {e}")
+            logger.warning(
+                f"Could not read model config at {config_path}: {e}"
+            )
         return None
+
+    @classmethod
+    def _resolve_max_model_len(
+        cls, model_path: str, requested_context: int
+    ) -> int:
+        """Clamp requested context length to the model's supported maximum."""
+        model_max = cls._get_model_max_context(model_path)
+        if model_max is not None and requested_context > model_max:
+            logger.info(
+                f"Clamping max_model_len from {requested_context} to "
+                f"{model_max} (model's max_position_embeddings)"
+            )
+            return model_max
+        return requested_context
+
+    @staticmethod
+    def _kv_offloading_backend_available(backend: str) -> bool:
+        """Return whether the requested KV offloading backend is usable."""
+        if backend == "native":
+            return True
+        if backend == "lmcache":
+            return importlib.util.find_spec("lmcache") is not None
+        return False
 
     def _clear_pids(self) -> None:
         """Clear state file and reset in-memory PIDs."""
@@ -188,6 +214,9 @@ class VllmServerManager:
         mm_encoder_tp_mode: str = "",
         mm_processor_cache_type: str = "",
         prefix_caching: bool = False,
+        kv_offload_mode: str = "off",
+        kv_offloading_size_gb: float | None = None,
+        kv_offloading_backend: str = "native",
     ) -> list[str]:
         """Build command to launch a vLLM server.
 
@@ -214,6 +243,13 @@ class VllmServerManager:
                 (e.g. ``shm`` for shared memory).
             prefix_caching: Enable automatic prefix caching for faster
                 inference with shared prompt prefixes.
+            kv_offload_mode: KV cache offload strategy (``off``, ``auto``,
+                ``ram``).  Default ``off``.
+            kv_offloading_size_gb: KV cache offload buffer size in GiB.
+                When None and mode is ``auto``/``ram``, calculated at
+                launch time.
+            kv_offloading_backend: Backend for KV cache offloading
+                (``native``, ``lmcache``).  Default ``native``.
         Returns:
             List of command arguments.
         """
@@ -239,12 +275,16 @@ class VllmServerManager:
             cmd.extend(["--max-model-len", str(max_model_len)])
 
         if gpu_memory_utilization is not None:
-            cmd.extend(["--gpu-memory-utilization", str(gpu_memory_utilization)])
+            cmd.extend(
+                ["--gpu-memory-utilization", str(gpu_memory_utilization)]
+            )
 
         effective_quant: str | None = None
         if quantization:
             # vLLM v0.20+: gptq kernel is buggy for 4-bit; use gptq_marlin
-            effective_quant = "gptq_marlin" if quantization == "gptq" else quantization
+            effective_quant = (
+                "gptq_marlin" if quantization == "gptq" else quantization
+            )
             cmd.extend(["--quantization", effective_quant])
 
         # Resolve dtype: GPTQ only supports float16
@@ -285,7 +325,9 @@ class VllmServerManager:
             cmd.extend(["--reasoning-parser", reasoning_parser])
 
         if chat_template_kwargs:
-            cmd.extend(["--default-chat-template-kwargs", chat_template_kwargs])
+            cmd.extend(
+                ["--default-chat-template-kwargs", chat_template_kwargs]
+            )
 
         if data_parallel_size > 1:
             cmd.extend(["--data-parallel-size", str(data_parallel_size)])
@@ -301,6 +343,24 @@ class VllmServerManager:
 
         if prefix_caching:
             cmd.extend(["--enable-prefix-caching"])
+
+        # KV cache RAM offloading
+        if (
+            kv_offload_mode in ("auto", "ram")
+            and kv_offloading_size_gb is not None
+        ):
+            if kv_offloading_size_gb > 0:
+                cmd.extend(
+                    ["--kv-offloading-size", str(kv_offloading_size_gb)]
+                )
+                cmd.extend(["--kv-offloading-backend", kv_offloading_backend])
+                logger.info(
+                    "KV cache offload enabled: {size} GiB via {backend} "
+                    "backend (mode={mode})",
+                    size=kv_offloading_size_gb,
+                    backend=kv_offloading_backend,
+                    mode=kv_offload_mode,
+                )
 
         # Override model's generation_config.json (may cap max_tokens too low)
         cmd.extend(["--generation-config", "vllm"])
@@ -370,7 +430,9 @@ class VllmServerManager:
             RuntimeError: If the server fails to start or become ready.
         """
         if force_restart and self._pids:
-            logger.info("Force restart requested — stopping existing vLLM servers")
+            logger.info(
+                "Force restart requested — stopping existing vLLM servers"
+            )
             self.stop_all()
         from aria.config.api import Vllm as VllmConfig
         from aria.config.models import Chat
@@ -388,13 +450,24 @@ class VllmServerManager:
         # This must happen BEFORE gpu_memory_utilization calculation so
         # that the KV cache estimate is based on the actual context size.
         max_model_len = VllmConfig.chat_context_size
-        model_max = self._get_model_max_context(Chat.model_path)
-        if model_max is not None and max_model_len > model_max:
-            logger.info(
-                f"Clamping max_model_len from {max_model_len} to "
-                f"{model_max} (model's max_position_embeddings)"
+        max_model_len = self._resolve_max_model_len(
+            Chat.model_path, max_model_len
+        )
+
+        backend = VllmConfig.kv_offloading_backend
+        if not isinstance(backend, str) or not backend:
+            backend = "native"
+
+        if VllmConfig.kv_offload_mode in (
+            "auto",
+            "ram",
+        ) and not self._kv_offloading_backend_available(backend):
+            raise RuntimeError(
+                "KV cache offloading backend "
+                f"'{backend}' is not available. "
+                "Install the required package or set "
+                "ARIA_VLLM_KV_OFFLOADING_BACKEND=native."
             )
-            max_model_len = model_max
 
         # --- Auto-calculate gpu_memory_utilization if not explicitly set ---
         gpu_mem = VllmConfig.gpu_memory_utilization
@@ -411,6 +484,31 @@ class VllmServerManager:
                 context_size=max_model_len,
                 kv_cache_dtype=VllmConfig.kv_cache_dtype,
             )
+
+        # --- Resolve KV offload size ---
+        # Explicit value > auto-calculated from model config > None
+        kv_offload_size = VllmConfig.kv_offloading_size_gb
+        if (
+            VllmConfig.kv_offload_mode in ("auto", "ram")
+            and kv_offload_size is None
+        ):
+            import math
+
+            from aria.helpers.nvidia import _estimate_kv_cache_mb
+
+            kv_mb = _estimate_kv_cache_mb(
+                Chat.model_path,
+                max_model_len,
+                VllmConfig.kv_cache_dtype,
+            )
+            if kv_mb is not None and kv_mb > 0:
+                kv_offload_size = math.ceil(kv_mb / 1024)  # MiB → GiB
+                logger.info(
+                    "Auto-calculated KV offload size: {size} GiB "
+                    "(estimated KV cache: {kv_mb} MiB)",
+                    size=kv_offload_size,
+                    kv_mb=kv_mb,
+                )
 
         chat_cmd = self._build_vllm_cmd(
             model_path=Chat.model_path,
@@ -437,6 +535,9 @@ class VllmServerManager:
             mm_encoder_tp_mode=VllmConfig.mm_encoder_tp_mode,
             mm_processor_cache_type=VllmConfig.mm_processor_cache_type,
             prefix_caching=VllmConfig.prefix_caching,
+            kv_offload_mode=VllmConfig.kv_offload_mode,
+            kv_offloading_size_gb=kv_offload_size,
+            kv_offloading_backend=backend,
         )
         servers.append(("chat", chat_cmd, Chat.get_port()))
 
@@ -452,7 +553,9 @@ class VllmServerManager:
         for role, cmd, port in servers:
             log_file = DebugConfig.logs_path.parent / f"vllm-{role}.log"
             log_files[role] = log_file
-            logger.info(f"Starting {role} server on port {port}: {' '.join(cmd)}")
+            logger.info(
+                f"Starting {role} server on port {port}: {' '.join(cmd)}"
+            )
             logger.info(f"  stderr → {log_file}")
 
             log_fh = open(log_file, "w")
@@ -488,7 +591,9 @@ class VllmServerManager:
         failed = []
         for role, _, port in servers:
             logger.info(f"Waiting for {role} server on port {port}...")
-            if not self._wait_for_ready(self._host, port, proc=procs.get(role)):
+            if not self._wait_for_ready(
+                self._host, port, proc=procs.get(role)
+            ):
                 failed.append(role)
                 log_tail = ""
                 lf = log_files.get(role)
@@ -563,7 +668,9 @@ class VllmServerManager:
         if survivors:
             self._pids = survivors
             self._save_pids()
-            logger.warning(f"Some vLLM processes survived shutdown: {survivors}")
+            logger.warning(
+                f"Some vLLM processes survived shutdown: {survivors}"
+            )
         else:
             self._clear_pids()
             logger.info("All vLLM server instances stopped.")

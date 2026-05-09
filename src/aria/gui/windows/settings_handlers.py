@@ -93,8 +93,9 @@ class SettingsHandlersMixin:
             values.get("CHAT_CONTEXT_SIZE", "32768"),
         )
 
-        self.ui.checkBox_KVCacheOffload.setChecked(
-            values.get("KV_CACHE_OFFLOAD", "true").strip().lower() == "true"
+        _set_combo_value(
+            self.ui.comboBox_KVCacheOffloadMode,
+            values.get("ARIA_VLLM_KV_OFFLOAD_MODE", "off"),
         )
 
         # Run preflight checks asynchronously to avoid freezing the UI
@@ -102,8 +103,6 @@ class SettingsHandlersMixin:
         self._run_preflight()
 
     def save_settings(self) -> None:
-        # Always detect and save current network IP
-        kv_offload = self.ui.checkBox_KVCacheOffload.isChecked()
         values = {
             "DEBUG": "true" if self.ui.checkBox_Debug.isChecked() else "false",
             "SERVER_HOST": get_network_ip(),
@@ -112,7 +111,7 @@ class SettingsHandlersMixin:
             "CHAT_MODEL": self.ui.lineEdit_ChatModel.text().strip(),
             "CHAT_MODEL_TYPE": self.ui.comboBox_ChatQuantType.currentText(),
             "CHAT_CONTEXT_SIZE": self.ui.comboBox_ChatCtxSize.currentText(),
-            "KV_CACHE_OFFLOAD": "true" if kv_offload else "false",
+            "ARIA_VLLM_KV_OFFLOAD_MODE": self.ui.comboBox_KVCacheOffloadMode.currentText(),
         }
 
         _, raw_lines = parse_dotenv(_ENV_PATH)

@@ -100,6 +100,171 @@ class TestCheckToolLoading:
         assert checks[0].category == "tools"
 
 
+class TestCheckKvCacheMemory:
+    """Test KV cache memory preflight check."""
+
+    @patch(
+        "aria.helpers.memory.detect_system_ram", return_value=(32768, 28000)
+    )
+    @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[20000])
+    @patch("aria.helpers.nvidia.get_total_vram_mb", return_value=24576)
+    @patch("aria.helpers.nvidia._estimate_kv_cache_mb", return_value=5000)
+    @patch("aria.helpers.memory.get_model_file_size", return_value=4000)
+    @patch("aria.config.models.Chat")
+    @patch("aria.config.api.Vllm")
+    def test_kv_cache_fits_in_vram(self, mock_vllm, mock_chat, *args):
+        """Should pass with VRAM detail when KV cache fits."""
+        mock_chat.model_path = "/models/chat"
+        mock_vllm.chat_context_size = 32768
+        mock_vllm.kv_cache_dtype = "auto"
+        mock_vllm.kv_offload_mode = "off"
+
+        from aria.preflight import _check_kv_cache_memory
+
+        checks = []
+        _check_kv_cache_memory(checks)
+        assert len(checks) == 1
+        assert checks[0].passed is True
+        assert "Fits in VRAM" in checks[0].details
+
+    @patch(
+        "aria.helpers.memory.detect_system_ram", return_value=(32768, 28000)
+    )
+    @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])
+    @patch("aria.helpers.nvidia.get_total_vram_mb", return_value=8192)
+    @patch("aria.helpers.nvidia._estimate_kv_cache_mb", return_value=10000)
+    @patch("aria.helpers.memory.get_model_file_size", return_value=5000)
+    @patch("aria.config.models.Chat")
+    @patch("aria.config.api.Vllm")
+    def test_kv_cache_vram_tight_off_mode(self, mock_vllm, mock_chat, *args):
+        """Should pass (warning) when VRAM tight and mode is off."""
+        mock_chat.model_path = "/models/chat"
+        mock_vllm.chat_context_size = 131072
+        mock_vllm.kv_cache_dtype = "auto"
+        mock_vllm.kv_offload_mode = "off"
+
+        from aria.preflight import _check_kv_cache_memory
+
+        checks = []
+        _check_kv_cache_memory(checks)
+        assert len(checks) == 1
+        assert checks[0].passed is True  # Warning only
+        assert "may not fit" in checks[0].details
+
+    @patch(
+        "aria.helpers.memory.detect_system_ram", return_value=(32768, 28000)
+    )
+    @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])
+    @patch("aria.helpers.nvidia.get_total_vram_mb", return_value=8192)
+    @patch("aria.helpers.nvidia._estimate_kv_cache_mb", return_value=10000)
+    @patch("aria.helpers.memory.get_model_file_size", return_value=5000)
+    @patch("aria.config.models.Chat")
+    @patch("aria.config.api.Vllm")
+    def test_kv_cache_offloaded_to_ram(self, mock_vllm, mock_chat, *args):
+        """Should pass when VRAM tight but RAM sufficient in auto mode."""
+        mock_chat.model_path = "/models/chat"
+        mock_vllm.chat_context_size = 131072
+        mock_vllm.kv_cache_dtype = "auto"
+        mock_vllm.kv_offload_mode = "auto"
+
+        from aria.preflight import _check_kv_cache_memory
+
+        checks = []
+        _check_kv_cache_memory(checks)
+        assert len(checks) == 1
+        assert checks[0].passed is True
+        assert "offloaded to RAM" in checks[0].details
+
+    @patch("aria.helpers.memory.detect_system_ram", return_value=(8192, 6000))
+    @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])
+    @patch("aria.helpers.nvidia.get_total_vram_mb", return_value=8192)
+    @patch("aria.helpers.nvidia._estimate_kv_cache_mb", return_value=10000)
+    @patch("aria.helpers.memory.get_model_file_size", return_value=5000)
+    @patch("aria.config.models.Chat")
+    @patch("aria.config.api.Vllm")
+    def test_kv_cache_ram_insufficient(self, mock_vllm, mock_chat, *args):
+        """Should fail when neither VRAM nor RAM can hold KV cache."""
+        mock_chat.model_path = "/models/chat"
+        mock_vllm.chat_context_size = 131072
+        mock_vllm.kv_cache_dtype = "auto"
+        mock_vllm.kv_offload_mode = "auto"
+
+        from aria.preflight import _check_kv_cache_memory
+
+        checks = []
+        _check_kv_cache_memory(checks)
+        assert len(checks) == 1
+        assert checks[0].passed is False
+        assert "needs" in checks[0].error
+        assert "CHAT_CONTEXT_SIZE" in checks[0].hint
+
+    @patch(
+        "aria.server.vllm.VllmServerManager._kv_offloading_backend_available",
+        return_value=False,
+    )
+    @patch(
+        "aria.server.vllm.VllmServerManager._resolve_max_model_len",
+        side_effect=lambda model_path, context_size: context_size,
+    )
+    @patch(
+        "aria.helpers.memory.detect_system_ram", return_value=(32768, 28000)
+    )
+    @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])
+    @patch("aria.helpers.nvidia.get_total_vram_mb", return_value=8192)
+    @patch("aria.helpers.nvidia._estimate_kv_cache_mb", return_value=10000)
+    @patch("aria.helpers.memory.get_model_file_size", return_value=5000)
+    @patch("aria.config.models.Chat")
+    @patch("aria.config.api.Vllm")
+    def test_kv_cache_backend_unavailable(self, mock_vllm, mock_chat, *args):
+        """Should fail when selected backend is unavailable."""
+        mock_chat.model_path = "/models/chat"
+        mock_vllm.chat_context_size = 131072
+        mock_vllm.kv_cache_dtype = "auto"
+        mock_vllm.kv_offload_mode = "auto"
+        mock_vllm.kv_offloading_backend = "lmcache"
+
+        from aria.preflight import _check_kv_cache_memory
+
+        checks = []
+        _check_kv_cache_memory(checks)
+        assert len(checks) == 1
+        assert checks[0].passed is False
+        assert "backend" in checks[0].error.lower()
+        assert "native" in checks[0].hint
+
+    @patch(
+        "aria.server.vllm.VllmServerManager._kv_offloading_backend_available",
+        return_value=True,
+    )
+    @patch(
+        "aria.server.vllm.VllmServerManager._resolve_max_model_len",
+        return_value=32768,
+    )
+    @patch("aria.helpers.memory.detect_system_ram", return_value=(8192, 6000))
+    @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])
+    @patch("aria.helpers.nvidia.get_total_vram_mb", return_value=8192)
+    @patch("aria.helpers.nvidia._estimate_kv_cache_mb", return_value=10000)
+    @patch("aria.helpers.memory.get_model_file_size", return_value=5000)
+    @patch("aria.config.models.Chat")
+    @patch("aria.config.api.Vllm")
+    def test_kv_cache_uses_clamped_context_for_hint(
+        self, mock_vllm, mock_chat, *args
+    ):
+        """Should reference the clamped context size in failure hints."""
+        mock_chat.model_path = "/models/chat"
+        mock_vllm.chat_context_size = 131072
+        mock_vllm.kv_cache_dtype = "auto"
+        mock_vllm.kv_offload_mode = "auto"
+
+        from aria.preflight import _check_kv_cache_memory
+
+        checks = []
+        _check_kv_cache_memory(checks)
+        assert len(checks) == 1
+        assert checks[0].passed is False
+        assert "32768" in checks[0].hint
+
+
 class TestRunPreflightChecks:
     """Test that run_preflight_checks includes new checks."""
 

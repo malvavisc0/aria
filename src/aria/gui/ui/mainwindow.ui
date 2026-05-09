@@ -1454,19 +1454,38 @@
              </item>
             </widget>
            </item>
-           <item row="3" column="0" colspan="2">
-            <widget class="QCheckBox" name="checkBox_KVCacheOffload">
-             <property name="text">
-              <string>KV cache offloading (RAM)</string>
-             </property>
-             <property name="toolTip">
-              <string>When enabled, the KV cache is loaded into system RAM instead of GPU VRAM. Disable to keep the KV cache on GPU (uses more VRAM but may be faster).</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_KVCacheOffloadMode">
+              <property name="text">
+               <string>KV cache offload</string>
+              </property>
+              <property name="toolTip">
+               <string>Controls how the KV cache is stored when GPU VRAM is insufficient. 'off' = GPU-only, 'auto' = offload to RAM when VRAM is tight, 'ram' = force RAM offload.</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="comboBox_KVCacheOffloadMode">
+              <property name="toolTip">
+               <string>Controls how the KV cache is stored when GPU VRAM is insufficient. 'off' = GPU-only, 'auto' = offload to RAM when VRAM is tight, 'ram' = force RAM offload.</string>
+              </property>
+              <item>
+               <property name="text">
+                <string>off</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>auto</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>ram</string>
+               </property>
+              </item>
+             </widget>
+            </item>
           </layout>
          </widget>
         </item>

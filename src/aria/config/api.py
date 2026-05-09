@@ -34,21 +34,67 @@ class Vllm:
         "ARIA_VLLM_TOOL_CALL_PARSER", "qwen3_coder"
     )
     reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "")
-    chat_template_kwargs: str = get_optional_env("ARIA_VLLM_CHAT_TEMPLATE_KWARGS", "")
+    chat_template_kwargs: str = get_optional_env(
+        "ARIA_VLLM_CHAT_TEMPLATE_KWARGS", ""
+    )
     vision_enabled: bool = (
         get_optional_env("ARIA_VLLM_VISION_ENABLED", "").lower() == "true"
     )
-    data_parallel_size: int = int(get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1"))
+    data_parallel_size: int = int(
+        get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1")
+    )
     expert_parallel: bool = (
         get_optional_env("ARIA_VLLM_EXPERT_PARALLEL", "").lower() == "true"
     )
-    mm_encoder_tp_mode: str = get_optional_env("ARIA_VLLM_MM_ENCODER_TP_MODE", "")
+    mm_encoder_tp_mode: str = get_optional_env(
+        "ARIA_VLLM_MM_ENCODER_TP_MODE", ""
+    )
     mm_processor_cache_type: str = get_optional_env(
         "ARIA_VLLM_MM_PROCESSOR_CACHE_TYPE", ""
     )
     prefix_caching: bool = (
         get_optional_env("ARIA_VLLM_PREFIX_CACHING", "").lower() == "true"
     )
+
+    # --- KV cache RAM offloading ---
+    kv_offload_mode: str = get_optional_env("ARIA_VLLM_KV_OFFLOAD_MODE", "off")
+    """KV cache offload strategy: 'off' (GPU-only), 'auto' (enable when VRAM
+    is tight), 'ram' (force RAM offload).  Default: 'off'."""
+
+    _kv_offloading_size_raw = get_optional_env(
+        "ARIA_VLLM_KV_OFFLOADING_SIZE_GB", ""
+    )
+    kv_offloading_size_gb: float | None = (
+        float(_kv_offloading_size_raw) if _kv_offloading_size_raw else None
+    )
+    """Explicit KV cache offload buffer size in GiB.  When None and mode is
+    'auto' or 'ram', the size is calculated from model architecture."""
+
+    kv_offloading_backend: str = get_optional_env(
+        "ARIA_VLLM_KV_OFFLOADING_BACKEND", "native"
+    )
+    """Backend for KV cache offloading: 'native' (vLLM built-in) or
+    'lmcache'.  Default: 'native'."""
+
+    # Validate enum fields at class-load time
+    _VALID_OFFLOAD_MODES = ("off", "auto", "ram")
+    _VALID_OFFLOAD_BACKENDS = ("native", "lmcache")
+    if kv_offload_mode not in _VALID_OFFLOAD_MODES:
+        raise ValueError(
+            f"ARIA_VLLM_KV_OFFLOAD_MODE must be one of {_VALID_OFFLOAD_MODES}, "
+            f"got '{kv_offload_mode}'"
+        )
+    if kv_offloading_backend not in _VALID_OFFLOAD_BACKENDS:
+        raise ValueError(
+            f"ARIA_VLLM_KV_OFFLOADING_BACKEND must be one of "
+            f"{_VALID_OFFLOAD_BACKENDS}, got '{kv_offloading_backend}'"
+        )
+    if kv_offloading_size_gb is not None and kv_offloading_size_gb <= 0:
+        raise ValueError(
+            f"ARIA_VLLM_KV_OFFLOADING_SIZE_GB must be > 0, "
+            f"got '{kv_offloading_size_gb}'"
+        )
+
     max_tokens: int = int(get_optional_env("ARIA_MAX_TOKENS", "8192"))
 
     # Context sizes for each model type
@@ -85,7 +131,7 @@ class Lightpanda:
     @classmethod
     def get_bin_path(cls) -> Path:
         """Get the resolved binary directory path."""
-        return Bin.path / "lightpanda"
+        return Bin.path
 
     @classmethod
     def get_binary_path(cls) -> Path | None:
@@ -96,8 +142,7 @@ class Lightpanda:
         Returns:
             Path to the binary if it exists, None otherwise.
         """
-        bin_path = cls.get_bin_path()
-        binary = bin_path / "lightpanda"
+        binary = cls.get_bin_path() / "lightpanda"
         return binary if binary.exists() else None
 
     @classmethod

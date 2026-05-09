@@ -78,7 +78,9 @@ def _print_preflight_result(result) -> bool:
 
         for check in checks:
             if check.passed:
-                details = f" [dim]({check.details})[/dim]" if check.details else ""
+                details = (
+                    f" [dim]({check.details})[/dim]" if check.details else ""
+                )
                 console.print(f"   [green]✓[/green] {check.name}{details}")
             else:
                 console.print(
@@ -123,6 +125,8 @@ def server_run():
     vLLM server processes are started automatically by the web_ui.
     Press Ctrl+C to stop.
     """
+    _ensure_lightpanda_installed()
+
     # Run preflight checks
     result = run_preflight_checks()
     if not _print_preflight_result(result):
@@ -152,6 +156,28 @@ def _is_vllm_healthy() -> bool:
             return resp.status == 200
     except (URLError, OSError):
         return False
+
+
+def _ensure_lightpanda_installed() -> None:
+    """Download Lightpanda automatically if it is missing."""
+    from aria.config.api import Lightpanda
+
+    if Lightpanda.is_available():
+        console.print("[green]✓[/green] Lightpanda installed")
+        return
+
+    from aria.scripts.lightpanda import download_lightpanda
+
+    console.print("[dim]Lightpanda not installed — downloading...[/dim]")
+    try:
+        binary = download_lightpanda(
+            bin_dir=Lightpanda.get_bin_path(), version=Lightpanda.version
+        )
+    except Exception as e:
+        error_console.print(f"[red]Failed to install Lightpanda: {e}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[green]✓[/green] Lightpanda installed at {binary}")
 
 
 def _ensure_vllm_running() -> None:
@@ -189,6 +215,8 @@ def server_start(
 
     vLLM server processes are started automatically by the web_ui.
     """
+    _ensure_lightpanda_installed()
+
     # Run preflight checks
     result = run_preflight_checks()
     if not _print_preflight_result(result):
@@ -322,7 +350,9 @@ def server_status():
 
     # Start time
     if status.started_at:
-        table.add_row("Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S"))
+        table.add_row(
+            "Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S")
+        )
     else:
         table.add_row("Started", "N/A")
 
@@ -354,6 +384,8 @@ def server_status():
         except (URLError, OSError):
             is_running = False
 
-        vllm_table.add_row(role, str(port), "● Running" if is_running else "○ Stopped")
+        vllm_table.add_row(
+            role, str(port), "● Running" if is_running else "○ Stopped"
+        )
 
     console.print(vllm_table)

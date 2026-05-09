@@ -40,6 +40,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from aria.config import get_optional_env
 from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import (
     DB,
@@ -201,7 +202,11 @@ def _read_env_file(env_path: Path) -> dict[str, str]:
                 value = value[: value.index(" #")]
             # Strip quotes from value
             value = value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            if (
+                len(value) >= 2
+                and value[0] == value[-1]
+                and value[0] in ('"', "'")
+            ):
                 value = value[1:-1]
             env_vars[key.strip()] = value
     return env_vars
@@ -241,7 +246,9 @@ def _update_env_file(env_path: Path, updates: dict[str, str]) -> list[str]:
                 prefix = match.group(1) or ""
                 replacement = f"{prefix}{key}={new_value}{comment}"
                 content = (
-                    content[: match.start()] + replacement + content[match.end() :]
+                    content[: match.start()]
+                    + replacement
+                    + content[match.end() :]
                 )
                 changed.append(key)
         else:
@@ -375,8 +382,23 @@ def optimize_config(
     if embed_ctx == 0:
         embed_ctx = 8192
 
-    # KV cache offload: offload to RAM if VRAM is tight
-    kv_offload = "true" if total_vram < 12288 else "false"
+    # KV cache offload: auto-enable when VRAM is tight
+    kv_offload_mode = "auto" if total_vram < 12288 else "off"
+
+    # Calculate offload size when mode is auto
+    kv_offloading_size_gb = ""
+    if kv_offload_mode == "auto":
+        import math
+
+        from aria.helpers.nvidia import _estimate_kv_cache_mb
+
+        kv_mb = _estimate_kv_cache_mb(
+            Chat.model_path or "",
+            chat_ctx,
+            get_optional_env("ARIA_VLLM_KV_CACHE_DTYPE", "auto"),
+        )
+        if kv_mb and kv_mb > 0:
+            kv_offloading_size_gb = str(math.ceil(kv_mb / 1024))
 
     # Token limit: ~1/4 of chat context, clamped to reasonable range
     token_limit = max(8192, min(chat_ctx // 4, 65536))
@@ -387,7 +409,8 @@ def optimize_config(
     optimized = {
         "CHAT_CONTEXT_SIZE": str(chat_ctx),
         "EMBEDDINGS_CONTEXT_SIZE": str(embed_ctx),
-        "KV_CACHE_OFFLOAD": kv_offload,
+        "ARIA_VLLM_KV_OFFLOAD_MODE": kv_offload_mode,
+        "ARIA_VLLM_KV_OFFLOADING_SIZE_GB": kv_offloading_size_gb,
         "TOKEN_LIMIT": str(token_limit),
         "FORCE_CONTEXT": force_context,
     }
@@ -417,10 +440,15 @@ def optimize_config(
             if max_free_vram > 0
             else "default (no GPU)"
         ),
-        "KV_CACHE_OFFLOAD": (
-            "offload to RAM (VRAM < 12 GB)"
+        "ARIA_VLLM_KV_OFFLOAD_MODE": (
+            "auto-offload to RAM (VRAM < 12 GB)"
             if total_vram < 12288
-            else "keep on GPU (VRAM ≥ 12 GB)"
+            else "GPU-only (VRAM ≥ 12 GB)"
+        ),
+        "ARIA_VLLM_KV_OFFLOADING_SIZE_GB": (
+            f"auto-calculated ({kv_offloading_size_gb} GiB)"
+            if kv_offloading_size_gb
+            else "N/A (offload disabled)"
         ),
         "TOKEN_LIMIT": f"~1/4 of chat context ({chat_ctx})",
         "FORCE_CONTEXT": "use calculated values exactly",
@@ -454,4 +482,6 @@ def optimize_config(
             f"optimized value(s): {', '.join(changed_keys)}[/green]"
         )
     else:
-        console.print("\n[dim]✓ .env is already optimal — no changes needed.[/dim]")
+        console.print(
+            "\n[dim]✓ .env is already optimal — no changes needed.[/dim]"
+        )

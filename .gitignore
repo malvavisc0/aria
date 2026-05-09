@@ -18,22 +18,10 @@ wheels/
 .files/**
 !.files/**/.gitkeep
 
-# Persistent data directory (track structure, not contents)
-# The `data/` directory stores persistent application data like databases
-# that should survive server restarts, unlike `.files/` which is temporary.
+# Runtime data lives under ~/.aria (not in the repo).
+# Legacy data/ rules kept for backward compatibility during transition.
 data/**
 !data/.gitkeep
-!data/models/
-!data/models/.gitkeep
-!data/bin/
-!data/bin/run-model
-!data/bin/llamacpp/
-!data/bin/llamacpp/.gitkeep
-
-# Binary files (track structure, not contents)
-# The `bin/` directory stores compiled binaries that can be re-downloaded
-bin/**
-!bin/.gitkeep
 
 # Build directories
 build/

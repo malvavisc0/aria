@@ -174,7 +174,7 @@ def _check_binaries(checks: list[CheckResult]) -> None:
 
 
 def _check_lightpanda(checks: list[CheckResult]) -> None:
-    """Check if Lightpanda is installed (optional)."""
+    """Check that Lightpanda is installed."""
     from aria.config.api import Lightpanda
 
     if Lightpanda.is_available():
@@ -191,12 +191,10 @@ def _check_lightpanda(checks: list[CheckResult]) -> None:
         checks.append(
             CheckResult(
                 name="lightpanda",
-                passed=True,  # Pass because it's optional
+                passed=False,
                 category="binaries",
-                details=(
-                    "Not installed (browser tools disabled). "
-                    "Run: aria lightpanda download"
-                ),
+                error="Lightpanda is not installed",
+                hint="Run: aria lightpanda download",
             )
         )
 
@@ -350,6 +348,7 @@ def run_preflight_checks() -> PreflightResult:
     _check_models(checks)
     _check_token_limit(checks)
     _check_memory_requirements(checks)
+    _check_kv_cache_memory(checks)
     _check_llm_server(checks)
     _check_knowledge_db(checks)
     _check_tool_loading(checks)
@@ -443,7 +442,9 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
                     name="Unified Memory",
                     passed=True,
                     category="hardware",
-                    details=(f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"),
+                    details=(
+                        f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"
+                    ),
                 )
             )
     else:
@@ -455,6 +456,158 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
                 details="CPU-only mode (no GPU acceleration)",
             )
         )
+
+
+def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
+    """Check if KV cache fits in VRAM or can be offloaded to RAM.
+
+    When VRAM is insufficient for the full KV cache:
+    - ``off`` mode: warn (informational only).
+    - ``auto``/``ram`` mode: check if system RAM is sufficient.
+      - RAM sufficient → pass with offload detail.
+      - RAM insufficient → fail with clear remediation.
+    """
+    from pathlib import Path
+
+    from aria.config.api import Vllm as VllmConfig
+    from aria.config.models import Chat
+    from aria.helpers.memory import detect_system_ram, get_model_file_size
+    from aria.helpers.nvidia import (
+        _estimate_kv_cache_mb,
+        get_free_vram_per_gpu,
+        get_total_vram_mb,
+    )
+    from aria.server.vllm import VllmServerManager
+
+    if not Chat.model_path:
+        return  # Model not configured — other checks handle this
+
+    effective_context_size = VllmServerManager._resolve_max_model_len(
+        Chat.model_path, VllmConfig.chat_context_size
+    )
+    backend = getattr(VllmConfig, "kv_offloading_backend", "native")
+    if not isinstance(backend, str) or not backend:
+        backend = "native"
+
+    total_vram_mb = get_total_vram_mb()
+    free_vram_list = get_free_vram_per_gpu()
+    total_ram_mb, avail_ram_mb = detect_system_ram()
+
+    # Estimate KV cache from model architecture
+    kv_cache_mb = _estimate_kv_cache_mb(
+        Chat.model_path,
+        effective_context_size,
+        VllmConfig.kv_cache_dtype,
+    )
+    if kv_cache_mb is None:
+        # Cannot estimate — skip (heuristic fallback will be used at launch)
+        checks.append(
+            CheckResult(
+                name="KV cache memory",
+                passed=True,
+                category="hardware",
+                details=(
+                    "Could not estimate (no config.json) "
+                    "— will use heuristic at launch"
+                ),
+            )
+        )
+        return
+
+    kv_cache_gb = kv_cache_mb / 1024
+    model_size_mb = get_model_file_size(Path(Chat.model_path))
+    max_free_vram_mb = max(free_vram_list) if free_vram_list else total_vram_mb
+    overhead_mb = 1536  # vLLM overhead + headroom
+
+    vram_needed_mb = model_size_mb + kv_cache_mb + overhead_mb
+    vram_sufficient = max_free_vram_mb >= vram_needed_mb
+
+    if vram_sufficient:
+        checks.append(
+            CheckResult(
+                name="KV cache memory",
+                passed=True,
+                category="hardware",
+                details=(
+                    f"Fits in VRAM ({kv_cache_mb} MiB, "
+                    f"free VRAM: {max_free_vram_mb} MiB)"
+                ),
+            )
+        )
+        return
+
+    # VRAM insufficient — check offload mode
+    mode = VllmConfig.kv_offload_mode
+    if mode in (
+        "auto",
+        "ram",
+    ) and not VllmServerManager._kv_offloading_backend_available(backend):
+        checks.append(
+            CheckResult(
+                name="KV cache offloading backend",
+                passed=False,
+                category="hardware",
+                error=f"KV cache offloading backend '{backend}' is not available.",
+                hint=(
+                    "Install the backend dependency or set "
+                    "ARIA_VLLM_KV_OFFLOADING_BACKEND=native in .env"
+                ),
+            )
+        )
+        return
+
+    ram_headroom_mb = 2048  # 2 GiB OS headroom
+    ram_needed_mb = kv_cache_mb + ram_headroom_mb
+    ram_sufficient = avail_ram_mb >= ram_needed_mb
+
+    if mode == "off":
+        checks.append(
+            CheckResult(
+                name="KV cache memory",
+                passed=True,  # Warning only in 'off' mode
+                category="hardware",
+                details=(
+                    f"KV cache ({kv_cache_mb} MiB) may not fit in VRAM "
+                    f"({max_free_vram_mb} MiB free). Consider setting "
+                    f"ARIA_VLLM_KV_OFFLOAD_MODE=auto in .env"
+                ),
+            )
+        )
+    elif mode in ("auto", "ram"):
+        if ram_sufficient:
+            checks.append(
+                CheckResult(
+                    name="KV cache memory",
+                    passed=True,
+                    category="hardware",
+                    details=(
+                        f"KV cache offloaded to RAM ({kv_cache_gb:.1f} GiB). "
+                        f"Available RAM: {avail_ram_mb // 1024} GB. "
+                        f"Latency may increase vs GPU-only."
+                    ),
+                )
+            )
+        else:
+            checks.append(
+                CheckResult(
+                    name="KV cache memory",
+                    passed=False,
+                    category="hardware",
+                    error=(
+                        f"KV cache needs {kv_cache_gb:.1f} GiB but only "
+                        f"{avail_ram_mb // 1024} GB RAM available "
+                        f"(need {ram_needed_mb // 1024} GB with headroom). "
+                        f"Fits neither in VRAM ({max_free_vram_mb} MiB "
+                        f"free) nor RAM."
+                    ),
+                    hint=(
+                        f"Reduce CHAT_CONTEXT_SIZE in .env (currently "
+                        f"{effective_context_size}), or add more "
+                        f"system RAM, or use fp8 KV cache "
+                        f"(ARIA_VLLM_KV_CACHE_DTYPE=fp8)"
+                    ),
+                )
+            )
 
 
 def _check_llm_server(checks: list[CheckResult]) -> None:

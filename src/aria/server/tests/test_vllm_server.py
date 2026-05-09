@@ -110,6 +110,109 @@ class TestBuildVllmCmd:
         assert "--chat-template" not in cmd
 
 
+class TestKvCacheOffload:
+    """Tests for KV cache RAM offload command construction."""
+
+    def setup_method(self):
+        with patch("aria.server.vllm.load_state", return_value={}):
+            self.manager = VllmServerManager()
+
+    def test_default_mode_adds_no_offload_flags(self):
+        """Default 'off' mode should not add any offload flags."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="off",
+        )
+        assert "--kv-offloading-size" not in cmd
+        assert "--kv-offloading-backend" not in cmd
+
+    def test_ram_mode_adds_kv_offloading_size(self):
+        """RAM mode with explicit size should add --kv-offloading-size."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="ram",
+            kv_offloading_size_gb=8,
+        )
+        assert "--kv-offloading-size" in cmd
+        size_idx = cmd.index("--kv-offloading-size")
+        assert cmd[size_idx + 1] == "8"
+
+    def test_ram_mode_adds_backend(self):
+        """Should add --kv-offloading-backend with the specified backend."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="ram",
+            kv_offloading_size_gb=8,
+            kv_offloading_backend="lmcache",
+        )
+        assert "--kv-offloading-backend" in cmd
+        backend_idx = cmd.index("--kv-offloading-backend")
+        assert cmd[backend_idx + 1] == "lmcache"
+
+    def test_ram_mode_no_size_adds_nothing(self):
+        """RAM mode without a size should not add offload flags."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="ram",
+            kv_offloading_size_gb=None,
+        )
+        assert "--kv-offloading-size" not in cmd
+        assert "--kv-offloading-backend" not in cmd
+
+    def test_auto_mode_with_size_adds_flags(self):
+        """Auto mode with calculated size should add offload flags."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="auto",
+            kv_offloading_size_gb=4,
+        )
+        assert "--kv-offloading-size" in cmd
+        size_idx = cmd.index("--kv-offloading-size")
+        assert cmd[size_idx + 1] == "4"
+        assert "--kv-offloading-backend" in cmd
+
+    def test_zero_size_adds_nothing(self):
+        """Zero size should not add offload flags even with valid mode."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="ram",
+            kv_offloading_size_gb=0,
+        )
+        assert "--kv-offloading-size" not in cmd
+        assert "--kv-offloading-backend" not in cmd
+
+    def test_native_backend_is_default(self):
+        """Should default to native backend."""
+        cmd = self.manager._build_vllm_cmd(
+            model_path="/data/models/chat",
+            port=9090,
+            kv_offload_mode="ram",
+            kv_offloading_size_gb=4,
+        )
+        backend_idx = cmd.index("--kv-offloading-backend")
+        assert cmd[backend_idx + 1] == "native"
+
+    def test_native_backend_availability_check(self):
+        """Native backend should always be available."""
+        assert self.manager._kv_offloading_backend_available("native") is True
+
+    def test_lmcache_backend_availability_check(self):
+        """lmcache backend should require the lmcache package."""
+        with patch(
+            "aria.server.vllm.importlib.util.find_spec", return_value=None
+        ):
+            assert (
+                self.manager._kv_offloading_backend_available("lmcache")
+                is False
+            )
+
+
 class TestStopAll:
     """Tests for VllmServerManager.stop_all()."""
 
