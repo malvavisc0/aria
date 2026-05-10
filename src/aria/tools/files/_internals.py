@@ -13,7 +13,7 @@ from loguru import logger
 from aria.tools import safe_json, utc_timestamp
 from aria.tools.constants import BASE_DIR, MAX_FILE_SIZE
 from aria.tools.files.constants import (
-    ALLOWED_EXTENSIONS,
+    BLOCKED_EXTENSIONS,
     BLOCKED_PATTERNS,
     MAX_CHUNK_SIZE,
     MAX_LINE_LENGTH,
@@ -181,8 +181,8 @@ def _secure_resolve_path(
         if file_path.is_dir():
             raise FileOperationError(f"Path is a directory, not a file: {file_name}")
 
-        # Check file extension (only if it has an extension)
-        if file_path.suffix and file_path.suffix.lower() not in ALLOWED_EXTENSIONS:
+        # Block known binary/dangerous file extensions
+        if file_path.suffix and file_path.suffix.lower() in BLOCKED_EXTENSIONS:
             msg = f"File type not allowed: {file_path.suffix}"
             raise FileSecurityError(msg)
 

@@ -14,51 +14,70 @@ MAX_CHUNK_SIZE = 10000
 # Maximum line length allowed (in characters)
 MAX_LINE_LENGTH = 10000
 
-# Allowed file extensions for security
-ALLOWED_EXTENSIONS = {
-    # Text/Code
-    ".txt",
-    ".py",
-    ".js",
-    ".json",
-    ".md",
-    ".csv",
-    ".log",
-    ".yaml",
-    ".yml",
-    ".xml",
-    ".ts",
-    ".ini",
-    ".toml",
-    # Shell scripts
-    ".sh",
-    ".bash",
-    ".zsh",
-    # Code files
-    ".c",
-    ".cpp",
-    ".h",
-    ".hpp",
-    ".java",
-    ".go",
-    ".rs",
-    ".rb",
-    ".php",
-    # Web files
-    ".html",
-    ".css",
-    ".scss",
-    ".jsx",
-    ".tsx",
-    # Config files
-    ".env",
-    ".gitignore",
-    ".dockerignore",
-    ".sql",
-    # Build/Project files
-    "Dockerfile",
-    "Makefile",
-    "CMakeLists.txt",
+# Blocked file extensions (binary/executable/media that shouldn't be read as text)
+BLOCKED_EXTENSIONS = {
+    # Executables and libraries
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".bin",
+    ".msi",
+    ".com",
+    # Compiled objects
+    ".class",
+    ".pyc",
+    ".pyo",
+    ".o",
+    ".obj",
+    # OS packages/images
+    ".deb",
+    ".rpm",
+    ".dmg",
+    ".iso",
+    ".img",
+    # Archives
+    ".zip",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".7z",
+    ".rar",
+    ".zst",
+    # Media (images)
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".ico",
+    ".webp",
+    ".tiff",
+    ".psd",
+    # Media (audio/video)
+    ".mp3",
+    ".mp4",
+    ".avi",
+    ".mov",
+    ".wav",
+    ".flac",
+    ".mkv",
+    ".wmv",
+    ".ogg",
+    # Office/binary documents
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    # Fonts
+    ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
 }
 
 # Blocked patterns that should not appear in file names
