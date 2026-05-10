@@ -16,9 +16,15 @@ from llama_index.core.agent.workflow import (
     ToolCall,
     ToolCallResult,
 )
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.tools.types import ToolOutput
 from loguru import logger
 from typing_extensions import TypedDict
+
+from aria.llm._compress import (
+    SCRATCHPAD_PRESSURE_THRESHOLD,
+    compress_tool_output,
+)
 
 
 class ToolCallRecord(TypedDict):
@@ -191,6 +197,32 @@ class StatefulAgentWorkflow(AgentWorkflow):
         await ctx.store.set("state", reduced_state)
         return reduced_state
 
+    async def _inject_pressure_warning(self, ctx: Any, ev: AgentSetup) -> None:
+        """Inject a context-pressure warning when scratchpad usage is high.
+
+        When the cumulative tool output within a single turn approaches the
+        context limit, the agent is told to consolidate and finish.  This
+        prevents ``context_length_exceeded`` errors on long-running turns.
+        """
+        try:
+            from aria.config.api import Vllm as VllmConfig
+
+            context_size = VllmConfig.chat_context_size
+        except Exception:
+            return
+
+        approx_tokens = sum(len(str(m.content or "")) // 4 for m in ev.input)
+        usage_ratio = approx_tokens / context_size if context_size else 0
+
+        if usage_ratio >= SCRATCHPAD_PRESSURE_THRESHOLD:
+            warning = (
+                f"⚠ Context is {usage_ratio:.0%} full "
+                f"({approx_tokens:,}/{context_size:,} tokens). "
+                f"Consolidate findings and produce a final answer now."
+            )
+            logger.warning(f"Scratchpad pressure {usage_ratio:.0%} — injecting warning")
+            ev.input.append(ChatMessage(role=MessageRole.SYSTEM, content=warning))
+
     async def run_agent_step(self, ctx: Any, ev: AgentSetup) -> AgentOutput:
         """Run the parent agent step and synchronize custom state.
 
@@ -203,6 +235,9 @@ class StatefulAgentWorkflow(AgentWorkflow):
         If the LLM produces an empty terminal response after a tool failure,
         a single retry is attempted before injecting a synthesized error report.
         """
+        # Check scratchpad pressure and warn the agent if needed.
+        await self._inject_pressure_warning(ctx, ev)
+
         # DIAGNOSTIC: log what's being sent
         msg_count = len(ev.input)
         approx_tokens = sum(len(str(m.content or "")) // 4 for m in ev.input)
@@ -251,6 +286,10 @@ class StatefulAgentWorkflow(AgentWorkflow):
     async def call_tool(self, ctx: Any, ev: ToolCall) -> ToolCallResult:
         """Run the parent tool call step and synchronize custom state.
 
+        Applies deterministic tool-output compression before the result
+        is injected into the agent context, keeping the full output in
+        ``ToolOutput.raw_output`` for logging/diagnostics.
+
         If the parent ``call_tool`` raises unexpectedly (e.g. a failure in
         tool lookup, event streaming, or an uncaught tool exception), the
         error is caught and wrapped in an error :class:`ToolCallResult` so
@@ -276,7 +315,22 @@ class StatefulAgentWorkflow(AgentWorkflow):
                 ),
                 return_direct=False,
             )
+
+        # --- Record raw output in state BEFORE compression ---
+        # state_reducer reads output.content to populate ToolCallRecord.result,
+        # so we must reduce first to capture the full diagnostic output.
         await self.reduce_state(ctx, result)
+
+        # --- Compress tool output to control scratchpad growth ---
+        output = result.tool_output
+        if not output.is_error:
+            raw_content = str(getattr(output, "content", ""))
+            compressed = compress_tool_output(raw_content, ev.tool_name)
+            if compressed != raw_content:
+                # Swap content for the LLM; raw_output kept for diagnostics.
+                output.raw_output = raw_content
+                output.content = compressed
+
         return result
 
 
