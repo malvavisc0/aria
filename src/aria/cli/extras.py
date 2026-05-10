@@ -5,6 +5,7 @@ filters out internal/excluded entries, and returns a formatted markdown
 table that can be injected into agent instructions at runtime.
 """
 
+import fnmatch
 import os
 import shutil
 import sys
@@ -108,6 +109,11 @@ _EXCLUDED_BINARIES: set[str] = {
     "wsdump",
 }
 
+# Glob patterns for excluded binaries (e.g. "pyside6*" excludes all pyside6-* binaries).
+_EXCLUDED_PATTERNS: set[str] = {
+    "pyside6*",
+}
+
 # Binaries that require external dependencies to be useful.
 # If the dependency is not found on PATH, the binary is excluded.
 _DEPENDENCY_CHECKS: dict[str, list[str]] = {
@@ -183,6 +189,16 @@ _CATEGORIES: dict[str, list[str]] = {
 }
 
 
+def _is_excluded(name: str, excluded: set[str], patterns: set[str]) -> bool:
+    """Check if a binary name should be excluded via exact match or glob pattern."""
+    if name in excluded:
+        return True
+    for pattern in patterns:
+        if fnmatch.fnmatch(name, pattern):
+            return True
+    return False
+
+
 def _get_venv_bin_dir() -> Path | None:
     """Return the venv bin directory, or None if not in a venv."""
     # Check VIRTUAL_ENV env var first (most reliable when activated)
@@ -227,12 +243,13 @@ def get_venv_extras(
         return "No virtual environment detected."
 
     all_excluded = _EXCLUDED_BINARIES | (excluded or set())
+    all_patterns = _EXCLUDED_PATTERNS
 
     # Collect available binaries
     available: set[str] = set()
     for entry in sorted(bin_dir.iterdir()):
         name = entry.name
-        if name in all_excluded:
+        if _is_excluded(name, all_excluded, all_patterns):
             continue
         if not entry.is_file():
             continue
@@ -278,19 +295,19 @@ def get_venv_extras(
         aria_bins = sorted(
             f.name
             for f in aria_bin_dir.iterdir()
-            if f.is_file() and os.access(f, os.X_OK) and not f.name.startswith(".")
+            if f.is_file()
+            and os.access(f, os.X_OK)
+            and not f.name.startswith(".")
         )
         if aria_bins:
             lines.append("### Aria-Managed Binaries\n")
             lines.append(
-                f"These binaries are installed in `{aria_bin_dir}` "
-                "(automatically on PATH).\n"
+                f"The binaries are installed in `{aria_bin_dir}` are "
+                "automatically on $PATH. They will be available on PATH for all shell commands"
             )
-            lines.append(f"`{'`, `'.join(aria_bins)}`")
             lines.append("")
             lines.append(
-                "Download additional binaries to this directory — "
-                "they will be available on PATH for all shell commands."
+                f"Download and/or additional binaries to `{aria_bin_dir}`: download → `chmod +x` → verify. Shared across agents."
             )
             lines.append("")
 
@@ -326,10 +343,11 @@ def get_venv_extras_list(
         return []
 
     all_excluded = _EXCLUDED_BINARIES | (excluded or set())
+    all_patterns = _EXCLUDED_PATTERNS
     available: list[str] = []
     for entry in sorted(bin_dir.iterdir()):
         name = entry.name
-        if name in all_excluded:
+        if _is_excluded(name, all_excluded, all_patterns):
             continue
         if not entry.is_file():
             continue
@@ -363,12 +381,13 @@ def get_venv_extras_json(
         return {"categories": {}, "uncategorized": [], "total": 0}
 
     all_excluded = _EXCLUDED_BINARIES | (excluded or set())
+    all_patterns = _EXCLUDED_PATTERNS
 
     # Collect available binaries
     available: set[str] = set()
     for entry in sorted(bin_dir.iterdir()):
         name = entry.name
-        if name in all_excluded:
+        if _is_excluded(name, all_excluded, all_patterns):
             continue
         if not entry.is_file():
             continue

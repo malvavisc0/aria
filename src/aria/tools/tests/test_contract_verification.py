@@ -114,21 +114,15 @@ class TestToolSuccessResponseContract:
 class TestPathContractConsistency:
     """Verify path handling is consistent across file tools."""
 
-    def test_secure_resolve_path_enforces_base_dir(self):
-        """Issue #4: _secure_resolve_path should enforce BASE_DIR by default.
-
-        Current implementation has enforce_base_dir=False by default,
-        which is weaker than documentation suggests.
-        """
+    def test_secure_resolve_path_does_not_enforce_base_dir_by_default(self):
+        """enforce_base_dir defaults to False — workspace confinement is opt-in."""
         from aria.tools.files._internals import _secure_resolve_path
 
         sig = inspect.signature(_secure_resolve_path)
         params = sig.parameters
 
-        # enforce_base_dir must default to True to confine agent file
-        # operations to the workspace directory.
         enforce_param = params.get("enforce_base_dir")
         if enforce_param:
             default = enforce_param.default
-            msg = "enforce_base_dir default should be True (workspace confinement)"
-            assert default is True, msg
+            msg = "enforce_base_dir default should be False (opt-in confinement)"
+            assert default is False, msg

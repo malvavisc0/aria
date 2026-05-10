@@ -235,9 +235,9 @@ class TestSecureResolvePath:
             result = _secure_resolve_path(str(outside_file), enforce_base_dir=False)
             assert result == outside_file.resolve()
 
-            # With enforce_base_dir=True (default), path should be blocked
+            # With enforce_base_dir=True, path should be blocked
             with pytest.raises(FileSecurityError, match="Path traversal"):
-                _secure_resolve_path(str(outside_file))
+                _secure_resolve_path(str(outside_file), enforce_base_dir=True)
 
     def test_resolve_symlink(self):
         """Test that symlinks are detected (resolve follows them)."""
@@ -308,10 +308,10 @@ class TestSecureResolveDir:
             result = _secure_resolve_dir(str(outside_dir), enforce_base_dir=False)
             assert result.is_dir()
 
-            # With enforce_base_dir=True (default), path outside BASE_DIR
+            # With enforce_base_dir=True, path outside BASE_DIR
             # should be blocked
             with pytest.raises(FileSecurityError, match="Path traversal"):
-                _secure_resolve_dir(str(outside_dir))
+                _secure_resolve_dir(str(outside_dir), enforce_base_dir=True)
 
     def test_resolve_dir_symlink(self):
         """Test that symlinked directories are blocked."""

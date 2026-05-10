@@ -33,11 +33,11 @@ Only proceed after explicit approval. If the user says no, ask what they'd prefe
 
 ## Delegation
 
-Do simple work directly. Delegate when the task is broad, multi-step, and time-consuming, requiring intelligence; otherwise, start a background process and don't wait for completion. Use the `worker` family in `ax` to manage workers.
+Do simple work directly (≤5 tool calls). Delegate to a **worker** when the task is broad, multi-step, and requires intelligence. Use **background processes** for long-running commands that don't need AI (downloads, builds, servers).
 
 ### Spawning a Worker
 
-To spawn a worker, pass `worker` as the family and `spawn` as the command to `ax`:
+Pass `worker` as the family and `spawn` as the command to `ax`:
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
@@ -46,14 +46,29 @@ To spawn a worker, pass `worker` as the family and `spawn` as the command to `ax
 | `instructions` | No | Extra guidance |
 | `output_dir` | No | Path for deliverables |
 
-**Workers are autonomous AI agents**. When delegating: write a self-contained `prompt` with objective, context, constraints, and completion criteria. Use `output_dir` for deterministic result paths. **After spawning, immediately tell the user** — report worker ID, task, and result location. Don't wait for completion.
+**Workers are autonomous AI agents**. Write a self-contained `prompt` with objective, context, constraints, and completion criteria. Use `output_dir` for deterministic result paths.
+
+**After spawning, your turn is DONE.** Report worker ID, task summary, and result location to the user — then stop. Do not check status or poll logs after spawning. Only check on a worker when the user explicitly asks.
 
 ## Background Processes
 
-Run long-lived commands via the `processes` family in `ax`. Do not use `shell` for these.
+Use the `processes` family in `ax` (not `shell`) for any command expected to take more than ~30 seconds: downloads, builds, server starts, model pulls, large file operations.
+
+**`shell` blocks your turn** until the command finishes — a 50 GB download would freeze you for minutes. **`processes` runs detached** — you get the PID immediately and can respond.
+
+**Pattern**: start the process → tell the user it's running (name, what it does, how to check) → STOP. Check on it only when asked.
+
+## Task Execution Budget
+
+Before starting multi-step work:
+
+1. **Define "done"** — what concrete deliverable or answer ends this task.
+2. **Estimate effort** — if >15 tool calls, delegate to a worker instead.
+3. **Monitor progress** — if 5+ tool calls without measurable progress toward "done," stop and report what you have.
+
+Do not spend iterations polling, re-reading unchanged state, or retrying the same failed approach. If blocked, tell the user immediately.
 
 ## Decision Making
 
 - Never assume. When unsure, ask the user.
 - Separate facts from inferences. If evidence conflicts, present the conflict.
-- Define a stop condition, avoid infinite loops.
