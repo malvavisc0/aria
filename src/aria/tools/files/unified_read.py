@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from aria.tools import Reason
 from aria.tools.constants import BASE_DIR
@@ -26,6 +27,131 @@ from aria.tools.files._internals import (
 from aria.tools.files.decorators import with_file_operation_error_handling
 from aria.tools.files.exceptions import FileOperationError
 from aria.tools.utils import _truncate_json
+
+# ---------------------------------------------------------------------------
+# Explicit schemas exposed to the LLM (mirrors ShellToolSchema pattern).
+# ---------------------------------------------------------------------------
+
+
+class ReadFileSchema(BaseModel):
+    """Schema exposed to the LLM for read_file."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are reading this file."
+    )
+    file_name: str = Field(
+        description=(
+            "Absolute path to the file to read (e.g. /home/user/project/file.txt)."
+        )
+    )
+    offset: int | None = Field(
+        default=0,
+        description="0-indexed line number to start reading from (default: 0).",
+    )
+    length: int | None = Field(
+        default=0,
+        description=(
+            "Number of lines to read. 0 = read up to max_lines from offset "
+            "(default: 0)."
+        ),
+    )
+    max_lines: int | None = Field(
+        default=200,
+        description="Maximum lines to return per call (default: 200, max: 200).",
+    )
+
+
+class FileInfoSchema(BaseModel):
+    """Schema exposed to the LLM for file_info."""
+
+    reason: str = Field(
+        description=(
+            "Required. Brief explanation of why you need this file's metadata."
+        )
+    )
+    file_name: str = Field(
+        description=(
+            "Absolute path to the file or directory (e.g. /home/user/project/file.txt)."
+        )
+    )
+
+
+class ListFilesSchema(BaseModel):
+    """Schema exposed to the LLM for list_files."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are listing files."
+    )
+    pattern: str | None = Field(
+        default="*",
+        description="Glob filter pattern (default: '*'). E.g. '*.py', '*.txt'.",
+    )
+    recursive: bool | None = Field(
+        default=False,
+        description=(
+            "If true, returns a directory tree structure "
+            "instead of a flat list (default: false)."
+        ),
+    )
+    max_depth: int | None = Field(
+        default=3,
+        description="Maximum recursion depth for tree view (default: 3).",
+    )
+    max_results: int | None = Field(
+        default=100,
+        description="Maximum files to return in flat list mode (default: 100).",
+    )
+    path: str | None = Field(
+        default=".",
+        description=(
+            "Absolute directory path to list "
+            "(e.g. /home/user/project). Default: current workspace."
+        ),
+    )
+
+
+class SearchFilesSchema(BaseModel):
+    """Schema exposed to the LLM for search_files."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are searching files."
+    )
+    pattern: str = Field(
+        description=(
+            "Regex pattern to match against filenames or file content "
+            "depending on mode."
+        )
+    )
+    mode: str | None = Field(
+        default="name",
+        description=(
+            "'name' to match against filenames, 'content' to search inside "
+            "file contents (default: 'name')."
+        ),
+    )
+    file_pattern: str | None = Field(
+        default="**/*",
+        description="Glob filter for which files to search (default: '**/*').",
+    )
+    recursive: bool | None = Field(
+        default=True,
+        description="Search subdirectories recursively (default: true).",
+    )
+    max_results: int | None = Field(
+        default=500,
+        description="Maximum matches to return (default: 500).",
+    )
+    context_lines: int | None = Field(
+        default=2,
+        description="Lines of context around each match for content mode (default: 2).",
+    )
+    path: str | None = Field(
+        default=".",
+        description=(
+            "Absolute directory path to search in "
+            "(e.g. /home/user/project). Default: current workspace."
+        ),
+    )
 
 
 def _read_lines_streaming(file_path: Path, offset: int, length: int) -> list[str]:

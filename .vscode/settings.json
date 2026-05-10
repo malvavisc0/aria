@@ -4,6 +4,7 @@
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingImports": "error"
     },
+    "python.terminal.useEnvFile": true,
     "editor.formatOnSave": true,
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",

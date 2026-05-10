@@ -67,6 +67,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
+    "pytest-xdist",
 ]
 
 [tool.isort]
@@ -75,7 +76,7 @@ line_length = 88
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "--cov=src/aria --cov-report=term-missing --cov-report=html"
+addopts = "-n logical --dist loadscope --cov=src/aria --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src/aria"]

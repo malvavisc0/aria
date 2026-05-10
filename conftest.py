@@ -6,6 +6,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 from dotenv import load_dotenv
@@ -35,6 +36,31 @@ def _cleanup_session_sandbox() -> None:
 # Load environment variables from .env file, but keep the sandbox overrides.
 load_dotenv()
 
+
+# ---------------------------------------------------------------------------
+# Pre-imported modules cache
+#
+# Importing modules is expensive (especially aria's large module tree).
+# Cache the module objects once at collection time so the per-test
+# autouse fixture only does cheap monkeypatch calls instead of
+# repeated importlib.import_module + getattr lookups.
+# ---------------------------------------------------------------------------
+
+_CACHED_MODULES: dict[str, Any] = {}
+
+
+def _get_cached_module(name: str):
+    """Return a cached module import, importing lazily on first access."""
+    mod = _CACHED_MODULES.get(name)
+    if mod is None:
+        try:
+            mod = importlib.import_module(name)
+            _CACHED_MODULES[name] = mod
+        except ImportError:
+            return None
+    return mod
+
+
 # Modules containing a DOWNLOADS_DIR binding that must be redirected in tests.
 _DOWNLOADS_DIR_MODULES = (
     "aria.tools.constants",
@@ -63,12 +89,9 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr("aria.tools.http.functions.HTTP_OUTPUT_DIR", http_dir)
 
     for mod_name in _DOWNLOADS_DIR_MODULES:
-        try:
-            mod = importlib.import_module(mod_name)
-            if hasattr(mod, "DOWNLOADS_DIR"):
-                monkeypatch.setattr(mod, "DOWNLOADS_DIR", downloads_dir)
-        except ImportError:
-            pass
+        mod = _get_cached_module(mod_name)
+        if mod is not None and hasattr(mod, "DOWNLOADS_DIR"):
+            monkeypatch.setattr(mod, "DOWNLOADS_DIR", downloads_dir)
 
     # ── Isolate ~/.aria root so tests never touch production data ──
     aria_home = tmp_path / "aria_home"
@@ -76,7 +99,7 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     monkeypatch.setenv("ARIA_HOME", str(aria_home))
     monkeypatch.setenv("TOOLS_DATA_FOLDER", str(aria_home / "workspace"))
 
-    import aria.config.folders as _folders
+    _folders = _get_cached_module("aria.config.folders")
 
     monkeypatch.setattr(_folders.Data, "path", aria_home)
     monkeypatch.setattr(_folders.Workspace, "path", aria_home / "workspace")
@@ -94,7 +117,7 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     workspace_dir = aria_home / "workspace"
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
-    import aria.tools.constants as _tools_const
+    _tools_const = _get_cached_module("aria.tools.constants")
 
     monkeypatch.setattr(_tools_const, "BASE_DIR", workspace_dir)
 
@@ -105,17 +128,17 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
             d.mkdir(exist_ok=True)
             monkeypatch.setattr(_tools_const, attr, d)
 
-    import aria.tools.shell.constants as _shell_const
+    _shell_const = _get_cached_module("aria.tools.shell.constants")
 
     monkeypatch.setattr(_shell_const, "BASE_DIR", workspace_dir)
 
     # Also patch BASE_DIR in modules that imported it via `from ... import`
     # (local bindings are not updated by patching the source module)
-    import aria.tools.files._internals as _file_internals
+    _file_internals = _get_cached_module("aria.tools.files._internals")
 
     monkeypatch.setattr(_file_internals, "BASE_DIR", workspace_dir)
 
-    import aria.tools.shell.validation as _shell_valid
+    _shell_valid = _get_cached_module("aria.tools.shell.validation")
 
     monkeypatch.setattr(_shell_valid, "BASE_DIR", workspace_dir)
 
@@ -124,71 +147,53 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     process_logs = aria_home / "logs" / "processes"
     process_logs.mkdir(parents=True, exist_ok=True)
 
-    try:
-        import aria.tools.process.functions as _process_funcs
-
+    _process_funcs = _get_cached_module("aria.tools.process.functions")
+    if _process_funcs is not None:
         monkeypatch.setattr(_process_funcs, "_STATE_FILE", process_state)
         monkeypatch.setattr(_process_funcs, "_LOG_DIR", process_logs)
 
-        # Some tests import these module-level constants directly during test
-        # collection, so patch their local bindings as well.
-        try:
-            import aria.tools.process.tests.test_process as _test_process
-
+        _test_process = _get_cached_module(
+            "aria.tools.process.tests.test_process"
+        )
+        if _test_process is not None:
             monkeypatch.setattr(_test_process, "_STATE_FILE", process_state)
-        except ImportError:
-            pass
-    except ImportError:
-        pass
 
-    try:
-        import aria.server.manager as _server_manager
-
+    _server_manager = _get_cached_module("aria.server.manager")
+    if _server_manager is not None:
         monkeypatch.setattr(
             _server_manager.ServerManager,
             "PID_FILE",
             aria_home / "server.json",
         )
-    except ImportError:
-        pass
 
-    try:
-        import aria.server.vllm as _server_vllm
-
+    _server_vllm = _get_cached_module("aria.server.vllm")
+    if _server_vllm is not None:
         monkeypatch.setattr(
             _server_vllm.VllmServerManager,
             "PID_FILE",
             aria_home / "vllm_servers.json",
         )
-    except ImportError:
-        pass
 
     browser_dir = workspace_dir / "browser"
     browser_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        import aria.tools.browser.constants as _browser_constants
-
+    _browser_constants = _get_cached_module("aria.tools.browser.constants")
+    if _browser_constants is not None:
         monkeypatch.setattr(
             _browser_constants, "BROWSER_CONTENT_DIR", browser_dir
         )
-    except ImportError:
-        pass
 
-    try:
-        import aria.tools.browser.manager as _browser_manager
-
+    _browser_manager = _get_cached_module("aria.tools.browser.manager")
+    if _browser_manager is not None:
         monkeypatch.setattr(
             _browser_manager, "BROWSER_CONTENT_DIR", browser_dir
         )
-    except ImportError:
-        pass
 
     # ── Isolate main database (SQLite + ChromaDB) ──────────────
     db_dir = tmp_path / "db"
     db_dir.mkdir()
 
-    import aria.config.database as _db_cfg
+    _db_cfg = _get_cached_module("aria.config.database")
 
     monkeypatch.setattr(_db_cfg, "DB", type("DB", (), {"path": db_dir}))
     aria_db = db_dir / "aria.db"
@@ -201,14 +206,14 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(_db_cfg.ChromaDB, "db_path", db_dir / "chromadb")
 
     # ── Isolate tools database default path ────────────────────
-    import aria.tools.database as _tools_db_mod
+    _tools_db_mod = _get_cached_module("aria.tools.database")
 
     monkeypatch.setattr(
         _tools_db_mod, "_DEFAULT_DB_PATH", str(tmp_path / "tools.db")
     )
 
     # ── Reset CLI engine so it picks up the patched SQLite path ─
-    import aria.cli as _cli_mod
+    _cli_mod = _get_cached_module("aria.cli")
 
     _cli_mod._engine = None
 

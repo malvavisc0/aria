@@ -13,6 +13,7 @@ import uuid
 from typing import Any
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from aria.tools import Reason, utc_timestamp
 from aria.tools.decorators import log_tool_call
@@ -21,6 +22,65 @@ from . import registry
 from .session import ReasoningSession
 
 _DEFAULT_AGENT_ID = "aria"
+
+
+# ---------------------------------------------------------------------------
+# Explicit schema exposed to the LLM (mirrors ShellToolSchema pattern).
+# ---------------------------------------------------------------------------
+
+
+class ReasoningSchema(BaseModel):
+    """Schema exposed to the LLM for the reasoning tool."""
+
+    reason: str = Field(
+        description=(
+            "Required. Brief explanation of why you are calling this tool "
+            "(e.g. 'Analyze tradeoffs between approach A and B')."
+        )
+    )
+    action: str = Field(
+        description=(
+            "Action to perform: 'start' (new session), 'step' (add reasoning), "
+            "'reflect' (examine a step), 'evaluate' (score session), "
+            "'summary' (get summary), 'end' (close session)."
+        )
+    )
+    content: str | None = Field(
+        default=None,
+        description=(
+            "Reasoning content text. Required for 'step' and 'reflect' actions."
+        ),
+    )
+    cognitive_mode: str | None = Field(
+        default=None,
+        description=(
+            "Mode for the reasoning step: 'planning', 'analysis', "
+            "'evaluation', 'synthesis', 'creative', 'reflection'."
+        ),
+    )
+    reasoning_type: str | None = Field(
+        default=None,
+        description=(
+            "Type of reasoning: 'deductive', 'inductive', 'abductive', "
+            "'causal', 'probabilistic', 'analogical'."
+        ),
+    )
+    evidence: list[str] | None = Field(
+        default=None,
+        description="List of supporting evidence strings for a step.",
+    )
+    confidence: float | None = Field(
+        default=None,
+        description="Confidence score 0.0-1.0 (default: 0.65).",
+    )
+    on_step: int | None = Field(
+        default=None,
+        description="Step number to reflect on (required for 'reflect' action).",
+    )
+    agent_id: str = Field(
+        default=_DEFAULT_AGENT_ID,
+        description="Auto-set. Do not provide.",
+    )
 
 
 def _ok(

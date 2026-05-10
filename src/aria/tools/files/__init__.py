@@ -9,6 +9,10 @@ from aria.tools.files.file_management import (
 
 # Unified read operations
 from aria.tools.files.unified_read import (
+    FileInfoSchema,
+    ListFilesSchema,
+    ReadFileSchema,
+    SearchFilesSchema,
     file_info,
     list_files,
     read_file,
@@ -16,7 +20,12 @@ from aria.tools.files.unified_read import (
 )
 
 # Unified write operations
-from aria.tools.files.write_operations import edit_file, write_file
+from aria.tools.files.write_operations import (
+    EditFileSchema,
+    WriteFileSchema,
+    edit_file,
+    write_file,
+)
 
 __all__ = [
     # Unified read operations
@@ -27,6 +36,13 @@ __all__ = [
     # Unified write operations
     "write_file",
     "edit_file",
+    # Schemas for LLM tool calling
+    "ReadFileSchema",
+    "FileInfoSchema",
+    "ListFilesSchema",
+    "SearchFilesSchema",
+    "WriteFileSchema",
+    "EditFileSchema",
     # File management
     "copy_file",
     "delete_file",

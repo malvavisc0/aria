@@ -54,17 +54,23 @@ def _import_function(module_path: str, function_name: str) -> Callable:
 
 def _get_core_lite_tools() -> list[FunctionTool]:
     """Aria agent core tools: reasoning + shell only."""
+    from aria.tools.reasoning.functions import ReasoningSchema
     from aria.tools.shell.functions import ShellToolSchema
 
     tool_specs = [
         ("aria.tools.reasoning", "reasoning"),
         ("aria.tools.shell", "shell"),
     ]
-    tools = []
+    explicit_schemas = {
+        "reasoning": ReasoningSchema,
+        "shell": ShellToolSchema,
+    }
+    tools: list[FunctionTool] = []
     for mod, fn in tool_specs:
         func = _import_function(mod, fn)
-        if fn == "shell":
-            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=ShellToolSchema))
+        schema = explicit_schemas.get(fn)
+        if schema is not None:
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
         else:
             tools.append(FunctionTool.from_defaults(fn=func))
     return tools
@@ -72,6 +78,16 @@ def _get_core_lite_tools() -> list[FunctionTool]:
 
 def _get_file_lite_tools() -> list[FunctionTool]:
     """Aria agent file tools: no file_info or copy_file."""
+    from aria.tools.files.unified_read import (
+        ListFilesSchema,
+        ReadFileSchema,
+        SearchFilesSchema,
+    )
+    from aria.tools.files.write_operations import (
+        EditFileSchema,
+        WriteFileSchema,
+    )
+
     tool_specs = [
         ("aria.tools.files", "read_file"),
         ("aria.tools.files", "write_file"),
@@ -79,14 +95,28 @@ def _get_file_lite_tools() -> list[FunctionTool]:
         ("aria.tools.files", "list_files"),
         ("aria.tools.files", "search_files"),
     ]
-    return [
-        FunctionTool.from_defaults(fn=_import_function(mod, fn))
-        for mod, fn in tool_specs
-    ]
+    explicit_schemas = {
+        "read_file": ReadFileSchema,
+        "write_file": WriteFileSchema,
+        "edit_file": EditFileSchema,
+        "list_files": ListFilesSchema,
+        "search_files": SearchFilesSchema,
+    }
+    tools: list[FunctionTool] = []
+    for mod, fn in tool_specs:
+        func = _import_function(mod, fn)
+        schema = explicit_schemas.get(fn)
+        if schema is not None:
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
+        else:
+            tools.append(FunctionTool.from_defaults(fn=func))
+    return tools
 
 
 def _get_core_tools() -> list[FunctionTool]:
     """Worker core tools: reasoning, plan, scratchpad, shell."""
+    from aria.tools.reasoning.functions import ReasoningSchema
+    from aria.tools.schemas import PlanSchema, ScratchpadSchema
     from aria.tools.shell.functions import ShellToolSchema
 
     tool_specs = [
@@ -95,11 +125,18 @@ def _get_core_tools() -> list[FunctionTool]:
         ("aria.tools.scratchpad", "scratchpad"),
         ("aria.tools.shell", "shell"),
     ]
-    tools = []
+    explicit_schemas = {
+        "reasoning": ReasoningSchema,
+        "plan": PlanSchema,
+        "scratchpad": ScratchpadSchema,
+        "shell": ShellToolSchema,
+    }
+    tools: list[FunctionTool] = []
     for mod, fn in tool_specs:
         func = _import_function(mod, fn)
-        if fn == "shell":
-            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=ShellToolSchema))
+        schema = explicit_schemas.get(fn)
+        if schema is not None:
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
         else:
             tools.append(FunctionTool.from_defaults(fn=func))
     return tools
@@ -107,6 +144,18 @@ def _get_core_tools() -> list[FunctionTool]:
 
 def _get_file_tools() -> list[FunctionTool]:
     """Worker file tools: full set including file_info and copy_file."""
+    from aria.tools.files.unified_read import (
+        FileInfoSchema,
+        ListFilesSchema,
+        ReadFileSchema,
+        SearchFilesSchema,
+    )
+    from aria.tools.files.write_operations import (
+        EditFileSchema,
+        WriteFileSchema,
+    )
+    from aria.tools.schemas import CopyFileSchema
+
     tool_specs = [
         ("aria.tools.files", "read_file"),
         ("aria.tools.files", "write_file"),
@@ -116,10 +165,24 @@ def _get_file_tools() -> list[FunctionTool]:
         ("aria.tools.files", "search_files"),
         ("aria.tools.files", "copy_file"),
     ]
-    return [
-        FunctionTool.from_defaults(fn=_import_function(mod, fn))
-        for mod, fn in tool_specs
-    ]
+    explicit_schemas = {
+        "read_file": ReadFileSchema,
+        "write_file": WriteFileSchema,
+        "edit_file": EditFileSchema,
+        "file_info": FileInfoSchema,
+        "list_files": ListFilesSchema,
+        "search_files": SearchFilesSchema,
+        "copy_file": CopyFileSchema,
+    }
+    tools: list[FunctionTool] = []
+    for mod, fn in tool_specs:
+        func = _import_function(mod, fn)
+        schema = explicit_schemas.get(fn)
+        if schema is not None:
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
+        else:
+            tools.append(FunctionTool.from_defaults(fn=func))
+    return tools
 
 
 def _get_web_tools() -> list[FunctionTool]:
@@ -133,14 +196,27 @@ def _get_web_tools() -> list[FunctionTool]:
     except Exception:
         return []
 
+    from aria.tools.browser.functions import BrowserClickSchema, OpenUrlSchema
+
     tool_specs = [
         ("aria.tools.browser", "open_url"),
         ("aria.tools.browser", "browser_click"),
     ]
+    explicit_schemas = {
+        "open_url": OpenUrlSchema,
+        "browser_click": BrowserClickSchema,
+    }
     tools = []
     for mod, fn in tool_specs:
         try:
-            tools.append(FunctionTool.from_defaults(async_fn=_import_function(mod, fn)))
+            func = _import_function(mod, fn)
+            schema = explicit_schemas.get(fn)
+            if schema is not None:
+                tools.append(
+                    FunctionTool.from_defaults(async_fn=func, fn_schema=schema)
+                )
+            else:
+                tools.append(FunctionTool.from_defaults(async_fn=func))
         except (ImportError, AttributeError):
             logger.warning(f"Could not load browser tool: {mod}.{fn}")
     return tools
@@ -148,30 +224,54 @@ def _get_web_tools() -> list[FunctionTool]:
 
 def _get_development_tools() -> list[FunctionTool]:
     """Get on-demand development tools."""
-    tool_specs = [
-        ("aria.tools.development", "python"),
-    ]
-    return [
-        FunctionTool.from_defaults(fn=_import_function(mod, fn))
-        for mod, fn in tool_specs
-    ]
+    from aria.tools.schemas import PythonSchema
+
+    func = _import_function("aria.tools.development", "python")
+    return [FunctionTool.from_defaults(fn=func, fn_schema=PythonSchema)]
 
 
 def _get_finance_tools() -> list[FunctionTool]:
     """Get on-demand finance tools."""
+    from aria.tools.schemas import (
+        FetchCompanyInfoSchema,
+        FetchStockPriceSchema,
+        FetchTickerNewsSchema,
+    )
+
     tool_specs = [
         ("aria.tools.search", "fetch_current_stock_price"),
         ("aria.tools.search", "fetch_company_information"),
         ("aria.tools.search", "fetch_ticker_news"),
     ]
-    return [
-        FunctionTool.from_defaults(fn=_import_function(mod, fn))
-        for mod, fn in tool_specs
-    ]
+    explicit_schemas = {
+        "fetch_current_stock_price": FetchStockPriceSchema,
+        "fetch_company_information": FetchCompanyInfoSchema,
+        "fetch_ticker_news": FetchTickerNewsSchema,
+    }
+    tools: list[FunctionTool] = []
+    for mod, fn in tool_specs:
+        func = _import_function(mod, fn)
+        schema = explicit_schemas.get(fn)
+        if schema is not None:
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
+        else:
+            tools.append(FunctionTool.from_defaults(fn=func))
+    return tools
 
 
 def _get_entertainment_tools() -> list[FunctionTool]:
     """Get on-demand entertainment tools."""
+    from aria.tools.schemas import (
+        GetAllSeriesEpisodesSchema,
+        GetMovieDetailsSchema,
+        GetMovieReviewsSchema,
+        GetMovieTriviaSchema,
+        GetPersonDetailsSchema,
+        GetPersonFilmographySchema,
+        GetYoutubeTranscriptionSchema,
+        SearchImdbTitlesSchema,
+    )
+
     tool_specs = [
         ("aria.tools.imdb", "search_imdb_titles"),
         ("aria.tools.imdb", "get_movie_details"),
@@ -182,10 +282,25 @@ def _get_entertainment_tools() -> list[FunctionTool]:
         ("aria.tools.imdb", "get_movie_trivia"),
         ("aria.tools.search", "get_youtube_video_transcription"),
     ]
+    explicit_schemas = {
+        "search_imdb_titles": SearchImdbTitlesSchema,
+        "get_movie_details": GetMovieDetailsSchema,
+        "get_person_details": GetPersonDetailsSchema,
+        "get_person_filmography": GetPersonFilmographySchema,
+        "get_all_series_episodes": GetAllSeriesEpisodesSchema,
+        "get_movie_reviews": GetMovieReviewsSchema,
+        "get_movie_trivia": GetMovieTriviaSchema,
+        "get_youtube_video_transcription": GetYoutubeTranscriptionSchema,
+    }
     tools = []
     for mod, fn in tool_specs:
         try:
-            tools.append(FunctionTool.from_defaults(fn=_import_function(mod, fn)))
+            func = _import_function(mod, fn)
+            schema = explicit_schemas.get(fn)
+            if schema is not None:
+                tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
+            else:
+                tools.append(FunctionTool.from_defaults(fn=func))
         except (ImportError, AttributeError):
             logger.warning(f"Could not load entertainment tool: {mod}.{fn}")
     return tools
@@ -193,21 +308,33 @@ def _get_entertainment_tools() -> list[FunctionTool]:
 
 def _get_system_tools() -> list[FunctionTool]:
     """Get on-demand system tools."""
+    from aria.tools.schemas import HttpRequestSchema, ProcessSchema
+
     tool_specs = [
         ("aria.tools.http", "http_request"),
         ("aria.tools.process", "process"),
     ]
-    return [
-        FunctionTool.from_defaults(fn=_import_function(mod, fn))
-        for mod, fn in tool_specs
-    ]
+    explicit_schemas = {
+        "http_request": HttpRequestSchema,
+        "process": ProcessSchema,
+    }
+    tools: list[FunctionTool] = []
+    for mod, fn in tool_specs:
+        func = _import_function(mod, fn)
+        schema = explicit_schemas.get(fn)
+        if schema is not None:
+            tools.append(FunctionTool.from_defaults(fn=func, fn_schema=schema))
+        else:
+            tools.append(FunctionTool.from_defaults(fn=func))
+    return tools
 
 
 def _get_ax_tools() -> list[FunctionTool]:
     """Single unified ax dispatcher tool."""
     from aria.tools.ax import ax
+    from aria.tools.ax.dispatcher import AxSchema
 
-    return [FunctionTool.from_defaults(async_fn=ax)]
+    return [FunctionTool.from_defaults(async_fn=ax, fn_schema=AxSchema)]
 
 
 _CATEGORY_LOADERS: dict[str, Callable[[], list[FunctionTool]]] = {

@@ -20,9 +20,48 @@ Example:
     ```
 """
 
+from pydantic import BaseModel, Field
+
 from aria.tools import Reason, get_function_name
 from aria.tools.browser.manager import get_browser_manager
 from aria.tools.decorators import log_tool_call
+
+
+class OpenUrlSchema(BaseModel):
+    """Schema exposed to the LLM for open_url."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are opening this URL."
+    )
+    url: str = Field(description="Full URL to open in the headless browser.")
+    content_mode: str = Field(
+        default="text",
+        description=(
+            "'text' for plain text/markdown content, "
+            "'html' for raw HTML (default: 'text')."
+        ),
+    )
+
+
+class BrowserClickSchema(BaseModel):
+    """Schema exposed to the LLM for browser_click."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are clicking this element."
+    )
+    selector: str = Field(
+        description=(
+            "CSS selector or text to identify the element to click "
+            "(e.g. '#submit-btn', 'a.more')."
+        ),
+    )
+    content_mode: str = Field(
+        default="text",
+        description=(
+            "'text' for plain text content after click, "
+            "'html' for raw HTML (default: 'text')."
+        ),
+    )
 
 
 def _get_manager():

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from aria.tools import Reason
 from aria.tools.decorators import tool_function
@@ -14,6 +15,73 @@ from aria.tools.files.decorators import (
 )
 from aria.tools.files.exceptions import FileOperationError
 from aria.tools.files.unified_read import _count_lines_efficiently
+
+# ---------------------------------------------------------------------------
+# Explicit schemas exposed to the LLM (mirrors ShellToolSchema pattern).
+# llama-index's auto-schema does NOT extract descriptions from docstrings,
+# so every field must carry a Field(description=...) for the LLM to
+# understand what it should pass.
+# ---------------------------------------------------------------------------
+
+
+class WriteFileSchema(BaseModel):
+    """Schema exposed to the LLM for write_file."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are writing this file."
+    )
+    file_name: str = Field(
+        description=(
+            "Absolute path to the file to create or overwrite "
+            "(e.g. /home/user/project/file.txt)."
+        )
+    )
+    contents: str = Field(description="The full content to write into the file.")
+    mode: str = Field(
+        default="overwrite",
+        description=(
+            "'overwrite' to replace the entire file (creates parent dirs), "
+            "'append' to add content to the end of an existing file."
+        ),
+    )
+
+
+class EditFileSchema(BaseModel):
+    """Schema exposed to the LLM for edit_file.
+
+    Uses line-based editing: specify an offset (0-indexed line number),
+    how many existing lines to replace/delete, and the new lines to insert.
+    """
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are editing this file."
+    )
+    file_name: str = Field(
+        description=(
+            "Absolute path to an existing file to edit "
+            "(e.g. /home/user/project/file.txt)."
+        )
+    )
+    offset: int = Field(
+        description=(
+            "0-indexed line number where the edit starts. "
+            "For example, 0 means the very first line."
+        )
+    )
+    length: int = Field(
+        default=0,
+        description=(
+            "Number of existing lines to remove or replace starting at offset. "
+            "0 = pure insert (no lines removed)."
+        ),
+    )
+    new_lines: list[str] | None = Field(
+        default=None,
+        description=(
+            "Lines to insert or use as replacements. "
+            "Omit or null for a pure delete (length > 0, no new lines)."
+        ),
+    )
 
 
 def _atomic_write(file_path: Path, content: str) -> None:

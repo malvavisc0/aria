@@ -295,9 +295,7 @@ def get_venv_extras(
         aria_bins = sorted(
             f.name
             for f in aria_bin_dir.iterdir()
-            if f.is_file()
-            and os.access(f, os.X_OK)
-            and not f.name.startswith(".")
+            if f.is_file() and os.access(f, os.X_OK) and not f.name.startswith(".")
         )
         if aria_bins:
             lines.append("### Aria-Managed Binaries\n")

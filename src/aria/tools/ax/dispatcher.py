@@ -9,10 +9,44 @@ from collections.abc import Callable
 from typing import Any
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from aria.tools import Reason, tool_response
 from aria.tools.ax.exceptions import AxDispatchError
 from aria.tools.decorators import log_tool_call
+
+# ---------------------------------------------------------------------------
+# Explicit schema exposed to the LLM (mirrors ShellToolSchema pattern).
+# ---------------------------------------------------------------------------
+
+
+class AxSchema(BaseModel):
+    """Schema exposed to the LLM for the ax dispatcher."""
+
+    reason: str = Field(
+        description="Required. Brief explanation of why you are calling this."
+    )
+    family: str = Field(
+        description=(
+            "Tool family name. Use 'help' to list all families. "
+            "Families: web, knowledge, finance, imdb, http, dev, processes, "
+            "check, worker."
+        )
+    )
+    command: str = Field(
+        description=(
+            "Subcommand within the family. "
+            "Use command='help' within a family to list its commands."
+        )
+    )
+    args: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Arguments for the target function as a JSON dict "
+            '(excluding \'reason\'). E.g. {"query": "python tutorials"}.'
+        ),
+    )
+
 
 # ---------------------------------------------------------------------------
 # Lazy import helpers (avoids importing all tool modules at load time)
