@@ -94,8 +94,16 @@ REQUIRED_ENV_VARS = [
 
 def _check_env_vars(checks: list[CheckResult]) -> None:
     """Check that all required environment variables are set."""
-    passed = sum(1 for var in REQUIRED_ENV_VARS if os.getenv(var))
-    total = len(REQUIRED_ENV_VARS)
+    from aria.config.api import Vllm as VllmConfig
+
+    required = list(REQUIRED_ENV_VARS)
+    if VllmConfig.remote:
+        # CHAT_MODEL_PATH is not required in remote mode —
+        # the model is served by the remote endpoint.
+        required = [v for v in required if v != "CHAT_MODEL_PATH"]
+
+    passed = sum(1 for var in required if os.getenv(var))
+    total = len(required)
 
     if passed == total:
         checks.append(
@@ -148,7 +156,20 @@ def _check_data_folder(checks: list[CheckResult]) -> None:
 
 
 def _check_binaries(checks: list[CheckResult]) -> None:
-    """Check that vLLM is installed."""
+    """Check that vLLM is installed (skipped in remote mode)."""
+    from aria.config.api import Vllm as VllmConfig
+
+    if VllmConfig.remote:
+        checks.append(
+            CheckResult(
+                name="vLLM",
+                passed=True,
+                category="binaries",
+                details="Remote mode — local install not required",
+            )
+        )
+        return
+
     from aria.scripts.vllm import get_vllm_version, is_vllm_installed
 
     if is_vllm_installed():
@@ -220,13 +241,23 @@ def _check_model_exists(model_path: str) -> bool:
 
 
 def _check_models(checks: list[CheckResult]) -> None:
-    """Check that all required models are configured and downloaded."""
+    """Check that all required models are configured and downloaded.
+
+    In remote mode, only the embeddings model is checked locally —
+    the chat model is served by the remote endpoint.
+    """
+    from aria.config.api import Vllm as VllmConfig
     from aria.config.models import Chat, Embeddings
 
-    model_checks = [
-        ("chat", Chat.model_path, True),  # required
-        ("embeddings", Embeddings.model_path, True),  # required
-    ]
+    if VllmConfig.remote:
+        model_checks = [
+            ("embeddings", Embeddings.model_path, True),
+        ]
+    else:
+        model_checks = [
+            ("chat", Chat.model_path, True),  # required
+            ("embeddings", Embeddings.model_path, True),  # required
+        ]
 
     for alias, model_path, required in model_checks:
         display_name = f"{alias} model"
@@ -399,7 +430,23 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
         - NVIDIA: Check VRAM and RAM separately
         - Metal: Use unified memory (system RAM)
         - CPU: Only check system RAM
+
+    In remote mode, GPU checks are skipped — the remote server
+    manages its own hardware.
     """
+    from aria.config.api import Vllm as VllmConfig
+
+    if VllmConfig.remote:
+        checks.append(
+            CheckResult(
+                name="Hardware",
+                passed=True,
+                category="hardware",
+                details="Remote mode — hardware managed by remote server",
+            )
+        )
+        return
+
     from aria.helpers.memory import detect_system_ram
     from aria.helpers.nvidia import get_free_vram_per_gpu, get_total_vram_mb
 
@@ -442,7 +489,9 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
                     name="Unified Memory",
                     passed=True,
                     category="hardware",
-                    details=(f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"),
+                    details=(
+                        f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"
+                    ),
                 )
             )
     else:
@@ -464,11 +513,16 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
     - ``auto``/``ram`` mode: check if system RAM is sufficient.
       - RAM sufficient → pass with offload detail.
       - RAM insufficient → fail with clear remediation.
+
+    Skipped entirely in remote mode.
     """
     from pathlib import Path
 
     from aria.config.api import Vllm as VllmConfig
     from aria.config.models import Chat
+
+    if VllmConfig.remote:
+        return  # KV cache managed by remote server
     from aria.helpers.memory import detect_system_ram, get_model_file_size
     from aria.helpers.nvidia import (
         _estimate_kv_cache_mb,

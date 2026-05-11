@@ -48,7 +48,9 @@ HEALTH_CHECK_TIMEOUT = 180  # seconds (vLLM model loading can take 30s+)
 HEALTH_CHECK_INTERVAL = 0.5  # seconds
 
 
-def _print_startup_banner(host: str, port: int, background: bool = False) -> None:
+def _print_startup_banner(
+    host: str, port: int, background: bool = False
+) -> None:
     mode = "Background" if background else "Foreground"
     action = "Starting Aria Web UI"
     console.print()
@@ -128,7 +130,9 @@ def _print_preflight_result(result) -> bool:
 
         for check in checks:
             if check.passed:
-                details = f" [dim]({check.details})[/dim]" if check.details else ""
+                details = (
+                    f" [dim]({check.details})[/dim]" if check.details else ""
+                )
                 console.print(f"   [green]✓[/green] {check.name}{details}")
             else:
                 console.print(
@@ -205,7 +209,16 @@ def server_run():
 
 def _is_vllm_healthy() -> bool:
     """Check if the vLLM chat server is responding to health checks."""
+    from aria.config.api import Vllm as VllmConfig
     from aria.config.models import Chat
+
+    if VllmConfig.remote:
+        # In remote mode, check the configured API URL directly
+        try:
+            with urlopen(f"{Chat.api_url}/models", timeout=5) as resp:
+                return resp.status == 200
+        except (URLError, OSError):
+            return False
 
     port = Chat.get_port()
     try:
@@ -243,7 +256,24 @@ def _ensure_vllm_running() -> None:
     This is a safety net for two scenarios:
     1. The web UI is already running but vLLM crashed or was never started.
     2. The web UI just started but its lifecycle hook failed to start vLLM.
+
+    In remote mode, just verifies the remote endpoint is reachable.
     """
+    from aria.config.api import Vllm as VllmConfig
+
+    if VllmConfig.remote:
+        if _is_vllm_healthy():
+            console.print("[green]✓[/green] Remote vLLM endpoint reachable")
+        else:
+            from aria.config.models import Chat
+
+            error_console.print(
+                f"[red]✗[/red] Remote vLLM endpoint not reachable: "
+                f"{Chat.api_url}"
+            )
+            raise typer.Exit(1)
+        return
+
     if _is_vllm_healthy():
         console.print("[green]✓[/green] vLLM servers running")
         return
@@ -359,18 +389,26 @@ def server_stop(
     # Always attempt to stop vLLM — even if the web server was already dead,
     # vLLM may still be alive as an orphan process.
     if not skip_vllm:
-        from aria.server.vllm import VllmServerManager
+        from aria.config.api import Vllm as VllmConfig
 
-        vllm = VllmServerManager()
-        # Merge pre-snapshot PIDs with any currently tracked PIDs
-        live_pids = {**vllm_pids, **vllm._pids}
-        if live_pids:
-            vllm._pids = live_pids
-        # Always call stop_all — it now scans for orphaned processes
-        # even when the PID file is stale or empty.
-        console.print("[dim]Stopping vLLM servers...[/dim]")
-        vllm.stop_all()
-        console.print("[green]✓[/green] vLLM servers stopped")
+        if VllmConfig.remote:
+            console.print(
+                "[dim]Remote vLLM mode — "
+                "local server management skipped[/dim]"
+            )
+        else:
+            from aria.server.vllm import VllmServerManager
+
+            vllm = VllmServerManager()
+            # Merge pre-snapshot PIDs with any currently tracked PIDs
+            live_pids = {**vllm_pids, **vllm._pids}
+            if live_pids:
+                vllm._pids = live_pids
+            # Always call stop_all — it now scans for orphaned
+            # processes even when the PID file is stale or empty.
+            console.print("[dim]Stopping vLLM servers...[/dim]")
+            vllm.stop_all()
+            console.print("[green]✓[/green] vLLM servers stopped")
 
     if not web_stopped and not vllm_pids:
         raise typer.Exit(1)
@@ -408,7 +446,9 @@ def server_status():
 
     # Start time
     if status.started_at:
-        table.add_row("Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S"))
+        table.add_row(
+            "Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S")
+        )
     else:
         table.add_row("Started", "N/A")
 
@@ -425,21 +465,43 @@ def server_status():
 
     # vLLM servers status (always show, not just when web_ui is running)
     console.print()
-    vllm_table = Table(title="vLLM Servers", show_header=True)
-    vllm_table.add_column("Role", style="cyan", width=12)
-    vllm_table.add_column("Port", style="yellow")
-    vllm_table.add_column("Status", style="green")
+    from aria.config.api import Vllm as VllmConfig
 
-    for role, get_port in [
-        ("chat", Chat.get_port),
-    ]:
-        port = get_port()
-        try:
-            with urlopen(f"http://localhost:{port}/health", timeout=2) as resp:
-                is_running = resp.status == 200
-        except (URLError, OSError):
-            is_running = False
+    if VllmConfig.remote:
+        # Remote mode — show endpoint info instead of local processes
+        vllm_table = Table(title="vLLM (Remote)", show_header=True)
+        vllm_table.add_column("Setting", style="cyan", width=16)
+        vllm_table.add_column("Value", style="green")
+        vllm_table.add_row("Mode", "Remote")
+        vllm_table.add_row("Endpoint", Chat.api_url)
+        healthy = _is_vllm_healthy()
+        vllm_table.add_row(
+            "Status",
+            "● Reachable" if healthy else "○ Unreachable",
+        )
+        console.print(vllm_table)
+    else:
+        vllm_table = Table(title="vLLM Servers", show_header=True)
+        vllm_table.add_column("Role", style="cyan", width=12)
+        vllm_table.add_column("Port", style="yellow")
+        vllm_table.add_column("Status", style="green")
 
-        vllm_table.add_row(role, str(port), "● Running" if is_running else "○ Stopped")
+        for role, get_port in [
+            ("chat", Chat.get_port),
+        ]:
+            port = get_port()
+            try:
+                with urlopen(
+                    f"http://localhost:{port}/health", timeout=2
+                ) as resp:
+                    is_running = resp.status == 200
+            except (URLError, OSError):
+                is_running = False
 
-    console.print(vllm_table)
+            vllm_table.add_row(
+                role,
+                str(port),
+                "● Running" if is_running else "○ Stopped",
+            )
+
+        console.print(vllm_table)

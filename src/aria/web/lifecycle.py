@@ -30,7 +30,9 @@ from aria.llm import get_agent_workflow, get_chat_llm, get_embeddings_model
 from aria.server.vllm import VllmServerManager
 from aria.web.state import _state
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+LOG_FORMAT = (
+    "{time:YYYY-MM-DD HH:mm:ss} - {level} - {name}.{function} : {message}"
+)
 
 _HEALTH_ENDPOINTS = ("/health",)
 
@@ -173,7 +175,9 @@ def _init_vector_db() -> None:
         test_file.touch()
         test_file.unlink()
     except OSError as e:
-        raise RuntimeError(f"ChromaDB path '{db_path}' is not writable: {e}") from e
+        raise RuntimeError(
+            f"ChromaDB path '{db_path}' is not writable: {e}"
+        ) from e
 
     try:
         _state.vector_db = ChromaDBPersistentClient(path=str(db_path))
@@ -212,13 +216,17 @@ def _cleanup_orphaned_collections() -> None:
             active_thread_ids = {row[0] for row in result}
 
         # Remove collections whose name isn't a known thread
-        orphaned = [c.name for c in collections if c.name not in active_thread_ids]
+        orphaned = [
+            c.name for c in collections if c.name not in active_thread_ids
+        ]
 
         for name in orphaned:
             _state.vector_db.delete_collection(name)
 
         if orphaned:
-            logger.info(f"Cleaned up {len(orphaned)} orphaned ChromaDB collections")
+            logger.info(
+                f"Cleaned up {len(orphaned)} orphaned ChromaDB collections"
+            )
     except Exception as e:
         logger.warning(f"ChromaDB collection cleanup failed: {e}")
 
@@ -348,17 +356,24 @@ async def on_app_startup_handler() -> None:
     logger.info("Loading embeddings model (concurrent with vLLM)...")
     embed_task = asyncio.create_task(asyncio.to_thread(_load_embeddings_sync))
 
-    try:
-        logger.info("Starting vLLM inference servers...")
-        await asyncio.to_thread(_init_vllm_servers)
+    if VllmConfig.remote:
+        logger.info(
+            "Remote vLLM mode — skipping local server startup "
+            f"(endpoint: {ChatConfig.api_url})"
+        )
         _vllm_ready = True
-    except Exception as e:
-        embed_task.cancel()
+    else:
         try:
-            await embed_task
-        except (asyncio.CancelledError, Exception):
-            pass
-        await _abort_startup(e, "vLLM")
+            logger.info("Starting vLLM inference servers...")
+            await asyncio.to_thread(_init_vllm_servers)
+            _vllm_ready = True
+        except Exception as e:
+            embed_task.cancel()
+            try:
+                await embed_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            await _abort_startup(e, "vLLM")
 
     # ------------------------------------------------------------------
     # Phase 3 – Remaining subsystems (best effort)
