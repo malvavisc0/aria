@@ -151,6 +151,16 @@ def install_vllm(extra_index_url: str | None = None) -> None:
         install_vllm()  # auto-detect and install
         ```
     """
+    # --- Platform guard: vLLM only supports Linux ---
+    if sys.platform == "darwin":
+        msg = (
+            "vLLM is not supported on macOS. "
+            "vLLM requires Linux with an NVIDIA or AMD GPU. "
+            "To run vLLM, use a Linux machine or Docker."
+        )
+        error_console.print(f"[red]✗[/red] {msg}")
+        raise RuntimeError(msg)
+
     target = detect_install_target()
 
     # Map target → extra-index-url for PyTorch wheels.

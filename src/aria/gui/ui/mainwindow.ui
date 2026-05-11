@@ -178,25 +178,25 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_svc_pid_lbl">
-               <property name="styleSheet">
-                <string notr="true">color: #888;</string>
-               </property>
-               <property name="text">
-                <string>Process</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="label_ServicePID">
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_svc_uptime_lbl">
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_svc_pid_lbl">
+                <property name="styleSheet">
+                 <string notr="true">color: #888;</string>
+                </property>
+                <property name="text">
+                 <string>Process</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_ServicePID">
+                <property name="text">
+                 <string>-</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_svc_uptime_lbl">
                <property name="styleSheet">
                 <string notr="true">color: #888;</string>
                </property>
@@ -205,15 +205,15 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="label_ServiceUptime">
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_svc_started_lbl">
+              <item row="2" column="1">
+               <widget class="QLabel" name="label_ServiceUptime">
+                <property name="text">
+                 <string>-</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_svc_started_lbl">
                <property name="styleSheet">
                 <string notr="true">color: #888;</string>
                </property>
@@ -606,10 +606,8 @@
              </item>
             </layout>
            </item>
-           <item>
-           </item>
-           <item>
-            <widget class="QPlainTextEdit" name="plainTextEdit_VllmOutput">
+            <item>
+             <widget class="QPlainTextEdit" name="plainTextEdit_VllmOutput">
              <property name="font">
               <font>
                <family>Courier New</family>
@@ -854,15 +852,15 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_lightpanda_status_lbl">
-               <property name="text">
-                <string>Status</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="label_Lightpanda_Status">
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_lightpanda_status_lbl">
+                <property name="text">
+                 <string>Status</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="label_Lightpanda_Status">
                <property name="text">
                 <string>✗ Not installed</string>
                </property>
@@ -1027,15 +1025,15 @@
            <item row="1" column="1">
             <widget class="QLineEdit" name="lineEdit_UserEmail"/>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_user_password_lbl">
-             <property name="text">
-              <string>Password</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLineEdit" name="lineEdit_UserPassword">
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_user_password_lbl">
+              <property name="text">
+               <string>Password</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="lineEdit_UserPassword">
              <property name="maxLength">
               <number>48</number>
              </property>
@@ -1307,15 +1305,15 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_ChatRepoLbl">
-             <property name="text">
-              <string>Model Source</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLineEdit" name="lineEdit_ChatRepo"/>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_ChatRepoLbl">
+              <property name="text">
+               <string>Model Source</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="lineEdit_ChatRepo"/>
            </item>
            <item row="3" column="0">
             <widget class="QLabel" name="label_ChatModelLbl">
@@ -1403,15 +1401,15 @@
              </item>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_ChatCtxLbl">
-             <property name="text">
-              <string>Memory Limit</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QComboBox" name="comboBox_ChatCtxSize">
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_ChatCtxLbl">
+              <property name="text">
+               <string>Memory Limit</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QComboBox" name="comboBox_ChatCtxSize">
              <item>
               <property name="text">
                <string>2048</string>
