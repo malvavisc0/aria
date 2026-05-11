@@ -18,9 +18,8 @@ class EditUserDialog(QDialog):
         self.ui.setupUi(self)
         self.user = user
 
-        # Pre-populate fields with current user data
+        # Pre-populate name field
         self.ui.lineEdit_Name.setText(user.display_name)
-        self.ui.lineEdit_Email.setText(user.identifier)
 
         # Connect buttons
         self.ui.pushButton_Save.clicked.connect(self.save_user)
@@ -33,39 +32,21 @@ class EditUserDialog(QDialog):
         The session is automatically committed by get_db_session() on success.
         """
         name = self.ui.lineEdit_Name.text().strip()
-        email = self.ui.lineEdit_Email.text().strip()
         password = self.ui.lineEdit_Password.text()
 
-        # Validation
         if not name:
             self.show_error("Name cannot be empty")
             return
-        if not email:
-            self.show_error("Email cannot be empty")
-            return
 
-        # Update user in database (single session)
         try:
             with get_db_session() as session:
-                # Check for duplicate email if email changed
-                if email != self.user.identifier:
-                    existing_user = session.execute(
-                        select(User).where(User.identifier == email)
-                    ).scalar_one_or_none()
-                    if existing_user:
-                        self.show_error("A user with this email already exists")
-                        return
-
                 user = session.execute(
                     select(User).where(User.id == self.user.id)
                 ).scalar_one_or_none()
                 if user:
                     user.display_name = name
-                    user.identifier = email
-                    # Only update password if a new one was provided
                     if password:
                         user.password = hash_password(password)
-                    # Note: session.commit() is called automatically by get_db_session()
                     self.accept()
         except Exception as e:
             self.show_error(f"Failed to save user: {e}")

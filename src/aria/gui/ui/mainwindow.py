@@ -8,664 +8,597 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
-    QCursor, QFont, QFontDatabase, QGradient,
-    QIcon, QImage, QKeySequence, QLinearGradient,
-    QPainter, QPalette, QPixmap, QRadialGradient,
-    QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
-    QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-    QListWidget, QListWidgetItem, QMainWindow, QMenu,
-    QMenuBar, QPlainTextEdit, QPushButton, QSizePolicy,
-    QSpacerItem, QSpinBox, QStatusBar, QTabWidget,
-    QTextEdit, QVBoxLayout, QWidget)
+from PySide6.QtCore import (
+    QCoreApplication,
+    QDate,
+    QDateTime,
+    QLocale,
+    QMetaObject,
+    QObject,
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    QTime,
+    QUrl,
+)
+from PySide6.QtGui import (
+    QAction,
+    QBrush,
+    QColor,
+    QConicalGradient,
+    QCursor,
+    QFont,
+    QFontDatabase,
+    QGradient,
+    QIcon,
+    QImage,
+    QKeySequence,
+    QLinearGradient,
+    QPainter,
+    QPalette,
+    QPixmap,
+    QRadialGradient,
+    QTransform,
+)
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QMenu,
+    QMenuBar,
+    QPushButton,
+    QRadioButton,
+    QSizePolicy,
+    QSpacerItem,
+    QStatusBar,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
-            MainWindow.setObjectName(u"MainWindow")
+            MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 700)
-        MainWindow.setMinimumSize(QSize(600, 400))
+        MainWindow.setMinimumSize(QSize(600, 450))
         MainWindow.setFocusPolicy(Qt.FocusPolicy.TabFocus)
-        icon = QIcon(QIcon.fromTheme(u"emblem-system"))
+        icon = QIcon(QIcon.fromTheme("emblem-system"))
         MainWindow.setWindowIcon(icon)
         self.actionAbout = QAction(MainWindow)
-        self.actionAbout.setObjectName(u"actionAbout")
-        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.HelpAbout))
+        self.actionAbout.setObjectName("actionAbout")
+        icon1 = QIcon(QIcon.fromTheme("help-about"))
         self.actionAbout.setIcon(icon1)
         self.actionAbout.setMenuRole(QAction.MenuRole.AboutRole)
         self.actionQuit = QAction(MainWindow)
-        self.actionQuit.setObjectName(u"actionQuit")
-        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ApplicationExit))
+        self.actionQuit.setObjectName("actionQuit")
+        icon2 = QIcon(QIcon.fromTheme("application-exit"))
         self.actionQuit.setIcon(icon2)
         self.actionQuit.setMenuRole(QAction.MenuRole.QuitRole)
         self.centralwidget = QWidget(MainWindow)
-        self.centralwidget.setObjectName(u"centralwidget")
+        self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout_main = QVBoxLayout(self.centralwidget)
-        self.verticalLayout_main.setSpacing(6)
-        self.verticalLayout_main.setObjectName(u"verticalLayout_main")
-        self.verticalLayout_main.setContentsMargins(10, 10, 10, 10)
+        self.verticalLayout_main.setSpacing(16)
+        self.verticalLayout_main.setObjectName("verticalLayout_main")
+        self.verticalLayout_main.setContentsMargins(24, 24, 24, 24)
         self.horizontalLayout_topbar = QHBoxLayout()
-        self.horizontalLayout_topbar.setObjectName(u"horizontalLayout_topbar")
+        self.horizontalLayout_topbar.setObjectName("horizontalLayout_topbar")
         self.label_title = QLabel(self.centralwidget)
-        self.label_title.setObjectName(u"label_title")
+        self.label_title.setObjectName("label_title")
         font = QFont()
-        font.setPointSize(16)
-        font.setBold(False)
+        font.setPointSize(18)
         self.label_title.setFont(font)
         self.label_title.setTextFormat(Qt.TextFormat.PlainText)
 
         self.horizontalLayout_topbar.addWidget(self.label_title)
 
-        self.horizontalSpacer_topbar = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_topbar = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_topbar.addItem(self.horizontalSpacer_topbar)
-
-        self.pushButton_ServiceStop = QPushButton(self.centralwidget)
-        self.pushButton_ServiceStop.setObjectName(u"pushButton_ServiceStop")
-        self.pushButton_ServiceStop.setEnabled(False)
-        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.SystemShutdown))
-        self.pushButton_ServiceStop.setIcon(icon3)
-
-        self.horizontalLayout_topbar.addWidget(self.pushButton_ServiceStop)
-
-        self.pushButton_ServiceStart = QPushButton(self.centralwidget)
-        self.pushButton_ServiceStart.setObjectName(u"pushButton_ServiceStart")
-        self.pushButton_ServiceStart.setEnabled(False)
-        icon4 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackStart))
-        self.pushButton_ServiceStart.setIcon(icon4)
-
-        self.horizontalLayout_topbar.addWidget(self.pushButton_ServiceStart)
-
 
         self.verticalLayout_main.addLayout(self.horizontalLayout_topbar)
 
         self.tabWidget = QTabWidget(self.centralwidget)
-        self.tabWidget.setObjectName(u"tabWidget")
+        self.tabWidget.setObjectName("tabWidget")
         self.tabWidget.setTabPosition(QTabWidget.TabPosition.North)
-        self.tab_overview = QWidget()
-        self.tab_overview.setObjectName(u"tab_overview")
-        self.verticalLayout_overview = QVBoxLayout(self.tab_overview)
-        self.verticalLayout_overview.setSpacing(8)
-        self.verticalLayout_overview.setObjectName(u"verticalLayout_overview")
-        self.verticalLayout_overview.setContentsMargins(8, 8, 8, 8)
-        self.groupBox_Service = QGroupBox(self.tab_overview)
-        self.groupBox_Service.setObjectName(u"groupBox_Service")
-        self.horizontalLayout_service = QHBoxLayout(self.groupBox_Service)
-        self.horizontalLayout_service.setObjectName(u"horizontalLayout_service")
-        self.horizontalLayout_service.setContentsMargins(8, 8, 8, 8)
-        self.formLayout_service = QFormLayout()
-        self.formLayout_service.setObjectName(u"formLayout_service")
-        self.formLayout_service.setHorizontalSpacing(20)
-        self.formLayout_service.setVerticalSpacing(8)
-        self.label_svc_url_lbl = QLabel(self.groupBox_Service)
-        self.label_svc_url_lbl.setObjectName(u"label_svc_url_lbl")
-        self.label_svc_url_lbl.setStyleSheet(u"color: #888;")
+        self.tab_home = QWidget()
+        self.tab_home.setObjectName("tab_home")
+        self.verticalLayout_home = QVBoxLayout(self.tab_home)
+        self.verticalLayout_home.setSpacing(16)
+        self.verticalLayout_home.setObjectName("verticalLayout_home")
+        self.verticalLayout_home.setContentsMargins(20, 20, 20, 20)
+        self.groupBox_Service = QGroupBox(self.tab_home)
+        self.groupBox_Service.setObjectName("groupBox_Service")
+        self.verticalLayout_service = QVBoxLayout(self.groupBox_Service)
+        self.verticalLayout_service.setSpacing(8)
+        self.verticalLayout_service.setObjectName("verticalLayout_service")
+        self.verticalLayout_service.setContentsMargins(20, 16, 20, 16)
+        self.horizontalLayout_statusRow = QHBoxLayout()
+        self.horizontalLayout_statusRow.setSpacing(12)
+        self.horizontalLayout_statusRow.setObjectName("horizontalLayout_statusRow")
+        self.label_status_lbl = QLabel(self.groupBox_Service)
+        self.label_status_lbl.setObjectName("label_status_lbl")
+        self.label_status_lbl.setMinimumSize(QSize(50, 0))
 
-        self.formLayout_service.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_svc_url_lbl)
+        self.horizontalLayout_statusRow.addWidget(self.label_status_lbl)
 
-        self.label_ServiceURL = QLabel(self.groupBox_Service)
-        self.label_ServiceURL.setObjectName(u"label_ServiceURL")
+        self.label_ServiceStatus = QLabel(self.groupBox_Service)
+        self.label_ServiceStatus.setObjectName("label_ServiceStatus")
+
+        self.horizontalLayout_statusRow.addWidget(self.label_ServiceStatus)
+
+        self.horizontalSpacer_statusRow = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_statusRow.addItem(self.horizontalSpacer_statusRow)
+
+        self.pushButton_ServiceStart = QPushButton(self.groupBox_Service)
+        self.pushButton_ServiceStart.setObjectName("pushButton_ServiceStart")
+        self.pushButton_ServiceStart.setEnabled(False)
+
+        self.horizontalLayout_statusRow.addWidget(self.pushButton_ServiceStart)
+
+        self.pushButton_ServiceStop = QPushButton(self.groupBox_Service)
+        self.pushButton_ServiceStop.setObjectName("pushButton_ServiceStop")
+        self.pushButton_ServiceStop.setEnabled(False)
+
+        self.horizontalLayout_statusRow.addWidget(self.pushButton_ServiceStop)
+
+        self.verticalLayout_service.addLayout(self.horizontalLayout_statusRow)
+
+        self.frame_urlRow = QFrame(self.groupBox_Service)
+        self.frame_urlRow.setObjectName("frame_urlRow")
+        self.frame_urlRow.setFrameShape(QFrame.Shape.NoFrame)
+        self.horizontalLayout_urlRow = QHBoxLayout(self.frame_urlRow)
+        self.horizontalLayout_urlRow.setSpacing(12)
+        self.horizontalLayout_urlRow.setObjectName("horizontalLayout_urlRow")
+        self.horizontalLayout_urlRow.setContentsMargins(0, 0, 0, 0)
+        self.label_url_lbl = QLabel(self.frame_urlRow)
+        self.label_url_lbl.setObjectName("label_url_lbl")
+        self.label_url_lbl.setMinimumSize(QSize(50, 0))
+
+        self.horizontalLayout_urlRow.addWidget(self.label_url_lbl)
+
+        self.label_ServiceURL = QLabel(self.frame_urlRow)
+        self.label_ServiceURL.setObjectName("label_ServiceURL")
         self.label_ServiceURL.setTextFormat(Qt.TextFormat.RichText)
         self.label_ServiceURL.setOpenExternalLinks(True)
 
-        self.formLayout_service.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_ServiceURL)
+        self.horizontalLayout_urlRow.addWidget(self.label_ServiceURL)
 
-        self.label_svc_pid_lbl = QLabel(self.groupBox_Service)
-        self.label_svc_pid_lbl.setObjectName(u"label_svc_pid_lbl")
-        self.label_svc_pid_lbl.setStyleSheet(u"color: #888;")
+        self.horizontalSpacer_urlRow = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
-        self.formLayout_service.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_svc_pid_lbl)
+        self.horizontalLayout_urlRow.addItem(self.horizontalSpacer_urlRow)
 
-        self.label_ServicePID = QLabel(self.groupBox_Service)
-        self.label_ServicePID.setObjectName(u"label_ServicePID")
-
-        self.formLayout_service.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_ServicePID)
-
-        self.label_svc_uptime_lbl = QLabel(self.groupBox_Service)
-        self.label_svc_uptime_lbl.setObjectName(u"label_svc_uptime_lbl")
-        self.label_svc_uptime_lbl.setStyleSheet(u"color: #888;")
-
-        self.formLayout_service.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_svc_uptime_lbl)
-
-        self.label_ServiceUptime = QLabel(self.groupBox_Service)
-        self.label_ServiceUptime.setObjectName(u"label_ServiceUptime")
-
-        self.formLayout_service.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_ServiceUptime)
-
-        self.label_svc_started_lbl = QLabel(self.groupBox_Service)
-        self.label_svc_started_lbl.setObjectName(u"label_svc_started_lbl")
-        self.label_svc_started_lbl.setStyleSheet(u"color: #888;")
-
-        self.formLayout_service.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_svc_started_lbl)
-
-        self.label_ServiceStarted = QLabel(self.groupBox_Service)
-        self.label_ServiceStarted.setObjectName(u"label_ServiceStarted")
-
-        self.formLayout_service.setWidget(3, QFormLayout.ItemRole.FieldRole, self.label_ServiceStarted)
-
-
-        self.horizontalLayout_service.addLayout(self.formLayout_service)
-
-        self.horizontalSpacer_service = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_service.addItem(self.horizontalSpacer_service)
-
-        self.verticalLayout_serviceStatus = QVBoxLayout()
-        self.verticalLayout_serviceStatus.setObjectName(u"verticalLayout_serviceStatus")
-        self.label_ServiceStatus = QLabel(self.groupBox_Service)
-        self.label_ServiceStatus.setObjectName(u"label_ServiceStatus")
-        self.label_ServiceStatus.setStyleSheet(u"QLabel {\n"
-"    background-color: #616161;\n"
-"    color: white;\n"
-"    font-size: 13pt;\n"
-"    padding: 4px 14px;\n"
-"    border-radius: 6px;\n"
-"}")
-        self.label_ServiceStatus.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.verticalLayout_serviceStatus.addWidget(self.label_ServiceStatus)
-
-        self.pushButton_ServiceOpen = QPushButton(self.groupBox_Service)
-        self.pushButton_ServiceOpen.setObjectName(u"pushButton_ServiceOpen")
+        self.pushButton_ServiceOpen = QPushButton(self.frame_urlRow)
+        self.pushButton_ServiceOpen.setObjectName("pushButton_ServiceOpen")
         self.pushButton_ServiceOpen.setEnabled(False)
-        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.UserAvailable))
-        self.pushButton_ServiceOpen.setIcon(icon5)
 
-        self.verticalLayout_serviceStatus.addWidget(self.pushButton_ServiceOpen)
+        self.horizontalLayout_urlRow.addWidget(self.pushButton_ServiceOpen)
 
-        self.verticalSpacer_serviceStatus = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.verticalLayout_service.addWidget(self.frame_urlRow)
 
-        self.verticalLayout_serviceStatus.addItem(self.verticalSpacer_serviceStatus)
+        self.frame_detailsRow = QFrame(self.groupBox_Service)
+        self.frame_detailsRow.setObjectName("frame_detailsRow")
+        self.frame_detailsRow.setFrameShape(QFrame.Shape.NoFrame)
+        self.horizontalLayout_detailsRow = QHBoxLayout(self.frame_detailsRow)
+        self.horizontalLayout_detailsRow.setSpacing(12)
+        self.horizontalLayout_detailsRow.setObjectName("horizontalLayout_detailsRow")
+        self.horizontalLayout_detailsRow.setContentsMargins(0, 0, 0, 0)
+        self.label_pid_lbl = QLabel(self.frame_detailsRow)
+        self.label_pid_lbl.setObjectName("label_pid_lbl")
+        self.label_pid_lbl.setMinimumSize(QSize(50, 0))
 
+        self.horizontalLayout_detailsRow.addWidget(self.label_pid_lbl)
 
-        self.horizontalLayout_service.addLayout(self.verticalLayout_serviceStatus)
+        self.label_ServicePID = QLabel(self.frame_detailsRow)
+        self.label_ServicePID.setObjectName("label_ServicePID")
 
+        self.horizontalLayout_detailsRow.addWidget(self.label_ServicePID)
 
-        self.verticalLayout_overview.addWidget(self.groupBox_Service)
+        self.horizontalSpacer_detailsMid = QSpacerItem(
+            20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
-        self.horizontalLayout_overview_bottom = QHBoxLayout()
-        self.horizontalLayout_overview_bottom.setSpacing(8)
-        self.horizontalLayout_overview_bottom.setObjectName(u"horizontalLayout_overview_bottom")
-        self.groupBox_Database = QGroupBox(self.tab_overview)
-        self.groupBox_Database.setObjectName(u"groupBox_Database")
-        self.formLayout_database = QFormLayout(self.groupBox_Database)
-        self.formLayout_database.setObjectName(u"formLayout_database")
-        self.formLayout_database.setHorizontalSpacing(20)
-        self.formLayout_database.setVerticalSpacing(8)
-        self.formLayout_database.setContentsMargins(8, 8, 8, 8)
-        self.label_db_type_lbl = QLabel(self.groupBox_Database)
-        self.label_db_type_lbl.setObjectName(u"label_db_type_lbl")
-        self.label_db_type_lbl.setStyleSheet(u"color: #888;")
+        self.horizontalLayout_detailsRow.addItem(self.horizontalSpacer_detailsMid)
 
-        self.formLayout_database.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_db_type_lbl)
+        self.label_uptime_lbl = QLabel(self.frame_detailsRow)
+        self.label_uptime_lbl.setObjectName("label_uptime_lbl")
 
-        self.label_DatabaseType = QLabel(self.groupBox_Database)
-        self.label_DatabaseType.setObjectName(u"label_DatabaseType")
+        self.horizontalLayout_detailsRow.addWidget(self.label_uptime_lbl)
 
-        self.formLayout_database.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_DatabaseType)
+        self.label_ServiceUptime = QLabel(self.frame_detailsRow)
+        self.label_ServiceUptime.setObjectName("label_ServiceUptime")
 
-        self.label_db_location_lbl = QLabel(self.groupBox_Database)
-        self.label_db_location_lbl.setObjectName(u"label_db_location_lbl")
-        self.label_db_location_lbl.setStyleSheet(u"color: #888;")
+        self.horizontalLayout_detailsRow.addWidget(self.label_ServiceUptime)
 
-        self.formLayout_database.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_db_location_lbl)
+        self.horizontalSpacer_detailsEnd = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
-        self.label_DatabaseLocation = QLabel(self.groupBox_Database)
-        self.label_DatabaseLocation.setObjectName(u"label_DatabaseLocation")
+        self.horizontalLayout_detailsRow.addItem(self.horizontalSpacer_detailsEnd)
 
-        self.formLayout_database.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_DatabaseLocation)
+        self.verticalLayout_service.addWidget(self.frame_detailsRow)
 
-        self.label_db_exists_lbl = QLabel(self.groupBox_Database)
-        self.label_db_exists_lbl.setObjectName(u"label_db_exists_lbl")
-        self.label_db_exists_lbl.setStyleSheet(u"color: #888;")
+        self.verticalLayout_home.addWidget(self.groupBox_Service)
 
-        self.formLayout_database.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_db_exists_lbl)
+        self.groupBox_AI_Connection = QGroupBox(self.tab_home)
+        self.groupBox_AI_Connection.setObjectName("groupBox_AI_Connection")
+        self.verticalLayout_ai_connection = QVBoxLayout(self.groupBox_AI_Connection)
+        self.verticalLayout_ai_connection.setObjectName("verticalLayout_ai_connection")
+        self.verticalLayout_ai_connection.setContentsMargins(20, 16, 20, 16)
+        self.horizontalLayout_connection_mode = QHBoxLayout()
+        self.horizontalLayout_connection_mode.setObjectName(
+            "horizontalLayout_connection_mode"
+        )
+        self.radioButton_LocalMode = QRadioButton(self.groupBox_AI_Connection)
+        self.radioButton_LocalMode.setObjectName("radioButton_LocalMode")
+        self.radioButton_LocalMode.setChecked(True)
+
+        self.horizontalLayout_connection_mode.addWidget(self.radioButton_LocalMode)
+
+        self.radioButton_RemoteMode = QRadioButton(self.groupBox_AI_Connection)
+        self.radioButton_RemoteMode.setObjectName("radioButton_RemoteMode")
+
+        self.horizontalLayout_connection_mode.addWidget(self.radioButton_RemoteMode)
+
+        self.horizontalSpacer_connection_mode = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_connection_mode.addItem(
+            self.horizontalSpacer_connection_mode
+        )
 
-        self.label_DatabaseFileExists = QLabel(self.groupBox_Database)
-        self.label_DatabaseFileExists.setObjectName(u"label_DatabaseFileExists")
+        self.verticalLayout_ai_connection.addLayout(
+            self.horizontalLayout_connection_mode
+        )
 
-        self.formLayout_database.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_DatabaseFileExists)
+        self.frame_RemoteSettings = QFrame(self.groupBox_AI_Connection)
+        self.frame_RemoteSettings.setObjectName("frame_RemoteSettings")
+        self.frame_RemoteSettings.setVisible(False)
+        self.formLayout_remote = QFormLayout(self.frame_RemoteSettings)
+        self.formLayout_remote.setObjectName("formLayout_remote")
+        self.formLayout_remote.setHorizontalSpacing(16)
+        self.formLayout_remote.setVerticalSpacing(12)
+        self.label_EndpointUrl = QLabel(self.frame_RemoteSettings)
+        self.label_EndpointUrl.setObjectName("label_EndpointUrl")
 
-        self.label_db_size_lbl = QLabel(self.groupBox_Database)
-        self.label_db_size_lbl.setObjectName(u"label_db_size_lbl")
-        self.label_db_size_lbl.setStyleSheet(u"color: #888;")
+        self.formLayout_remote.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_EndpointUrl
+        )
 
-        self.formLayout_database.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_db_size_lbl)
+        self.lineEdit_EndpointUrl = QLineEdit(self.frame_RemoteSettings)
+        self.lineEdit_EndpointUrl.setObjectName("lineEdit_EndpointUrl")
 
-        self.label_DatabaseSize = QLabel(self.groupBox_Database)
-        self.label_DatabaseSize.setObjectName(u"label_DatabaseSize")
+        self.formLayout_remote.setWidget(
+            0, QFormLayout.ItemRole.FieldRole, self.lineEdit_EndpointUrl
+        )
+
+        self.label_ApiKey = QLabel(self.frame_RemoteSettings)
+        self.label_ApiKey.setObjectName("label_ApiKey")
+
+        self.formLayout_remote.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_ApiKey
+        )
+
+        self.lineEdit_ApiKey = QLineEdit(self.frame_RemoteSettings)
+        self.lineEdit_ApiKey.setObjectName("lineEdit_ApiKey")
+        self.lineEdit_ApiKey.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+
+        self.formLayout_remote.setWidget(
+            1, QFormLayout.ItemRole.FieldRole, self.lineEdit_ApiKey
+        )
+
+        self.label_Model = QLabel(self.frame_RemoteSettings)
+        self.label_Model.setObjectName("label_Model")
+
+        self.formLayout_remote.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_Model
+        )
+
+        self.lineEdit_Model = QLineEdit(self.frame_RemoteSettings)
+        self.lineEdit_Model.setObjectName("lineEdit_Model")
+
+        self.formLayout_remote.setWidget(
+            2, QFormLayout.ItemRole.FieldRole, self.lineEdit_Model
+        )
+
+        self.label_ContextSize = QLabel(self.frame_RemoteSettings)
+        self.label_ContextSize.setObjectName("label_ContextSize")
+
+        self.formLayout_remote.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_ContextSize
+        )
+
+        self.comboBox_ContextSize = QComboBox(self.frame_RemoteSettings)
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.addItem("")
+        self.comboBox_ContextSize.setObjectName("comboBox_ContextSize")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(
+            self.comboBox_ContextSize.sizePolicy().hasHeightForWidth()
+        )
+        self.comboBox_ContextSize.setSizePolicy(sizePolicy)
 
-        self.formLayout_database.setWidget(3, QFormLayout.ItemRole.FieldRole, self.label_DatabaseSize)
+        self.formLayout_remote.setWidget(
+            3, QFormLayout.ItemRole.FieldRole, self.comboBox_ContextSize
+        )
 
+        self.verticalLayout_ai_connection.addWidget(self.frame_RemoteSettings)
 
-        self.horizontalLayout_overview_bottom.addWidget(self.groupBox_Database)
+        self.horizontalLayout_connection_test = QHBoxLayout()
+        self.horizontalLayout_connection_test.setObjectName(
+            "horizontalLayout_connection_test"
+        )
+        self.pushButton_TestConnection = QPushButton(self.groupBox_AI_Connection)
+        self.pushButton_TestConnection.setObjectName("pushButton_TestConnection")
 
-        self.groupBox_LLMAPIs = QGroupBox(self.tab_overview)
-        self.groupBox_LLMAPIs.setObjectName(u"groupBox_LLMAPIs")
-        self.formLayout_llmapis = QFormLayout(self.groupBox_LLMAPIs)
-        self.formLayout_llmapis.setObjectName(u"formLayout_llmapis")
-        self.formLayout_llmapis.setHorizontalSpacing(20)
-        self.formLayout_llmapis.setVerticalSpacing(8)
-        self.formLayout_llmapis.setContentsMargins(8, 8, 8, 8)
-        self.label_llm_type_lbl = QLabel(self.groupBox_LLMAPIs)
-        self.label_llm_type_lbl.setObjectName(u"label_llm_type_lbl")
-        self.label_llm_type_lbl.setStyleSheet(u"color: #888;")
+        self.horizontalLayout_connection_test.addWidget(self.pushButton_TestConnection)
 
-        self.formLayout_llmapis.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_llm_type_lbl)
+        self.pushButton_SaveSettings = QPushButton(self.groupBox_AI_Connection)
+        self.pushButton_SaveSettings.setObjectName("pushButton_SaveSettings")
 
-        self.label_LLMType = QLabel(self.groupBox_LLMAPIs)
-        self.label_LLMType.setObjectName(u"label_LLMType")
+        self.horizontalLayout_connection_test.addWidget(self.pushButton_SaveSettings)
 
-        self.formLayout_llmapis.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_LLMType)
+        self.label_ConnectionStatus = QLabel(self.groupBox_AI_Connection)
+        self.label_ConnectionStatus.setObjectName("label_ConnectionStatus")
 
-        self.label_llm_chat_lbl = QLabel(self.groupBox_LLMAPIs)
-        self.label_llm_chat_lbl.setObjectName(u"label_llm_chat_lbl")
-        self.label_llm_chat_lbl.setStyleSheet(u"color: #888;")
+        self.horizontalLayout_connection_test.addWidget(self.label_ConnectionStatus)
 
-        self.formLayout_llmapis.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_llm_chat_lbl)
+        self.horizontalSpacer_connection_status = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
-        self.label_LLMChatAPIURL = QLabel(self.groupBox_LLMAPIs)
-        self.label_LLMChatAPIURL.setObjectName(u"label_LLMChatAPIURL")
-        self.label_LLMChatAPIURL.setTextFormat(Qt.TextFormat.RichText)
-        self.label_LLMChatAPIURL.setOpenExternalLinks(True)
+        self.horizontalLayout_connection_test.addItem(
+            self.horizontalSpacer_connection_status
+        )
 
-        self.formLayout_llmapis.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_LLMChatAPIURL)
+        self.verticalLayout_ai_connection.addLayout(
+            self.horizontalLayout_connection_test
+        )
 
-        self.label_llm_vectordb_lbl = QLabel(self.groupBox_LLMAPIs)
-        self.label_llm_vectordb_lbl.setObjectName(u"label_llm_vectordb_lbl")
-        self.label_llm_vectordb_lbl.setStyleSheet(u"color: #888;")
+        self.frame_LocalStatus = QFrame(self.groupBox_AI_Connection)
+        self.frame_LocalStatus.setObjectName("frame_LocalStatus")
+        self.formLayout_local_status = QFormLayout(self.frame_LocalStatus)
+        self.formLayout_local_status.setObjectName("formLayout_local_status")
+        self.formLayout_local_status.setHorizontalSpacing(16)
+        self.formLayout_local_status.setVerticalSpacing(12)
+        self.label_LocalStatus = QLabel(self.frame_LocalStatus)
+        self.label_LocalStatus.setObjectName("label_LocalStatus")
 
-        self.formLayout_llmapis.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_llm_vectordb_lbl)
+        self.formLayout_local_status.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_LocalStatus
+        )
 
-        self.label_VectorDB = QLabel(self.groupBox_LLMAPIs)
-        self.label_VectorDB.setObjectName(u"label_VectorDB")
+        self.label_LocalStatusValue = QLabel(self.frame_LocalStatus)
+        self.label_LocalStatusValue.setObjectName("label_LocalStatusValue")
 
-        self.formLayout_llmapis.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_VectorDB)
+        self.formLayout_local_status.setWidget(
+            0, QFormLayout.ItemRole.FieldRole, self.label_LocalStatusValue
+        )
 
+        self.label_LocalModel = QLabel(self.frame_LocalStatus)
+        self.label_LocalModel.setObjectName("label_LocalModel")
 
-        self.horizontalLayout_overview_bottom.addWidget(self.groupBox_LLMAPIs)
+        self.formLayout_local_status.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_LocalModel
+        )
 
+        self.label_LocalModelValue = QLabel(self.frame_LocalStatus)
+        self.label_LocalModelValue.setObjectName("label_LocalModelValue")
 
-        self.verticalLayout_overview.addLayout(self.horizontalLayout_overview_bottom)
+        self.formLayout_local_status.setWidget(
+            1, QFormLayout.ItemRole.FieldRole, self.label_LocalModelValue
+        )
 
-        self.label_DebugLogsPath = QLabel(self.tab_overview)
-        self.label_DebugLogsPath.setObjectName(u"label_DebugLogsPath")
-        self.label_DebugLogsPath.setVisible(False)
+        self.label_LocalEndpoint = QLabel(self.frame_LocalStatus)
+        self.label_LocalEndpoint.setObjectName("label_LocalEndpoint")
 
-        self.verticalLayout_overview.addWidget(self.label_DebugLogsPath)
+        self.formLayout_local_status.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_LocalEndpoint
+        )
 
-        self.label_DatabasePermissions = QLabel(self.tab_overview)
-        self.label_DatabasePermissions.setObjectName(u"label_DatabasePermissions")
-        self.label_DatabasePermissions.setVisible(False)
+        self.label_LocalEndpointValue = QLabel(self.frame_LocalStatus)
+        self.label_LocalEndpointValue.setObjectName("label_LocalEndpointValue")
 
-        self.verticalLayout_overview.addWidget(self.label_DatabasePermissions)
+        self.formLayout_local_status.setWidget(
+            2, QFormLayout.ItemRole.FieldRole, self.label_LocalEndpointValue
+        )
 
-        self.verticalSpacer_overview = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.verticalLayout_ai_connection.addWidget(self.frame_LocalStatus)
 
-        self.verticalLayout_overview.addItem(self.verticalSpacer_overview)
+        self.verticalLayout_home.addWidget(self.groupBox_AI_Connection)
 
-        self.tabWidget.addTab(self.tab_overview, "")
-        self.tab_setup = QWidget()
-        self.tab_setup.setObjectName(u"tab_setup")
-        self.verticalLayout_setup = QVBoxLayout(self.tab_setup)
-        self.verticalLayout_setup.setSpacing(8)
-        self.verticalLayout_setup.setObjectName(u"verticalLayout_setup")
-        self.verticalLayout_setup.setContentsMargins(8, 8, 8, 8)
-        self.groupBox_Vllm = QGroupBox(self.tab_setup)
-        self.groupBox_Vllm.setObjectName(u"groupBox_Vllm")
-        self.verticalLayout_vllm = QVBoxLayout(self.groupBox_Vllm)
-        self.verticalLayout_vllm.setObjectName(u"verticalLayout_vllm")
-        self.verticalLayout_vllm.setContentsMargins(8, 8, 8, 8)
-        self.formLayout_vllm_info = QFormLayout()
-        self.formLayout_vllm_info.setObjectName(u"formLayout_vllm_info")
-        self.formLayout_vllm_info.setHorizontalSpacing(20)
-        self.formLayout_vllm_info.setVerticalSpacing(6)
-        self.label_vllm_status_lbl = QLabel(self.groupBox_Vllm)
-        self.label_vllm_status_lbl.setObjectName(u"label_vllm_status_lbl")
+        self.verticalSpacer_home = QSpacerItem(
+            20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
+        )
 
-        self.formLayout_vllm_info.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_vllm_status_lbl)
+        self.verticalLayout_home.addItem(self.verticalSpacer_home)
 
-        self.label_VllmVersion = QLabel(self.groupBox_Vllm)
-        self.label_VllmVersion.setObjectName(u"label_VllmVersion")
-
-        self.formLayout_vllm_info.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_VllmVersion)
-
-
-        self.verticalLayout_vllm.addLayout(self.formLayout_vllm_info)
-
-        self.horizontalLayout_vllmInstall = QHBoxLayout()
-        self.horizontalLayout_vllmInstall.setObjectName(u"horizontalLayout_vllmInstall")
-        self.pushButton_VllmInstall = QPushButton(self.groupBox_Vllm)
-        self.pushButton_VllmInstall.setObjectName(u"pushButton_VllmInstall")
-        icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.GoDown))
-        self.pushButton_VllmInstall.setIcon(icon6)
-
-        self.horizontalLayout_vllmInstall.addWidget(self.pushButton_VllmInstall)
-
-        self.horizontalSpacer_vllmDl = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_vllmInstall.addItem(self.horizontalSpacer_vllmDl)
-
-
-        self.verticalLayout_vllm.addLayout(self.horizontalLayout_vllmInstall)
-
-        self.plainTextEdit_VllmOutput = QPlainTextEdit(self.groupBox_Vllm)
-        self.plainTextEdit_VllmOutput.setObjectName(u"plainTextEdit_VllmOutput")
-        font1 = QFont()
-        font1.setFamilies([u"Courier New"])
-        font1.setPointSize(9)
-        self.plainTextEdit_VllmOutput.setFont(font1)
-        self.plainTextEdit_VllmOutput.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self.plainTextEdit_VllmOutput.setReadOnly(True)
-
-        self.verticalLayout_vllm.addWidget(self.plainTextEdit_VllmOutput)
-
-
-        self.verticalLayout_setup.addWidget(self.groupBox_Vllm)
-
-        self.groupBox_Models = QGroupBox(self.tab_setup)
-        self.groupBox_Models.setObjectName(u"groupBox_Models")
-        self.verticalLayout_models = QVBoxLayout(self.groupBox_Models)
-        self.verticalLayout_models.setObjectName(u"verticalLayout_models")
-        self.verticalLayout_models.setContentsMargins(8, 8, 8, 8)
-        self.formLayout_models_status = QFormLayout()
-        self.formLayout_models_status.setObjectName(u"formLayout_models_status")
-        self.formLayout_models_status.setHorizontalSpacing(20)
-        self.formLayout_models_status.setVerticalSpacing(6)
-        self.label_model_chat_lbl = QLabel(self.groupBox_Models)
-        self.label_model_chat_lbl.setObjectName(u"label_model_chat_lbl")
-
-        self.formLayout_models_status.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_model_chat_lbl)
-
-        self.label_ModelChat_Status = QLabel(self.groupBox_Models)
-        self.label_ModelChat_Status.setObjectName(u"label_ModelChat_Status")
-
-        self.formLayout_models_status.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_ModelChat_Status)
-
-        self.label_model_emb_lbl = QLabel(self.groupBox_Models)
-        self.label_model_emb_lbl.setObjectName(u"label_model_emb_lbl")
-
-        self.formLayout_models_status.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_model_emb_lbl)
-
-        self.label_ModelEmbeddings_Status = QLabel(self.groupBox_Models)
-        self.label_ModelEmbeddings_Status.setObjectName(u"label_ModelEmbeddings_Status")
-
-        self.formLayout_models_status.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_ModelEmbeddings_Status)
-
-
-        self.verticalLayout_models.addLayout(self.formLayout_models_status)
-
-        self.horizontalLayout_modelDownload = QHBoxLayout()
-        self.horizontalLayout_modelDownload.setObjectName(u"horizontalLayout_modelDownload")
-        self.label_model_select_lbl = QLabel(self.groupBox_Models)
-        self.label_model_select_lbl.setObjectName(u"label_model_select_lbl")
-
-        self.horizontalLayout_modelDownload.addWidget(self.label_model_select_lbl)
-
-        self.comboBox_ModelSelect = QComboBox(self.groupBox_Models)
-        self.comboBox_ModelSelect.addItem("")
-        self.comboBox_ModelSelect.addItem("")
-        self.comboBox_ModelSelect.addItem("")
-        self.comboBox_ModelSelect.setObjectName(u"comboBox_ModelSelect")
-
-        self.horizontalLayout_modelDownload.addWidget(self.comboBox_ModelSelect)
-
-        self.pushButton_ModelDownload = QPushButton(self.groupBox_Models)
-        self.pushButton_ModelDownload.setObjectName(u"pushButton_ModelDownload")
-        self.pushButton_ModelDownload.setIcon(icon6)
-
-        self.horizontalLayout_modelDownload.addWidget(self.pushButton_ModelDownload)
-
-        self.horizontalSpacer_modelDl = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_modelDownload.addItem(self.horizontalSpacer_modelDl)
-
-
-        self.verticalLayout_models.addLayout(self.horizontalLayout_modelDownload)
-
-        self.groupBox_ModelsAdvanced = QGroupBox(self.groupBox_Models)
-        self.groupBox_ModelsAdvanced.setObjectName(u"groupBox_ModelsAdvanced")
-        self.groupBox_ModelsAdvanced.setCheckable(True)
-        self.groupBox_ModelsAdvanced.setChecked(False)
-        self.horizontalLayout_modelsAdvanced = QHBoxLayout(self.groupBox_ModelsAdvanced)
-        self.horizontalLayout_modelsAdvanced.setObjectName(u"horizontalLayout_modelsAdvanced")
-        self.label_hf_token_lbl = QLabel(self.groupBox_ModelsAdvanced)
-        self.label_hf_token_lbl.setObjectName(u"label_hf_token_lbl")
-
-        self.horizontalLayout_modelsAdvanced.addWidget(self.label_hf_token_lbl)
-
-        self.lineEdit_HFToken = QLineEdit(self.groupBox_ModelsAdvanced)
-        self.lineEdit_HFToken.setObjectName(u"lineEdit_HFToken")
-        self.lineEdit_HFToken.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
-
-        self.horizontalLayout_modelsAdvanced.addWidget(self.lineEdit_HFToken)
-
-        self.checkBox_ModelForce = QCheckBox(self.groupBox_ModelsAdvanced)
-        self.checkBox_ModelForce.setObjectName(u"checkBox_ModelForce")
-
-        self.horizontalLayout_modelsAdvanced.addWidget(self.checkBox_ModelForce)
-
-
-        self.verticalLayout_models.addWidget(self.groupBox_ModelsAdvanced)
-
-        self.plainTextEdit_ModelOutput = QPlainTextEdit(self.groupBox_Models)
-        self.plainTextEdit_ModelOutput.setObjectName(u"plainTextEdit_ModelOutput")
-        self.plainTextEdit_ModelOutput.setFont(font1)
-        self.plainTextEdit_ModelOutput.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self.plainTextEdit_ModelOutput.setReadOnly(True)
-
-        self.verticalLayout_models.addWidget(self.plainTextEdit_ModelOutput)
-
-
-        self.verticalLayout_setup.addWidget(self.groupBox_Models)
-
-        self.groupBox_Lightpanda = QGroupBox(self.tab_setup)
-        self.groupBox_Lightpanda.setObjectName(u"groupBox_Lightpanda")
-        self.verticalLayout_lightpanda = QVBoxLayout(self.groupBox_Lightpanda)
-        self.verticalLayout_lightpanda.setObjectName(u"verticalLayout_lightpanda")
-        self.verticalLayout_lightpanda.setContentsMargins(8, 8, 8, 8)
-        self.formLayout_lightpanda_status = QFormLayout()
-        self.formLayout_lightpanda_status.setObjectName(u"formLayout_lightpanda_status")
-        self.formLayout_lightpanda_status.setHorizontalSpacing(20)
-        self.formLayout_lightpanda_status.setVerticalSpacing(6)
-        self.label_lightpanda_bindir_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_bindir_lbl.setObjectName(u"label_lightpanda_bindir_lbl")
-
-        self.formLayout_lightpanda_status.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_bindir_lbl)
-
-        self.label_Lightpanda_BinDir = QLabel(self.groupBox_Lightpanda)
-        self.label_Lightpanda_BinDir.setObjectName(u"label_Lightpanda_BinDir")
-
-        self.formLayout_lightpanda_status.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_BinDir)
-
-        self.label_lightpanda_version_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_version_lbl.setObjectName(u"label_lightpanda_version_lbl")
-
-        self.formLayout_lightpanda_status.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_version_lbl)
-
-        self.label_Lightpanda_Version = QLabel(self.groupBox_Lightpanda)
-        self.label_Lightpanda_Version.setObjectName(u"label_Lightpanda_Version")
-
-        self.formLayout_lightpanda_status.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Version)
-
-        self.label_lightpanda_status_lbl = QLabel(self.groupBox_Lightpanda)
-        self.label_lightpanda_status_lbl.setObjectName(u"label_lightpanda_status_lbl")
-
-        self.formLayout_lightpanda_status.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_lightpanda_status_lbl)
-
-        self.label_Lightpanda_Status = QLabel(self.groupBox_Lightpanda)
-        self.label_Lightpanda_Status.setObjectName(u"label_Lightpanda_Status")
-
-        self.formLayout_lightpanda_status.setWidget(2, QFormLayout.ItemRole.FieldRole, self.label_Lightpanda_Status)
-
-
-        self.verticalLayout_lightpanda.addLayout(self.formLayout_lightpanda_status)
-
-        self.horizontalLayout_lightpandaDownload = QHBoxLayout()
-        self.horizontalLayout_lightpandaDownload.setObjectName(u"horizontalLayout_lightpandaDownload")
-        self.pushButton_LightpandaDownload = QPushButton(self.groupBox_Lightpanda)
-        self.pushButton_LightpandaDownload.setObjectName(u"pushButton_LightpandaDownload")
-        self.pushButton_LightpandaDownload.setIcon(icon6)
-
-        self.horizontalLayout_lightpandaDownload.addWidget(self.pushButton_LightpandaDownload)
-
-        self.horizontalSpacer_lightpandaDl = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_lightpandaDownload.addItem(self.horizontalSpacer_lightpandaDl)
-
-
-        self.verticalLayout_lightpanda.addLayout(self.horizontalLayout_lightpandaDownload)
-
-        self.groupBox_LightpandaAdvanced = QGroupBox(self.groupBox_Lightpanda)
-        self.groupBox_LightpandaAdvanced.setObjectName(u"groupBox_LightpandaAdvanced")
-        self.groupBox_LightpandaAdvanced.setCheckable(True)
-        self.groupBox_LightpandaAdvanced.setChecked(False)
-        self.horizontalLayout_lightpandaAdvanced = QHBoxLayout(self.groupBox_LightpandaAdvanced)
-        self.horizontalLayout_lightpandaAdvanced.setObjectName(u"horizontalLayout_lightpandaAdvanced")
-        self.label_lightpanda_version_lbl_2 = QLabel(self.groupBox_LightpandaAdvanced)
-        self.label_lightpanda_version_lbl_2.setObjectName(u"label_lightpanda_version_lbl_2")
-
-        self.horizontalLayout_lightpandaAdvanced.addWidget(self.label_lightpanda_version_lbl_2)
-
-        self.lineEdit_LightpandaVersion = QLineEdit(self.groupBox_LightpandaAdvanced)
-        self.lineEdit_LightpandaVersion.setObjectName(u"lineEdit_LightpandaVersion")
-
-        self.horizontalLayout_lightpandaAdvanced.addWidget(self.lineEdit_LightpandaVersion)
-
-
-        self.verticalLayout_lightpanda.addWidget(self.groupBox_LightpandaAdvanced)
-
-        self.plainTextEdit_LightpandaOutput = QPlainTextEdit(self.groupBox_Lightpanda)
-        self.plainTextEdit_LightpandaOutput.setObjectName(u"plainTextEdit_LightpandaOutput")
-        self.plainTextEdit_LightpandaOutput.setFont(font1)
-        self.plainTextEdit_LightpandaOutput.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self.plainTextEdit_LightpandaOutput.setReadOnly(True)
-
-        self.verticalLayout_lightpanda.addWidget(self.plainTextEdit_LightpandaOutput)
-
-
-        self.verticalLayout_setup.addWidget(self.groupBox_Lightpanda)
-
-        self.verticalSpacer_setup = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.verticalLayout_setup.addItem(self.verticalSpacer_setup)
-
-        self.tabWidget.addTab(self.tab_setup, "")
+        self.tabWidget.addTab(self.tab_home, "")
         self.tab_users = QWidget()
-        self.tab_users.setObjectName(u"tab_users")
+        self.tab_users.setObjectName("tab_users")
         self.horizontalLayout_users = QHBoxLayout(self.tab_users)
-        self.horizontalLayout_users.setSpacing(12)
-        self.horizontalLayout_users.setObjectName(u"horizontalLayout_users")
-        self.horizontalLayout_users.setContentsMargins(8, 8, 8, 8)
+        self.horizontalLayout_users.setSpacing(20)
+        self.horizontalLayout_users.setObjectName("horizontalLayout_users")
+        self.horizontalLayout_users.setContentsMargins(20, 20, 20, 20)
         self.groupBox_CreateUser = QGroupBox(self.tab_users)
-        self.groupBox_CreateUser.setObjectName(u"groupBox_CreateUser")
+        self.groupBox_CreateUser.setObjectName("groupBox_CreateUser")
         self.formLayout_createUser = QFormLayout(self.groupBox_CreateUser)
-        self.formLayout_createUser.setObjectName(u"formLayout_createUser")
-        self.formLayout_createUser.setHorizontalSpacing(12)
-        self.formLayout_createUser.setVerticalSpacing(8)
-        self.formLayout_createUser.setContentsMargins(8, 8, 8, 8)
+        self.formLayout_createUser.setObjectName("formLayout_createUser")
+        self.formLayout_createUser.setHorizontalSpacing(16)
+        self.formLayout_createUser.setVerticalSpacing(12)
+        self.formLayout_createUser.setContentsMargins(20, 16, 20, 16)
         self.label_user_name_lbl = QLabel(self.groupBox_CreateUser)
-        self.label_user_name_lbl.setObjectName(u"label_user_name_lbl")
+        self.label_user_name_lbl.setObjectName("label_user_name_lbl")
 
-        self.formLayout_createUser.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_user_name_lbl)
+        self.formLayout_createUser.setWidget(
+            0, QFormLayout.ItemRole.LabelRole, self.label_user_name_lbl
+        )
 
         self.lineEdit_UserName = QLineEdit(self.groupBox_CreateUser)
-        self.lineEdit_UserName.setObjectName(u"lineEdit_UserName")
+        self.lineEdit_UserName.setObjectName("lineEdit_UserName")
 
-        self.formLayout_createUser.setWidget(0, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserName)
+        self.formLayout_createUser.setWidget(
+            0, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserName
+        )
 
         self.label_user_email_lbl = QLabel(self.groupBox_CreateUser)
-        self.label_user_email_lbl.setObjectName(u"label_user_email_lbl")
+        self.label_user_email_lbl.setObjectName("label_user_email_lbl")
 
-        self.formLayout_createUser.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_user_email_lbl)
+        self.formLayout_createUser.setWidget(
+            1, QFormLayout.ItemRole.LabelRole, self.label_user_email_lbl
+        )
 
         self.lineEdit_UserEmail = QLineEdit(self.groupBox_CreateUser)
-        self.lineEdit_UserEmail.setObjectName(u"lineEdit_UserEmail")
+        self.lineEdit_UserEmail.setObjectName("lineEdit_UserEmail")
 
-        self.formLayout_createUser.setWidget(1, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserEmail)
+        self.formLayout_createUser.setWidget(
+            1, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserEmail
+        )
 
         self.label_user_password_lbl = QLabel(self.groupBox_CreateUser)
-        self.label_user_password_lbl.setObjectName(u"label_user_password_lbl")
+        self.label_user_password_lbl.setObjectName("label_user_password_lbl")
 
-        self.formLayout_createUser.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_user_password_lbl)
+        self.formLayout_createUser.setWidget(
+            2, QFormLayout.ItemRole.LabelRole, self.label_user_password_lbl
+        )
 
         self.lineEdit_UserPassword = QLineEdit(self.groupBox_CreateUser)
-        self.lineEdit_UserPassword.setObjectName(u"lineEdit_UserPassword")
+        self.lineEdit_UserPassword.setObjectName("lineEdit_UserPassword")
         self.lineEdit_UserPassword.setMaxLength(48)
         self.lineEdit_UserPassword.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
 
-        self.formLayout_createUser.setWidget(2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword)
+        self.formLayout_createUser.setWidget(
+            2, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserPassword
+        )
 
         self.label_user_confirm_password_lbl = QLabel(self.groupBox_CreateUser)
-        self.label_user_confirm_password_lbl.setObjectName(u"label_user_confirm_password_lbl")
+        self.label_user_confirm_password_lbl.setObjectName(
+            "label_user_confirm_password_lbl"
+        )
 
-        self.formLayout_createUser.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_user_confirm_password_lbl)
+        self.formLayout_createUser.setWidget(
+            3, QFormLayout.ItemRole.LabelRole, self.label_user_confirm_password_lbl
+        )
 
         self.lineEdit_UserConfirmPassword = QLineEdit(self.groupBox_CreateUser)
-        self.lineEdit_UserConfirmPassword.setObjectName(u"lineEdit_UserConfirmPassword")
+        self.lineEdit_UserConfirmPassword.setObjectName("lineEdit_UserConfirmPassword")
         self.lineEdit_UserConfirmPassword.setMaxLength(48)
-        self.lineEdit_UserConfirmPassword.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        self.lineEdit_UserConfirmPassword.setEchoMode(
+            QLineEdit.EchoMode.PasswordEchoOnEdit
+        )
 
-        self.formLayout_createUser.setWidget(3, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserConfirmPassword)
+        self.formLayout_createUser.setWidget(
+            3, QFormLayout.ItemRole.FieldRole, self.lineEdit_UserConfirmPassword
+        )
 
         self.label_PasswordStrength = QLabel(self.groupBox_CreateUser)
-        self.label_PasswordStrength.setObjectName(u"label_PasswordStrength")
+        self.label_PasswordStrength.setObjectName("label_PasswordStrength")
 
-        self.formLayout_createUser.setWidget(4, QFormLayout.ItemRole.FieldRole, self.label_PasswordStrength)
+        self.formLayout_createUser.setWidget(
+            4, QFormLayout.ItemRole.FieldRole, self.label_PasswordStrength
+        )
 
+        self.horizontalLayout_createBtn = QHBoxLayout()
+        self.horizontalLayout_createBtn.setObjectName("horizontalLayout_createBtn")
         self.pushButton_CreateUser = QPushButton(self.groupBox_CreateUser)
-        self.pushButton_CreateUser.setObjectName(u"pushButton_CreateUser")
+        self.pushButton_CreateUser.setObjectName("pushButton_CreateUser")
         self.pushButton_CreateUser.setEnabled(False)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(
+            self.pushButton_CreateUser.sizePolicy().hasHeightForWidth()
+        )
+        self.pushButton_CreateUser.setSizePolicy(sizePolicy1)
 
-        self.formLayout_createUser.setWidget(5, QFormLayout.ItemRole.FieldRole, self.pushButton_CreateUser)
+        self.horizontalLayout_createBtn.addWidget(self.pushButton_CreateUser)
 
+        self.horizontalSpacer_createBtn = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_createBtn.addItem(self.horizontalSpacer_createBtn)
+
+        self.formLayout_createUser.setLayout(
+            5, QFormLayout.ItemRole.FieldRole, self.horizontalLayout_createBtn
+        )
 
         self.horizontalLayout_users.addWidget(self.groupBox_CreateUser)
 
-        self.verticalLayout_userList = QVBoxLayout()
-        self.verticalLayout_userList.setObjectName(u"verticalLayout_userList")
-        self.listWidget_CurrentUsers = QListWidget(self.tab_users)
-        self.listWidget_CurrentUsers.setObjectName(u"listWidget_CurrentUsers")
+        self.groupBox_CurrentUsers = QGroupBox(self.tab_users)
+        self.groupBox_CurrentUsers.setObjectName("groupBox_CurrentUsers")
+        self.verticalLayout_userList = QVBoxLayout(self.groupBox_CurrentUsers)
+        self.verticalLayout_userList.setObjectName("verticalLayout_userList")
+        self.verticalLayout_userList.setContentsMargins(20, 16, 20, 16)
+        self.listWidget_CurrentUsers = QListWidget(self.groupBox_CurrentUsers)
+        self.listWidget_CurrentUsers.setObjectName("listWidget_CurrentUsers")
 
         self.verticalLayout_userList.addWidget(self.listWidget_CurrentUsers)
 
         self.horizontalLayout_userButtons = QHBoxLayout()
-        self.horizontalLayout_userButtons.setObjectName(u"horizontalLayout_userButtons")
-        self.pushButton_EditUser = QPushButton(self.tab_users)
-        self.pushButton_EditUser.setObjectName(u"pushButton_EditUser")
+        self.horizontalLayout_userButtons.setObjectName("horizontalLayout_userButtons")
+        self.horizontalSpacer_userBtns = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_userButtons.addItem(self.horizontalSpacer_userBtns)
+
+        self.pushButton_EditUser = QPushButton(self.groupBox_CurrentUsers)
+        self.pushButton_EditUser.setObjectName("pushButton_EditUser")
         self.pushButton_EditUser.setEnabled(False)
 
         self.horizontalLayout_userButtons.addWidget(self.pushButton_EditUser)
 
-        self.pushButton_DeleteUser = QPushButton(self.tab_users)
-        self.pushButton_DeleteUser.setObjectName(u"pushButton_DeleteUser")
+        self.pushButton_DeleteUser = QPushButton(self.groupBox_CurrentUsers)
+        self.pushButton_DeleteUser.setObjectName("pushButton_DeleteUser")
         self.pushButton_DeleteUser.setEnabled(False)
-        icon7 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditDelete))
-        self.pushButton_DeleteUser.setIcon(icon7)
 
         self.horizontalLayout_userButtons.addWidget(self.pushButton_DeleteUser)
 
-
         self.verticalLayout_userList.addLayout(self.horizontalLayout_userButtons)
 
-
-        self.horizontalLayout_users.addLayout(self.verticalLayout_userList)
+        self.horizontalLayout_users.addWidget(self.groupBox_CurrentUsers)
 
         self.tabWidget.addTab(self.tab_users, "")
         self.tab_logs = QWidget()
-        self.tab_logs.setObjectName(u"tab_logs")
+        self.tab_logs.setObjectName("tab_logs")
         self.verticalLayout_logs = QVBoxLayout(self.tab_logs)
-        self.verticalLayout_logs.setSpacing(6)
-        self.verticalLayout_logs.setObjectName(u"verticalLayout_logs")
-        self.verticalLayout_logs.setContentsMargins(8, 8, 8, 8)
+        self.verticalLayout_logs.setSpacing(16)
+        self.verticalLayout_logs.setObjectName("verticalLayout_logs")
+        self.verticalLayout_logs.setContentsMargins(20, 20, 20, 20)
         self.horizontalLayout_logFilter = QHBoxLayout()
-        self.horizontalLayout_logFilter.setObjectName(u"horizontalLayout_logFilter")
+        self.horizontalLayout_logFilter.setObjectName("horizontalLayout_logFilter")
         self.lineEdit_LogSearch = QLineEdit(self.tab_logs)
-        self.lineEdit_LogSearch.setObjectName(u"lineEdit_LogSearch")
+        self.lineEdit_LogSearch.setObjectName("lineEdit_LogSearch")
         self.lineEdit_LogSearch.setClearButtonEnabled(True)
 
         self.horizontalLayout_logFilter.addWidget(self.lineEdit_LogSearch)
@@ -675,214 +608,55 @@ class Ui_MainWindow(object):
         self.comboBox_LogFilter.addItem("")
         self.comboBox_LogFilter.addItem("")
         self.comboBox_LogFilter.addItem("")
-        self.comboBox_LogFilter.setObjectName(u"comboBox_LogFilter")
+        self.comboBox_LogFilter.setObjectName("comboBox_LogFilter")
         self.comboBox_LogFilter.setMinimumContentsLength(8)
 
         self.horizontalLayout_logFilter.addWidget(self.comboBox_LogFilter)
 
-
         self.verticalLayout_logs.addLayout(self.horizontalLayout_logFilter)
 
         self.textEdit_Logs = QTextEdit(self.tab_logs)
-        self.textEdit_Logs.setObjectName(u"textEdit_Logs")
-        font2 = QFont()
-        font2.setFamilies([u"Courier New"])
-        font2.setPointSize(10)
-        self.textEdit_Logs.setFont(font2)
+        self.textEdit_Logs.setObjectName("textEdit_Logs")
         self.textEdit_Logs.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.textEdit_Logs.setReadOnly(True)
 
         self.verticalLayout_logs.addWidget(self.textEdit_Logs)
 
         self.horizontalLayout_logsToolbar = QHBoxLayout()
-        self.horizontalLayout_logsToolbar.setObjectName(u"horizontalLayout_logsToolbar")
+        self.horizontalLayout_logsToolbar.setObjectName("horizontalLayout_logsToolbar")
         self.pushButton_AutoRefresh = QPushButton(self.tab_logs)
-        self.pushButton_AutoRefresh.setObjectName(u"pushButton_AutoRefresh")
-        icon8 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackPause))
-        self.pushButton_AutoRefresh.setIcon(icon8)
+        self.pushButton_AutoRefresh.setObjectName("pushButton_AutoRefresh")
 
         self.horizontalLayout_logsToolbar.addWidget(self.pushButton_AutoRefresh)
 
-        self.horizontalSpacer_logsToolbar = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_logsToolbar = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_logsToolbar.addItem(self.horizontalSpacer_logsToolbar)
 
         self.pushButton_RefreshLogs = QPushButton(self.tab_logs)
-        self.pushButton_RefreshLogs.setObjectName(u"pushButton_RefreshLogs")
-        icon9 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ViewRefresh))
-        self.pushButton_RefreshLogs.setIcon(icon9)
+        self.pushButton_RefreshLogs.setObjectName("pushButton_RefreshLogs")
 
         self.horizontalLayout_logsToolbar.addWidget(self.pushButton_RefreshLogs)
-
 
         self.verticalLayout_logs.addLayout(self.horizontalLayout_logsToolbar)
 
         self.tabWidget.addTab(self.tab_logs, "")
-        self.tab_settings = QWidget()
-        self.tab_settings.setObjectName(u"tab_settings")
-        self.verticalLayout_settings = QVBoxLayout(self.tab_settings)
-        self.verticalLayout_settings.setSpacing(8)
-        self.verticalLayout_settings.setObjectName(u"verticalLayout_settings")
-        self.verticalLayout_settings.setContentsMargins(8, 8, 8, 8)
-        self.groupBox_SettingsBasic = QGroupBox(self.tab_settings)
-        self.groupBox_SettingsBasic.setObjectName(u"groupBox_SettingsBasic")
-        self.formLayout_settingsBasic = QFormLayout(self.groupBox_SettingsBasic)
-        self.formLayout_settingsBasic.setObjectName(u"formLayout_settingsBasic")
-        self.formLayout_settingsBasic.setHorizontalSpacing(20)
-        self.formLayout_settingsBasic.setVerticalSpacing(8)
-        self.formLayout_settingsBasic.setContentsMargins(8, 8, 8, 8)
-        self.label_ServerHostLbl = QLabel(self.groupBox_SettingsBasic)
-        self.label_ServerHostLbl.setObjectName(u"label_ServerHostLbl")
-
-        self.formLayout_settingsBasic.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_ServerHostLbl)
-
-        self.lineEdit_ServerHost = QLineEdit(self.groupBox_SettingsBasic)
-        self.lineEdit_ServerHost.setObjectName(u"lineEdit_ServerHost")
-
-        self.formLayout_settingsBasic.setWidget(0, QFormLayout.ItemRole.FieldRole, self.lineEdit_ServerHost)
-
-        self.label_ServerPortLbl = QLabel(self.groupBox_SettingsBasic)
-        self.label_ServerPortLbl.setObjectName(u"label_ServerPortLbl")
-
-        self.formLayout_settingsBasic.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_ServerPortLbl)
-
-        self.spinBox_ServerPort = QSpinBox(self.groupBox_SettingsBasic)
-        self.spinBox_ServerPort.setObjectName(u"spinBox_ServerPort")
-        self.spinBox_ServerPort.setMinimum(1)
-        self.spinBox_ServerPort.setMaximum(65535)
-        self.spinBox_ServerPort.setValue(9876)
-
-        self.formLayout_settingsBasic.setWidget(1, QFormLayout.ItemRole.FieldRole, self.spinBox_ServerPort)
-
-        self.label_ChatRepoLbl = QLabel(self.groupBox_SettingsBasic)
-        self.label_ChatRepoLbl.setObjectName(u"label_ChatRepoLbl")
-
-        self.formLayout_settingsBasic.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_ChatRepoLbl)
-
-        self.lineEdit_ChatRepo = QLineEdit(self.groupBox_SettingsBasic)
-        self.lineEdit_ChatRepo.setObjectName(u"lineEdit_ChatRepo")
-
-        self.formLayout_settingsBasic.setWidget(2, QFormLayout.ItemRole.FieldRole, self.lineEdit_ChatRepo)
-
-        self.label_ChatModelLbl = QLabel(self.groupBox_SettingsBasic)
-        self.label_ChatModelLbl.setObjectName(u"label_ChatModelLbl")
-
-        self.formLayout_settingsBasic.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_ChatModelLbl)
-
-        self.lineEdit_ChatModel = QLineEdit(self.groupBox_SettingsBasic)
-        self.lineEdit_ChatModel.setObjectName(u"lineEdit_ChatModel")
-
-        self.formLayout_settingsBasic.setWidget(3, QFormLayout.ItemRole.FieldRole, self.lineEdit_ChatModel)
-
-
-        self.verticalLayout_settings.addWidget(self.groupBox_SettingsBasic)
-
-        self.groupBox_SettingsAdvanced = QGroupBox(self.tab_settings)
-        self.groupBox_SettingsAdvanced.setObjectName(u"groupBox_SettingsAdvanced")
-        self.groupBox_SettingsAdvanced.setCheckable(True)
-        self.groupBox_SettingsAdvanced.setChecked(False)
-        self.formLayout_settingsAdvanced = QFormLayout(self.groupBox_SettingsAdvanced)
-        self.formLayout_settingsAdvanced.setObjectName(u"formLayout_settingsAdvanced")
-        self.formLayout_settingsAdvanced.setHorizontalSpacing(20)
-        self.formLayout_settingsAdvanced.setVerticalSpacing(8)
-        self.formLayout_settingsAdvanced.setContentsMargins(8, 8, 8, 8)
-        self.checkBox_Debug = QCheckBox(self.groupBox_SettingsAdvanced)
-        self.checkBox_Debug.setObjectName(u"checkBox_Debug")
-
-        self.formLayout_settingsAdvanced.setWidget(0, QFormLayout.ItemRole.SpanningRole, self.checkBox_Debug)
-
-        self.label_ChatQuantLbl = QLabel(self.groupBox_SettingsAdvanced)
-        self.label_ChatQuantLbl.setObjectName(u"label_ChatQuantLbl")
-
-        self.formLayout_settingsAdvanced.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_ChatQuantLbl)
-
-        self.comboBox_ChatQuantType = QComboBox(self.groupBox_SettingsAdvanced)
-        self.comboBox_ChatQuantType.addItem("")
-        self.comboBox_ChatQuantType.addItem("")
-        self.comboBox_ChatQuantType.addItem("")
-        self.comboBox_ChatQuantType.addItem("")
-        self.comboBox_ChatQuantType.addItem("")
-        self.comboBox_ChatQuantType.setObjectName(u"comboBox_ChatQuantType")
-
-        self.formLayout_settingsAdvanced.setWidget(1, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatQuantType)
-
-        self.label_ChatCtxLbl = QLabel(self.groupBox_SettingsAdvanced)
-        self.label_ChatCtxLbl.setObjectName(u"label_ChatCtxLbl")
-
-        self.formLayout_settingsAdvanced.setWidget(2, QFormLayout.ItemRole.LabelRole, self.label_ChatCtxLbl)
-
-        self.comboBox_ChatCtxSize = QComboBox(self.groupBox_SettingsAdvanced)
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.addItem("")
-        self.comboBox_ChatCtxSize.setObjectName(u"comboBox_ChatCtxSize")
-
-        self.formLayout_settingsAdvanced.setWidget(2, QFormLayout.ItemRole.FieldRole, self.comboBox_ChatCtxSize)
-
-        self.label_KVCacheOffloadMode = QLabel(self.groupBox_SettingsAdvanced)
-        self.label_KVCacheOffloadMode.setObjectName(u"label_KVCacheOffloadMode")
-
-        self.formLayout_settingsAdvanced.setWidget(3, QFormLayout.ItemRole.LabelRole, self.label_KVCacheOffloadMode)
-
-        self.comboBox_KVCacheOffloadMode = QComboBox(self.groupBox_SettingsAdvanced)
-        self.comboBox_KVCacheOffloadMode.addItem("")
-        self.comboBox_KVCacheOffloadMode.addItem("")
-        self.comboBox_KVCacheOffloadMode.addItem("")
-        self.comboBox_KVCacheOffloadMode.setObjectName(u"comboBox_KVCacheOffloadMode")
-
-        self.formLayout_settingsAdvanced.setWidget(3, QFormLayout.ItemRole.FieldRole, self.comboBox_KVCacheOffloadMode)
-
-
-        self.verticalLayout_settings.addWidget(self.groupBox_SettingsAdvanced)
-
-        self.horizontalLayout_settingsButtons = QHBoxLayout()
-        self.horizontalLayout_settingsButtons.setObjectName(u"horizontalLayout_settingsButtons")
-        self.pushButton_SettingsRevert = QPushButton(self.tab_settings)
-        self.pushButton_SettingsRevert.setObjectName(u"pushButton_SettingsRevert")
-
-        self.horizontalLayout_settingsButtons.addWidget(self.pushButton_SettingsRevert)
-
-        self.horizontalSpacer_settingsButtons = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_settingsButtons.addItem(self.horizontalSpacer_settingsButtons)
-
-        self.label_restart = QLabel(self.tab_settings)
-        self.label_restart.setObjectName(u"label_restart")
-
-        self.horizontalLayout_settingsButtons.addWidget(self.label_restart)
-
-        self.pushButton_SettingsSave = QPushButton(self.tab_settings)
-        self.pushButton_SettingsSave.setObjectName(u"pushButton_SettingsSave")
-
-        self.horizontalLayout_settingsButtons.addWidget(self.pushButton_SettingsSave)
-
-
-        self.verticalLayout_settings.addLayout(self.horizontalLayout_settingsButtons)
-
-        self.verticalSpacer_settings = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.verticalLayout_settings.addItem(self.verticalSpacer_settings)
-
-        self.tabWidget.addTab(self.tab_settings, "")
 
         self.verticalLayout_main.addWidget(self.tabWidget)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(MainWindow)
-        self.menuBar.setObjectName(u"menuBar")
+        self.menuBar.setObjectName("menuBar")
         self.menuBar.setGeometry(QRect(0, 0, 800, 30))
         self.menuApplication = QMenu(self.menuBar)
-        self.menuApplication.setObjectName(u"menuApplication")
+        self.menuApplication.setObjectName("menuApplication")
         self.menuHelp = QMenu(self.menuBar)
-        self.menuHelp.setObjectName(u"menuHelp")
+        self.menuHelp.setObjectName("menuHelp")
         MainWindow.setMenuBar(self.menuBar)
         self.statusBar = QStatusBar(MainWindow)
-        self.statusBar.setObjectName(u"statusBar")
+        self.statusBar.setObjectName("statusBar")
         MainWindow.setStatusBar(self.statusBar)
 
         self.menuBar.addAction(self.menuApplication.menuAction())
@@ -894,143 +668,223 @@ class Ui_MainWindow(object):
 
         self.tabWidget.setCurrentIndex(0)
 
-
         QMetaObject.connectSlotsByName(MainWindow)
+
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"Aria", None))
-        self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"&About", None))
-        self.actionQuit.setText(QCoreApplication.translate("MainWindow", u"&Quit", None))
-#if QT_CONFIG(shortcut)
-        self.actionQuit.setShortcut(QCoreApplication.translate("MainWindow", u"Ctrl+Q", None))
-#endif // QT_CONFIG(shortcut)
-        self.label_title.setText(QCoreApplication.translate("MainWindow", u"Aria Service Manager", None))
-        self.pushButton_ServiceStop.setText(QCoreApplication.translate("MainWindow", u"Stop", None))
-        self.pushButton_ServiceStart.setText(QCoreApplication.translate("MainWindow", u"Start", None))
-        self.groupBox_Service.setTitle(QCoreApplication.translate("MainWindow", u"Service", None))
-        self.label_svc_url_lbl.setText(QCoreApplication.translate("MainWindow", u"URL", None))
-        self.label_ServiceURL.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_svc_pid_lbl.setText(QCoreApplication.translate("MainWindow", u"Process", None))
-        self.label_ServicePID.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_svc_uptime_lbl.setText(QCoreApplication.translate("MainWindow", u"Uptime", None))
-        self.label_ServiceUptime.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_svc_started_lbl.setText(QCoreApplication.translate("MainWindow", u"Started", None))
-        self.label_ServiceStarted.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_ServiceStatus.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.pushButton_ServiceOpen.setText(QCoreApplication.translate("MainWindow", u"Open", None))
-        self.groupBox_Database.setTitle(QCoreApplication.translate("MainWindow", u"Database", None))
-        self.label_db_type_lbl.setText(QCoreApplication.translate("MainWindow", u"Type", None))
-        self.label_DatabaseType.setText(QCoreApplication.translate("MainWindow", u"SQLite", None))
-        self.label_db_location_lbl.setText(QCoreApplication.translate("MainWindow", u"Location", None))
-        self.label_DatabaseLocation.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_db_exists_lbl.setText(QCoreApplication.translate("MainWindow", u"Exists", None))
-        self.label_DatabaseFileExists.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_db_size_lbl.setText(QCoreApplication.translate("MainWindow", u"Size", None))
-        self.label_DatabaseSize.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.groupBox_LLMAPIs.setTitle(QCoreApplication.translate("MainWindow", u"AI Services", None))
-        self.label_llm_type_lbl.setText(QCoreApplication.translate("MainWindow", u"Engine", None))
-        self.label_LLMType.setText(QCoreApplication.translate("MainWindow", u"Local AI", None))
-        self.label_llm_chat_lbl.setText(QCoreApplication.translate("MainWindow", u"Chat", None))
-        self.label_LLMChatAPIURL.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_llm_vectordb_lbl.setText(QCoreApplication.translate("MainWindow", u"Knowledge Base", None))
-        self.label_VectorDB.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_DebugLogsPath.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_DatabasePermissions.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_overview), QCoreApplication.translate("MainWindow", u"Home", None))
-        self.groupBox_Vllm.setTitle(QCoreApplication.translate("MainWindow", u"AI Engine", None))
-        self.label_vllm_status_lbl.setText(QCoreApplication.translate("MainWindow", u"Status", None))
-        self.label_VllmVersion.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.pushButton_VllmInstall.setText(QCoreApplication.translate("MainWindow", u"Install vLLM", None))
-        self.plainTextEdit_VllmOutput.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Install output will appear here...", None))
-        self.groupBox_Models.setTitle(QCoreApplication.translate("MainWindow", u"AI Model Files", None))
-        self.label_model_chat_lbl.setText(QCoreApplication.translate("MainWindow", u"Chat", None))
-        self.label_ModelChat_Status.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_model_emb_lbl.setText(QCoreApplication.translate("MainWindow", u"Embeddings", None))
-        self.label_ModelEmbeddings_Status.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_model_select_lbl.setText(QCoreApplication.translate("MainWindow", u"Model:", None))
-        self.comboBox_ModelSelect.setItemText(0, QCoreApplication.translate("MainWindow", u"chat", None))
-        self.comboBox_ModelSelect.setItemText(1, QCoreApplication.translate("MainWindow", u"vl", None))
-        self.comboBox_ModelSelect.setItemText(2, QCoreApplication.translate("MainWindow", u"embeddings", None))
+        MainWindow.setWindowTitle(
+            QCoreApplication.translate("MainWindow", "Aria", None)
+        )
+        self.actionAbout.setText(
+            QCoreApplication.translate("MainWindow", "About", None)
+        )
+        self.actionQuit.setText(QCoreApplication.translate("MainWindow", "Quit", None))
+        # if QT_CONFIG(shortcut)
+        self.actionQuit.setShortcut(
+            QCoreApplication.translate("MainWindow", "Ctrl+Q", None)
+        )
+        # endif // QT_CONFIG(shortcut)
+        self.label_title.setText(QCoreApplication.translate("MainWindow", "Aria", None))
+        self.groupBox_Service.setTitle(
+            QCoreApplication.translate("MainWindow", "Service", None)
+        )
+        self.label_status_lbl.setText(
+            QCoreApplication.translate("MainWindow", "Status", None)
+        )
+        self.label_ServiceStatus.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.pushButton_ServiceStart.setText(
+            QCoreApplication.translate("MainWindow", "Start Server", None)
+        )
+        self.pushButton_ServiceStop.setText(
+            QCoreApplication.translate("MainWindow", "Stop Server", None)
+        )
+        self.label_url_lbl.setText(
+            QCoreApplication.translate("MainWindow", "URL", None)
+        )
+        self.label_ServiceURL.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.pushButton_ServiceOpen.setText(
+            QCoreApplication.translate("MainWindow", "Open Chat", None)
+        )
+        self.label_pid_lbl.setText(
+            QCoreApplication.translate("MainWindow", "PID", None)
+        )
+        self.label_ServicePID.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.label_uptime_lbl.setText(
+            QCoreApplication.translate("MainWindow", "Uptime", None)
+        )
+        self.label_ServiceUptime.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.groupBox_AI_Connection.setTitle(
+            QCoreApplication.translate("MainWindow", "AI Connection", None)
+        )
+        self.radioButton_LocalMode.setText(
+            QCoreApplication.translate("MainWindow", "Local (GPU)", None)
+        )
+        self.radioButton_RemoteMode.setText(
+            QCoreApplication.translate("MainWindow", "Remote (API)", None)
+        )
+        self.label_EndpointUrl.setText(
+            QCoreApplication.translate("MainWindow", "Endpoint URL", None)
+        )
+        self.lineEdit_EndpointUrl.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "https://api.openai.com/v1", None)
+        )
+        self.label_ApiKey.setText(
+            QCoreApplication.translate("MainWindow", "API Key", None)
+        )
+        self.lineEdit_ApiKey.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "sk-...", None)
+        )
+        self.label_Model.setText(
+            QCoreApplication.translate("MainWindow", "Model", None)
+        )
+        self.lineEdit_Model.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "gpt-4o", None)
+        )
+        self.label_ContextSize.setText(
+            QCoreApplication.translate("MainWindow", "Context Size", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            0, QCoreApplication.translate("MainWindow", "24K (24,576)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            1, QCoreApplication.translate("MainWindow", "32K (32,768)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            2, QCoreApplication.translate("MainWindow", "48K (49,152)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            3, QCoreApplication.translate("MainWindow", "64K (65,536)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            4, QCoreApplication.translate("MainWindow", "128K (131,072)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            5, QCoreApplication.translate("MainWindow", "256K (262,144)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            6, QCoreApplication.translate("MainWindow", "384K (393,216)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            7, QCoreApplication.translate("MainWindow", "512K (524,288)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            8, QCoreApplication.translate("MainWindow", "768K (786,432)", None)
+        )
+        self.comboBox_ContextSize.setItemText(
+            9, QCoreApplication.translate("MainWindow", "1M (1,048,576)", None)
+        )
 
-        self.pushButton_ModelDownload.setText(QCoreApplication.translate("MainWindow", u"Download Model", None))
-        self.groupBox_ModelsAdvanced.setTitle(QCoreApplication.translate("MainWindow", u"Advanced", None))
-        self.label_hf_token_lbl.setText(QCoreApplication.translate("MainWindow", u"Access Token (optional):", None))
-        self.lineEdit_HFToken.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Access Token", None))
-        self.checkBox_ModelForce.setText(QCoreApplication.translate("MainWindow", u"Force re-download", None))
-        self.plainTextEdit_ModelOutput.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Download output will appear here...", None))
-        self.groupBox_Lightpanda.setTitle(QCoreApplication.translate("MainWindow", u"Lightpanda Browser", None))
-        self.label_lightpanda_bindir_lbl.setText(QCoreApplication.translate("MainWindow", u"Install Location", None))
-        self.label_Lightpanda_BinDir.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_lightpanda_version_lbl.setText(QCoreApplication.translate("MainWindow", u"Configured Version", None))
-        self.label_Lightpanda_Version.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.label_lightpanda_status_lbl.setText(QCoreApplication.translate("MainWindow", u"Status", None))
-        self.label_Lightpanda_Status.setText(QCoreApplication.translate("MainWindow", u"\u2717 Not installed", None))
-        self.pushButton_LightpandaDownload.setText(QCoreApplication.translate("MainWindow", u"Download", None))
-        self.groupBox_LightpandaAdvanced.setTitle(QCoreApplication.translate("MainWindow", u"Advanced", None))
-        self.label_lightpanda_version_lbl_2.setText(QCoreApplication.translate("MainWindow", u"Version (optional):", None))
-        self.lineEdit_LightpandaVersion.setPlaceholderText(QCoreApplication.translate("MainWindow", u"nightly", None))
-        self.plainTextEdit_LightpandaOutput.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Download output will appear here...", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_setup), QCoreApplication.translate("MainWindow", u"Setup", None))
-        self.groupBox_CreateUser.setTitle(QCoreApplication.translate("MainWindow", u"Create User", None))
-        self.label_user_name_lbl.setText(QCoreApplication.translate("MainWindow", u"Name", None))
-        self.label_user_email_lbl.setText(QCoreApplication.translate("MainWindow", u"E-Mail", None))
-        self.label_user_password_lbl.setText(QCoreApplication.translate("MainWindow", u"Password", None))
-        self.label_user_confirm_password_lbl.setText(QCoreApplication.translate("MainWindow", u"Confirm Password", None))
+        self.pushButton_TestConnection.setText(
+            QCoreApplication.translate("MainWindow", "Test Connection", None)
+        )
+        self.pushButton_SaveSettings.setText(
+            QCoreApplication.translate("MainWindow", "Save Settings", None)
+        )
+        self.label_ConnectionStatus.setText("")
+        self.label_LocalStatus.setText(
+            QCoreApplication.translate("MainWindow", "Status", None)
+        )
+        self.label_LocalStatusValue.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.label_LocalModel.setText(
+            QCoreApplication.translate("MainWindow", "Chat model", None)
+        )
+        self.label_LocalModelValue.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.label_LocalEndpoint.setText(
+            QCoreApplication.translate("MainWindow", "Endpoint", None)
+        )
+        self.label_LocalEndpointValue.setText(
+            QCoreApplication.translate("MainWindow", "-", None)
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_home),
+            QCoreApplication.translate("MainWindow", "Home", None),
+        )
+        self.groupBox_CreateUser.setTitle(
+            QCoreApplication.translate("MainWindow", "New User", None)
+        )
+        self.label_user_name_lbl.setText(
+            QCoreApplication.translate("MainWindow", "Name", None)
+        )
+        self.lineEdit_UserName.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "Full name", None)
+        )
+        self.label_user_email_lbl.setText(
+            QCoreApplication.translate("MainWindow", "Email", None)
+        )
+        self.lineEdit_UserEmail.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "user@example.com", None)
+        )
+        self.label_user_password_lbl.setText(
+            QCoreApplication.translate("MainWindow", "Password", None)
+        )
+        self.lineEdit_UserPassword.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "Min. 6 characters", None)
+        )
+        self.label_user_confirm_password_lbl.setText(
+            QCoreApplication.translate("MainWindow", "Confirm Password", None)
+        )
+        self.lineEdit_UserConfirmPassword.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "Re-enter password", None)
+        )
         self.label_PasswordStrength.setText("")
-        self.pushButton_CreateUser.setText(QCoreApplication.translate("MainWindow", u"Create", None))
-        self.pushButton_EditUser.setText(QCoreApplication.translate("MainWindow", u"Edit", None))
-        self.pushButton_DeleteUser.setText(QCoreApplication.translate("MainWindow", u"Delete", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_users), QCoreApplication.translate("MainWindow", u"Users", None))
-        self.lineEdit_LogSearch.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Search logs\u2026", None))
-        self.comboBox_LogFilter.setItemText(0, QCoreApplication.translate("MainWindow", u"All", None))
-        self.comboBox_LogFilter.setItemText(1, QCoreApplication.translate("MainWindow", u"ERROR", None))
-        self.comboBox_LogFilter.setItemText(2, QCoreApplication.translate("MainWindow", u"WARNING", None))
-        self.comboBox_LogFilter.setItemText(3, QCoreApplication.translate("MainWindow", u"INFO", None))
+        self.pushButton_CreateUser.setText(
+            QCoreApplication.translate("MainWindow", "Add User", None)
+        )
+        self.groupBox_CurrentUsers.setTitle(
+            QCoreApplication.translate("MainWindow", "Current Users", None)
+        )
+        self.pushButton_EditUser.setText(
+            QCoreApplication.translate("MainWindow", "Edit", None)
+        )
+        self.pushButton_DeleteUser.setText(
+            QCoreApplication.translate("MainWindow", "Remove", None)
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_users),
+            QCoreApplication.translate("MainWindow", "Users", None),
+        )
+        self.lineEdit_LogSearch.setPlaceholderText(
+            QCoreApplication.translate("MainWindow", "Search logs\u2026", None)
+        )
+        self.comboBox_LogFilter.setItemText(
+            0, QCoreApplication.translate("MainWindow", "All", None)
+        )
+        self.comboBox_LogFilter.setItemText(
+            1, QCoreApplication.translate("MainWindow", "ERROR", None)
+        )
+        self.comboBox_LogFilter.setItemText(
+            2, QCoreApplication.translate("MainWindow", "WARNING", None)
+        )
+        self.comboBox_LogFilter.setItemText(
+            3, QCoreApplication.translate("MainWindow", "INFO", None)
+        )
 
-        self.pushButton_AutoRefresh.setText(QCoreApplication.translate("MainWindow", u"Pause Auto-Refresh", None))
-        self.pushButton_RefreshLogs.setText(QCoreApplication.translate("MainWindow", u"Refresh", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_logs), QCoreApplication.translate("MainWindow", u"Logs", None))
-        self.groupBox_SettingsBasic.setTitle(QCoreApplication.translate("MainWindow", u"Basic", None))
-        self.label_ServerHostLbl.setText(QCoreApplication.translate("MainWindow", u"Server host", None))
-        self.label_ServerPortLbl.setText(QCoreApplication.translate("MainWindow", u"Server port", None))
-        self.label_ChatRepoLbl.setText(QCoreApplication.translate("MainWindow", u"Model Source", None))
-        self.label_ChatModelLbl.setText(QCoreApplication.translate("MainWindow", u"Model filename", None))
-        self.groupBox_SettingsAdvanced.setTitle(QCoreApplication.translate("MainWindow", u"Advanced", None))
-        self.checkBox_Debug.setText(QCoreApplication.translate("MainWindow", u"Enable debug logging", None))
-        self.label_ChatQuantLbl.setText(QCoreApplication.translate("MainWindow", u"Quality / Size", None))
-        self.comboBox_ChatQuantType.setItemText(0, QCoreApplication.translate("MainWindow", u"Q4_0", None))
-        self.comboBox_ChatQuantType.setItemText(1, QCoreApplication.translate("MainWindow", u"Q4_K_M", None))
-        self.comboBox_ChatQuantType.setItemText(2, QCoreApplication.translate("MainWindow", u"Q5_K_M", None))
-        self.comboBox_ChatQuantType.setItemText(3, QCoreApplication.translate("MainWindow", u"Q6_K", None))
-        self.comboBox_ChatQuantType.setItemText(4, QCoreApplication.translate("MainWindow", u"Q8_0", None))
+        self.pushButton_AutoRefresh.setText(
+            QCoreApplication.translate("MainWindow", "Pause", None)
+        )
+        self.pushButton_RefreshLogs.setText(
+            QCoreApplication.translate("MainWindow", "Refresh", None)
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_logs),
+            QCoreApplication.translate("MainWindow", "Logs", None),
+        )
+        self.menuApplication.setTitle(
+            QCoreApplication.translate("MainWindow", "File", None)
+        )
+        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", "Help", None))
 
-        self.label_ChatCtxLbl.setText(QCoreApplication.translate("MainWindow", u"Memory Limit", None))
-        self.comboBox_ChatCtxSize.setItemText(0, QCoreApplication.translate("MainWindow", u"2048", None))
-        self.comboBox_ChatCtxSize.setItemText(1, QCoreApplication.translate("MainWindow", u"4096", None))
-        self.comboBox_ChatCtxSize.setItemText(2, QCoreApplication.translate("MainWindow", u"8192", None))
-        self.comboBox_ChatCtxSize.setItemText(3, QCoreApplication.translate("MainWindow", u"16384", None))
-        self.comboBox_ChatCtxSize.setItemText(4, QCoreApplication.translate("MainWindow", u"32768", None))
-        self.comboBox_ChatCtxSize.setItemText(5, QCoreApplication.translate("MainWindow", u"65536", None))
-        self.comboBox_ChatCtxSize.setItemText(6, QCoreApplication.translate("MainWindow", u"131072", None))
-        self.comboBox_ChatCtxSize.setItemText(7, QCoreApplication.translate("MainWindow", u"262144", None))
-
-        self.label_KVCacheOffloadMode.setText(QCoreApplication.translate("MainWindow", u"KV cache offload", None))
-#if QT_CONFIG(tooltip)
-        self.label_KVCacheOffloadMode.setToolTip(QCoreApplication.translate("MainWindow", u"Controls how the KV cache is stored when GPU VRAM is insufficient. 'off' = GPU-only, 'auto' = offload to RAM when VRAM is tight, 'ram' = force RAM offload.", None))
-#endif // QT_CONFIG(tooltip)
-        self.comboBox_KVCacheOffloadMode.setItemText(0, QCoreApplication.translate("MainWindow", u"off", None))
-        self.comboBox_KVCacheOffloadMode.setItemText(1, QCoreApplication.translate("MainWindow", u"auto", None))
-        self.comboBox_KVCacheOffloadMode.setItemText(2, QCoreApplication.translate("MainWindow", u"ram", None))
-
-#if QT_CONFIG(tooltip)
-        self.comboBox_KVCacheOffloadMode.setToolTip(QCoreApplication.translate("MainWindow", u"Controls how the KV cache is stored when GPU VRAM is insufficient. 'off' = GPU-only, 'auto' = offload to RAM when VRAM is tight, 'ram' = force RAM offload.", None))
-#endif // QT_CONFIG(tooltip)
-        self.pushButton_SettingsRevert.setText(QCoreApplication.translate("MainWindow", u"Revert", None))
-        self.label_restart.setText(QCoreApplication.translate("MainWindow", u"Changes require a service restart to take effect.", None))
-        self.pushButton_SettingsSave.setText(QCoreApplication.translate("MainWindow", u"Save Settings", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_settings), QCoreApplication.translate("MainWindow", u"Config", None))
-        self.menuApplication.setTitle(QCoreApplication.translate("MainWindow", u"&File", None))
-        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"&Help", None))
     # retranslateUi
-

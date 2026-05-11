@@ -37,11 +37,17 @@ class UserHandlersMixin:
                 users = session.execute(select(User)).scalars().all()
                 self.ui.listWidget_CurrentUsers.clear()
                 for user in users:
-                    self.ui.listWidget_CurrentUsers.addItem(user.identifier)
+                    label = user.identifier
+                    if user.display_name:
+                        label = f"{user.display_name} ({user.identifier})"
+                    item = QListWidgetItem(label)
+                    # Store identifier for edit/delete lookups
+                    item.setData(Qt.ItemDataRole.UserRole, user.identifier)
+                    self.ui.listWidget_CurrentUsers.addItem(item)
                 if not users:
                     item = QListWidgetItem("No users yet. Create one to get started.")
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
-                    item.setForeground(QColor("#999999"))
+                    item.setForeground(QColor("#9CA3AF"))  # --text-tertiary
                     self.ui.listWidget_CurrentUsers.addItem(item)
         except Exception as e:
             self.ui.statusBar.showMessage(f"Error listing users: {e}")
@@ -52,10 +58,10 @@ class UserHandlersMixin:
         return bool(_EMAIL_RE.match(email))
 
     @staticmethod
-    def _password_strength(password: str) -> tuple[str, str]:
-        """Return (label, color) for password strength."""
+    def _password_strength(password: str) -> str:
+        """Return strength key for password: 'weak', 'fair', 'strong', or 'none'."""
         if not password:
-            return "", ""
+            return "none"
         score = 0
         if len(password) >= 8:
             score += 1
@@ -68,22 +74,19 @@ class UserHandlersMixin:
         if re.search(r"[^A-Za-z0-9]", password):
             score += 1
         if score <= 2:
-            return "Weak", "#c62828"
+            return "weak"
         elif score <= 3:
-            return "Fair", "#e65100"
+            return "fair"
         else:
-            return "Strong", "#2e7d32"
+            return "strong"
 
     def _update_password_strength(self) -> None:
         """Update the password strength indicator label."""
-        label, color = self._password_strength(self.ui.lineEdit_UserPassword.text())
-        self.ui.label_PasswordStrength.setText(label)
-        if color:
-            self.ui.label_PasswordStrength.setStyleSheet(
-                f"color: {color}; font-weight: bold;"
-            )
-        else:
-            self.ui.label_PasswordStrength.setStyleSheet("")
+        strength = self._password_strength(self.ui.lineEdit_UserPassword.text())
+        self.ui.label_PasswordStrength.setText(strength.capitalize())
+        self.ui.label_PasswordStrength.setProperty("strength", strength)
+        self.ui.label_PasswordStrength.style().unpolish(self.ui.label_PasswordStrength)
+        self.ui.label_PasswordStrength.style().polish(self.ui.label_PasswordStrength)
 
     def validate_create_fields(self) -> None:
         """Enable Create User button only when all fields are filled."""
@@ -144,7 +147,13 @@ class UserHandlersMixin:
             self.ui.lineEdit_UserPassword.clear()
             self.ui.lineEdit_UserConfirmPassword.clear()
             self.ui.label_PasswordStrength.setText("")
-            self.ui.label_PasswordStrength.setStyleSheet("")
+            self.ui.label_PasswordStrength.setProperty("strength", "none")
+            self.ui.label_PasswordStrength.style().unpolish(
+                self.ui.label_PasswordStrength
+            )
+            self.ui.label_PasswordStrength.style().polish(
+                self.ui.label_PasswordStrength
+            )
             self.ui.statusBar.showMessage(f"User '{identifier}' created.", 3000)
         except Exception as e:
             self.ui.statusBar.showMessage(f"Error creating user: {e}")
@@ -156,7 +165,7 @@ class UserHandlersMixin:
             self.show_error("Please select a user to edit")
             return
 
-        identifier = selected_items[0].text()
+        identifier = selected_items[0].data(Qt.ItemDataRole.UserRole)
         try:
             with get_db_session() as session:
                 user = session.execute(
@@ -178,7 +187,7 @@ class UserHandlersMixin:
             self.show_error("Please select a user to delete")
             return
 
-        identifier = selected_items[0].text()
+        identifier = selected_items[0].data(Qt.ItemDataRole.UserRole)
 
         # self is MainWindow which inherits from QWidget
         parent_widget: QWidget = self  # type: ignore[assignment]

@@ -38,6 +38,8 @@ class ServerStatus:
         host: The host address the server is bound to.
         port: The port number the server is listening on.
         started_at: Timestamp when the server was started, or None.
+        latency_ms: Round-trip time of the last /health check in milliseconds,
+            or None if the server is not healthy.
     """
 
     running: bool
@@ -46,6 +48,7 @@ class ServerStatus:
     host: str
     port: int
     started_at: datetime | None
+    latency_ms: float | None = None
 
     @property
     def uptime_seconds(self) -> float | None:
@@ -243,7 +246,7 @@ class ServerManager:
             "run",
             "--no-cache",
             "--host",
-            self._host,
+            self._host or "0.0.0.0",
             "--port",
             str(self._port),
             self._target,
@@ -412,11 +415,31 @@ class ServerManager:
             True if ``/health`` returns HTTP 200, False otherwise.
         """
         try:
-            url = f"http://{self._host}:{self._port}/health"
+            host = self._host or "127.0.0.1"
+            url = f"http://{host}:{self._port}/health"
             with urlopen(url, timeout=1) as resp:
                 return resp.status == 200
         except (URLError, OSError):
             return False
+
+    def _check_health(self) -> tuple[bool, float | None]:
+        """Check health and measure round-trip latency.
+
+        Returns:
+            A tuple of (healthy, latency_ms). ``latency_ms`` is the
+            round-trip time in milliseconds, or None if the check failed.
+        """
+        import time
+
+        try:
+            host = self._host or "127.0.0.1"
+            url = f"http://{host}:{self._port}/health"
+            start = time.monotonic()
+            with urlopen(url, timeout=1) as resp:
+                elapsed_ms = (time.monotonic() - start) * 1000
+                return resp.status == 200, elapsed_ms
+        except (URLError, OSError):
+            return False, None
 
     def get_status(self) -> ServerStatus:
         """Get detailed server status.
@@ -432,11 +455,14 @@ class ServerManager:
         if not running and (self._process is not None or self._started_at is not None):
             # Process died on its own — clear stale state so labels reset
             self._clear_state()
+
+        healthy, latency_ms = self._check_health() if running else (False, None)
         return ServerStatus(
             running=running,
-            healthy=self.is_healthy() if running else False,
+            healthy=healthy,
             pid=self.pid,
             host=self._host,
             port=self._port,
             started_at=self._started_at,
+            latency_ms=latency_ms,
         )

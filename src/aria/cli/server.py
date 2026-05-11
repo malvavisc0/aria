@@ -48,16 +48,18 @@ HEALTH_CHECK_TIMEOUT = 180  # seconds (vLLM model loading can take 30s+)
 HEALTH_CHECK_INTERVAL = 0.5  # seconds
 
 
-def _print_startup_banner(
-    host: str, port: int, background: bool = False
-) -> None:
+def _print_startup_banner(host: str, port: int, background: bool = False) -> None:
     mode = "Background" if background else "Foreground"
     action = "Starting Aria Web UI"
+    from aria.helpers.network import resolve_display_host
+
+    display_host = resolve_display_host(host)
     console.print()
     console.print(
         Panel(
             f"[bold cyan]{action}[/bold cyan]\n"
-            f"[white]{host}:{port}[/white] • [dim]{mode} mode[/dim]",
+            f"[white]{display_host}:{port}[/white]"
+            f" • [dim]{mode} mode[/dim]",
             border_style="cyan",
             expand=False,
             padding=(0, 2),
@@ -66,12 +68,19 @@ def _print_startup_banner(
 
 
 def _print_startup_failure(message: str) -> None:
+    from aria.scripts.vllm import is_vllm_installed
+
+    vllm_line = ""
+    if is_vllm_installed():
+        vllm_line = (
+            f"\n[dim]vLLM log:[/dim] {DebugConfig.logs_path.parent / 'vllm.log'}"
+        )
+
     error_console.print()
     error_console.print(
         Panel(
             f"[bold red]Startup failed[/bold red]\n{message}\n\n"
-            f"[dim]See logs:[/dim] {DebugConfig.logs_path}\n"
-            f"[dim]vLLM log:[/dim] {DebugConfig.logs_path.parent / 'vllm.log'}",
+            f"[dim]See logs:[/dim] {DebugConfig.logs_path}{vllm_line}",
             border_style="red",
             expand=False,
             padding=(0, 2),
@@ -130,9 +139,7 @@ def _print_preflight_result(result) -> bool:
 
         for check in checks:
             if check.passed:
-                details = (
-                    f" [dim]({check.details})[/dim]" if check.details else ""
-                )
+                details = f" [dim]({check.details})[/dim]" if check.details else ""
                 console.print(f"   [green]✓[/green] {check.name}{details}")
             else:
                 console.print(
@@ -268,8 +275,7 @@ def _ensure_vllm_running() -> None:
             from aria.config.models import Chat
 
             error_console.print(
-                f"[red]✗[/red] Remote vLLM endpoint not reachable: "
-                f"{Chat.api_url}"
+                f"[red]✗[/red] Remote vLLM endpoint not reachable: {Chat.api_url}"
             )
             raise typer.Exit(1)
         return
@@ -334,9 +340,9 @@ def server_start(
     # Wait for health check
     console.print("[dim]Waiting for server to be ready...[/dim]")
     if _wait_for_health(manager.host, manager.port, HEALTH_CHECK_TIMEOUT):
-        console.print(
-            f"[green]✓[/green] Server started on http://{manager.host}:{manager.port}"
-        )
+        from aria.config.service import Server
+
+        console.print(f"[green]✓[/green] Server started on {Server.get_base_url()}")
         console.print(f"[dim]PID: {manager.pid}[/dim]")
     else:
         _print_startup_failure(
@@ -393,8 +399,7 @@ def server_stop(
 
         if VllmConfig.remote:
             console.print(
-                "[dim]Remote vLLM mode — "
-                "local server management skipped[/dim]"
+                "[dim]Remote vLLM mode — local server management skipped[/dim]"
             )
         else:
             from aria.server.vllm import VllmServerManager
@@ -441,14 +446,13 @@ def server_status():
     table.add_row("Port", str(status.port))
 
     # URL
-    url = f"http://{status.host}:{status.port}"
-    table.add_row("URL", url)
+    from aria.config.service import Server
+
+    table.add_row("URL", Server.get_base_url())
 
     # Start time
     if status.started_at:
-        table.add_row(
-            "Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S")
-        )
+        table.add_row("Started", status.started_at.strftime("%Y-%m-%d %H:%M:%S"))
     else:
         table.add_row("Started", "N/A")
 
@@ -491,9 +495,7 @@ def server_status():
         ]:
             port = get_port()
             try:
-                with urlopen(
-                    f"http://localhost:{port}/health", timeout=2
-                ) as resp:
+                with urlopen(f"http://localhost:{port}/health", timeout=2) as resp:
                     is_running = resp.status == 200
             except (URLError, OSError):
                 is_running = False

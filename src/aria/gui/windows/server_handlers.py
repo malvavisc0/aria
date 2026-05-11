@@ -35,6 +35,45 @@ class _StopWorker(QObject):
             self.failed.emit(str(exc))
 
 
+class _EndpointValidationWorker(QObject):
+    """Background worker that validates the AI endpoint off the GUI thread."""
+
+    finished = Signal(bool, str)  # (ok, message)
+
+    def run(self):
+        import httpx
+
+        from aria.config import get_optional_env
+        from aria.config.api import Vllm
+        from aria.config.models import Chat
+
+        url = Chat.api_url
+        headers = {}
+        if Vllm.remote:
+            api_key = get_optional_env("ARIA_VLLM_API_KEY", "")
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
+        try:
+            r = httpx.get(f"{url}/models", headers=headers, timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                model_count = len(data.get("data", []))
+                self.finished.emit(
+                    True, f"Connected ({model_count} model(s) available)"
+                )
+            elif r.status_code == 401:
+                self.finished.emit(False, "Authentication failed — check your API key")
+            else:
+                self.finished.emit(False, f"Endpoint returned HTTP {r.status_code}")
+        except httpx.ConnectError:
+            self.finished.emit(False, f"Cannot connect to {url}")
+        except httpx.TimeoutException:
+            self.finished.emit(False, f"Connection timed out ({url})")
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
 class _PreflightWorker(QObject):
     """Background worker that runs preflight checks off the GUI thread."""
 
@@ -87,11 +126,14 @@ class ServerHandlersMixin:
         """Connect server control button signals.
 
         This method should be called in the MainWindow __init__ method
-        to connect the Start, Stop, and Open buttons.
+        to connect the Start, Stop, Open, and Test Connection buttons.
         """
         self.ui.pushButton_ServiceStart.clicked.connect(self.on_start_server)
         self.ui.pushButton_ServiceStop.clicked.connect(self.on_stop_server)
         self.ui.pushButton_ServiceOpen.clicked.connect(self.on_open_server)
+        self.ui.pushButton_TestConnection.clicked.connect(
+            self._on_test_connection_clicked
+        )
 
     def _run_preflight(self) -> None:
         """Run preflight checks and cache the result.
@@ -128,52 +170,15 @@ class ServerHandlersMixin:
         self._preflight_result = result
         self._preflight_running = False
 
-        # Handle settings-specific status messages
-        if getattr(self, "_settings_just_saved", False):
-            self._settings_just_saved = False
-            if result.passed:
-                self.statusBar().showMessage(
-                    "Settings saved — all checks passed. Restart to apply.",
-                    5000,
-                )
-            else:
-                failure_count = len(result.failures)
-                self.statusBar().showMessage(
-                    f"Settings saved — {failure_count} check(s) failed. "
-                    "Restart to apply.",
-                    10000,
-                )
-                failures = "\n".join(
-                    f"  • {c.name}: {c.error}" for c in result.failures
-                )
-                self.ui.pushButton_SettingsSave.setToolTip(
-                    f"Preflight checks failed:\n{failures}"
-                )
-            self._update_server_status()
-            return
-
-        if getattr(self, "_settings_just_loaded", False):
-            self._settings_just_loaded = False
-            if result.passed:
-                self.statusBar().showMessage(
-                    "Settings loaded — all checks passed. Server can be started.",
-                    5000,
-                )
-            else:
-                failure_count = len(result.failures)
-                self.statusBar().showMessage(
-                    f"Settings loaded — {failure_count} preflight check(s) "
-                    "failed. Fix issues before starting the server.",
-                    10000,
-                )
-                failures = "\n".join(
-                    f"  • {c.name}: {c.error}" for c in result.failures
-                )
-                self.ui.pushButton_SettingsSave.setToolTip(
-                    f"Preflight checks failed:\n{failures}"
-                )
-            self._update_server_status()
-            return
+        if result.passed:
+            self.statusBar().showMessage("All preflight checks passed.", 5000)
+        else:
+            failure_count = len(result.failures)
+            self.statusBar().showMessage(
+                f"{failure_count} preflight check(s) failed. "
+                "Hover over Start button for details.",
+                10000,
+            )
 
         self._update_server_status()
 
@@ -188,14 +193,66 @@ class ServerHandlersMixin:
         )
         self._update_server_status()
 
+    def _on_test_connection_clicked(self):
+        """Handle Test Connection button click (runs validation in background)."""
+        self.ui.pushButton_TestConnection.setEnabled(False)
+        self.ui.label_ConnectionStatus.setText("Testing…")
+        self._run_endpoint_validation(self._on_test_connection_result)
+
+    def _on_test_connection_result(self, ok: bool, message: str):
+        """Update the connection status label with validation result."""
+        self.ui.pushButton_TestConnection.setEnabled(True)
+        label = self.ui.label_ConnectionStatus
+        if ok:
+            label.setText(f"✓ {message}")
+            label.setProperty("connection", "ok")
+        else:
+            label.setText(f"✗ {message}")
+            label.setProperty("connection", "fail")
+        label.style().unpolish(label)
+        label.style().polish(label)
+
+    def _run_endpoint_validation(self, callback) -> None:
+        """Run endpoint validation in a background thread.
+
+        Args:
+            callback: Function(ok: bool, message: str) called on completion.
+        """
+        self._validation_thread = QThread()
+        self._validation_worker = _EndpointValidationWorker()
+        self._validation_worker.moveToThread(self._validation_thread)
+        self._validation_thread.started.connect(self._validation_worker.run)
+        self._validation_worker.finished.connect(callback)
+        self._validation_worker.finished.connect(self._validation_thread.quit)
+        self._validation_worker.finished.connect(self._validation_worker.deleteLater)
+        self._validation_thread.finished.connect(self._validation_thread.deleteLater)
+        self._validation_thread.start()
+
     def on_start_server(self):
         """Handle Start button click.
 
         Starts the Chainlit webserver as a background subprocess.
         The llama-server inference processes are started automatically
         by the web UI via the Chainlit ``on_app_startup`` lifecycle hook.
+
+        Validates the AI endpoint in a background thread before starting.
         """
         self.ui.pushButton_ServiceStart.setEnabled(False)
+        self.statusBar().showMessage("Validating AI endpoint…")
+        self._run_endpoint_validation(self._on_start_validation_result)
+
+    def _on_start_validation_result(self, ok: bool, message: str):
+        """Handle endpoint validation result before starting the server."""
+        if not ok:
+            self.ui.pushButton_ServiceStart.setEnabled(True)
+            QMessageBox.warning(
+                self,
+                "Cannot Start Server",
+                f"AI endpoint validation failed:\n\n{message}\n\n"
+                "Check your connection settings and try again.",
+            )
+            return
+
         self.statusBar().showMessage("Starting Aria server\u2026")
 
         started = self._server_manager.start()
@@ -274,60 +331,65 @@ class ServerHandlersMixin:
         """
         webbrowser.open(Server.get_base_url())
 
+    def _refresh_status_style(self, widget, status_value: str) -> None:
+        """Update a QLabel's status property and trigger style re-evaluation.
+
+        Args:
+            widget: The QLabel to update.
+            status_value: The status property value (e.g. "running", "error").
+        """
+        widget.setProperty("status", status_value)
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
+
     def _update_server_status(self):
         """Update server status display and button states.
 
-        This method is called every second by the server timer to:
-        - Update status indicator, PID, URL, start time, and uptime labels
-        - Enable/disable buttons based on server running state
+        Called every second by the server timer.  The Service groupBox uses
+        a compact row layout:
 
-        Four distinct states are shown:
-        - Stopped (red): process is not running
-        - Starting\u2026 (orange): process is alive but /health not yet responding
-        - Stopping\u2026 (orange): process is alive during shutdown
-        - Running (green): process is alive and /health returns HTTP 200
+        Idle / Stopped:
+          Row 0:  Status  ○ Idle                          [ Start Server ]
+
+        Running:
+          Row 0:  Status  ● Running (92ms)                [ Stop Server  ]
+          Row 1:  URL     http://localhost:9876            [ Open ]
+          Row 2:  PID     18422     Uptime  00:13:47
+
+        Starting / Stopping transitional states are shown with a warning
+        badge and the URL/detail rows hidden.
         """
         status = self._server_manager.get_status()
 
-        _BADGE_BASE = (
-            "color: white; font-size: 13pt; padding: 4px 14px; border-radius: 6px;"
-        )
+        # ── Determine state and status text ──────────────────────────
         if status.healthy:
             self._was_healthy = True
-            self.ui.label_ServiceStatus.setText("Running")
-            self.ui.label_ServiceStatus.setStyleSheet(
-                f"QLabel {{ background-color: #2e7d32; {_BADGE_BASE} }}"
+            latency = (
+                f" ({status.latency_ms:.0f}ms)" if status.latency_ms is not None else ""
             )
+            status_text = f"\u25cf Running{latency}"
+            status_prop = "running"
             self.statusBar().clearMessage()
         elif status.running:
-            # Check if we're in stopping state to show appropriate message
             if self._is_stopping:
-                self.ui.label_ServiceStatus.setText("Stopping\u2026")
-                self.ui.label_ServiceStatus.setStyleSheet(
-                    f"QLabel {{ background-color: #e65100; {_BADGE_BASE} }}"
-                )
+                status_text = "\u25cf Stopping\u2026"
+                status_prop = "warning"
                 self.statusBar().showMessage("Stopping Aria server\u2026")
             else:
-                self.ui.label_ServiceStatus.setText("Starting\u2026")
-                self.ui.label_ServiceStatus.setStyleSheet(
-                    f"QLabel {{ background-color: #e65100; {_BADGE_BASE} }}"
-                )
+                status_text = "\u25cf Starting\u2026"
+                status_prop = "warning"
                 self.statusBar().showMessage(
-                    "Starting Aria server\u2026 this may take a few minutes."
+                    "Starting Aria server\u2026 this may take a few seconds."
                 )
         else:
-            # Auto-reset stopping state when server is confirmed stopped
             if self._is_stopping:
                 self._is_stopping = False
                 self._stopping_since = 0.0
             crashed = self._was_healthy
             self._was_healthy = False
-            self.ui.label_ServiceStatus.setText("Stopped")
-            self.ui.label_ServiceStatus.setStyleSheet(
-                f"QLabel {{ background-color: #c62828; {_BADGE_BASE} }}"
-            )
+            status_text = "\u25cb Idle"
+            status_prop = "idle"
             if crashed:
-                # Crash message takes priority
                 self.statusBar().showMessage(
                     "Server stopped unexpectedly. Check logs for details.",
                     10000,
@@ -343,34 +405,39 @@ class ServerHandlersMixin:
             else:
                 self.statusBar().clearMessage()
 
-        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
+        # ── Status label ─────────────────────────────────────────────
+        self.ui.label_ServiceStatus.setText(status_text)
+        self._refresh_status_style(self.ui.label_ServiceStatus, status_prop)
 
-        url = f"http://{status.host}:{status.port}"
-        self.ui.label_ServiceURL.setText(f'<a href="{url}">{url}</a>')
+        # ── URL row ──────────────────────────────────────────────────
+        self.ui.label_ServiceURL.setText(
+            f'<a href="{Server.get_base_url()}">{Server.get_base_url()}</a>'
+        )
         self.ui.label_ServiceURL.setOpenExternalLinks(True)
 
-        if status.started_at:
-            self.ui.label_ServiceStarted.setText(
-                status.started_at.strftime("%Y-%m-%d %H:%M:%S")
-            )
-        else:
-            self.ui.label_ServiceStarted.setText("-")
+        # ── PID / Uptime row ─────────────────────────────────────────
+        self.ui.label_ServicePID.setText(str(status.pid) if status.pid else "-")
 
         if status.uptime_seconds is not None:
             hours, remainder = divmod(int(status.uptime_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            self.ui.label_ServiceUptime.setText(f"{hours}h {minutes}m {seconds}s")
+            self.ui.label_ServiceUptime.setText(
+                f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            )
         else:
             self.ui.label_ServiceUptime.setText("-")
 
+        # ── Button visibility and enable state ───────────────────────
         preflight_ok = (
             self._preflight_result is not None and self._preflight_result.passed
         )
         can_start = not status.running and preflight_ok
+
         # Safety timeout: reset stopping state after 30 seconds
         if self._is_stopping and time.monotonic() - self._stopping_since > 30:
             self._is_stopping = False
             self._stopping_since = 0.0
+
         if self._is_stopping:
             self.ui.pushButton_ServiceStart.setEnabled(False)
             self.ui.pushButton_ServiceStop.setEnabled(False)
@@ -378,11 +445,15 @@ class ServerHandlersMixin:
             self.ui.pushButton_ServiceStart.setEnabled(
                 can_start and not self._preflight_running
             )
-            self.ui.pushButton_ServiceStop.setEnabled(status.running)
+            self.ui.pushButton_ServiceStop.setEnabled(status.healthy)
+
         self.ui.pushButton_ServiceOpen.setEnabled(status.healthy)
 
+        # ── Start button tooltip ─────────────────────────────────────
         if self._preflight_running:
-            self.ui.pushButton_ServiceStart.setToolTip("Preflight checks are running…")
+            self.ui.pushButton_ServiceStart.setToolTip(
+                "Preflight checks are running\u2026"
+            )
         elif not status.running and not preflight_ok:
             if self._preflight_result is not None:
                 failures = "\n".join(
@@ -399,7 +470,7 @@ class ServerHandlersMixin:
         else:
             self.ui.pushButton_ServiceStart.setToolTip("")
 
-        # Keep tray icon in sync
+        # ── Tray icon sync ───────────────────────────────────────────
         tray = getattr(self, "_tray_icon", None)
         if tray is not None:
             tray.update_status(running=status.running, healthy=status.healthy)

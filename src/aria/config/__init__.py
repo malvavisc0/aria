@@ -12,13 +12,51 @@ _env_loaded = False
 
 
 def _ensure_env() -> None:
-    """Load the .env file on first use.  No-op on subsequent calls."""
+    """Load the .env file from ARIA_HOME on first use."""
     global _env_loaded
     if _env_loaded:
         return
+    import os
+    from pathlib import Path
+
     from dotenv import load_dotenv
 
-    load_dotenv()
+    aria_home = Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
+    env_path = aria_home / ".env"
+
+    # Load from ARIA_HOME/.env if it exists
+    if env_path.exists():
+        load_dotenv(env_path)
+    else:
+        # Fallback: try CWD .env (backward compat)
+        load_dotenv()
+
+    _env_loaded = True
+
+
+def reload_env() -> None:
+    """Force-reload the .env file from ARIA_HOME.
+
+    Call this after the wizard or GUI writes new values to .env so that
+    subsequent ``get_*_env()`` calls pick up the changes.  Note: this
+    does NOT update already-evaluated class-level attributes in config
+    modules (e.g. ``Vllm.remote``).  Those modules must be re-imported
+    or their attributes refreshed explicitly.
+    """
+    global _env_loaded
+    import os
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+
+    aria_home = Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
+    env_path = aria_home / ".env"
+
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+    else:
+        load_dotenv(override=True)
+
     _env_loaded = True
 
 

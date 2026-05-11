@@ -26,6 +26,10 @@ _SESSION_WORKSPACE.mkdir(parents=True, exist_ok=True)
 
 os.environ["ARIA_HOME"] = str(_SESSION_ARIA_HOME)
 os.environ["TOOLS_DATA_FOLDER"] = str(_SESSION_WORKSPACE)
+os.environ.setdefault("SERVER_PORT", "9876")
+os.environ.setdefault("ARIA_DB_FILENAME", "aria.db")
+os.environ.setdefault("CHROMADB_PERSISTENT_PATH", "chromadb")
+os.environ.setdefault("CHAT_OPENAI_API", "http://localhost:9090/v1")
 
 
 @atexit.register
@@ -105,9 +109,7 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(_folders.Workspace, "path", aria_home / "workspace")
     monkeypatch.setattr(_folders.Bin, "path", aria_home / "bin")
     monkeypatch.setattr(_folders.Debug, "path", aria_home / "logs")
-    monkeypatch.setattr(
-        _folders.Debug, "logs_path", aria_home / "logs" / "debug.log"
-    )
+    monkeypatch.setattr(_folders.Debug, "logs_path", aria_home / "logs" / "debug.log")
     monkeypatch.setattr(_folders.Storage, "path", aria_home / "storage")
     monkeypatch.setattr(_folders.Uploads, "path", aria_home / "uploads")
     monkeypatch.setattr(_folders.DB, "path", aria_home / "db")
@@ -152,9 +154,7 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
         monkeypatch.setattr(_process_funcs, "_STATE_FILE", process_state)
         monkeypatch.setattr(_process_funcs, "_LOG_DIR", process_logs)
 
-        _test_process = _get_cached_module(
-            "aria.tools.process.tests.test_process"
-        )
+        _test_process = _get_cached_module("aria.tools.process.tests.test_process")
         if _test_process is not None:
             monkeypatch.setattr(_test_process, "_STATE_FILE", process_state)
 
@@ -179,15 +179,11 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
 
     _browser_constants = _get_cached_module("aria.tools.browser.constants")
     if _browser_constants is not None:
-        monkeypatch.setattr(
-            _browser_constants, "BROWSER_CONTENT_DIR", browser_dir
-        )
+        monkeypatch.setattr(_browser_constants, "BROWSER_CONTENT_DIR", browser_dir)
 
     _browser_manager = _get_cached_module("aria.tools.browser.manager")
     if _browser_manager is not None:
-        monkeypatch.setattr(
-            _browser_manager, "BROWSER_CONTENT_DIR", browser_dir
-        )
+        monkeypatch.setattr(_browser_manager, "BROWSER_CONTENT_DIR", browser_dir)
 
     # ── Isolate main database (SQLite + ChromaDB) ──────────────
     db_dir = tmp_path / "db"
@@ -200,17 +196,13 @@ def _isolate_data_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(_db_cfg, "_ARIA_DB_FILE_PATH", aria_db)
     monkeypatch.setattr(_db_cfg.SQLite, "file_path", aria_db)
     monkeypatch.setattr(_db_cfg.SQLite, "db_url", f"sqlite:///{aria_db}")
-    monkeypatch.setattr(
-        _db_cfg.SQLite, "conn_info", f"sqlite+aiosqlite:///{aria_db}"
-    )
+    monkeypatch.setattr(_db_cfg.SQLite, "conn_info", f"sqlite+aiosqlite:///{aria_db}")
     monkeypatch.setattr(_db_cfg.ChromaDB, "db_path", db_dir / "chromadb")
 
     # ── Isolate tools database default path ────────────────────
     _tools_db_mod = _get_cached_module("aria.tools.database")
 
-    monkeypatch.setattr(
-        _tools_db_mod, "_DEFAULT_DB_PATH", str(tmp_path / "tools.db")
-    )
+    monkeypatch.setattr(_tools_db_mod, "_DEFAULT_DB_PATH", str(tmp_path / "tools.db"))
 
     # ── Reset CLI engine so it picks up the patched SQLite path ─
     _cli_mod = _get_cached_module("aria.cli")

@@ -504,8 +504,7 @@ def calculate_max_safe_context(
         (48, 524288),  # 48GB → 524,288 tokens
         (64, 786432),  # 64GB → 786,432 tokens
         (96, 1048576),  # 96GB → 1,048,576 tokens
-        (128, 1572864),  # 128GB → 1,572,864 tokens
-        (192, 2097152),  # 192GB+ → 2,097,152 tokens (max for LLMs)
+        (128, 1572864),  # 128GB → 1,572,864 tokens (max for LLMs)
     ]
 
     # Select appropriate tier list based on model type

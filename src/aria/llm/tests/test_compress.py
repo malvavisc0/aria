@@ -225,12 +225,8 @@ class TestScratchpadPressureThreshold:
         mod = _reload_compress()
         assert mod.SCRATCHPAD_PRESSURE_THRESHOLD == 0.60
 
-    def test_invalid_env_falls_back_to_default(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
-        monkeypatch.setenv(
-            "ARIA_SCRATCHPAD_PRESSURE_THRESHOLD", "not-a-number"
-        )
+    def test_invalid_env_falls_back_to_default(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("ARIA_SCRATCHPAD_PRESSURE_THRESHOLD", "not-a-number")
         mod = _reload_compress()
         assert mod.SCRATCHPAD_PRESSURE_THRESHOLD == 0.40
 
@@ -270,9 +266,7 @@ class TestAbsoluteOverrides:
         t = mod._compute_thresholds(32768)
         assert t["max_chars"] == 5000
 
-    def test_absolute_overrides_all_ratios(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_absolute_overrides_all_ratios(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("ARIA_COMPRESS_MIN_CHARS", "10")
         monkeypatch.setenv("ARIA_COMPRESS_MAX_CHARS", "200")
         monkeypatch.setenv("ARIA_COMPRESS_HEAD_CHARS", "50")
@@ -343,9 +337,7 @@ class TestOverlapGuard:
                 match = re.search(r"dropped ([\d,]+) chars", result)
                 if match:
                     dropped = int(match.group(1).replace(",", ""))
-                    assert (
-                        dropped >= 0
-                    ), f"Negative dropped ({dropped}) for size {size}"
+                    assert dropped >= 0, f"Negative dropped ({dropped}) for size {size}"
 
 
 class TestContextScaling:
@@ -380,6 +372,6 @@ class TestContextScaling:
             assert t262[key] > t131[key], f"{key} should grow with context"
             # Verify proportionality (within rounding)
             ratio_262_32 = t262[key] / t32[key]
-            assert (
-                7.5 < ratio_262_32 < 8.5
-            ), f"{key}: 262K/32K ratio should be ~8×, got {ratio_262_32}"
+            assert 7.5 < ratio_262_32 < 8.5, (
+                f"{key}: 262K/32K ratio should be ~8×, got {ratio_262_32}"
+            )

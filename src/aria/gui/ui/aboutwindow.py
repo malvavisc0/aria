@@ -1,127 +1,117 @@
 # -*- coding: utf-8 -*-
+# About dialog — proper QVBoxLayout (no absolute positioning).
+# Replaces the .ui-generated version with hardcoded geometry rects.
 
-################################################################################
-## Form generated from reading UI file 'aboutwindow.ui'
-##
-## Created by: Qt User Interface Compiler version 6.11.0
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
+)
 
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QDialog, QFormLayout, QHBoxLayout,
-    QLabel, QPushButton, QSizePolicy, QSpacerItem,
-    QVBoxLayout, QWidget)
 
 class Ui_AboutDialog(object):
     def setupUi(self, AboutDialog):
         if not AboutDialog.objectName():
-            AboutDialog.setObjectName(u"AboutDialog")
-        AboutDialog.resize(520, 320)
-        AboutDialog.setMinimumSize(QSize(400, 280))
+            AboutDialog.setObjectName("AboutDialog")
+        AboutDialog.resize(480, 300)
+        AboutDialog.setMinimumSize(QSize(400, 260))
         AboutDialog.setSizeGripEnabled(True)
-        self.horizontalLayoutWidget = QWidget(AboutDialog)
-        self.horizontalLayoutWidget.setObjectName(u"horizontalLayoutWidget")
-        self.horizontalLayoutWidget.setGeometry(QRect(9, 270, 501, 41))
-        self.horizontalLayout = QHBoxLayout(self.horizontalLayoutWidget)
-        self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        AboutDialog.setWindowTitle("About")
 
-        self.horizontalLayout.addItem(self.horizontalSpacer)
+        # Main layout on the dialog itself
+        main_layout = QVBoxLayout(AboutDialog)
+        main_layout.setContentsMargins(24, 24, 24, 20)
+        main_layout.setSpacing(16)
 
-        self.pushButton_Ok = QPushButton(self.horizontalLayoutWidget)
-        self.pushButton_Ok.setObjectName(u"pushButton_Ok")
+        # --- Header: App name + version ---
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(8)
 
-        self.horizontalLayout.addWidget(self.pushButton_Ok)
+        self.label_2 = QLabel(AboutDialog)
+        self.label_2.setObjectName("label_2")
+        font_title = QFont()
+        font_title.setPointSize(18)
+        font_title.setWeight(QFont.Weight.DemiBold)
+        self.label_2.setFont(font_title)
+        self.label_2.setText("Aria")
+        header_layout.addWidget(self.label_2)
 
-        self.formLayoutWidget = QWidget(AboutDialog)
-        self.formLayoutWidget.setObjectName(u"formLayoutWidget")
-        self.formLayoutWidget.setGeometry(QRect(10, 20, 501, 71))
-        self.formLayout = QFormLayout(self.formLayoutWidget)
-        self.formLayout.setObjectName(u"formLayout")
-        self.formLayout.setContentsMargins(0, 0, 0, 0)
-        self.label_2 = QLabel(self.formLayoutWidget)
-        self.label_2.setObjectName(u"label_2")
-        font = QFont()
-        font.setPointSize(18)
-        self.label_2.setFont(font)
+        self.label_Version = QLabel(AboutDialog)
+        self.label_Version.setObjectName("label_Version")
+        font_version = QFont()
+        font_version.setPointSize(14)
+        self.label_Version.setFont(font_version)
+        self.label_Version.setText("v")
+        self.label_Version.setProperty("muted", True)
+        header_layout.addWidget(self.label_Version)
 
-        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_2)
+        header_layout.addStretch()
+        main_layout.addLayout(header_layout)
 
-        self.label_Version = QLabel(self.formLayoutWidget)
-        self.label_Version.setObjectName(u"label_Version")
-        font1 = QFont()
-        font1.setPointSize(16)
-        self.label_Version.setFont(font1)
-
-        self.formLayout.setWidget(0, QFormLayout.ItemRole.FieldRole, self.label_Version)
-
-        self.label_3 = QLabel(self.formLayoutWidget)
-        self.label_3.setObjectName(u"label_3")
-        self.label_3.setStyleSheet(u"color: rgb(61, 56, 70)")
-
-        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.label_3)
-
-        self.label = QLabel(self.formLayoutWidget)
-        self.label.setObjectName(u"label")
-        self.label.setTextFormat(Qt.TextFormat.RichText)
-        self.label.setOpenExternalLinks(True)
-
-        self.formLayout.setWidget(1, QFormLayout.ItemRole.FieldRole, self.label)
-
-        self.verticalLayoutWidget = QWidget(AboutDialog)
-        self.verticalLayoutWidget.setObjectName(u"verticalLayoutWidget")
-        self.verticalLayoutWidget.setGeometry(QRect(9, 100, 501, 150))
-        self.verticalLayout = QVBoxLayout(self.verticalLayoutWidget)
-        self.verticalLayout.setObjectName(u"verticalLayout")
-        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.label_Tagline = QLabel(self.verticalLayoutWidget)
-        self.label_Tagline.setObjectName(u"label_Tagline")
-        font2 = QFont()
-        font2.setPointSize(11)
-        font2.setItalic(True)
-        self.label_Tagline.setFont(font2)
+        # --- Tagline ---
+        self.label_Tagline = QLabel(AboutDialog)
+        self.label_Tagline.setObjectName("label_Tagline")
+        font_tagline = QFont()
+        font_tagline.setPointSize(12)
+        font_tagline.setItalic(True)
+        self.label_Tagline.setFont(font_tagline)
         self.label_Tagline.setWordWrap(True)
+        self.label_Tagline.setText(
+            "AI Assistant with web UI, CLI management, and local LLM support"
+        )
+        main_layout.addWidget(self.label_Tagline)
 
-        self.verticalLayout.addWidget(self.label_Tagline)
-
-        self.label_Copyright = QLabel(self.verticalLayoutWidget)
-        self.label_Copyright.setObjectName(u"label_Copyright")
-        self.label_Copyright.setStyleSheet(u"color: rgb(61, 56, 70);")
-        self.label_Copyright.setWordWrap(True)
-
-        self.verticalLayout.addWidget(self.label_Copyright)
-
-        self.label_Details = QLabel(self.verticalLayoutWidget)
-        self.label_Details.setObjectName(u"label_Details")
+        # --- Details ---
+        self.label_Details = QLabel(AboutDialog)
+        self.label_Details.setObjectName("label_Details")
         self.label_Details.setTextFormat(Qt.TextFormat.RichText)
         self.label_Details.setOpenExternalLinks(True)
         self.label_Details.setWordWrap(True)
+        self.label_Details.setText(
+            "<b>Stack</b>: Chainlit, LlamaIndex, PySide6<br/>"
+            "<b>License</b>: See repository for project details"
+        )
+        main_layout.addWidget(self.label_Details)
 
-        self.verticalLayout.addWidget(self.label_Details)
+        # --- Source link ---
+        self.label = QLabel(AboutDialog)
+        self.label.setObjectName("label")
+        self.label.setTextFormat(Qt.TextFormat.RichText)
+        self.label.setOpenExternalLinks(True)
+        self.label.setText(
+            '<a href="https://github.com/malvavisc0/aria">GitHub Repository</a>'
+        )
+        main_layout.addWidget(self.label)
 
+        # --- Copyright ---
+        self.label_Copyright = QLabel(AboutDialog)
+        self.label_Copyright.setObjectName("label_Copyright")
+        self.label_Copyright.setWordWrap(True)
+        self.label_Copyright.setProperty("muted", True)
+        self.label_Copyright.setText(
+            "Built for local-first workflows with multi-agent orchestration."
+        )
+        main_layout.addWidget(self.label_Copyright)
 
-        self.retranslateUi(AboutDialog)
+        # --- Spacer + OK button ---
+        main_layout.addStretch()
 
-        QMetaObject.connectSlotsByName(AboutDialog)
-    # setupUi
-
-    def retranslateUi(self, AboutDialog):
-        AboutDialog.setWindowTitle(QCoreApplication.translate("AboutDialog", u"About", None))
-        self.pushButton_Ok.setText(QCoreApplication.translate("AboutDialog", u"OK", None))
-        self.label_2.setText(QCoreApplication.translate("AboutDialog", u"Aria", None))
-        self.label_Version.setText(QCoreApplication.translate("AboutDialog", u"v", None))
-        self.label_3.setText(QCoreApplication.translate("AboutDialog", u"Source", None))
-        self.label.setText(QCoreApplication.translate("AboutDialog", u"<a href=\"https://github.com/malvavisc0/aria\">GitHub Repository</a>", None))
-        self.label_Tagline.setText(QCoreApplication.translate("AboutDialog", u"AI Assistant with web UI, CLI management, and local LLM support", None))
-        self.label_Copyright.setText(QCoreApplication.translate("AboutDialog", u"Built for local-first workflows with multi-agent orchestration.", None))
-        self.label_Details.setText(QCoreApplication.translate("AboutDialog", u"<b>Stack</b>: Chainlit, LlamaIndex, PySide6<br/><b>License</b>: See repository for project details", None))
-    # retranslateUi
-
+        button_layout = QHBoxLayout()
+        button_layout.addItem(
+            QSpacerItem(
+                40,
+                20,
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Minimum,
+            )
+        )
+        self.pushButton_Ok = QPushButton(AboutDialog)
+        self.pushButton_Ok.setObjectName("pushButton_Ok")
+        self.pushButton_Ok.setText("OK")
+        button_layout.addWidget(self.pushButton_Ok)
+        main_layout.addLayout(button_layout)

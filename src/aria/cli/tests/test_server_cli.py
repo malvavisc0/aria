@@ -31,6 +31,10 @@ def test_server_run_shows_clean_failure_panel() -> None:
         ),
         patch("aria.cli.server._print_preflight_result", return_value=True),
         patch("aria.cli.server.ServerManager") as mock_manager_cls,
+        patch(
+            "aria.scripts.vllm.is_vllm_installed",
+            return_value=True,
+        ),
     ):
         mock_manager = mock_manager_cls.return_value
         mock_manager.host = "127.0.0.1"

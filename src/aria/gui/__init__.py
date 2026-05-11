@@ -57,11 +57,20 @@ def main():
     app.setApplicationName("Aria")
     app.setApplicationDisplayName("Aria")
 
+    # Apply global stylesheet
+    from aria.gui.stylesheet import STYLESHEET
+
+    app.setStyleSheet(STYLESHEET)
+
     window = MainWindow()
 
     # Show first-run wizard if no users exist yet
     if should_show_wizard():
-        run_wizard(window)
+        if run_wizard(window):
+            # Reload env so config picks up wizard-written values
+            from aria.config import reload_env
+
+            reload_env()
         window.load_users()
 
     window.show()

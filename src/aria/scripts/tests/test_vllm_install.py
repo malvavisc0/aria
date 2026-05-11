@@ -18,25 +18,19 @@ class TestDetectInstallTarget:
 
     def test_returns_cu126_for_cuda_126(self):
         """CUDA 12.6+ should map to cu126."""
-        with patch(
-            "aria.helpers.nvidia.get_cuda_version", return_value="12.6"
-        ):
+        with patch("aria.helpers.nvidia.get_cuda_version", return_value="12.6"):
             result = detect_install_target()
         assert result == "cu126"
 
     def test_returns_cu124_for_cuda_124(self):
         """CUDA 12.4 should map to cu124."""
-        with patch(
-            "aria.helpers.nvidia.get_cuda_version", return_value="12.4"
-        ):
+        with patch("aria.helpers.nvidia.get_cuda_version", return_value="12.4"):
             result = detect_install_target()
         assert result == "cu124"
 
     def test_returns_cu121_for_cuda_121(self):
         """CUDA 12.1 should map to cu121."""
-        with patch(
-            "aria.helpers.nvidia.get_cuda_version", return_value="12.1"
-        ):
+        with patch("aria.helpers.nvidia.get_cuda_version", return_value="12.1"):
             result = detect_install_target()
         assert result == "cu121"
 
@@ -77,9 +71,7 @@ class TestIsVllmInstalled:
 
     def test_returns_true_when_installed(self):
         """Should return True when vllm metadata is available."""
-        with patch.object(
-            importlib.metadata, "version", return_value="0.20.0"
-        ):
+        with patch.object(importlib.metadata, "version", return_value="0.20.0"):
             assert is_vllm_installed() is True
 
     def test_returns_false_when_not_installed(self):
@@ -97,9 +89,7 @@ class TestGetVllmVersion:
 
     def test_returns_version_string(self):
         """Should return version string when vllm is installed."""
-        with patch.object(
-            importlib.metadata, "version", return_value="0.20.0"
-        ):
+        with patch.object(importlib.metadata, "version", return_value="0.20.0"):
             assert get_vllm_version() == "0.20.0"
 
     def test_returns_empty_string_when_not_installed(self):

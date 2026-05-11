@@ -1,6 +1,5 @@
 """Tests for the extras CLI module."""
 
-
 from aria.cli.extras import (
     _EXCLUDED_BINARIES,
     get_venv_extras,

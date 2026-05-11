@@ -41,9 +41,9 @@ class TestCalculateMaxSafeContext:
 
     def test_llm_maximum_tier(self):
         """Test LLM with memory exceeding all tiers."""
-        # 200GB free should give maximum tier
+        # 200GB free should give maximum tier (128GB threshold → 1,572,864 tokens)
         result = calculate_max_safe_context(204800, 0, False)
-        assert result == 2097152
+        assert result == 1572864
 
     # ========================================================================
     # Basic Functionality Tests - Embedding Models

@@ -19,29 +19,20 @@ from aria.helpers.network import get_network_ip
 console = Console()
 
 
-def _find_project_root() -> Path:
-    """Walk up from this file to find the project root (contains pyproject.toml).
+def _get_aria_home() -> Path:
+    """Return the ARIA_HOME directory (defaults to ~/.aria)."""
+    import os
 
-    Mirrors the same helper in ``aria.config.folders`` — kept separate to
-    avoid importing that module before the ``.env`` file exists (its module-
-    level code reads ``ARIA_HOME`` from the environment).
-    """
-    current = Path(__file__).resolve().parent
-    for parent in [current, *current.parents]:
-        if (parent / "pyproject.toml").exists():
-            return parent
-    return Path.cwd()
-
-
-_PROJECT_ROOT = _find_project_root()
+    return Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
 
 
 def is_initialized() -> bool:
     """Check if the environment is already initialized.
 
-    Returns True if .env exists with a non-empty CHAINLIT_AUTH_SECRET.
+    Returns True if .env exists in ARIA_HOME with a non-empty
+    CHAINLIT_AUTH_SECRET.
     """
-    env_file = _PROJECT_ROOT / ".env"
+    env_file = _get_aria_home() / ".env"
     if not env_file.exists():
         return False
 
@@ -63,8 +54,16 @@ def generate_secret() -> str:
 
 
 def setup_env_file() -> bool:
-    """Create .env from .env.example with generated secret and network IP."""
-    env_file = _PROJECT_ROOT / ".env"
+    """Create .env from .env.example with generated secret and network IP.
+
+    Creates the .env file in ARIA_HOME (defaults to ~/.aria).
+    """
+    import os
+
+    aria_home = Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
+    aria_home.mkdir(parents=True, exist_ok=True)
+    env_file = aria_home / ".env"
+
     if env_file.exists():
         return False
 
@@ -80,7 +79,10 @@ def setup_env_file() -> bool:
 
     # Detect and set network IP for SERVER_HOST
     network_ip = get_network_ip()
-    content = content.replace("SERVER_HOST = 0.0.0.0", f"SERVER_HOST = {network_ip}")
+    content = content.replace(
+        "SERVER_HOST = 0.0.0.0",
+        f"SERVER_HOST = {network_ip}",
+    )
 
     env_file.write_text(content)
 

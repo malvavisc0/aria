@@ -4,25 +4,15 @@ import stat
 from pathlib import Path
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QColor, QIcon, QPalette, QTextCharFormat
-from PySide6.QtWidgets import (
-    QApplication,
-    QBoxLayout,
-    QMainWindow,
-    QScrollArea,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtGui import QColor, QTextCharFormat
+from PySide6.QtWidgets import QApplication, QMainWindow
 
-from aria.config.database import ChromaDB, SQLite
 from aria.config.folders import Debug
 from aria.config.models import Chat
 from aria.gui.dialogs import AboutDialog
 from aria.gui.tray import TrayIcon
 from aria.gui.ui.mainwindow import Ui_MainWindow
 from aria.gui.windows.server_handlers import ServerHandlersMixin
-from aria.gui.windows.settings_handlers import SettingsHandlersMixin
-from aria.gui.windows.setup_handlers import SetupHandlersMixin
 from aria.gui.windows.user_handlers import UserHandlersMixin
 
 
@@ -86,8 +76,6 @@ def friendly_permissions(path: Path) -> dict[str, list[str]]:
 class MainWindow(
     UserHandlersMixin,
     ServerHandlersMixin,
-    SetupHandlersMixin,
-    SettingsHandlersMixin,
     QMainWindow,
 ):
     """Main application window with user management and logs."""
@@ -97,22 +85,42 @@ class MainWindow(
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        # Hide redundant title label (window title bar shows "Aria")
+        self.ui.label_title.hide()
+
+        # Increase minimum height so content is readable
+        self.setMinimumSize(600, 650)
+
+        # Make form fields expand to fill available width
+        from PySide6.QtWidgets import QFormLayout
+
+        self.ui.formLayout_remote.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
+        )
+
+        # Set button properties per design system
+        self.ui.pushButton_CreateUser.setProperty("primary", True)
+        self.ui.pushButton_ServiceStart.setProperty("primary", True)
+        self.ui.pushButton_DeleteUser.setProperty("danger", True)
+        self.ui.pushButton_ServiceStop.setProperty("warning", True)
+
         self._connect_menu_signals()
         self._connect_tab_signals()
         self._connect_user_management_signals()
 
         self._init_server_manager()
         self._connect_server_signals()
-
-        self._connect_setup_signals()
-        self._connect_settings_signals()
+        self.ui.pushButton_SaveSettings.clicked.connect(self._save_remote_settings)
 
         self.load_overview()
-        self.load_setup()
         self._run_preflight()
+
+        # Initialize connection mode based on platform
+        self._init_connection_mode()
 
         self._tray_icon = TrayIcon(self)
         self._force_quit = False
+        self._wizard: object = None
 
         # Incremental log reading state
         self._log_file_offset: int = 0
@@ -173,15 +181,9 @@ class MainWindow(
             running: True if auto-refresh is active, False if paused.
         """
         if running:
-            self.ui.pushButton_AutoRefresh.setText("Pause Auto-Refresh")
-            self.ui.pushButton_AutoRefresh.setIcon(
-                QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackPause))
-            )
+            self.ui.pushButton_AutoRefresh.setText("Pause")
         else:
-            self.ui.pushButton_AutoRefresh.setText("Resume Auto-Refresh")
-            self.ui.pushButton_AutoRefresh.setIcon(
-                QIcon(QIcon.fromTheme(QIcon.ThemeIcon.MediaPlaybackStart))
-            )
+            self.ui.pushButton_AutoRefresh.setText("Resume")
 
     def toggle_auto_refresh(self):
         """Toggle the auto-refresh timer on or off."""
@@ -235,37 +237,19 @@ class MainWindow(
             return []
 
     def _log_text_color(self) -> QColor:
-        """Return the default text color from the application palette.
-
-        This ensures log text is readable on both light and dark system
-        themes instead of using a hardcoded color like ``#333333`` that
-        becomes invisible on dark backgrounds.
-        """
-        palette = QApplication.palette()
-        return palette.color(QPalette.ColorRole.WindowText)
+        """Return the default log text color for the styled light log view."""
+        return QColor("#111318")
 
     def _log_muted_color(self) -> QColor:
-        """Return a muted version of the palette text color for INFO lines.
-
-        Blends the palette's text and window (background) colors at 55%
-        opacity so the result is always legible regardless of theme.
-        """
-        palette = QApplication.palette()
-        fg = palette.color(QPalette.ColorRole.WindowText)
-        bg = palette.color(QPalette.ColorRole.Window)
-        ratio = 0.55
-        return QColor(
-            int(fg.red() * ratio + bg.red() * (1 - ratio)),
-            int(fg.green() * ratio + bg.green() * (1 - ratio)),
-            int(fg.blue() * ratio + bg.blue() * (1 - ratio)),
-        )
+        """Return a muted but readable color for INFO lines."""
+        return QColor("#62666B")
 
     def _format_log_line(self, stripped: str):
         """Return (level, color) for a log line."""
         if " ERROR " in stripped or stripped.startswith("ERROR"):
-            return "ERROR", QColor("#c62828")
+            return "ERROR", QColor("#DC2626")  # --error
         if " WARNING " in stripped or stripped.startswith("WARNING"):
-            return "WARNING", QColor("#e65100")
+            return "WARNING", QColor("#D97706")  # --warning
         if " INFO " in stripped or stripped.startswith("INFO"):
             return "INFO", self._log_muted_color()
         return "", self._log_text_color()
@@ -374,37 +358,112 @@ class MainWindow(
         self._log_filter_active = has_filter
 
     def load_overview(self):
-        self.ui.label_DebugLogsPath.setText(str(Debug.logs_path.absolute()))
+        """Load overview tab content - local status."""
+        from aria.config.api import Vllm
 
-        self.ui.label_DatabaseLocation.setText(str(SQLite.file_path.absolute()))
-        db_exists = SQLite.file_path.exists()
-        if db_exists:
-            self.ui.label_DatabaseFileExists.setText("Yes")
-            self.ui.label_DatabaseSize.setText(human_size(SQLite.file_path))
-            permissions = "+".join(friendly_permissions(SQLite.file_path)["Owner"])
-            self.ui.label_DatabasePermissions.setText(permissions)
+        # Update local status
+        self.ui.label_LocalEndpointValue.setText(Chat.api_url)
+
+        # Populate remote settings from config
+        self.ui.lineEdit_EndpointUrl.setText(Chat.api_url)
+        self.ui.lineEdit_ApiKey.setText(Vllm.api_key)
+        self.ui.lineEdit_Model.setText(Chat.model)
+        # Select matching context size in combo box
+        try:
+            idx = self._CONTEXT_VALUES.index(Vllm.chat_context_size)
+        except ValueError:
+            idx = 1  # default to 32K
+        self.ui.comboBox_ContextSize.setCurrentIndex(idx)
+
+    # Ordered list matching comboBox_ContextSize item indices
+    _CONTEXT_VALUES: list[int] = [
+        24576,
+        32768,
+        49152,
+        65536,
+        131072,
+        262144,
+        393216,
+        524288,
+        786432,
+        1048576,
+    ]
+
+    # Context size → recommended TOKEN_LIMIT_RATIO
+    _RATIO_TABLE: dict[int, float] = {
+        24576: 0.85,
+        32768: 0.80,
+        49152: 0.75,
+        65536: 0.70,
+        131072: 0.60,
+        262144: 0.50,
+        393216: 0.45,
+        524288: 0.40,
+        786432: 0.35,
+        1048576: 0.30,
+    }
+
+    def _save_remote_settings(self):
+        """Save remote settings from the UI back to the .env file."""
+        from pathlib import Path
+
+        from aria.config import reload_env
+        from aria.helpers.dotenv import parse_dotenv, write_dotenv
+
+        env_path = Path.home() / ".aria" / ".env"
+        values, raw_lines = parse_dotenv(env_path)
+
+        ctx_size = self._CONTEXT_VALUES[self.ui.comboBox_ContextSize.currentIndex()]
+
+        values["CHAT_OPENAI_API"] = self.ui.lineEdit_EndpointUrl.text()
+        values["ARIA_VLLM_API_KEY"] = self.ui.lineEdit_ApiKey.text()
+        values["CHAT_MODEL"] = self.ui.lineEdit_Model.text()
+        values["CHAT_CONTEXT_SIZE"] = str(ctx_size)
+
+        ratio = self._RATIO_TABLE.get(ctx_size, 0.80)
+        values["TOKEN_LIMIT_RATIO"] = f"{ratio:.2f}"
+
+        write_dotenv(env_path, values, raw_lines)
+        reload_env()
+
+        self.statusBar().showMessage("Settings saved.", 5000)
+
+    def _init_connection_mode(self):
+        """Detect platform and set appropriate default connection mode.
+
+        On macOS, vLLM is not supported, so default to Remote API mode.
+        Connects radio button signals for runtime toggling.
+        """
+        import sys
+
+        # Connect radio button signals
+        self.ui.radioButton_RemoteMode.toggled.connect(self._on_connection_mode_toggled)
+
+        if sys.platform == "darwin":
+            self.ui.radioButton_RemoteMode.setChecked(True)
+            self.ui.radioButton_LocalMode.setEnabled(False)
+            self.ui.radioButton_LocalMode.setToolTip("vLLM is not supported on macOS.")
         else:
-            self.ui.label_DatabaseFileExists.setText("No")
-            self.ui.label_DatabaseSize.setText("-")
-            self.ui.label_DatabasePermissions.setText("-")
+            self.ui.radioButton_LocalMode.setChecked(True)
 
-        self.ui.label_LLMChatAPIURL.setText(
-            f'<a href="{Chat.api_url}">{Chat.api_url}</a>'
-        )
-        self.ui.label_VectorDB.setText(str(ChromaDB.db_path.absolute()))
+    def _on_connection_mode_toggled(self, checked: bool):
+        """Handle connection mode radio button toggle.
+
+        The Remote radio emits toggled(True) when selected.
+        """
+        if not checked:
+            return  # Ignore unchecked signal from the other radio
+        remote = self.ui.radioButton_RemoteMode.isChecked()
+        self.ui.frame_RemoteSettings.setVisible(remote)
+        self.ui.frame_LocalStatus.setVisible(not remote)
 
     def on_tab_changed(self, index: int):
         """Handle tab changes - load content when tabs are selected."""
         match self.ui.tabWidget.widget(index):
-            case self.ui.tab_overview:
+            case self.ui.tab_home:
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()
                 self.load_overview()
-                self._run_preflight()
-            case self.ui.tab_setup:
-                self._logs_timer.stop()
-                self.statusBar().clearMessage()
-                self.load_setup()
                 self._run_preflight()
             case self.ui.tab_users:
                 self._logs_timer.stop()
@@ -415,77 +474,20 @@ class MainWindow(
                 self._logs_timer.start(5000)
                 self._set_auto_refresh_running(True)
                 self.statusBar().showMessage(str(Debug.logs_path))
-            case self.ui.tab_settings:
-                self._logs_timer.stop()
-                self.statusBar().clearMessage()
-                self.load_settings()
             case _:
                 self._logs_timer.stop()
                 self.statusBar().clearMessage()
 
     def _setup_responsive_layouts(self) -> None:
-        """Wrap the Setup tab in a QScrollArea for small screens.
+        """Initialize responsive layout settings.
 
-        The Overview and Users tabs use dynamic direction switching
-        handled in ``resizeEvent``, which is sufficient for responsive
-        behaviour without scroll areas.
+        The Home tab uses dynamic direction switching handled in resizeEvent.
         """
-        # --- Setup tab: wrap in QScrollArea (Responsive #4) ---
-        tab_setup = self.ui.tab_setup
-        old_layout = tab_setup.layout()
-        assert old_layout is not None  # guaranteed by Qt
-
-        scroll = QScrollArea(tab_setup)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-
-        container = QWidget()
-        inner_layout = QVBoxLayout(container)
-        inner_layout.setContentsMargins(8, 8, 8, 8)
-        inner_layout.setSpacing(8)
-
-        while old_layout.count():
-            item = old_layout.takeAt(0)
-            if item is None:
-                continue
-            w = item.widget()
-            if w is not None:
-                inner_layout.addWidget(w)
-            else:
-                child_layout = item.layout()
-                if child_layout is not None:
-                    inner_layout.addLayout(child_layout)
-                else:
-                    inner_layout.addItem(item)
-
-        scroll.setWidget(container)
-
-        # Reuse the emptied layout — Qt won't accept a new layout when
-        # the old one still exists on the widget.
-        old_layout.setContentsMargins(0, 0, 0, 0)
-        old_layout.addWidget(scroll)
-
-        # Initial responsive check
-        self._narrow_mode = self.width() < 900
-        self._apply_layout_direction()
-
-    def _apply_layout_direction(self) -> None:
-        """Switch side-by-side layouts to vertical on narrow windows."""
-        direction = (
-            QBoxLayout.Direction.TopToBottom
-            if self._narrow_mode
-            else QBoxLayout.Direction.LeftToRight
-        )
-        self.ui.horizontalLayout_overview_bottom.setDirection(direction)
-        self.ui.horizontalLayout_users.setDirection(direction)
+        pass
 
     def resizeEvent(self, event) -> None:  # type: ignore[override]
-        """Switch layouts when the window crosses the 900 px threshold."""
+        """Handle window resize events."""
         super().resizeEvent(event)
-        narrow = self.width() < 900
-        if narrow != self._narrow_mode:
-            self._narrow_mode = narrow
-            self._apply_layout_direction()
 
     def show_about_dialog(self):
         """Show the About dialog."""
@@ -504,14 +506,21 @@ class MainWindow(
             self.hide()
             return
 
+        # Close wizard if open (it runs a nested event loop)
+        wizard = getattr(self, "_wizard", None)
+        if wizard is not None:
+            wizard.reject()
+
+        # Stop server before closing
+        if hasattr(self, "_server_manager"):
+            self._server_manager.stop()
+
         if hasattr(self, "_server_timer"):
             self._server_timer.stop()
 
-        if hasattr(self, "_llama_dl_thread"):
-            self._cleanup_llama_dl_thread()
-        if hasattr(self, "_model_dl_thread"):
-            self._cleanup_model_dl_thread()
-        if hasattr(self, "_lightpanda_dl_thread"):
-            self._cleanup_lightpanda_dl_thread()
+        # Hide tray icon so QApplication can exit
+        if hasattr(self, "_tray_icon"):
+            self._tray_icon._tray.hide()
 
         super().closeEvent(event)
+        QApplication.quit()

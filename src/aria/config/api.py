@@ -39,21 +39,15 @@ class Vllm:
         "ARIA_VLLM_TOOL_CALL_PARSER", "qwen3_coder"
     )
     reasoning_parser: str = get_optional_env("ARIA_VLLM_REASONING_PARSER", "")
-    chat_template_kwargs: str = get_optional_env(
-        "ARIA_VLLM_CHAT_TEMPLATE_KWARGS", ""
-    )
+    chat_template_kwargs: str = get_optional_env("ARIA_VLLM_CHAT_TEMPLATE_KWARGS", "")
     vision_enabled: bool = (
         get_optional_env("ARIA_VLLM_VISION_ENABLED", "").lower() == "true"
     )
-    data_parallel_size: int = int(
-        get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1")
-    )
+    data_parallel_size: int = int(get_optional_env("ARIA_VLLM_DATA_PARALLEL_SIZE", "1"))
     expert_parallel: bool = (
         get_optional_env("ARIA_VLLM_EXPERT_PARALLEL", "").lower() == "true"
     )
-    mm_encoder_tp_mode: str = get_optional_env(
-        "ARIA_VLLM_MM_ENCODER_TP_MODE", ""
-    )
+    mm_encoder_tp_mode: str = get_optional_env("ARIA_VLLM_MM_ENCODER_TP_MODE", "")
     mm_processor_cache_type: str = get_optional_env(
         "ARIA_VLLM_MM_PROCESSOR_CACHE_TYPE", ""
     )
@@ -66,9 +60,7 @@ class Vllm:
     """KV cache offload strategy: 'off' (GPU-only), 'auto' (enable when VRAM
     is tight), 'ram' (force RAM offload).  Default: 'off'."""
 
-    _kv_offloading_size_raw = get_optional_env(
-        "ARIA_VLLM_KV_OFFLOADING_SIZE_GB", ""
-    )
+    _kv_offloading_size_raw = get_optional_env("ARIA_VLLM_KV_OFFLOADING_SIZE_GB", "")
     kv_offloading_size_gb: float | None = (
         float(_kv_offloading_size_raw) if _kv_offloading_size_raw else None
     )
@@ -101,6 +93,19 @@ class Vllm:
         )
 
     max_tokens: int = int(get_optional_env("ARIA_MAX_TOKENS", "8192"))
+
+    # --- LLM sampling parameters ---
+    temperature: float = float(get_optional_env("ARIA_VLLM_TEMPERATURE", "0.1"))
+    top_p: float = float(get_optional_env("ARIA_VLLM_TOP_P", "0.95"))
+    top_k: int = int(get_optional_env("ARIA_VLLM_TOP_K", "20"))
+    min_p: float = float(get_optional_env("ARIA_VLLM_MIN_P", "0.0"))
+    presence_penalty: float = float(
+        get_optional_env("ARIA_VLLM_PRESENCE_PENALTY", "0.0")
+    )
+    repetition_penalty: float = float(
+        get_optional_env("ARIA_VLLM_REPETITION_PENALTY", "1.0")
+    )
+    seed: int = int(get_optional_env("ARIA_VLLM_SEED", "42"))
 
     # Context sizes for each model type
     # Use int(v) if v is non-empty, otherwise fall back to default

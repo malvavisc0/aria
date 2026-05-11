@@ -40,37 +40,20 @@
      <widget class="QLineEdit" name="lineEdit_Name"/>
     </item>
     <item row="1" column="0">
-     <widget class="QLabel" name="label_Email">
-      <property name="text">
-       <string>Email:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QLineEdit" name="lineEdit_Email"/>
-    </item>
-    <item row="2" column="0">
      <widget class="QLabel" name="label_Password">
       <property name="text">
        <string>Password:</string>
       </property>
      </widget>
     </item>
-    <item row="2" column="1">
+    <item row="1" column="1">
      <widget class="QLineEdit" name="lineEdit_Password">
       <property name="echoMode">
        <enum>QLineEdit::EchoMode::Password</enum>
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_PasswordHint">
-      <property name="text">
-       <string/>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1">
+    <item row="2" column="1">
      <widget class="QLabel" name="label_PasswordHintText">
       <property name="styleSheet">
        <string notr="true">color: rgb(104, 104, 104); font-style: italic;</string>

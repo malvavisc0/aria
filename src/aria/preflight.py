@@ -489,9 +489,7 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
                     name="Unified Memory",
                     passed=True,
                     category="hardware",
-                    details=(
-                        f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"
-                    ),
+                    details=(f"{_mb_to_gb(total_ram_mb)} (Apple Silicon Metal)"),
                 )
             )
     else:

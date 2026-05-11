@@ -52,18 +52,19 @@ def get_chat_llm(
         is_chat_model=True,
         is_function_calling_model=True,
         max_tokens=max_tokens,
-        temperature=0.1,
+        temperature=VllmConfig.temperature,
         additional_kwargs={
             "extra_body": {
-                "top_p": 0.95,
-                "top_k": 20,
-                "min_p": 0.0,
-                "presence_penalty": 0.0,
-                "repetition_penalty": 1.0,
-                "seed": 42,
+                "top_p": VllmConfig.top_p,
+                "top_k": VllmConfig.top_k,
+                "min_p": VllmConfig.min_p,
+                "presence_penalty": VllmConfig.presence_penalty,
+                "repetition_penalty": VllmConfig.repetition_penalty,
+                "seed": VllmConfig.seed,
             },
         },
     )
+
     return llm
 
 

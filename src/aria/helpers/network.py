@@ -3,6 +3,26 @@
 import socket
 
 
+def resolve_display_host(host: str) -> str:
+    """Resolve a bind address to a user-friendly display URL.
+
+    When the server binds to ``0.0.0.0`` or ``::`` (all interfaces),
+    or when the host is empty, returns the detected LAN IP so users
+    can access the server from other devices.  Falls back to
+    ``localhost`` if detection fails.
+
+    Args:
+        host: The bind address from the server configuration.
+
+    Returns:
+        A human-readable host string suitable for display or URL links.
+    """
+    if not host or host in ("0.0.0.0", "::"):
+        ip = get_network_ip()
+        return ip if ip and ip != "0.0.0.0" else "localhost"
+    return host
+
+
 def get_network_ip() -> str:
     """Detect the local network IP address.
 
