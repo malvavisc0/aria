@@ -225,8 +225,12 @@ class TestScratchpadPressureThreshold:
         mod = _reload_compress()
         assert mod.SCRATCHPAD_PRESSURE_THRESHOLD == 0.60
 
-    def test_invalid_env_falls_back_to_default(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("ARIA_SCRATCHPAD_PRESSURE_THRESHOLD", "not-a-number")
+    def test_invalid_env_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setenv(
+            "ARIA_SCRATCHPAD_PRESSURE_THRESHOLD", "not-a-number"
+        )
         mod = _reload_compress()
         assert mod.SCRATCHPAD_PRESSURE_THRESHOLD == 0.40
 
@@ -235,7 +239,6 @@ class TestRatioOverrides:
     """Tests that ratio env vars override defaults."""
 
     def test_min_ratio_override(self, monkeypatch: pytest.MonkeyPatch):
-        from aria.llm._compress import _compute_thresholds
 
         monkeypatch.setenv("ARIA_COMPRESS_MIN_RATIO", "0.01")
         mod = _reload_compress()
@@ -244,7 +247,6 @@ class TestRatioOverrides:
         assert t["min_chars"] == 1310
 
     def test_max_ratio_override(self, monkeypatch: pytest.MonkeyPatch):
-        from aria.llm._compress import _compute_thresholds
 
         monkeypatch.setenv("ARIA_COMPRESS_MAX_RATIO", "0.05")
         mod = _reload_compress()
@@ -268,7 +270,9 @@ class TestAbsoluteOverrides:
         t = mod._compute_thresholds(32768)
         assert t["max_chars"] == 5000
 
-    def test_absolute_overrides_all_ratios(self, monkeypatch: pytest.MonkeyPatch):
+    def test_absolute_overrides_all_ratios(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setenv("ARIA_COMPRESS_MIN_CHARS", "10")
         monkeypatch.setenv("ARIA_COMPRESS_MAX_CHARS", "200")
         monkeypatch.setenv("ARIA_COMPRESS_HEAD_CHARS", "50")
@@ -304,11 +308,9 @@ class TestOverlapGuard:
     def test_medium_overlap_returns_original(self):
         """When head + tail >= length, compression skips."""
         from aria.llm._compress import (
-            _compute_thresholds,
             compress_tool_output,
         )
 
-        t = _compute_thresholds(32768)
         # Create text where head + tail >= length but length > min_chars
         # min=655, head=655, tail=262 → head+tail=917
         # So a 918-char text just barely exceeds min but head+tail > length
@@ -341,7 +343,9 @@ class TestOverlapGuard:
                 match = re.search(r"dropped ([\d,]+) chars", result)
                 if match:
                     dropped = int(match.group(1).replace(",", ""))
-                    assert dropped >= 0, f"Negative dropped ({dropped}) for size {size}"
+                    assert (
+                        dropped >= 0
+                    ), f"Negative dropped ({dropped}) for size {size}"
 
 
 class TestContextScaling:
@@ -376,6 +380,6 @@ class TestContextScaling:
             assert t262[key] > t131[key], f"{key} should grow with context"
             # Verify proportionality (within rounding)
             ratio_262_32 = t262[key] / t32[key]
-            assert 7.5 < ratio_262_32 < 8.5, (
-                f"{key}: 262K/32K ratio should be ~8×, got {ratio_262_32}"
-            )
+            assert (
+                7.5 < ratio_262_32 < 8.5
+            ), f"{key}: 262K/32K ratio should be ~8×, got {ratio_262_32}"

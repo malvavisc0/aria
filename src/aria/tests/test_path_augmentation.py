@@ -2,7 +2,6 @@
 
 import os
 import sys
-from pathlib import Path
 
 from aria.config.folders import get_augmented_env, get_augmented_path
 

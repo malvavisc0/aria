@@ -6,7 +6,7 @@
 #   ROCm:      docker build --build-arg BASE_IMAGE=vllm/vllm-openai-rocm:latest -t aria-rocm .
 #
 # Run:
-#   docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+#   docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
 # ─────────────────────────────────────────────────────────────────────────────
 
 ARG BASE_IMAGE=vllm/vllm-openai:latest
@@ -24,7 +24,7 @@ RUN mkdir -p /app/data
 WORKDIR /app
 
 # ── Expose Chainlit web UI port ───────────────────────────────────────────────
-EXPOSE 8000
+EXPOSE 9876
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 ENTRYPOINT ["aria", "server", "run"]

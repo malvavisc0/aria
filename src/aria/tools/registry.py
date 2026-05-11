@@ -15,7 +15,6 @@ Categories:
 """
 
 from collections.abc import Callable
-from typing import Dict, List, Optional
 
 from llama_index.core.tools import FunctionTool
 from loguru import logger

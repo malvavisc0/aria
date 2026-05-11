@@ -5,6 +5,9 @@
 **Your local AI assistant with a unified tool-driven architecture**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/malvavisc0/aria/actions/workflows/ci.yml/badge.svg)](https://github.com/malvavisc0/aria/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/aria)](https://pypi.org/project/aria/)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fmalvavisc0%2Faria-2496ED?logo=docker&logoColor=white)](https://github.com/malvavisc0/aria/pkgs/container/aria)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
@@ -22,7 +25,7 @@
 
 | | Feature | Description |
 |:--|:--------|:------------|
-| 🎯 | **Unified Tool Architecture** | 6 categories, 25 tools managed by a centralized registry |
+| 🎯 | **Unified Tool Architecture** | 7 categories, 33 tools managed by a centralized registry |
 | 🖥️ | **Multiple Interfaces** | Web UI, CLI, and native PySide6 desktop GUI |
 | 🤖 | **Local LLM Support** | Run models locally with vLLM (GPU-accelerated inference with GPTQ/AWQ quantization) |
 | 🌐 | **Browser Automation** | Lightpanda headless browser with CDP/Playwright support |
@@ -38,27 +41,45 @@
 
 ## 🚀 Quick Start
 
+### Option A — Run from source
+
 ```bash
-# Clone and install
 git clone git@github.com:malvavisc0/aria.git
 cd aria
 uv sync
-
-# Start the server
 aria server run
-
-# Open http://localhost:8000 in your browser
+# → Open http://localhost:9876
 ```
 
-<details>
-<summary>📦 Install with GUI support</summary>
+### Option B — Install from PyPI
 
 ```bash
-uv sync --extra gui
-aria-gui  # Launch desktop application
+pip install aria
+aria server run
+# → Open http://localhost:9876
 ```
 
-</details>
+### Option C — Docker (GPU required)
+
+```bash
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+# → Open http://localhost:9876
+```
+
+### Option D — Desktop GUI
+
+```bash
+pip install aria[gui]
+aria-gui
+```
+
+Or download the standalone binary for your platform from the [latest release](https://github.com/malvavisc0/aria/releases/latest):
+
+| Platform | File |
+|----------|------|
+| 🐧 Linux | `Aria-x86_64.AppImage` |
+| 🪟 Windows | `Aria-Windows-x86_64.zip` |
+| 🍎 macOS (Apple Silicon) | `Aria-macOS-arm64.zip` |
 
 ---
 
@@ -80,12 +101,12 @@ Aria evaluates each request, keeps core capabilities available by default, and p
 
 ## 🛠️ Tools
 
-Tools are organized into **6 categories** (25 tools) managed by a centralized registry. Core and file tools are always available; domain tools load on demand.
+Tools are organized into **7 categories** (33 tools) managed by a centralized registry. Core and file tools are always available; domain tools load on demand.
 
 | Category | Loading | Tools |
 |:---------|:--------|:------|
-| 🧠 **Core** | Always | reasoning, plan, scratchpad, shell |
-| 📁 **Files** | Always | read_file, write_file, edit_file, file_info, list_files, search_files, copy_file |
+| 🧠 **Core** | Always | reasoning, plan, knowledge, scratchpad, web_search, download, weather, shell |
+| 📁 **Files** | Always | read_file, write_file, edit_file, file_info, list_files, search_files, copy_file, delete_file, rename_file |
 | 🌍 **Browser** | On-demand | open_url, browser_click |
 | 🐍 **Development** | On-demand | python |
 | 📊 **Finance** | On-demand | fetch_current_stock_price, fetch_company_information, fetch_ticker_news |
@@ -233,9 +254,41 @@ Additional features:
 
 ## 🌐 Web UI
 
-After starting the server, access the web interface at `http://localhost:8000`
+After starting the server, access the web interface at `http://localhost:9876`
 
 The web UI is powered by [Chainlit](https://github.com/Chainlit/chainlit) and provides a chat interface to interact with Aria.
+
+---
+
+## 🐳 Docker
+
+### Quick start
+
+```bash
+# NVIDIA / CUDA
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+
+# AMD / ROCm
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+```
+
+### Docker Compose
+
+```bash
+# Copy and configure environment
+cp .env.example .env
+
+# NVIDIA / CUDA
+docker compose up -d
+
+# AMD / ROCm
+docker compose --profile rocm up -d aria-rocm
+```
+
+| Image | Base | GPU |
+|-------|------|-----|
+| `ghcr.io/malvavisc0/aria:latest` | vLLM (CUDA/CPU) | NVIDIA |
+| `ghcr.io/malvavisc0/aria-rocm:latest` | vLLM (ROCm) | AMD |
 
 ---
 

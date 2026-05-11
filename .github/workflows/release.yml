@@ -14,9 +14,9 @@ on:
         default: "v0.1.0"
 
 permissions:
-  contents: write   # needed to create GitHub Releases and upload assets
-  id-token: write   # needed for PyPI trusted publishing (OIDC)
-  packages: write   # needed to push Docker images to GHCR
+  contents: write # needed to create GitHub Releases and upload assets
+  id-token: write # needed for PyPI trusted publishing (OIDC)
+  packages: write # needed to push Docker images to GHCR
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
@@ -344,7 +344,8 @@ jobs:
   # ────────────────────────────────────────────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build-appimage, build-windows, build-macos, publish-pypi, build-docker]
+    needs:
+      [build-appimage, build-windows, build-macos, publish-pypi, build-docker]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
@@ -423,10 +424,10 @@ jobs:
 
             ```bash
             # CUDA / CPU
-            docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+            docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
 
             # ROCm (AMD GPUs)
-            docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+            docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
             ```
 
             ### First Run

@@ -16,14 +16,14 @@ Example:
 
 import logging
 
-# Suppress noisy debug logs from markdown_it and similar libraries
-logging.getLogger("markdown_it").setLevel(logging.WARNING)
-logging.getLogger("markdownify").setLevel(logging.WARNING)
-
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+
+# Suppress noisy debug logs from markdown_it and similar libraries
+logging.getLogger("markdown_it").setLevel(logging.WARNING)
+logging.getLogger("markdownify").setLevel(logging.WARNING)
 
 app = typer.Typer(
     name="check",
@@ -71,7 +71,9 @@ def _print_category(category: str, checks: list) -> tuple[int, int]:
     Returns:
         Tuple of (passed_count, failed_count) for this category.
     """
-    config = CATEGORY_CONFIG.get(category, {"icon": "•", "label": category.title()})
+    config = CATEGORY_CONFIG.get(
+        category, {"icon": "•", "label": category.title()}
+    )
     passed = sum(1 for c in checks if c.passed)
     failed = len(checks) - passed
 
@@ -88,7 +90,9 @@ def _print_category(category: str, checks: list) -> tuple[int, int]:
             details = f" [dim]({check.details})[/dim]" if check.details else ""
             console.print(f"   [green]✓[/green] {check.name}{details}")
         else:
-            console.print(f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]")
+            console.print(
+                f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]"
+            )
             if check.hint:
                 console.print(f"      [dim]→ {check.hint}[/dim]")
 
@@ -101,7 +105,9 @@ def _print_summary_panel(total_passed: int, total_failed: int, hints: list):
     total = total_passed + total_failed
 
     if total_failed == 0:
-        content = f"[green]✅ All {total} checks passed - System ready![/green]"
+        content = (
+            f"[green]✅ All {total} checks passed - System ready![/green]"
+        )
         style = "green"
     else:
         plural = "s" if total_failed > 1 else ""

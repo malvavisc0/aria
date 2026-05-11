@@ -151,7 +151,6 @@ class TestSanitizeMemory:
 
     @pytest.mark.asyncio
     async def test_empty_memory_is_noop(self) -> None:
-        from llama_index.core.base.llms.types import ChatMessage, MessageRole
 
         memory = self._make_memory()
         await pipeline._sanitize_memory(memory)

@@ -60,7 +60,6 @@ def get_chat_llm(
                 "min_p": 0.0,
                 "presence_penalty": 0.0,
                 "repetition_penalty": 1.0,
-                "min_p": 0.0,
                 "seed": 42,
             },
         },

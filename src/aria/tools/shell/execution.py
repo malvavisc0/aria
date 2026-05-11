@@ -12,7 +12,7 @@ from typing import Any
 
 from loguru import logger
 
-from aria.tools.shell.constants import CURRENT_OS, MAX_OUTPUT_SIZE
+from aria.tools.shell.constants import MAX_OUTPUT_SIZE
 from aria.tools.shell.validation import _extract_command_name
 
 # Strip ANSI escape sequences (colors, cursor movement, etc.)

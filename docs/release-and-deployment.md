@@ -196,15 +196,15 @@ Both images include vLLM for local model serving and Aria's web UI (Chainlit). E
 
 ```bash
 # CUDA / CPU
-docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
 
 # ROCm (AMD GPUs)
-docker run -p 8000:8000 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
 ```
 
 | Flag | Purpose |
 |------|---------|
-| `-p 8000:8000` | Expose the Chainlit web UI |
+| `-p 9876:9876` | Expose the Chainlit web UI |
 | `-v ./data:/app/data` | Persist databases, models, and config across restarts |
 
 The Docker image uses the same `Dockerfile` with a `BASE_IMAGE` build argument to select the vLLM variant. Authentication to GHCR uses OIDC (`packages: write` permission) — no secrets required.
