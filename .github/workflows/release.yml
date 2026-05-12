@@ -307,6 +307,11 @@ jobs:
             base_image: ""
             suffix: "-lite"
             dockerfile: "Dockerfile.debian"
+          - label: "ARM64 (Linux)"
+            base_image: ""
+            suffix: "-arm64"
+            dockerfile: "Dockerfile.debian"
+            platform: "linux/arm64"
 
     steps:
       - name: Checkout repository
@@ -329,6 +334,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -337,6 +345,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform || 'linux/amd64' }}
           push: true
           build-args: |
             BASE_IMAGE=${{ matrix.base_image }}
@@ -447,6 +456,12 @@ jobs:
               -v ./data:/app/data \
               --env-file .env \
               ghcr.io/malvavisc0/aria-ai-lite:latest
+
+            # ARM64 — Raspberry Pi 4 (remote LLM or CPU-only)
+            docker run -p 9876:9876 \
+              -v ./data:/app/data \
+              --env-file .env \
+              ghcr.io/malvavisc0/aria-ai-arm64:latest
             ```
 
             ### First Run

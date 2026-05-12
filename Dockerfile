@@ -19,10 +19,6 @@ LABEL org.opencontainers.image.source="https://github.com/malvavisc0/aria-ai"
 LABEL org.opencontainers.image.description="Aria — AI Assistant with web UI and local LLM support"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# ── Install uv (fast Python package installer) ───────────────────────────────
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    ln -s /root/.local/bin/uv /usr/local/bin/uv
-
 # ── Install Aria ──────────────────────────────────────────────────────────────
 RUN uv pip install --system --break-system-packages --no-cache aria-ai
 

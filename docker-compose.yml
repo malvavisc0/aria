@@ -67,6 +67,21 @@ services:
       - byparr
     restart: unless-stopped
 
+  # ── Aria ARM64 (Raspberry Pi 4 — remote LLM or CPU-only) ────────────────
+  # Usage: docker compose up -d aria-arm64
+  aria-arm64:
+    image: ghcr.io/malvavisc0/aria-ai-arm64:latest
+    container_name: aria-arm64
+    ports:
+      - "${SERVER_PORT:-9876}:9876"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    depends_on:
+      - searxng
+      - byparr
+    restart: unless-stopped
+
   # ── Aria ROCm (AMD GPUs) ──────────────────────────────────────────────────
   # Usage: docker compose --profile rocm up -d aria-rocm
   aria-rocm:
