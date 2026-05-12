@@ -56,9 +56,7 @@ def _validate_format(output_format: str) -> str:
     if output_format in SUPPORTED_FORMATS:
         return output_format
     supported = ", ".join(SUPPORTED_FORMATS)
-    error = (
-        f"Unsupported format '{output_format}'. Supported formats: {supported}"
-    )
+    error = f"Unsupported format '{output_format}'. Supported formats: {supported}"
     raise ContentParsingError(error)
 
 
@@ -69,9 +67,7 @@ def _is_html_content(content_type: str) -> bool:
 
 def _is_binary_content(content_type: str) -> bool:
     """Check if a content type represents binary content."""
-    return any(
-        binary_type in content_type for binary_type in BINARY_CONTENT_TYPES
-    )
+    return any(binary_type in content_type for binary_type in BINARY_CONTENT_TYPES)
 
 
 def _get_default_headers() -> dict[str, str]:
@@ -87,9 +83,7 @@ def _get_default_headers() -> dict[str, str]:
     }
 
 
-def _extract_filename_from_response(
-    response: httpx.Response, url: str
-) -> str | None:
+def _extract_filename_from_response(response: httpx.Response, url: str) -> str | None:
     """Extract filename from HTTP response headers or URL."""
     content_disp = response.headers.get("content-disposition", "")
     if content_disp:
@@ -161,9 +155,7 @@ def _fetch_file(
                 return content, content_type, filename
 
             except httpx.TimeoutException:
-                last_error = (
-                    f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
-                )
+                last_error = f"Request timeout (attempt {attempt + 1}/{MAX_RETRIES})"
             except httpx.HTTPStatusError as exc:
                 last_error = f"HTTP error {exc.response.status_code}"
                 if exc.response.status_code in [429, 503]:
@@ -196,16 +188,12 @@ def _is_markitdown_supported(content_type: str) -> bool:
         "text/xml",
         "application/xml",
     ]
-    return any(
-        supported_type in content_type for supported_type in supported_types
-    )
+    return any(supported_type in content_type for supported_type in supported_types)
 
 
 def _auto_detect_format(content_type: str) -> str:
     """Auto-detect the appropriate output format based on content type."""
-    if _is_html_content(content_type) or _is_markitdown_supported(
-        content_type
-    ):
+    if _is_html_content(content_type) or _is_markitdown_supported(content_type):
         return "markdown"
     if _is_binary_content(content_type):
         return "binary"
@@ -248,9 +236,7 @@ def _markitdown(content: str | bytes, content_type: str, url: str) -> str:
     return _clean_text(result)
 
 
-def _create_response(
-    tool: str, reason: str, file_path: str, metadata: dict
-) -> str:
+def _create_response(tool: str, reason: str, file_path: str, metadata: dict) -> str:
     """Create a success JSON response."""
     return tool_success_response(
         tool,
@@ -282,14 +268,12 @@ def _save_content_to_file(
             download_dir.mkdir(parents=True, exist_ok=True)
             if original_filename:
                 base_filename = Path(original_filename).stem
-                file_ext = Path(
-                    original_filename
-                ).suffix or _get_file_extension(url, content_type)
+                file_ext = Path(original_filename).suffix or _get_file_extension(
+                    url, content_type
+                )
             else:
                 url_path = urlparse(url).path
-                url_filename = (
-                    os.path.basename(url_path) if url_path else "content"
-                )
+                url_filename = os.path.basename(url_path) if url_path else "content"
                 base_filename = Path(url_filename).stem or "content"
                 file_ext = Path(url_filename).suffix or _get_file_extension(
                     url, content_type
@@ -298,9 +282,7 @@ def _save_content_to_file(
             resolved_path.parent.mkdir(parents=True, exist_ok=True)
             download_dir = resolved_path.parent
             base_filename = resolved_path.stem
-            file_ext = resolved_path.suffix or _get_file_extension(
-                url, content_type
-            )
+            file_ext = resolved_path.suffix or _get_file_extension(url, content_type)
     else:
         download_dir = Path(tempfile.mkdtemp(prefix="aria2_download_"))
         base_filename = "content"
