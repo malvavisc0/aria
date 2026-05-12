@@ -814,7 +814,8 @@
     <!-- Hero -->
     <section class="hero">
         <div class="hero-content">
-            <img src="../public/logo_dark.png" alt="Aria" class="hero-logo" id="hero-logo">
+            <img src="https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/logo_dark.png"
+                alt="Aria" class="hero-logo" id="hero-logo">
             <h1>An AI that lives on your hardware.</h1>
             <p class="hero-subtitle">
                 No cloud. No telemetry. Just a capable assistant with 33 tools,
@@ -1100,7 +1101,7 @@
             document.documentElement.setAttribute('data-theme', theme);
             document.getElementById('icon-moon').style.display = theme === 'dark' ? '' : 'none';
             document.getElementById('icon-sun').style.display = theme === 'light' ? '' : 'none';
-            const src = theme === 'dark' ? '../public/logo_dark.png' : '../public/logo_light.png';
+            const src = theme === 'dark' ? 'https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/logo_dark.png' : '../public/logo_light.png';
             document.getElementById('nav-logo-img').src = src;
             document.getElementById('hero-logo').src = src;
         }
