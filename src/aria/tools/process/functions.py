@@ -321,6 +321,8 @@ def _action_start(
             cwd=resolved_dir,
             env=proc_env,
             shell=use_shell,
+            close_fds=False,  # Let child inherit fds directly — avoids
+            # macOS posix_spawn edge-cases with dup2 + close_fds.
             start_new_session=True,  # Detach from parent process group
         )
 

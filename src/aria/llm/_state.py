@@ -26,6 +26,11 @@ from aria.llm._compress import (
     compress_tool_output,
 )
 
+# Cumulative tool output budget as fraction of context (chars).
+# When total tool output within a turn exceeds this, even "small"
+# outputs get compressed to prevent silent accumulation.
+_CUMULATIVE_BUDGET_RATIO = 0.15  # 15% of context in chars
+
 
 class ToolCallRecord(TypedDict):
     """A single tool invocation captured in the workflow state.
@@ -197,31 +202,41 @@ class StatefulAgentWorkflow(AgentWorkflow):
         await ctx.store.set("state", reduced_state)
         return reduced_state
 
-    async def _inject_pressure_warning(self, ctx: Any, ev: AgentSetup) -> None:
+    async def _inject_pressure_warning(
+        self, ctx: Any, messages: list[ChatMessage]
+    ) -> list[ChatMessage]:
         """Inject a context-pressure warning when scratchpad usage is high.
 
         When the cumulative tool output within a single turn approaches the
         context limit, the agent is told to consolidate and finish.  This
         prevents ``context_length_exceeded`` errors on long-running turns.
+
+        Returns a new list (never mutates the input) so retries use clean
+        messages.
         """
         try:
             from aria.config.api import Vllm as VllmConfig
 
             context_size = VllmConfig.chat_context_size
         except Exception:
-            return
+            return messages
 
-        approx_tokens = sum(len(str(m.content or "")) // 4 for m in ev.input)
+        approx_tokens = sum(len(str(m.content or "")) // 4 for m in messages)
         usage_ratio = approx_tokens / context_size if context_size else 0
 
         if usage_ratio >= SCRATCHPAD_PRESSURE_THRESHOLD:
             warning = (
-                f"⚠ Context is {usage_ratio:.0%} full "
+                f"\u26a0 Context is {usage_ratio:.0%} full "
                 f"({approx_tokens:,}/{context_size:,} tokens). "
                 f"Consolidate findings and produce a final answer now."
             )
             logger.warning(f"Scratchpad pressure {usage_ratio:.0%} — injecting warning")
-            ev.input.append(ChatMessage(role=MessageRole.SYSTEM, content=warning))
+            # Return a copy with the warning appended (no mutation).
+            return [
+                *messages,
+                ChatMessage(role=MessageRole.SYSTEM, content=warning),
+            ]
+        return messages
 
     async def run_agent_step(self, ctx: Any, ev: AgentSetup) -> AgentOutput:
         """Run the parent agent step and synchronize custom state.
@@ -233,16 +248,18 @@ class StatefulAgentWorkflow(AgentWorkflow):
         The state is updated on both success and failure so that
         ``WorkflowState.last_error`` always reflects the most recent outcome.
         If the LLM produces an empty terminal response after a tool failure,
-        a single retry is attempted before injecting a synthesized error report.
+        a single retry is attempted before injecting a synthesized error
+        report.
         """
-        # Check scratchpad pressure and warn the agent if needed.
-        await self._inject_pressure_warning(ctx, ev)
+        # Check scratchpad pressure — returns a NEW list (no mutation).
+        ev.input = await self._inject_pressure_warning(ctx, ev.input)
 
         # DIAGNOSTIC: log what's being sent
         msg_count = len(ev.input)
         approx_tokens = sum(len(str(m.content or "")) // 4 for m in ev.input)
         logger.info(
-            f"run_agent_step: {msg_count} messages, ~{approx_tokens} tokens "
+            f"run_agent_step: {msg_count} messages, "
+            f"~{approx_tokens} tokens "
             f"(roles: {[m.role.value for m in ev.input[:5]]}...)"
         )
         # END DIAGNOSTIC
@@ -250,38 +267,47 @@ class StatefulAgentWorkflow(AgentWorkflow):
         try:
             output = await super().run_agent_step(ctx, ev)
         except Exception:
-            # Re-raise after recording the failure in workflow state so that
-            # downstream consumers (e.g. UI error handlers) can inspect
-            # ``ctx.store["state"]["last_error"]`` for diagnostics.
+            # Re-raise — downstream consumers can inspect
+            # ctx.store["state"]["last_error"] for diagnostics.
             raise
         await self.reduce_state(ctx, output)
 
         # Guard against empty terminal responses after a tool failure.
-        # Some local models occasionally produce no text after receiving a
-        # tool error result — retry once, then synthesize a fallback reply.
+        # Some local models produce no text after a tool error result —
+        # retry once, then synthesize a fallback reply.
         if not output.tool_calls and not (output.response.content or "").strip():
             state = await ctx.store.get("state", default=None)
             last_err = (state or {}).get("last_error")
             if last_err:
-                # Retry the agent step once to give the model another chance.
+                # Retry once (ev.input is already clean — no dup warning).
                 try:
                     output = await super().run_agent_step(ctx, ev)
                     await self.reduce_state(ctx, output)
                 except Exception:
                     pass
 
-                # If still empty after retry, inject synthesized response.
+                # If still empty after retry, synthesize response.
                 if (
                     not output.tool_calls
                     and not (output.response.content or "").strip()
                 ):
                     output.response.content = (
-                        f"The tool call encountered an error:\n\n"
+                        "The tool call encountered an error:\n\n"
                         f"```\n{last_err}\n```\n\n"
-                        "I'll try a different approach if you'd like — "
-                        "just let me know how to proceed."
+                        "I'll try a different approach if you'd like"
+                        " \u2014 just let me know how to proceed."
                     )
         return output
+
+    async def _get_cumulative_budget(self, ctx: Any) -> int:
+        """Get the cumulative tool-output char budget for this turn."""
+        try:
+            from aria.config.api import Vllm as VllmConfig
+
+            ctx_chars = VllmConfig.chat_context_size * 4
+        except Exception:
+            ctx_chars = 32768 * 4
+        return int(ctx_chars * _CUMULATIVE_BUDGET_RATIO)
 
     async def call_tool(self, ctx: Any, ev: ToolCall) -> ToolCallResult:
         """Run the parent tool call step and synchronize custom state.
@@ -290,17 +316,18 @@ class StatefulAgentWorkflow(AgentWorkflow):
         is injected into the agent context, keeping the full output in
         ``ToolOutput.raw_output`` for logging/diagnostics.
 
-        If the parent ``call_tool`` raises unexpectedly (e.g. a failure in
-        tool lookup, event streaming, or an uncaught tool exception), the
-        error is caught and wrapped in an error :class:`ToolCallResult` so
-        the agent can surface it to the user instead of crashing the
-        workflow.
+        Tracks cumulative tool output size within the turn. When the
+        running total exceeds the budget, even normally-small outputs
+        are compressed to prevent silent accumulation.
+
+        If the parent ``call_tool`` raises unexpectedly, the error is
+        caught and wrapped in an error :class:`ToolCallResult` so the
+        agent can surface it instead of crashing the workflow.
         """
         try:
             result = await super().call_tool(ctx, ev)
         except Exception as exc:
-            # Build an error result so the workflow survives and the agent
-            # can report the failure to the user.
+            # Build an error result so the workflow survives.
             result = ToolCallResult(
                 tool_name=ev.tool_name,
                 tool_kwargs=ev.tool_kwargs,
@@ -317,17 +344,42 @@ class StatefulAgentWorkflow(AgentWorkflow):
             )
 
         # --- Record raw output in state BEFORE compression ---
-        # state_reducer reads output.content to populate ToolCallRecord.result,
-        # so we must reduce first to capture the full diagnostic output.
         await self.reduce_state(ctx, result)
 
         # --- Compress tool output to control scratchpad growth ---
         output = result.tool_output
         if not output.is_error:
             raw_content = str(getattr(output, "content", ""))
+
+            # Track cumulative tool output for budget enforcement.
+            cumulative = await ctx.store.get("_turn_tool_chars", default=0)
+            cumulative += len(raw_content)
+            await ctx.store.set("_turn_tool_chars", cumulative)
+
+            budget = await self._get_cumulative_budget(ctx)
+            force = cumulative > budget
+
             compressed = compress_tool_output(raw_content, ev.tool_name)
+            # If cumulative budget exceeded and normal compression
+            # didn't trigger (output was "small"), force compression.
+            if force and compressed == raw_content and len(raw_content) > 200:
+                from aria.llm._compress import _get_thresholds
+
+                t = _get_thresholds()
+                h_size = t["head_chars"] // 2
+                t_size = t["tail_chars"] // 2
+                head = raw_content[:h_size]
+                tail = raw_content[-t_size:]
+                dropped = len(raw_content) - len(head) - len(tail)
+                if dropped > 0:
+                    compressed = (
+                        head + f"\n\n[...budget-compressed — dropped "
+                        f"{dropped:,} chars. Cumulative output "
+                        f"({cumulative:,} chars) exceeds turn "
+                        f"budget ({budget:,} chars).]" + tail
+                    )
+
             if compressed != raw_content:
-                # Swap content for the LLM; raw_output kept for diagnostics.
                 output.raw_output = raw_content
                 output.content = compressed
 

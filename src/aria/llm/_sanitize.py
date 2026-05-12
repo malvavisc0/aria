@@ -13,17 +13,20 @@ transparently before every API call.
 
 import json
 import re
-from typing import Any, List, Sequence
+from typing import Any, Iterable, List, Sequence, cast
 
 from llama_index.core.base.llms.types import (
     ChatMessage,
     ChatResponse,
     ChatResponseAsyncGen,
     MessageRole,
+    TextBlock,
+    ThinkingBlock,
     ToolCallBlock,
 )
 from llama_index.llms.openai_like import OpenAILike
 from loguru import logger
+from openai.types.chat import ChatCompletionMessageParam
 
 
 def _sanitize_tool_call_args(arguments: Any) -> dict[str, Any]:
@@ -240,3 +243,149 @@ class SanitizedOpenAILike(OpenAILike):
     ) -> "ChatResponseAsyncGen":
         messages = _reorder_system_messages(_sanitize_messages(messages))
         return await super().astream_chat(messages, **kwargs)
+
+    async def _astream_chat(
+        self, messages: Sequence[ChatMessage], **kwargs: Any
+    ) -> "ChatResponseAsyncGen":
+        """Override to handle list-typed content deltas.
+
+        Some models (e.g. Claude via OpenRouter, or models with extended
+        thinking) return ``delta.content`` as a *list* of content blocks
+        instead of a plain string.  The parent implementation crashes with
+        ``TypeError: can only concatenate str (not "list") to str`` at
+        ``content += content_delta``.
+
+        This override normalises ``delta.content`` so that:
+        * Text blocks are extracted and concatenated into a plain string.
+        * Thinking blocks are accumulated into ``reasoning_content``.
+        """
+        # Lazy imports to avoid circular-dependency issues at module
+        # load time.
+        from llama_index.llms.openai.utils import (
+            to_openai_message_dicts,
+            update_tool_calls,
+        )
+        from openai.types.chat.chat_completion_chunk import (
+            ChatCompletionChunk,
+            ChoiceDelta,
+            ChoiceDeltaToolCall,
+        )
+
+        aclient = self._get_aclient()
+        message_dicts = cast(
+            Iterable[ChatCompletionMessageParam],
+            to_openai_message_dicts(messages, model=self.model),
+        )
+
+        # Extract model/stream explicitly so the type checker can
+        # resolve the correct OpenAI SDK overload.
+        all_kwargs = self._get_model_kwargs(**kwargs)
+        all_kwargs.pop("stream", None)
+        _model: str = all_kwargs.pop("model", self.model)
+
+        async def gen() -> "ChatResponseAsyncGen":
+            content = ""
+            reasoning_content = ""
+            tool_calls: List[ChoiceDeltaToolCall] = []
+            is_function = False
+            first_chat_chunk = True
+
+            async for response in await aclient.chat.completions.create(
+                messages=message_dicts,
+                model=_model,
+                stream=True,
+                **all_kwargs,
+            ):
+                blocks = []
+                response = cast(ChatCompletionChunk, response)
+                if len(response.choices) > 0:
+                    if (
+                        first_chat_chunk
+                        and response.choices[0].delta.content is None
+                        and response.choices[0].delta.tool_calls is None
+                    ):
+                        first_chat_chunk = False
+                        continue
+                    delta = response.choices[0].delta
+                else:
+                    delta = ChoiceDelta()
+                first_chat_chunk = False
+
+                if delta is None:
+                    continue
+
+                if delta.tool_calls:
+                    is_function = True
+
+                role = delta.role or MessageRole.ASSISTANT
+
+                # --- Normalise content delta ---
+                raw_content_delta = delta.content
+                if isinstance(raw_content_delta, list):
+                    text_parts: list[str] = []
+                    for block in raw_content_delta:
+                        if isinstance(block, dict):
+                            btype = block.get("type", "")
+                            if btype == "text":
+                                text_parts.append(block.get("text", ""))
+                            elif btype == "thinking":
+                                for tp in block.get("thinking", []):
+                                    if (
+                                        isinstance(tp, dict)
+                                        and tp.get("type") == "text"
+                                    ):
+                                        reasoning_content += tp.get("text", "")
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    content_delta = "".join(text_parts)
+                else:
+                    content_delta = raw_content_delta or ""
+                content += content_delta
+
+                # Extract reasoning_content for chain-of-thought
+                # streaming from providers that surface this field.
+                raw_reasoning = getattr(delta, "reasoning_content", None)
+                reasoning_delta = (
+                    raw_reasoning if isinstance(raw_reasoning, str) else ""
+                )
+                reasoning_content += reasoning_delta
+
+                if reasoning_content:
+                    blocks.append(ThinkingBlock(content=reasoning_content))
+                blocks.append(TextBlock(text=content))
+
+                message_additional_kwargs = {}
+                if is_function:
+                    tool_calls = update_tool_calls(tool_calls, delta.tool_calls)
+                    if tool_calls:
+                        message_additional_kwargs["tool_calls"] = tool_calls
+                        for tool_call in tool_calls:
+                            if tool_call.function:
+                                # Keep tool_kwargs as JSON string
+                                # (wire format). Fallback to "{}"
+                                # not {} (dict) to avoid repr issues.
+                                raw_args = tool_call.function.arguments or "{}"
+                                blocks.append(
+                                    ToolCallBlock(
+                                        tool_call_id=tool_call.id,
+                                        tool_kwargs=raw_args,
+                                        tool_name=(tool_call.function.name or ""),
+                                    )
+                                )
+
+                response_additional_kwargs = self._get_response_token_counts(response)
+                if reasoning_delta:
+                    response_additional_kwargs["thinking_delta"] = reasoning_delta
+
+                yield ChatResponse(
+                    message=ChatMessage(
+                        role=role,
+                        blocks=blocks,
+                        additional_kwargs=message_additional_kwargs,
+                    ),
+                    delta=content_delta,
+                    raw=response,
+                    additional_kwargs=response_additional_kwargs,
+                )
+
+        return gen()

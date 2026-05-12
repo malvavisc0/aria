@@ -19,11 +19,18 @@ scale correctly across hardware profiles (32K, 131K, 262K, etc.).
 
 The notice tells the agent the output was compressed so it can request
 smaller chunks via ``offset``/``length`` or ``max_results``.
+
+JSON-aware cutting
+------------------
+When the output looks like JSON, cut points are adjusted to the nearest
+structural boundary (newline, `},`, `]`) so the LLM receives parseable
+fragments rather than garbled mid-key splits.
 """
 
 from __future__ import annotations
 
 import os
+import re
 
 from loguru import logger
 
@@ -156,12 +163,72 @@ def _reset_threshold_cache() -> None:
     _get_thresholds._cache = {}  # type: ignore[attr-defined]
 
 
+# Regex for JSON structural boundaries suitable as cut points.
+_JSON_BOUNDARY = re.compile(r"[}\]],?\s*\n|\n")
+
+
+def _find_head_cut(output: str, budget: int) -> int:
+    """Find the best head cut point ≤ budget for JSON-like content.
+
+    Scans backwards from *budget* for a structural JSON boundary
+    (closing brace/bracket followed by comma and newline). Falls back
+    to the last newline, then raw budget if nothing is found.
+    """
+    if budget >= len(output):
+        return budget
+    # Search in the last 20% of the budget window for a boundary.
+    search_start = max(0, budget - budget // 5)
+    region = output[search_start:budget]
+    # Find last boundary in region.
+    match = None
+    for m in _JSON_BOUNDARY.finditer(region):
+        match = m
+    if match:
+        return search_start + match.end()
+    # Fallback: last newline in budget range.
+    nl = output.rfind("\n", 0, budget)
+    if nl > budget // 2:
+        return nl + 1
+    return budget
+
+
+def _find_tail_cut(output: str, start: int) -> int:
+    """Find the best tail start point ≥ start for JSON-like content.
+
+    Scans forward from *start* for a structural boundary (opening
+    brace/bracket or newline). Falls back to raw start.
+    """
+    if start <= 0:
+        return 0
+    # Search in the first 20% of the tail window for a boundary.
+    search_end = min(len(output), start + (len(output) - start) // 5)
+    region = output[start:search_end]
+    # Find first newline or opening struct in region.
+    match = re.search(r'\n\s*[{\["a-zA-Z]', region)
+    if match:
+        return start + match.start() + 1  # after the newline
+    nl = output.find("\n", start)
+    if nl != -1 and nl < search_end:
+        return nl + 1
+    return start
+
+
+def _is_json_like(output: str) -> bool:
+    """Heuristic: output looks like JSON or pretty-printed structured data."""
+    stripped = output.lstrip()
+    return stripped[:1] in ("{", "[") or stripped[:2] == '{"'
+
+
 def compress_tool_output(output: str, tool_name: str = "") -> str:
     """Compress a tool output to fit within the context budget.
 
     This is a *deterministic, lossy* compression — no LLM call needed.
     It keeps the beginning and end of large outputs with a notice so the
     agent knows data was dropped and can request smaller chunks.
+
+    For JSON-structured outputs, cut points are adjusted to structural
+    boundaries (closing braces, newlines) so the LLM receives parseable
+    fragments rather than garbled mid-key splits.
 
     Parameters
     ----------
@@ -184,15 +251,27 @@ def compress_tool_output(output: str, tool_name: str = "") -> str:
     if length <= t["min_chars"]:
         return output
 
+    json_like = _is_json_like(output)
+
     # --- Medium compression (head + tail) ---
     if length <= t["max_chars"]:
-        head = output[: t["head_chars"]]
-        tail = output[-t["tail_chars"] :]
-        dropped = length - t["head_chars"] - t["tail_chars"]
+        head_budget = t["head_chars"]
+        tail_budget = t["tail_chars"]
+
+        if json_like:
+            head_end = _find_head_cut(output, head_budget)
+            tail_start = _find_tail_cut(output, length - tail_budget)
+        else:
+            head_end = head_budget
+            tail_start = length - tail_budget
+
+        head = output[:head_end]
+        tail = output[tail_start:]
+        dropped = length - len(head) - len(tail)
 
         # Guard: if compressed result would be longer than original,
         # skip compression entirely.
-        notice_len = 130  # approximate notice string overhead
+        notice_len = 130
         if len(head) + notice_len + len(tail) >= length:
             return output
 
@@ -208,12 +287,22 @@ def compress_tool_output(output: str, tool_name: str = "") -> str:
         return result
 
     # --- Aggressive compression (large outputs) ---
-    head = output[: t["aggressive_head"]]
-    tail = output[-t["aggressive_tail"] :]
-    dropped = length - t["aggressive_head"] - t["aggressive_tail"]
+    head_budget = t["aggressive_head"]
+    tail_budget = t["aggressive_tail"]
+
+    if json_like:
+        head_end = _find_head_cut(output, head_budget)
+        tail_start = _find_tail_cut(output, length - tail_budget)
+    else:
+        head_end = head_budget
+        tail_start = length - tail_budget
+
+    head = output[:head_end]
+    tail = output[tail_start:]
+    dropped = length - len(head) - len(tail)
 
     # Guard: same check for aggressive thresholds.
-    notice_len = 140  # approximate notice string overhead
+    notice_len = 140
     if len(head) + notice_len + len(tail) >= length:
         return output
 

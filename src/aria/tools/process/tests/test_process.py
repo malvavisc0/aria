@@ -302,7 +302,7 @@ class TestProcessNewFeatures:
         data = json.loads(result)
         assert data["data"]["action"] == "start"
 
-        time.sleep(0.3)
+        time.sleep(0.5)
         logs = process("Get logs", action="logs", name="env_test")
         logs_data = json.loads(logs)
         assert "hello_aria" in logs_data["data"]["stdout"]
@@ -320,7 +320,7 @@ class TestProcessNewFeatures:
         assert data["data"]["action"] == "start"
         assert data["data"]["use_shell"] is True
 
-        time.sleep(0.3)
+        time.sleep(0.5)
         logs = process("Get logs", action="logs", name="shell_test")
         logs_data = json.loads(logs)
         assert "HELLO" in logs_data["data"]["stdout"]
