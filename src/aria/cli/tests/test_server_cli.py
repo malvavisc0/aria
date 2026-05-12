@@ -21,6 +21,8 @@ def _preflight_ok():
 def test_server_run_shows_clean_failure_panel() -> None:
     with (
         patch("aria.cli.server._ensure_lightpanda_installed"),
+        patch("aria.cli.server._ensure_models_downloaded"),
+        patch("aria.cli.server._ensure_endpoint_reachable"),
         patch(
             "aria.cli.server._get_captured_startup_error",
             return_value="vLLM startup failed: model load error",
@@ -52,6 +54,8 @@ def test_server_run_shows_clean_failure_panel() -> None:
 def test_server_run_shows_captured_error_after_clean_return() -> None:
     with (
         patch("aria.cli.server._ensure_lightpanda_installed"),
+        patch("aria.cli.server._ensure_models_downloaded"),
+        patch("aria.cli.server._ensure_endpoint_reachable"),
         patch(
             "aria.cli.server._get_captured_startup_error",
             return_value="vLLM startup failed: model load error",
@@ -78,6 +82,8 @@ def test_server_run_shows_captured_error_after_clean_return() -> None:
 def test_server_start_shows_clean_timeout_panel() -> None:
     with (
         patch("aria.cli.server._ensure_lightpanda_installed"),
+        patch("aria.cli.server._ensure_models_downloaded"),
+        patch("aria.cli.server._ensure_endpoint_reachable"),
         patch(
             "aria.cli.server._get_captured_startup_error",
             return_value="vLLM startup failed: model load error",
@@ -106,6 +112,8 @@ def test_server_start_shows_clean_timeout_panel() -> None:
 def test_ensure_vllm_running_shows_clean_failure_panel() -> None:
     with (
         patch("aria.cli.server._ensure_lightpanda_installed"),
+        patch("aria.cli.server._ensure_models_downloaded"),
+        patch("aria.cli.server._ensure_endpoint_reachable"),
         patch(
             "aria.cli.server.run_preflight_checks",
             return_value=_preflight_ok(),
@@ -126,6 +134,7 @@ def test_ensure_vllm_running_shows_clean_failure_panel() -> None:
         mock_manager.is_running.return_value = True
         mock_manager.host = "127.0.0.1"
         mock_manager.port = 9876
+        mock_manager.pid = 12345
 
         result = runner.invoke(app, ["start"])
 

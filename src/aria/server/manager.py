@@ -252,8 +252,10 @@ class ServerManager:
             self._target,
         ]
 
-        # Heuristic: uv in executable path or pyproject.toml exists
-        in_uv = "uv" in sys.executable or Path("pyproject.toml").exists()
+        # Heuristic: detect uv dev environment by checking the
+        # interpreter path (avoids CWD-dependent pyproject.toml check
+        # that would false-positive in unrelated project directories).
+        in_uv = "uv" in sys.executable
         if in_uv:
             return ["uv", "run"] + chainlit_args
 

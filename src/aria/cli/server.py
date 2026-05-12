@@ -24,6 +24,9 @@ Example:
     ```
 """
 
+from __future__ import annotations
+
+from typing import Callable
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -149,16 +152,25 @@ def _print_preflight_result(result) -> bool:
     return result.passed
 
 
-def _wait_for_health(host: str, port: int, timeout: float) -> bool:
+def _wait_for_health(
+    host: str,
+    port: int,
+    timeout: float,
+    *,
+    process_alive: Callable[[], bool] | None = None,
+) -> bool:
     """Wait for server to become healthy.
 
     Args:
         host: Server host address.
         port: Server port.
         timeout: Maximum seconds to wait.
+        process_alive: Optional callable that returns False if the
+            subprocess has died, enabling early exit instead of
+            polling until the full timeout expires.
 
     Returns:
-        True if server is healthy, False if timeout.
+        True if server is healthy, False if timeout or process died.
     """
     import time
 
@@ -166,6 +178,9 @@ def _wait_for_health(host: str, port: int, timeout: float) -> bool:
     deadline = time.time() + timeout
 
     while time.time() < deadline:
+        # Early exit if the subprocess crashed
+        if process_alive is not None and not process_alive():
+            return False
         try:
             with urlopen(url, timeout=2) as resp:
                 if resp.status == 200:
@@ -194,6 +209,8 @@ def server_run():
             "\n[red]✗ Preflight checks failed. Fix the issues above.[/red]"
         )
         raise typer.Exit(1)
+
+    _ensure_endpoint_reachable()
 
     manager = ServerManager()
     _print_startup_banner(manager.host, manager.port)
@@ -309,6 +326,100 @@ def _ensure_models_downloaded() -> None:
             raise typer.Exit(1)
 
 
+def _has_cuda() -> bool:
+    """Check if CUDA-capable hardware is available."""
+    try:
+        from aria.helpers.nvidia import get_total_vram_mb
+
+        return get_total_vram_mb() > 0
+    except Exception:
+        return False
+
+
+def _ensure_endpoint_reachable() -> None:
+    """Verify the OpenAI-compatible endpoint is reachable.
+
+    This is the final gate before starting the server. If the endpoint
+    is not healthy, the server will not start.
+
+    - Remote mode: test the configured endpoint URL (fail-fast).
+    - Local mode with CUDA: start vLLM if needed, then verify health.
+    - Local mode without CUDA: fail with guidance to use remote mode.
+    """
+    from aria.config.api import Vllm as VllmConfig
+    from aria.config.models import Chat
+
+    # ── Remote mode ──────────────────────────────────────────────────────
+    if VllmConfig.remote:
+        try:
+            with urlopen(f"{Chat.api_url}/models", timeout=10) as resp:
+                if resp.status == 200:
+                    console.print("[green]✓[/green] Remote OpenAI endpoint reachable")
+                    return
+        except (URLError, OSError) as e:
+            error_console.print(
+                f"[red]✗[/red] Remote OpenAI endpoint unreachable: "
+                f"{Chat.api_url}\n  {e}"
+            )
+            raise typer.Exit(1)
+
+    # ── Local mode — CUDA required ───────────────────────────────────────
+    if not _has_cuda():
+        error_console.print(
+            "[red]✗[/red] No CUDA-capable GPU detected. "
+            "Local vLLM requires NVIDIA CUDA drivers.\n"
+            "  Set [bold]ARIA_VLLM_REMOTE=true[/bold] in your .env "
+            "to connect to a remote OpenAI-compatible endpoint."
+        )
+        raise typer.Exit(1)
+
+    # ── Local mode with CUDA — ensure vLLM is running ────────────────────
+    # Check if vLLM is already healthy
+    try:
+        port = Chat.get_port()
+        with urlopen(f"http://localhost:{port}/health", timeout=3) as resp:
+            if resp.status == 200:
+                console.print("[green]✓[/green] OpenAI endpoint already running")
+                return
+    except (URLError, OSError):
+        pass  # Not running — will start below
+
+    # Start vLLM explicitly
+    from aria.server.vllm import VllmServerManager
+
+    console.print("[dim]Starting vLLM server...[/dim]")
+    try:
+        vllm = VllmServerManager()
+        vllm.start_all()
+    except Exception as e:
+        error_console.print(f"[red]✗[/red] Failed to start vLLM: {e}")
+        raise typer.Exit(1)
+
+    # Poll for health (model loading can take 30s+)
+    import time
+
+    port = Chat.get_port()
+    vllm_timeout = 120  # seconds
+    deadline = time.time() + vllm_timeout
+    console.print("[dim]Waiting for vLLM to become healthy...[/dim]")
+
+    while time.time() < deadline:
+        try:
+            with urlopen(f"http://localhost:{port}/health", timeout=3) as resp:
+                if resp.status == 200:
+                    console.print("[green]✓[/green] OpenAI endpoint healthy")
+                    return
+        except (URLError, OSError):
+            pass
+        time.sleep(HEALTH_CHECK_INTERVAL)
+
+    error_console.print(
+        "[red]✗[/red] OpenAI endpoint unhealthy after vLLM startup. "
+        "Check vLLM logs for details."
+    )
+    raise typer.Exit(1)
+
+
 def _ensure_vllm_running() -> None:
     """Start vLLM servers if they are not already running.
 
@@ -371,6 +482,7 @@ def server_start(
         )
         raise typer.Exit(1)
 
+    # Stop vLLM first if requested (before endpoint validation)
     if force_restart_vllm:
         from aria.server.vllm import VllmServerManager
 
@@ -378,9 +490,12 @@ def server_start(
         console.print("[dim]Stopping existing vLLM servers...[/dim]")
         vllm.stop_all()
 
+    _ensure_endpoint_reachable()
+
     manager = ServerManager()
     if manager.is_running():
-        # Server already running — check if vLLM needs to be started.
+        console.print(f"[yellow]Web UI is already running[/yellow] (PID {manager.pid})")
+        # Still verify vLLM in case it crashed independently.
         _ensure_vllm_running()
         return
 
@@ -390,9 +505,14 @@ def server_start(
         error_console.print("[red]Failed to start server process[/red]")
         raise typer.Exit(1)
 
-    # Wait for health check
+    # Wait for health check (with early exit if process dies)
     console.print("[dim]Waiting for server to be ready...[/dim]")
-    if _wait_for_health(manager.host, manager.port, HEALTH_CHECK_TIMEOUT):
+    if _wait_for_health(
+        manager.host,
+        manager.port,
+        HEALTH_CHECK_TIMEOUT,
+        process_alive=manager.is_running,
+    ):
         from aria.config.service import Server
 
         console.print(f"[green]✓[/green] Server started on {Server.get_base_url()}")
