@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aria — Your Local AI Assistant</title>
+    <link rel="icon" href="https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/favicon.png"
+        type="image/png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --font-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+            --radius: 0.375rem;
+            --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg: hsl(220 10% 11%);
+            --bg-card: hsl(220 10% 14%);
+            --bg-card-hover: hsl(220 9% 18%);
+            --bg-code: hsl(220 12% 10%);
+            --bg-nav: hsla(220, 10%, 11%, 0.85);
+            --fg: hsl(60 10% 92%);
+            --fg-muted: hsl(210 6% 55%);
+            --fg-subtle: hsl(210 6% 40%);
+            --border: hsl(220 8% 24%);
+            --primary: hsl(155 100% 38%);
+            --primary-fg: hsl(155 100% 4%);
+            --primary-dim: hsl(155 80% 30%);
+            --primary-glow: hsla(155, 100%, 38%, 0.12);
+            --primary-glow-strong: hsla(155, 100%, 38%, 0.22);
+            --accent-bg: hsl(155 24% 18%);
+            --accent-fg: hsl(155 80% 55%);
+            --tab-bg: hsl(220 10% 10%);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --dot-color: rgba(255, 255, 255, 0.04);
+        }
+
+        [data-theme="light"] {
+            --bg: hsl(45 18% 96%);
+            --bg-card: hsl(48 16% 98%);
+            --bg-card-hover: hsl(45 12% 92%);
+            --bg-code: hsl(220 12% 10%);
+            --bg-nav: hsla(45, 18%, 96%, 0.85);
+            --fg: hsl(210 6% 7%);
+            --fg-muted: hsl(210 4% 40%);
+            --fg-subtle: hsl(210 6% 55%);
+            --border: hsl(40 10% 78%);
+            --primary: hsl(155 100% 26%);
+            --primary-fg: hsl(155 100% 8%);
+            --primary-dim: hsl(155 100% 20%);
+            --primary-glow: hsla(155, 100%, 26%, 0.08);
+            --primary-glow-strong: hsla(155, 100%, 26%, 0.15);
+            --accent-bg: hsl(155 32% 91%);
+            --accent-fg: hsl(155 100% 20%);
+            --tab-bg: hsl(45 12% 92%);
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --dot-color: rgba(0, 0, 0, 0.06);
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg);
+            background-image: radial-gradient(1px 1px at center, var(--dot-color) 50%, transparent 50%);
+            background-size: 24px 24px;
+            background-attachment: fixed;
+            color: var(--fg);
+            line-height: 1.6;
+            overflow-x: hidden;
+            transition: background-color var(--transition), color var(--transition);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        a:hover {
+            color: var(--primary-dim);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* ── Nav ── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--bg-nav);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--fg);
+        }
+
+        .nav-logo img {
+            height: 28px;
+            width: 28px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.75rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--fg-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--fg);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--fg-muted);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--fg);
+            cursor: pointer;
+        }
+
+        /* ── Hero ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 7rem 1.5rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            pointer-events: none;
+            animation: breathe 8s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                opacity: 0.6;
+                transform: translateX(-50%) scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1.05);
+            }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+        }
+
+        .hero-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            animation: gentle-float 6s ease-in-out infinite;
+            filter: drop-shadow(0 4px 16px var(--primary-glow-strong));
+        }
+
+        @keyframes gentle-float {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+            }
+
+            33% {
+                transform: translateY(-6px) rotate(0.5deg);
+            }
+
+            66% {
+                transform: translateY(-3px) rotate(-0.3deg);
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.15rem);
+            color: var(--fg-muted);
+            max-width: 520px;
+            margin: 0 auto 2rem;
+            line-height: 1.7;
+        }
+
+        .hero-meta {
+            font-size: 0.82rem;
+            color: var(--fg-subtle);
+            margin-bottom: 2rem;
+            font-family: var(--font-mono);
+        }
+
+        .hero-meta .sep {
+            opacity: 0.4;
+            margin: 0 0.4rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.7rem 1.5rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all var(--transition);
+            cursor: pointer;
+            border: none;
+            font-family: var(--font-sans);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--primary-fg);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dim);
+            color: var(--primary-fg);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-glow-strong);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--fg);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--fg-muted);
+            transform: translateY(-1px);
+        }
+
+        /* ── Screenshot ── */
+        .screenshot-section {
+            padding: 0 1.5rem 5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .screenshot-frame {
+            max-width: 960px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            transition: transform var(--transition);
+        }
+
+        .screenshot-frame:hover {
+            transform: translateY(-2px);
+        }
+
+        .screenshot-frame img {
+            width: 100%;
+            display: block;
+        }
+
+        /* ── Sections ── */
+        section {
+            padding: 5rem 0;
+        }
+
+        .section-header {
+            margin-bottom: 3rem;
+        }
+
+        .section-header.centered {
+            text-align: center;
+        }
+
+        .section-header h2 {
+            font-size: clamp(1.5rem, 3.5vw, 2rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-header p {
+            color: var(--fg-muted);
+            font-size: 0.95rem;
+            max-width: 520px;
+        }
+
+        .section-header.centered p {
+            margin: 0 auto;
+        }
+
+        /* ── Features ── */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .feature-cell {
+            background: var(--bg-card);
+            padding: 1.75rem;
+            transition: background var(--transition);
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        .feature-cell.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feature-cell:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .feature-cell .icon {
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            width: 20px;
+            height: 20px;
+        }
+
+        .feature-cell h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+        }
+
+        .feature-cell p {
+            color: var(--fg-muted);
+            font-size: 0.84rem;
+            line-height: 1.6;
+        }
+
+        /* ── Tools ── */
+        .tools-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .tools-table thead th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--fg-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tools-table tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background var(--transition);
+        }
+
+        .tools-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .tools-table tbody tr:hover {
+            background: var(--bg-card);
+        }
+
+        .tools-table td {
+            padding: 0.75rem 1rem;
+            vertical-align: top;
+        }
+
+        .tools-table .cat-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .tools-table .cat-name .icon {
+            width: 16px;
+            height: 16px;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .tool-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
+        .tool-tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--fg-muted);
+            background: var(--bg-card);
+            padding: 0.15rem 0.45rem;
+            border-radius: 3px;
+        }
+
+        .load-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+        }
+
+        .load-badge.always {
+            background: var(--primary-glow);
+            color: var(--primary);
+        }
+
+        .load-badge.ondemand {
+            background: var(--bg-card);
+            color: var(--fg-muted);
+        }
+
+        /* ── Quick Start ── */
+        .quickstart-wrapper {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--tab-bg);
+            padding: 0.3rem;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.55rem 0.75rem;
+            background: none;
+            border: none;
+            color: var(--fg-muted);
+            font-family: var(--font-sans);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--fg);
+        }
+
+        .tab-btn.active {
+            background: var(--bg-card);
+            color: var(--primary);
+        }
+
+        .tab-content {
+            position: relative;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 0 0 8px 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .tab-pane pre {
+            margin: 0;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            line-height: 1.7;
+            color: #c9d1d9;
+        }
+
+        .tab-pane pre .comment {
+            color: #6a737d;
+        }
+
+        .tab-pane pre .cmd {
+            color: #7ee787;
+        }
+
+        .tab-pane pre .flag {
+            color: #79c0ff;
+        }
+
+        .tab-pane pre .str {
+            color: #ffa657;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: #8b8fa3;
+            cursor: pointer;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.72rem;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            transition: all var(--transition);
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8e8ec;
+        }
+
+        .copy-btn.copied {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* ── Architecture ── */
+        .arch-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .arch-node {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+        }
+
+        .arch-node .icon {
+            width: 22px;
+            height: 22px;
+            color: var(--primary);
+            margin: 0 auto 0.4rem;
+        }
+
+        .arch-node .label {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .arch-node .sub {
+            font-size: 0.75rem;
+            color: var(--fg-muted);
+            margin-top: 0.15rem;
+        }
+
+        .arch-arrow {
+            color: var(--fg-subtle);
+            font-size: 1.1rem;
+        }
+
+        .arch-secondary {
+            margin-top: 1rem;
+            opacity: 0.65;
+        }
+
+        /* ── Footer ── */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2.5rem 0;
+        }
+
+        .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-copy {
+            color: var(--fg-subtle);
+            font-size: 0.8rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .footer-links a {
+            color: var(--fg-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        /* ── Animations ── */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── Canvas ── */
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.3;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .nav-links.open {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background: var(--bg-nav);
+                backdrop-filter: blur(16px);
+                padding: 1.25rem;
+                gap: 1rem;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .arch-diagram {
+                flex-direction: column;
+            }
+
+            .arch-arrow {
+                transform: rotate(90deg);
+            }
+
+            .hero-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .tools-table-wrapper {
+                overflow-x: auto;
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="particles"></canvas>
+
+    <nav>
+        <div class="container">
+            <a href="#" class="nav-logo">
+                <img src="../public/logo_dark.png" alt="Aria" id="nav-logo-img">
+                Aria
+            </a>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                <i data-lucide="menu"></i>
+            </button>
+            <ul class="nav-links" id="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#tools">Tools</a></li>
+                <li><a href="#quickstart">Quick Start</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="https://github.com/malvavisc0/aria-ai" target="_blank">GitHub</a></li>
+                <li>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
+                        <i data-lucide="moon" id="icon-moon"></i>
+                        <i data-lucide="sun" id="icon-sun" style="display:none"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <img src="../public/logo_dark.png" alt="Aria" class="hero-logo" id="hero-logo">
+            <h1>An AI that lives on your hardware.</h1>
+            <p class="hero-subtitle">
+                No cloud. No telemetry. Just a capable assistant with 33 tools,
+                a web UI, a CLI, and a desktop app — entirely under your control.
+            </p>
+            <p class="hero-meta">
+                Python 3.12+<span class="sep">·</span>MIT License<span class="sep">·</span>GPU optional
+            </p>
+            <div class="hero-actions">
+                <a href="https://github.com/malvavisc0/aria-ai" target="_blank" class="btn btn-primary">
+                    <i data-lucide="star" style="width:16px;height:16px"></i> Star on GitHub
+                </a>
+                <a href="#quickstart" class="btn btn-secondary">Get Started</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshot -->
+    <section class="screenshot-section">
+        <div class="screenshot-frame fade-in">
+            <img src="https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/screenshot.png"
+                alt="Aria web interface">
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features">
+        <div class="container">
+            <div class="section-header centered fade-in">
+                <h2>What it does</h2>
+                <p>A tool-driven assistant that picks the right capability for each request.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-cell">
+                    <i data-lucide="settings" class="icon"></i>
+                    <h3>Tool Registry</h3>
+                    <p>33 tools in 7 categories. Core tools always loaded; domain tools activated on demand.</p>
+                </div>
+                <div class="feature-cell">
+                    <i data-lucide="monitor" class="icon"></i>
+                    <h3>Three Interfaces</h3>
+                    <p>Web UI via Chainlit, a full CLI for automation, or a native PySide6 desktop app with tray.</p>
+                </div>
+                <div class="feature-cell">
+                    <i data-lucide="cpu" class="icon"></i>
+                    <h3>Local LLM</h3>
+                    <p>GPU inference with vLLM. GPTQ/AWQ quantization for 8 GB+ VRAM. No internet required.</p>
+                </div>
+                <div class="feature-cell">
+                    <i data-lucide="globe" class="icon"></i>
+                    <h3>Browser Automation</h3>
+                    <p>Headless Lightpanda with CDP support. Navigate, click, and extract — programmatically.</p>
+                </div>
+                <div class="feature-cell">
+                    <i data-lucide="lock" class="icon"></i>
+                    <h3>Private by Default</h3>
+                    <p>Data stays on your machine. No cloud calls for inference. Complete local control.</p>
+                </div>
+                <div class="feature-cell">
+                    <i data-lucide="hard-hat" class="icon"></i>
+                    <h3>Worker Agents</h3>
+                    <p>Heavy tasks run in the background. Research, code generation, analysis — non-blocking.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tools -->
+    <section id="tools">
+        <div class="container">
+            <div class="section-header fade-in">
+                <h2>Tool inventory</h2>
+                <p>Core and file tools are always loaded. Everything else activates on demand.</p>
+            </div>
+            <div class="tools-table-wrapper fade-in">
+                <table class="tools-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Tools</th>
+                            <th>Load</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="brain" class="icon"></i> Core</span></td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">reasoning</span><span
+                                        class="tool-tag">plan</span><span class="tool-tag">knowledge</span><span
+                                        class="tool-tag">scratchpad</span><span class="tool-tag">web_search</span><span
+                                        class="tool-tag">download</span><span class="tool-tag">weather</span><span
+                                        class="tool-tag">shell</span></div>
+                            </td>
+                            <td><span class="load-badge always">Always</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="folder" class="icon"></i> Files</span></td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">read_file</span><span
+                                        class="tool-tag">write_file</span><span class="tool-tag">edit_file</span><span
+                                        class="tool-tag">file_info</span><span class="tool-tag">list_files</span><span
+                                        class="tool-tag">search_files</span><span class="tool-tag">copy</span><span
+                                        class="tool-tag">delete</span><span class="tool-tag">rename</span></div>
+                            </td>
+                            <td><span class="load-badge always">Always</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="globe" class="icon"></i> Browser</span></td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">open_url</span><span
+                                        class="tool-tag">browser_click</span></div>
+                            </td>
+                            <td><span class="load-badge ondemand">On-demand</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="terminal" class="icon"></i> Development</span>
+                            </td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">python</span></div>
+                            </td>
+                            <td><span class="load-badge ondemand">On-demand</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="bar-chart-3" class="icon"></i> Finance</span>
+                            </td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">stock_price</span><span
+                                        class="tool-tag">company_info</span><span class="tool-tag">ticker_news</span>
+                                </div>
+                            </td>
+                            <td><span class="load-badge ondemand">On-demand</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="clapperboard" class="icon"></i>
+                                    Entertainment</span></td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">imdb_search</span><span
+                                        class="tool-tag">movie_details</span><span
+                                        class="tool-tag">person_details</span><span
+                                        class="tool-tag">filmography</span><span class="tool-tag">episodes</span><span
+                                        class="tool-tag">reviews</span><span class="tool-tag">trivia</span><span
+                                        class="tool-tag">youtube</span></div>
+                            </td>
+                            <td><span class="load-badge ondemand">On-demand</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="cat-name"><i data-lucide="server" class="icon"></i> System</span></td>
+                            <td>
+                                <div class="tool-tags"><span class="tool-tag">http_request</span><span
+                                        class="tool-tag">process</span></div>
+                            </td>
+                            <td><span class="load-badge ondemand">On-demand</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section id="quickstart">
+        <div class="container">
+            <div class="section-header centered fade-in">
+                <h2>Get running</h2>
+                <p>Pick your install method. You'll be chatting in under a minute.</p>
+            </div>
+            <div class="quickstart-wrapper fade-in">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab(0)">Source</button>
+                    <button class="tab-btn" onclick="switchTab(1)">PyPI</button>
+                    <button class="tab-btn" onclick="switchTab(2)">Docker</button>
+                    <button class="tab-btn" onclick="switchTab(3)">Desktop</button>
+                </div>
+                <div class="tab-content">
+                    <button class="copy-btn" onclick="copyTab(this)">Copy</button>
+                    <div class="tab-pane active" id="tab-0">
+                        <pre><span class="comment"># Clone and run from source</span>
+<span class="cmd">git</span> clone <span class="str">git@github.com:malvavisc0/aria-ai.git</span>
+<span class="cmd">cd</span> aria-ai
+<span class="cmd">uv</span> sync
+<span class="cmd">aria</span> server run
+<span class="comment"># → http://localhost:9876</span></pre>
+                    </div>
+                    <div class="tab-pane" id="tab-1">
+                        <pre><span class="comment"># Install from PyPI</span>
+<span class="cmd">pip</span> install <span class="str">aria-ai</span>
+<span class="cmd">aria</span> server run
+<span class="comment"># → http://localhost:9876</span></pre>
+                    </div>
+                    <div class="tab-pane" id="tab-2">
+                        <pre><span class="comment"># Run with Docker (GPU required)</span>
+<span class="cmd">docker</span> run <span class="flag">-p</span> 9876:9876 \
+  <span class="flag">-v</span> ./data:/app/data \
+  <span class="str">ghcr.io/malvavisc0/aria-ai-cuda:latest</span>
+<span class="comment"># → http://localhost:9876</span></pre>
+                    </div>
+                    <div class="tab-pane" id="tab-3">
+                        <pre><span class="comment"># Install with GUI support</span>
+<span class="cmd">pip</span> install <span class="str">aria-ai[gui]</span>
+<span class="cmd">aria-gui</span>
+<span class="comment"># Or grab the standalone binary from releases</span></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture">
+        <div class="container">
+            <div class="section-header centered fade-in">
+                <h2>How requests flow</h2>
+                <p>Aria evaluates each message, picks the right tools, and delegates heavy work to background agents.
+                </p>
+            </div>
+            <div class="arch-diagram fade-in">
+                <div class="arch-node">
+                    <i data-lucide="user" class="icon"></i>
+                    <div class="label">User</div>
+                    <div class="sub">Web / CLI / GUI</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">
+                    <i data-lucide="brain" class="icon"></i>
+                    <div class="label">Aria</div>
+                    <div class="sub">Primary Agent</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">
+                    <i data-lucide="wrench" class="icon"></i>
+                    <div class="label">Tools</div>
+                    <div class="sub">33 tools, 7 categories</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">
+                    <i data-lucide="message-square" class="icon"></i>
+                    <div class="label">Response</div>
+                    <div class="sub">Contextual answer</div>
+                </div>
+            </div>
+            <div class="arch-diagram arch-secondary fade-in">
+                <div class="arch-node">
+                    <i data-lucide="zap" class="icon"></i>
+                    <div class="label">Heavy Tasks</div>
+                    <div class="sub">5+ tool calls</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">
+                    <i data-lucide="hard-hat" class="icon"></i>
+                    <div class="label">Worker Agent</div>
+                    <div class="sub">Background</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-node">
+                    <i data-lucide="file-text" class="icon"></i>
+                    <div class="label">Result</div>
+                    <div class="sub">Async delivery</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-inner">
+                <span class="footer-copy">Aria · MIT License · 2025</span>
+                <div class="footer-links">
+                    <a href="https://github.com/malvavisc0/aria-ai" target="_blank">GitHub</a>
+                    <a href="https://github.com/malvavisc0/aria-ai/issues" target="_blank">Issues</a>
+                    <a href="https://pypi.org/project/aria-ai/" target="_blank">PyPI</a>
+                    <a href="https://github.com/malvavisc0/aria-ai/pkgs/container/aria" target="_blank">Docker</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /* ── Theme ── */
+        function getTheme() { return localStorage.getItem('aria-theme') || 'dark'; }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('icon-moon').style.display = theme === 'dark' ? '' : 'none';
+            document.getElementById('icon-sun').style.display = theme === 'light' ? '' : 'none';
+            const src = theme === 'dark' ? '../public/logo_dark.png' : '../public/logo_light.png';
+            document.getElementById('nav-logo-img').src = src;
+            document.getElementById('hero-logo').src = src;
+        }
+
+        function toggleTheme() {
+            const next = getTheme() === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('aria-theme', next);
+            applyTheme(next);
+        }
+
+        applyTheme(getTheme());
+
+        /* ── Mobile Menu ── */
+        function toggleMobileMenu() {
+            document.getElementById('nav-links').classList.toggle('open');
+        }
+
+        /* ── Tabs ── */
+        function switchTab(index) {
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', i === index));
+            document.querySelectorAll('.tab-pane').forEach((p, i) => p.classList.toggle('active', i === index));
+        }
+
+        /* ── Copy ── */
+        function copyTab(btn) {
+            const pre = document.querySelector('.tab-pane.active pre');
+            if (!pre) return;
+            navigator.clipboard.writeText(pre.textContent).then(() => {
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+            });
+        }
+
+        /* ── Scroll Reveal ── */
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const delay = entry.target.dataset.delay || 0;
+                    setTimeout(() => entry.target.classList.add('visible'), delay);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+        document.querySelectorAll('.feature-cell').forEach((c, i) => { c.dataset.delay = i * 80; observer.observe(c); });
+
+        /* ── Particle Background (organic shapes, no connected lines) ── */
+        (function () {
+            const canvas = document.getElementById('particles');
+            const ctx = canvas.getContext('2d');
+            let shapes = [];
+            const count = 30;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            function createShape() {
+                return {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.2,
+                    vy: (Math.random() - 0.5) * 0.15,
+                    size: Math.random() * 40 + 20,
+                    opacity: Math.random() * 0.3 + 0.05,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.003,
+                    sides: Math.floor(Math.random() * 3) + 3, // 3-5 sides
+                };
+            }
+
+            function init() {
+                resize();
+                shapes = Array.from({ length: count }, createShape);
+            }
+
+            function drawPolygon(x, y, size, sides, rotation) {
+                ctx.beginPath();
+                for (let i = 0; i <= sides; i++) {
+                    const angle = (i * 2 * Math.PI / sides) + rotation;
+                    const px = x + size * Math.cos(angle);
+                    const py = y + size * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const theme = document.documentElement.getAttribute('data-theme');
+                const color = theme === 'dark' ? '0, 194, 122' : '0, 133, 66';
+
+                shapes.forEach(s => {
+                    drawPolygon(s.x, s.y, s.size, s.sides, s.rotation);
+                    ctx.strokeStyle = `rgba(${color}, ${s.opacity})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.rotation += s.rotSpeed;
+
+                    if (s.x < -s.size) s.x = canvas.width + s.size;
+                    if (s.x > canvas.width + s.size) s.x = -s.size;
+                    if (s.y < -s.size) s.y = canvas.height + s.size;
+                    if (s.y > canvas.height + s.size) s.y = -s.size;
+                });
+
+                requestAnimationFrame(draw);
+            }
+
+            init();
+            draw();
+            window.addEventListener('resize', resize);
+        })();
+
+        /* ── Initialize Lucide icons ── */
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
