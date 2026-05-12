@@ -1101,7 +1101,7 @@
             document.documentElement.setAttribute('data-theme', theme);
             document.getElementById('icon-moon').style.display = theme === 'dark' ? '' : 'none';
             document.getElementById('icon-sun').style.display = theme === 'light' ? '' : 'none';
-            const src = theme === 'dark' ? 'https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/logo_dark.png' : '../public/logo_light.png';
+            const src = theme === 'dark' ? 'https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/logo_dark.png' : 'https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/logo_light.png';
             document.getElementById('nav-logo-img').src = src;
             document.getElementById('hero-logo').src = src;
         }
