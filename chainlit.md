@@ -23,4 +23,4 @@ Aria runs models locally on your GPU using [vLLM](https://github.com/vllm-projec
 
 ---
 
-[GitHub](https://github.com/malvavisc0/aria) · Private by default · Runs on your machine · Built to be useful 🔒
+[GitHub](https://github.com/malvavisc0/aria-ai) · Private by default · Runs on your machine · Built to be useful 🔒

@@ -297,7 +297,7 @@ jobs:
         include:
           - label: "CUDA/CPU"
             base_image: "vllm/vllm-openai:latest"
-            suffix: ""
+            suffix: "-cuda"
             dockerfile: "Dockerfile"
           - label: "ROCm (AMD)"
             base_image: "vllm/vllm-openai-rocm:latest"
@@ -341,8 +341,8 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ matrix.base_image }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/aria${{ matrix.suffix }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/aria${{ matrix.suffix }}:latest
+            ghcr.io/${{ github.repository_owner }}/aria-ai${{ matrix.suffix }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/aria-ai${{ matrix.suffix }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -434,19 +434,19 @@ jobs:
             docker run -p 9876:9876 \
               -v ./data:/app/data \
               --env-file .env \
-              ghcr.io/malvavisc0/aria:latest
+              ghcr.io/malvavisc0/aria-ai-cuda:latest
 
             # ROCm (AMD GPUs)
             docker run -p 9876:9876 \
               -v ./data:/app/data \
               --env-file .env \
-              ghcr.io/malvavisc0/aria-rocm:latest
+              ghcr.io/malvavisc0/aria-ai-rocm:latest
 
             # Lightweight — no GPU (remote LLM or CPU-only)
             docker run -p 9876:9876 \
               -v ./data:/app/data \
               --env-file .env \
-              ghcr.io/malvavisc0/aria-lite:latest
+              ghcr.io/malvavisc0/aria-ai-lite:latest
             ```
 
             ### First Run

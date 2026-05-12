@@ -9,13 +9,13 @@
 #   docker run -p 9876:9876 \
 #     -v ./data:/app/data \
 #     --env-file .env \
-#     ghcr.io/malvavisc0/aria:latest
+#     ghcr.io/malvavisc0/aria-ai-cuda:latest
 # ─────────────────────────────────────────────────────────────────────────────
 
 ARG BASE_IMAGE=vllm/vllm-openai:latest
 FROM ${BASE_IMAGE}
 
-LABEL org.opencontainers.image.source="https://github.com/malvavisc0/aria"
+LABEL org.opencontainers.image.source="https://github.com/malvavisc0/aria-ai"
 LABEL org.opencontainers.image.description="Aria — AI Assistant with web UI and local LLM support"
 LABEL org.opencontainers.image.licenses="MIT"
 

@@ -84,7 +84,7 @@ class Ui_AboutDialog(object):
         self.label.setTextFormat(Qt.TextFormat.RichText)
         self.label.setOpenExternalLinks(True)
         self.label.setText(
-            '<a href="https://github.com/malvavisc0/aria">GitHub Repository</a>'
+            '<a href="https://github.com/malvavisc0/aria-ai">GitHub Repository</a>'
         )
         main_layout.addWidget(self.label)
 

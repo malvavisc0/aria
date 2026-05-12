@@ -107,7 +107,7 @@
        <bool>true</bool>
       </property>
        <property name="text">
-        <string>&lt;a href=&quot;https://github.com/malvavisc0/aria&quot;&gt;GitHub Repository&lt;/a&gt;</string>
+        <string>&lt;a href=&quot;https://github.com/malvavisc0/aria-ai&quot;&gt;GitHub Repository&lt;/a&gt;</string>
        </property>
       </widget>
     </item>

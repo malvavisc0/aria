@@ -11,12 +11,12 @@
 #   docker run -p 9876:9876 \
 #     -v ./data:/app/data \
 #     --env-file .env \
-#     ghcr.io/malvavisc0/aria-lite:latest
+#     ghcr.io/malvavisc0/aria-ai-lite:latest
 # ─────────────────────────────────────────────────────────────────────────────
 
 FROM debian:trixie-slim
 
-LABEL org.opencontainers.image.source="https://github.com/malvavisc0/aria"
+LABEL org.opencontainers.image.source="https://github.com/malvavisc0/aria-ai"
 LABEL org.opencontainers.image.description="Aria — lightweight image (no GPU). Use with remote LLM endpoints."
 LABEL org.opencontainers.image.licenses="MIT"
 

@@ -78,7 +78,7 @@ git push origin main --tags
 
 ### 3. CI takes over
 
-The push of `vX.Y.Z` triggers `.github/workflows/release.yml`. You can monitor progress in the [Actions tab](https://github.com/malvavisc0/aria/actions).
+The push of `vX.Y.Z` triggers `.github/workflows/release.yml`. You can monitor progress in the [Actions tab](https://github.com/malvavisc0/aria-ai/actions).
 
 ---
 
@@ -135,7 +135,7 @@ Before the first release, configure trusted publishing on [pypi.org](https://pyp
 2. Navigate to **Manage** → **Publishing**
 3. Add a new publisher:
    - **Owner**: `malvavisc0`
-   - **Repository**: `aria`
+   - **Repository**: `aria-ai`
    - **Workflow name**: `release.yml`
    - **Environment name**: `pypi`
 
@@ -187,9 +187,9 @@ Three Docker image variants are built and pushed to GitHub Container Registry (`
 
 | Variant | Base Image | Tag |
 |---------|-----------|-----|
-| CUDA/CPU | `vllm/vllm-openai:latest` | `ghcr.io/malvavisc0/aria:latest` |
-| ROCm (AMD) | `vllm/vllm-openai-rocm:latest` | `ghcr.io/malvavisc0/aria-rocm:latest` |
-| Debian (lite) | `debian:trixie-slim` | `ghcr.io/malvavisc0/aria-lite:latest` |
+| CUDA/CPU | `vllm/vllm-openai:latest` | `ghcr.io/malvavisc0/aria-ai-cuda:latest` |
+| ROCm (AMD) | `vllm/vllm-openai-rocm:latest` | `ghcr.io/malvavisc0/aria-ai-rocm:latest` |
+| Debian (lite) | `debian:trixie-slim` | `ghcr.io/malvavisc0/aria-ai-lite:latest` |
 
 The **CUDA/CPU** and **ROCm** images include vLLM for local model serving plus Aria's web UI (Chainlit). The **lite** image is a lightweight alternative with no GPU/vLLM — designed for users connecting to a remote LLM endpoint or running CPU-only. Each image is tagged with both `latest` and the version number (e.g. `0.1.0`).
 
@@ -197,13 +197,13 @@ The **CUDA/CPU** and **ROCm** images include vLLM for local model serving plus A
 
 ```bash
 # CUDA / CPU (local vLLM)
-docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-ai-cuda:latest
 
 # ROCm (AMD GPUs)
-docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-ai-rocm:latest
 
 # Lightweight — no GPU (remote LLM or CPU-only)
-docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-lite:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-ai-lite:latest
 ```
 
 | Flag | Purpose |

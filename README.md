@@ -5,9 +5,9 @@
 **Your local AI assistant with a unified tool-driven architecture**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![CI](https://github.com/malvavisc0/aria/actions/workflows/ci.yml/badge.svg)](https://github.com/malvavisc0/aria/actions/workflows/ci.yml)
+[![CI](https://github.com/malvavisc0/aria-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/malvavisc0/aria-ai/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/aria-ai)](https://pypi.org/project/aria-ai/)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fmalvavisc0%2Faria-2496ED?logo=docker&logoColor=white)](https://github.com/malvavisc0/aria/pkgs/container/aria)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fmalvavisc0%2Faria-2496ED?logo=docker&logoColor=white)](https://github.com/malvavisc0/aria-ai/pkgs/container/aria)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
@@ -44,8 +44,8 @@
 ### Option A — Run from source
 
 ```bash
-git clone git@github.com:malvavisc0/aria.git
-cd aria
+git clone git@github.com:malvavisc0/aria-ai.git
+cd aria-ai
 uv sync
 aria server run
 # → Open http://localhost:9876
@@ -62,7 +62,7 @@ aria server run
 ### Option C — Docker (GPU required)
 
 ```bash
-docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-ai-cuda:latest
 # → Open http://localhost:9876
 ```
 
@@ -73,7 +73,7 @@ pip install aria-ai[gui]
 aria-gui
 ```
 
-Or download the standalone binary for your platform from the [latest release](https://github.com/malvavisc0/aria/releases/latest):
+Or download the standalone binary for your platform from the [latest release](https://github.com/malvavisc0/aria-ai/releases/latest):
 
 | Platform | File |
 |----------|------|
@@ -135,8 +135,8 @@ For the full inventory with parameter reference, see [`docs/tools-inventory.md`]
 
 ```bash
 # Clone the repository
-git clone git@github.com:malvavisc0/aria.git
-cd aria
+git clone git@github.com:malvavisc0/aria-ai.git
+cd aria-ai
 
 # Install dependencies
 uv sync
@@ -280,10 +280,10 @@ The web UI is powered by [Chainlit](https://github.com/Chainlit/chainlit) and pr
 
 ```bash
 # NVIDIA / CUDA
-docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-ai-cuda:latest
 
 # AMD / ROCm
-docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-ai-rocm:latest
 ```
 
 ### Docker Compose
@@ -301,8 +301,8 @@ docker compose --profile rocm up -d aria-rocm
 
 | Image | Base | GPU |
 |-------|------|-----|
-| `ghcr.io/malvavisc0/aria:latest` | vLLM (CUDA/CPU) | NVIDIA |
-| `ghcr.io/malvavisc0/aria-rocm:latest` | vLLM (ROCm) | AMD |
+| `ghcr.io/malvavisc0/aria-ai-cuda:latest` | vLLM (CUDA/CPU) | NVIDIA |
+| `ghcr.io/malvavisc0/aria-ai-rocm:latest` | vLLM (ROCm) | AMD |
 
 ---
 
@@ -380,6 +380,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ by malvavisc0**
 
-[Report Bug](https://github.com/malvavisc0/aria/issues) · [Request Feature](https://github.com/malvavisc0/aria/issues)
+[Report Bug](https://github.com/malvavisc0/aria-ai/issues) · [Request Feature](https://github.com/malvavisc0/aria-ai/issues)
 
 </div>

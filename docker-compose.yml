@@ -33,7 +33,7 @@ services:
 
   # ── Aria (CUDA / CPU — local vLLM) ───────────────────────────────────────
   aria:
-    image: ghcr.io/malvavisc0/aria:latest
+    image: ghcr.io/malvavisc0/aria-ai-cuda:latest
     container_name: aria
     ports:
       - "${SERVER_PORT:-9876}:9876"
@@ -55,7 +55,7 @@ services:
   # ── Aria Lite (no GPU — remote LLM or CPU-only) ─────────────────────────
   # Usage: docker compose up -d aria-lite
   aria-lite:
-    image: ghcr.io/malvavisc0/aria-lite:latest
+    image: ghcr.io/malvavisc0/aria-ai-lite:latest
     container_name: aria-lite
     ports:
       - "${SERVER_PORT:-9876}:9876"
@@ -70,7 +70,7 @@ services:
   # ── Aria ROCm (AMD GPUs) ──────────────────────────────────────────────────
   # Usage: docker compose --profile rocm up -d aria-rocm
   aria-rocm:
-    image: ghcr.io/malvavisc0/aria-rocm:latest
+    image: ghcr.io/malvavisc0/aria-ai-rocm:latest
     container_name: aria-rocm
     profiles:
       - rocm
