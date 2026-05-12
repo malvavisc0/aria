@@ -14,7 +14,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
-  # ── Aria (CUDA / CPU) ─────────────────────────────────────────────────────
+  # ── Aria (CUDA / CPU — local vLLM) ───────────────────────────────────────
   aria:
     image: ghcr.io/malvavisc0/aria:latest
     container_name: aria
@@ -30,6 +30,18 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    restart: unless-stopped
+
+  # ── Aria Lite (no GPU — remote LLM or CPU-only) ─────────────────────────
+  # Usage: docker compose up -d aria-lite
+  aria-lite:
+    image: ghcr.io/malvavisc0/aria-lite:latest
+    container_name: aria-lite
+    ports:
+      - "${SERVER_PORT:-9876}:9876"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
     restart: unless-stopped
 
   # ── Aria ROCm (AMD GPUs) ──────────────────────────────────────────────────

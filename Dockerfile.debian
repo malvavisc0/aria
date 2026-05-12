@@ -1,23 +1,35 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Dockerfile — Aria + vLLM serving stack
+# Dockerfile.debian — Lightweight Aria image (no GPU / vLLM)
 #
-# Build variants:
-#   CUDA/CPU:  docker build --build-arg BASE_IMAGE=vllm/vllm-openai:latest -t aria .
-#   ROCm:      docker build --build-arg BASE_IMAGE=vllm/vllm-openai-rocm:latest -t aria-rocm .
+# For users who connect to a remote LLM endpoint or run CPU-only.
+# Based on Debian 13 (Trixie) — much smaller than the vLLM images.
+#
+# Build:
+#   docker build -f Dockerfile.debian -t aria-lite .
 #
 # Run:
-#   docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+#   docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-lite:latest
 # ─────────────────────────────────────────────────────────────────────────────
 
-ARG BASE_IMAGE=vllm/vllm-openai:latest
-FROM ${BASE_IMAGE}
+FROM debian:trixie-slim
 
 LABEL org.opencontainers.image.source="https://github.com/malvavisc0/aria"
-LABEL org.opencontainers.image.description="Aria — AI Assistant with web UI and local LLM support"
+LABEL org.opencontainers.image.description="Aria — lightweight image (no GPU). Use with remote LLM endpoints."
 LABEL org.opencontainers.image.licenses="MIT"
 
+# ── Install Python and minimal system dependencies ──────────────────────────
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    curl \
+    tini && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # ── Install Aria ──────────────────────────────────────────────────────────────
-RUN pip install --no-cache-dir aria-ai
+RUN pip install --no-cache-dir --break-system-packages aria-ai
 
 # ── Create data directory for persistent storage ──────────────────────────────
 RUN mkdir -p /app/data
@@ -27,4 +39,4 @@ WORKDIR /app
 EXPOSE 9876
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
-ENTRYPOINT ["aria", "server", "run"]
+ENTRYPOINT ["tini", "--", "aria", "server", "run"]

@@ -6,7 +6,7 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/malvavisc0/aria/actions/workflows/ci.yml/badge.svg)](https://github.com/malvavisc0/aria/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/aria)](https://pypi.org/project/aria/)
+[![PyPI](https://img.shields.io/pypi/v/aria-ai)](https://pypi.org/project/aria-ai/)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fmalvavisc0%2Faria-2496ED?logo=docker&logoColor=white)](https://github.com/malvavisc0/aria/pkgs/container/aria)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
@@ -54,7 +54,7 @@ aria server run
 ### Option B — Install from PyPI
 
 ```bash
-pip install aria
+pip install aria-ai
 aria server run
 # → Open http://localhost:9876
 ```
@@ -69,7 +69,7 @@ docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
 ### Option D — Desktop GUI
 
 ```bash
-pip install aria[gui]
+pip install aria-ai[gui]
 aria-gui
 ```
 
@@ -113,7 +113,7 @@ Tools are organized into **7 categories** (33 tools) managed by a centralized re
 | 🎬 **Entertainment** | On-demand | search_imdb_titles, get_movie_details, get_person_details, get_person_filmography, get_all_series_episodes, get_movie_reviews, get_movie_trivia, get_youtube_video_transcription |
 | 🖥️ **System** | On-demand | http_request, process |
 
-Domain tools are also accessible via CLI commands (e.g., `aria web search`, `aria knowledge store`, `aria dev run`).
+Domain tools are also accessible via CLI commands through `ax` (e.g., `ax web search`, `ax knowledge store`, `ax dev run`).
 
 For the full inventory with parameter reference, see [`docs/tools-inventory.md`](docs/tools-inventory.md).
 
@@ -153,13 +153,24 @@ On first launch, Aria automatically:
 - Creates required directories
 
 ```bash
-aria check preflight  # Verify installation
+ax check preflight    # Verify installation
 aria server run       # Start the web server
 ```
 
 ---
 
 ## 💻 CLI Commands
+
+Aria ships with two CLI entry points:
+
+| CLI | Purpose | Commands |
+|:----|:--------|:---------|
+| `aria` | Management CLI | Server, users, models, vLLM, config, system, Lightpanda |
+| `ax` | Agent Experience CLI | Web, knowledge, dev, worker, processes, check |
+
+### `aria` — Management CLI
+
+Human-facing commands for infrastructure and system management.
 
 ```bash
 # Server management
@@ -200,30 +211,33 @@ aria config show          # Show current config
 aria config paths         # Show configured paths
 aria config database      # Show database info
 aria config api           # Show API endpoints
+```
 
-# Health check & agent instructions
-aria check preflight      # Verify installation and connectivity
-aria check instructions   # View agent system prompts
-aria check instructions --agent aria  # View specific agent
+### `ax` — Agent Experience CLI
 
+Agent-facing commands for research, knowledge, code execution, and workflow management.
+
+```bash
 # Web & research
-aria web search "query"         # Web search
-aria web fetch "url"            # Fetch URL content (auto-detects file vs website)
-aria web weather "city"         # Weather forecast
-aria web youtube "url"          # YouTube transcript
-aria web open "url"             # Open page in browser
-aria web click "selector"       # Click browser element
-aria web close                  # Close browser page
+ax web search "query"         # Web search
+ax web fetch "url"            # Fetch URL content
+ax web weather "city"         # Weather forecast
 
 # Knowledge
-aria knowledge store "key" "v"  # Store a fact
-aria knowledge recall "key"     # Retrieve a fact
-aria knowledge search "query"   # Search stored facts
+ax knowledge store "key" "v"  # Store a fact
+ax knowledge recall "key"     # Retrieve a fact
+ax knowledge search "query"   # Search stored facts
 
-# Development & workers
-aria dev run "code"             # Execute Python code
-aria worker spawn --prompt "..." # Launch background worker
-aria worker list                # List workers
+# Development
+ax dev run "code"             # Execute Python code
+
+# Workers
+ax worker spawn --prompt "..." # Launch background worker
+ax worker list                # List workers
+
+# Processes & checks
+ax processes list             # List background processes
+ax check preflight            # Verify installation
 ```
 
 ---

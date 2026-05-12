@@ -6,6 +6,7 @@ downloads files, saves them to disk, and returns JSON responses with
 metadata for AI agent consumption.
 """
 
+import importlib
 import json
 import os
 import tempfile
@@ -13,6 +14,18 @@ from unittest.mock import Mock, patch
 
 import httpx
 import pytest
+
+_markitdown_available = importlib.util.find_spec("markitdown") is not None
+try:
+    if _markitdown_available:
+        import markitdown  # noqa: F401
+except Exception:
+    _markitdown_available = False
+
+_needs_markitdown = pytest.mark.skipif(
+    not _markitdown_available,
+    reason="markitdown not fully importable (missing onnxruntime?)",
+)
 
 from aria.tools.search import download, get_youtube_video_transcription
 from aria.tools.search._download_internals import (
@@ -122,12 +135,16 @@ class TestUtilityFunctions:
 
     def test_get_file_extension_from_url(self):
         """Test file extension extraction from URL."""
-        ext = _get_file_extension("https://example.com/file.pdf", "application/pdf")
+        ext = _get_file_extension(
+            "https://example.com/file.pdf", "application/pdf"
+        )
         assert ext == ".pdf"
 
     def test_get_file_extension_from_content_type(self):
         """Test file extension extraction from content type."""
-        ext = _get_file_extension("https://example.com/file", "application/pdf")
+        ext = _get_file_extension(
+            "https://example.com/file", "application/pdf"
+        )
         assert ext in [".pdf", ".bin"]
 
     def test_clean_text(self):
@@ -141,6 +158,7 @@ class TestUtilityFunctions:
 class TestGetFileFromURL:
     """Test the main download function."""
 
+    @_needs_markitdown
     @patch("aria.tools.search._download_internals.httpx.Client")
     def test_download_html_success(self, mock_client):
         """Test successful HTML download."""
@@ -152,7 +170,9 @@ class TestGetFileFromURL:
 
         mock_client_instance = Mock()
         mock_client_instance.get.return_value = mock_response
-        mock_client_instance.__enter__ = Mock(return_value=mock_client_instance)
+        mock_client_instance.__enter__ = Mock(
+            return_value=mock_client_instance
+        )
         mock_client_instance.__exit__ = Mock(return_value=False)
         mock_client.return_value = mock_client_instance
 
@@ -169,7 +189,9 @@ class TestGetFileFromURL:
         assert metadata["url"] == "https://example.com"
         assert metadata["content_type"] == "text/html"
         assert metadata["format"] == "html"
-        assert metadata["parsed"] is True  # HTML is parsed to markdown by default
+        assert (
+            metadata["parsed"] is True
+        )  # HTML is parsed to markdown by default
         assert "timestamp" in metadata
 
         # Verify file content
@@ -213,7 +235,9 @@ class TestGetFileFromURL:
 
         mock_client_instance = Mock()
         mock_client_instance.get.return_value = mock_response
-        mock_client_instance.__enter__ = Mock(return_value=mock_client_instance)
+        mock_client_instance.__enter__ = Mock(
+            return_value=mock_client_instance
+        )
         mock_client_instance.__exit__ = Mock(return_value=False)
         mock_client.return_value = mock_client_instance
 
@@ -230,7 +254,9 @@ class TestIntegration:
 
     def test_real_download_example_com(self):
         """Test real download from example.com."""
-        result_json = download("Testing file download", "https://www.example.com")
+        result_json = download(
+            "Testing file download", "https://www.example.com"
+        )
         data = _response_data(result_json)
 
         assert data["file_path"] is not None
@@ -277,7 +303,9 @@ class TestFilenameExtraction:
         mock_response.headers = {
             "content-disposition": 'attachment; filename="document.pdf"'
         }
-        filename = _extract_filename_from_response(mock_response, "https://example.com")
+        filename = _extract_filename_from_response(
+            mock_response, "https://example.com"
+        )
         assert filename == "document.pdf"
 
     def test_extract_filename_from_url(self):
@@ -317,7 +345,9 @@ class TestFetchFile:
         mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
-        content, content_type, filename = _fetch_file("https://example.com/test.txt")
+        content, content_type, filename = _fetch_file(
+            "https://example.com/test.txt"
+        )
         assert content == b"Test content"
         assert content_type == "text/plain"
 
@@ -411,19 +441,24 @@ class TestFetchFile:
             _fetch_file("https://example.com", max_size=1000)
 
 
+@_needs_markitdown
 class TestMarkitdown:
     """Test MarkItDown conversion."""
 
     def test_markitdown_with_string_content(self):
         """Test MarkItDown with string content."""
         content = "Test content"
-        result = _markitdown(content, "text/plain", "https://example.com/test.txt")
+        result = _markitdown(
+            content, "text/plain", "https://example.com/test.txt"
+        )
         assert isinstance(result, str)
 
     def test_markitdown_with_bytes_content(self):
         """Test MarkItDown with bytes content."""
         content = b"Test content"
-        result = _markitdown(content, "text/plain", "https://example.com/test.txt")
+        result = _markitdown(
+            content, "text/plain", "https://example.com/test.txt"
+        )
         assert isinstance(result, str)
 
 
@@ -544,7 +579,9 @@ class TestResponseCreation:
 
     def test_create_error_response(self):
         """Test creating error response."""
-        response = _create_error_response("download", "test reason", "Test error")
+        response = _create_error_response(
+            "download", "test reason", "Test error"
+        )
         err = _response_error(response)
         assert err == "Test error"
 
@@ -566,7 +603,9 @@ class TestYouTubeTranscription:
         mock_api_class.return_value = mock_api
 
         mock_formatter = Mock()
-        mock_formatter.format_transcript.return_value = "Mocked transcript text"
+        mock_formatter.format_transcript.return_value = (
+            "Mocked transcript text"
+        )
         mock_formatter_class.return_value = mock_formatter
 
         mock_save.return_value = ("/tmp/mock_file.txt", {"file_size": 20})
@@ -587,7 +626,9 @@ class TestYouTubeTranscription:
             "dQw4w9WgXcQ", languages=["en"]
         )  # Should match video ID with default language
         mock_formatter_class.assert_called_once()
-        mock_formatter.format_transcript.assert_called_once_with(mock_transcript)
+        mock_formatter.format_transcript.assert_called_once_with(
+            mock_transcript
+        )
         mock_save.assert_called_once()
 
     def test_youtube_transcription_invalid_url(self):
@@ -618,7 +659,9 @@ class TestEdgeCases:
         mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
 
-        result = download("Testing file download", "https://example.com/notfound")
+        result = download(
+            "Testing file download", "https://example.com/notfound"
+        )
         payload = json.loads(result)
         assert payload["status"] == "error"
 

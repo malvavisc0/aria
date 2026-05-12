@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/aria
+      url: https://pypi.org/p/aria-ai
 
     steps:
       - name: Checkout repository
@@ -298,9 +298,15 @@ jobs:
           - label: "CUDA/CPU"
             base_image: "vllm/vllm-openai:latest"
             suffix: ""
+            dockerfile: "Dockerfile"
           - label: "ROCm (AMD)"
             base_image: "vllm/vllm-openai-rocm:latest"
             suffix: "-rocm"
+            dockerfile: "Dockerfile"
+          - label: "Debian (lite)"
+            base_image: ""
+            suffix: "-lite"
+            dockerfile: "Dockerfile.debian"
 
     steps:
       - name: Checkout repository
@@ -330,6 +336,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           build-args: |
             BASE_IMAGE=${{ matrix.base_image }}
@@ -398,7 +405,7 @@ jobs:
             ### pip
 
             ```bash
-            pip install aria==${{ steps.version.outputs.version }}
+            pip install aria-ai==${{ steps.version.outputs.version }}
             ```
 
             ### Linux — AppImage
@@ -423,11 +430,14 @@ jobs:
             ### Docker
 
             ```bash
-            # CUDA / CPU
+            # CUDA / CPU (local vLLM)
             docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
 
             # ROCm (AMD GPUs)
             docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+
+            # Lightweight — no GPU (remote LLM or CPU-only)
+            docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-lite:latest
             ```
 
             ### First Run

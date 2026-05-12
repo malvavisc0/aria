@@ -1,5 +1,5 @@
 [project]
-name = "aria"
+name = "aria-ai"
 dynamic = ["version"]
 description = "Aria - AI Assistant with web UI, CLI management, and local LLM support"
 readme = "README.md"
@@ -44,7 +44,7 @@ vllm = ["vllm>=0.20.0"]
 
 [project.scripts]
 aria = "aria:main"
-ax = "aria:main"
+ax = "aria.ax_cli:main"
 aria-gui = "aria.gui:main"
 
 [build-system]

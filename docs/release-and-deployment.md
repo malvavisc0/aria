@@ -13,7 +13,7 @@ When a version tag (e.g. `v0.1.0`) is pushed to GitHub, a GitHub Actions workflo
    - **Linux** — AppImage (`Aria-x86_64.AppImage`)
    - **Windows** — Portable .exe zip (`Aria-Windows-x86_64.zip`)
    - **macOS** — .app bundle zip (`Aria-macOS-arm64.zip`, Apple Silicon)
-3. **Publishes** the Python package to [PyPI](https://pypi.org/project/aria/) using trusted publishing (OIDC)
+3. **Publishes** the Python package to [PyPI](https://pypi.org/project/aria-ai/) using trusted publishing (OIDC)
 4. **Creates** a GitHub Release with all artifacts attached
 
 ---
@@ -99,7 +99,7 @@ The push of `vX.Y.Z` triggers `.github/workflows/release.yml`. You can monitor p
     └───────────┴─────────────┴──────┬──────┘
                                      │
                               ┌──────┴──────┐
-                              │Docker (×2)  │  ← GHCR: aria + aria-rocm
+                              │Docker (×3)  │  ← GHCR: aria + aria-rocm + aria-lite
                               └──────┬──────┘
                                      │
                               ┌──────┴──────┐
@@ -116,7 +116,7 @@ The push of `vX.Y.Z` triggers `.github/workflows/release.yml`. You can monitor p
 | `build-windows` | windows-latest | PyInstaller → zipped .exe (Windows x86_64) |
 | `build-macos` | macos-latest | PyInstaller → zipped .app (macOS arm64) |
 | `publish-pypi` | ubuntu-latest | `uv build` → `pypa/gh-action-pypi-publish` |
-| `build-docker` | ubuntu-latest | Docker → GHCR (CUDA/CPU + ROCm matrix) |
+| `build-docker` | ubuntu-latest | Docker → GHCR (CUDA/CPU + ROCm + Debian lite matrix) |
 | `release` | ubuntu-latest | Creates GitHub Release, attaches all artifacts |
 
 All build and publish jobs depend on `validate-version` succeeding. `build-docker` depends on `publish-pypi` (so the image gets the freshly published package). The `release` job depends on all build and publish jobs completing.
@@ -131,7 +131,7 @@ Aria uses **trusted publishing** (OIDC) — no API tokens or secrets are needed 
 
 Before the first release, configure trusted publishing on [pypi.org](https://pypi.org):
 
-1. Go to the `aria` project on PyPI (or create it)
+1. Go to the `aria-ai` project on PyPI (or create it)
 2. Navigate to **Manage** → **Publishing**
 3. Add a new publisher:
    - **Owner**: `malvavisc0`
@@ -144,8 +144,8 @@ After this one-time setup, every tagged release automatically publishes to PyPI.
 ### Installation
 
 ```bash
-pip install aria
-pip install aria[gui]   # with GUI (PySide6) support
+pip install aria-ai
+pip install aria-ai[gui]   # with GUI (PySide6) support
 ```
 
 ---
@@ -183,23 +183,27 @@ pip install aria[gui]   # with GUI (PySide6) support
 
 ## Docker Images
 
-Two Docker image variants are built and pushed to GitHub Container Registry (`ghcr.io`) on every release:
+Three Docker image variants are built and pushed to GitHub Container Registry (`ghcr.io`) on every release:
 
 | Variant | Base Image | Tag |
 |---------|-----------|-----|
 | CUDA/CPU | `vllm/vllm-openai:latest` | `ghcr.io/malvavisc0/aria:latest` |
 | ROCm (AMD) | `vllm/vllm-openai-rocm:latest` | `ghcr.io/malvavisc0/aria-rocm:latest` |
+| Debian (lite) | `debian:trixie-slim` | `ghcr.io/malvavisc0/aria-lite:latest` |
 
-Both images include vLLM for local model serving and Aria's web UI (Chainlit). Each image is tagged with both `latest` and the version number (e.g. `0.1.0`).
+The **CUDA/CPU** and **ROCm** images include vLLM for local model serving plus Aria's web UI (Chainlit). The **lite** image is a lightweight alternative with no GPU/vLLM — designed for users connecting to a remote LLM endpoint or running CPU-only. Each image is tagged with both `latest` and the version number (e.g. `0.1.0`).
 
 ### Usage
 
 ```bash
-# CUDA / CPU
+# CUDA / CPU (local vLLM)
 docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
 
 # ROCm (AMD GPUs)
 docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+
+# Lightweight — no GPU (remote LLM or CPU-only)
+docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-lite:latest
 ```
 
 | Flag | Purpose |
@@ -207,7 +211,7 @@ docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
 | `-p 9876:9876` | Expose the Chainlit web UI |
 | `-v ./data:/app/data` | Persist databases, models, and config across restarts |
 
-The Docker image uses the same `Dockerfile` with a `BASE_IMAGE` build argument to select the vLLM variant. Authentication to GHCR uses OIDC (`packages: write` permission) — no secrets required.
+The CUDA/CPU and ROCm images use the same `Dockerfile` with a `BASE_IMAGE` build argument to select the vLLM variant. The lite image uses a separate `Dockerfile.debian`. Authentication to GHCR uses OIDC (`packages: write` permission) — no secrets required.
 
 ### Building Locally
 
@@ -217,6 +221,9 @@ docker build --build-arg BASE_IMAGE=vllm/vllm-openai:latest -t aria .
 
 # ROCm (AMD)
 docker build --build-arg BASE_IMAGE=vllm/vllm-openai-rocm:latest -t aria-rocm .
+
+# Lightweight (no GPU)
+docker build -f Dockerfile.debian -t aria-lite .
 ```
 
 ---
