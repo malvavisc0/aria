@@ -6,7 +6,10 @@
 #   ROCm:      docker build --build-arg BASE_IMAGE=vllm/vllm-openai-rocm:latest -t aria-rocm .
 #
 # Run:
-#   docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+#   docker run -p 9876:9876 \
+#     -v ./data:/app/data \
+#     --env-file .env \
+#     ghcr.io/malvavisc0/aria:latest
 # ─────────────────────────────────────────────────────────────────────────────
 
 ARG BASE_IMAGE=vllm/vllm-openai:latest
@@ -18,6 +21,9 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 # ── Install Aria ──────────────────────────────────────────────────────────────
 RUN pip install --no-cache-dir aria-ai
+
+# ── Runtime configuration ─────────────────────────────────────────────────────
+ENV ARIA_HOME=/app/data
 
 # ── Create data directory for persistent storage ──────────────────────────────
 RUN mkdir -p /app/data

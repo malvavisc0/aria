@@ -14,6 +14,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
+  # ── SearXNG — privacy-respecting metasearch engine ─────────────────────────
+  # Required for web search when SEARXNG_URL is set in .env.
+  # JSON output is enabled via searxng/settings.yml.
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped
+
+  # ── Byparr — headless browser proxy for search engines ─────────────────────
+  # Optional. Set BYPARR_API_URL=http://byparr:8191 in .env to use.
+  byparr:
+    image: ghcr.io/byparr/byparr:latest
+    container_name: byparr
+    restart: unless-stopped
+
   # ── Aria (CUDA / CPU — local vLLM) ───────────────────────────────────────
   aria:
     image: ghcr.io/malvavisc0/aria:latest
@@ -23,6 +40,9 @@ services:
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env:ro
+    depends_on:
+      - searxng
+      - byparr
     deploy:
       resources:
         reservations:
@@ -42,6 +62,9 @@ services:
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env:ro
+    depends_on:
+      - searxng
+      - byparr
     restart: unless-stopped
 
   # ── Aria ROCm (AMD GPUs) ──────────────────────────────────────────────────
@@ -56,6 +79,9 @@ services:
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env:ro
+    depends_on:
+      - searxng
+      - byparr
     devices:
       - /dev/kfd:/dev/kfd
       - /dev/dri:/dev/dri

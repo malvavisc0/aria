@@ -185,6 +185,7 @@ def server_run():
     Press Ctrl+C to stop.
     """
     _ensure_lightpanda_installed()
+    _ensure_models_downloaded()
 
     # Run preflight checks
     result = run_preflight_checks()
@@ -257,6 +258,57 @@ def _ensure_lightpanda_installed() -> None:
     console.print(f"[green]✓[/green] Lightpanda installed at {binary}")
 
 
+def _ensure_models_downloaded() -> None:
+    """Auto-download models from HuggingFace if they are missing.
+
+    Checks each configured model (chat, embeddings). If the model
+    directory does not exist locally and the env var contains a
+    HuggingFace repo ID (not an absolute path), downloads the
+    snapshot automatically.
+    """
+    from os import getenv
+    from pathlib import Path
+
+    from huggingface_hub import snapshot_download
+
+    from aria.config.huggingface import HuggingFace
+    from aria.config.models import Chat, Embeddings
+
+    models_to_check = [
+        ("chat", "CHAT_MODEL_PATH", Chat),
+        ("embeddings", "EMBED_MODEL_PATH", Embeddings),
+    ]
+
+    for alias, env_var, config_cls in models_to_check:
+        model_path = config_cls.model_path
+        if not model_path:
+            continue  # Not configured — preflight will report it
+
+        path = Path(model_path)
+        if path.exists() and path.is_dir():
+            console.print(f"[green]✓[/green] {alias} model ready")
+            continue
+
+        # Only auto-download for HuggingFace repo IDs (not absolute paths)
+        raw_value = getenv(env_var, "")
+        if not raw_value or Path(raw_value).is_absolute():
+            continue  # Missing or local path that doesn't exist
+
+        console.print(
+            f"[dim]{alias} model not found — downloading from HuggingFace...[/dim]"
+        )
+        try:
+            snapshot_download(
+                repo_id=raw_value,
+                local_dir=str(path),
+                token=HuggingFace.token,
+            )
+            console.print(f"[green]✓[/green] {alias} model ready at {path}")
+        except Exception as e:
+            error_console.print(f"[red]Failed to download {alias} model: {e}[/red]")
+            raise typer.Exit(1)
+
+
 def _ensure_vllm_running() -> None:
     """Start vLLM servers if they are not already running.
 
@@ -309,6 +361,7 @@ def server_start(
     vLLM server processes are started automatically by the web_ui.
     """
     _ensure_lightpanda_installed()
+    _ensure_models_downloaded()
 
     # Run preflight checks
     result = run_preflight_checks()

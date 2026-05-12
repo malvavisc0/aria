@@ -431,13 +431,22 @@ jobs:
 
             ```bash
             # CUDA / CPU (local vLLM)
-            docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria:latest
+            docker run -p 9876:9876 \
+              -v ./data:/app/data \
+              --env-file .env \
+              ghcr.io/malvavisc0/aria:latest
 
             # ROCm (AMD GPUs)
-            docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-rocm:latest
+            docker run -p 9876:9876 \
+              -v ./data:/app/data \
+              --env-file .env \
+              ghcr.io/malvavisc0/aria-rocm:latest
 
             # Lightweight — no GPU (remote LLM or CPU-only)
-            docker run -p 9876:9876 -v ./data:/app/data ghcr.io/malvavisc0/aria-lite:latest
+            docker run -p 9876:9876 \
+              -v ./data:/app/data \
+              --env-file .env \
+              ghcr.io/malvavisc0/aria-lite:latest
             ```
 
             ### First Run
