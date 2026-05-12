@@ -15,18 +15,6 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
-_markitdown_available = importlib.util.find_spec("markitdown") is not None
-try:
-    if _markitdown_available:
-        import markitdown  # noqa: F401
-except Exception:
-    _markitdown_available = False
-
-_needs_markitdown = pytest.mark.skipif(
-    not _markitdown_available,
-    reason="markitdown not fully importable (missing onnxruntime?)",
-)
-
 from aria.tools.search import download, get_youtube_video_transcription
 from aria.tools.search._download_internals import (
     _auto_detect_format,
@@ -46,6 +34,18 @@ from aria.tools.search._download_internals import (
     _validate_url,
 )
 from aria.tools.search.download import ContentParsingError, URLDownloadError
+
+_markitdown_available = importlib.util.find_spec("markitdown") is not None
+try:
+    if _markitdown_available:
+        import markitdown  # noqa: F401
+except Exception:
+    _markitdown_available = False
+
+_needs_markitdown = pytest.mark.skipif(
+    not _markitdown_available,
+    reason="markitdown not fully importable (missing onnxruntime?)",
+)
 
 
 def _response_data(raw: str) -> dict:

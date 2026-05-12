@@ -1,6 +1,6 @@
 """About dialog for the Aria application."""
 
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import version
 
 from PySide6.QtWidgets import QDialog, QWidget
 
