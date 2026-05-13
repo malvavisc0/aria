@@ -7,15 +7,16 @@
     <title>Aria — Your Local AI Assistant</title>
     <link rel="icon" href="https://raw.githubusercontent.com/malvavisc0/aria-ai/refs/heads/master/public/favicon.png"
         type="image/png">
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@400,500,600&display=swap"
+        rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-sans: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-heading: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
             --radius: 0.375rem;
             --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -55,7 +56,7 @@
             --fg-subtle: hsl(210 6% 55%);
             --border: hsl(40 10% 78%);
             --primary: hsl(155 100% 26%);
-            --primary-fg: hsl(155 100% 8%);
+            --primary-fg: hsl(155 100% 98%);
             --primary-dim: hsl(155 100% 20%);
             --primary-glow: hsla(155, 100%, 26%, 0.08);
             --primary-glow-strong: hsla(155, 100%, 26%, 0.15);
@@ -132,6 +133,7 @@
             display: flex;
             align-items: center;
             gap: 0.6rem;
+            font-family: var(--font-heading);
             font-weight: 600;
             font-size: 1.1rem;
             color: var(--fg);
@@ -256,6 +258,7 @@
         }
 
         .hero h1 {
+            font-family: var(--font-heading);
             font-size: clamp(2.2rem, 5vw, 3.5rem);
             font-weight: 700;
             letter-spacing: -0.03em;
@@ -368,6 +371,7 @@
         }
 
         .section-header h2 {
+            font-family: var(--font-heading);
             font-size: clamp(1.5rem, 3.5vw, 2rem);
             font-weight: 700;
             letter-spacing: -0.02em;
