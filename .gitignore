@@ -39,3 +39,4 @@ wheels/
 
 .env
 .cache/
+.DS_Store
