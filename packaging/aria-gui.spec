@@ -132,7 +132,7 @@ exe = EXE(
     # console=True keeps a terminal window open alongside the Qt window.
     # Set to False on Windows if you want a pure GUI app with no console.
     console=False,
-    icon=str(ROOT / "public" / "favicon.png"),
+    icon=str(ROOT / "src" / "aria" / "public" / "favicon.png"),
 )
 
 coll = COLLECT(
