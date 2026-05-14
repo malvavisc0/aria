@@ -25,6 +25,7 @@ _SESSION_ARIA_HOME.mkdir(parents=True, exist_ok=True)
 _SESSION_WORKSPACE.mkdir(parents=True, exist_ok=True)
 
 os.environ["ARIA_HOME"] = str(_SESSION_ARIA_HOME)
+os.environ["CHAINLIT_APP_ROOT"] = str(_SESSION_ARIA_HOME)
 os.environ["TOOLS_DATA_FOLDER"] = str(_SESSION_WORKSPACE)
 os.environ.setdefault("SERVER_PORT", "9876")
 os.environ.setdefault("ARIA_DB_FILENAME", "aria.db")

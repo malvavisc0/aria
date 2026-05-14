@@ -4,6 +4,7 @@ This module provides the ServerManager class for starting, stopping,
 and monitoring the Aria Chainlit webserver process.
 """
 
+import os
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -174,9 +175,7 @@ class ServerManager:
             "pid": self.pid,
             "host": self._host,
             "port": self._port,
-            "started_at": (
-                self._started_at.isoformat() if self._started_at else None
-            ),
+            "started_at": (self._started_at.isoformat() if self._started_at else None),
         }
         save_state(self.PID_FILE, data)
 
@@ -292,21 +291,22 @@ class ServerManager:
         log_path = DebugConfig.logs_path
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
+        aria_home = self._resolve_cwd()
+        os.chdir(aria_home)
+
         cmd = self._build_command()
-        log_file = open(
-            log_path, "a"
-        )  # noqa: WPS515 — kept open for subprocess
+        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess
         from aria.config.folders import get_augmented_env
 
         env = get_augmented_env()
         env["DEBUG"] = "false"
-        env["CHAINLIT_APP_ROOT"] = self._resolve_cwd()
+        env["CHAINLIT_APP_ROOT"] = aria_home
         self._process = subprocess.Popen(
             cmd,
             stdout=log_file,
             stderr=log_file,
             env=env,
-            cwd=self._resolve_cwd(),
+            cwd=aria_home,
         )
         log_file.close()  # safe: the OS dup'd the fd into the child process
         self._started_at = datetime.now()
@@ -322,34 +322,33 @@ class ServerManager:
         if self.is_running():
             return
 
+        aria_home = self._resolve_cwd()
+        os.chdir(aria_home)
+
         cmd = self._build_command()
         log_path = DebugConfig.logs_path
         log_path.parent.mkdir(parents=True, exist_ok=True)
         self._started_at = datetime.now()
         self._save_state()
-        log_file = open(
-            log_path, "a"
-        )  # noqa: WPS515 — kept open for subprocess lifetime
+        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess lifetime
         try:
             from aria.config.folders import get_augmented_env
 
             env = get_augmented_env()
             env["DEBUG"] = "false"
-            env["CHAINLIT_APP_ROOT"] = self._resolve_cwd()
+            env["CHAINLIT_APP_ROOT"] = aria_home
             result = subprocess.run(
                 cmd,
                 env=env,
                 stdout=log_file,
                 stderr=log_file,
-                cwd=self._resolve_cwd(),
+                cwd=aria_home,
             )
             if result.returncode != 0:
                 startup_error = self.get_startup_error()
                 if startup_error:
                     raise RuntimeError(startup_error)
-                raise RuntimeError(
-                    f"Web UI exited with status {result.returncode}"
-                )
+                raise RuntimeError(f"Web UI exited with status {result.returncode}")
         finally:
             log_file.close()
             self._clear_state()
@@ -471,15 +470,11 @@ class ServerManager:
             ServerStatus dataclass with current server information.
         """
         running = self.is_running()
-        if not running and (
-            self._process is not None or self._started_at is not None
-        ):
+        if not running and (self._process is not None or self._started_at is not None):
             # Process died on its own — clear stale state so labels reset
             self._clear_state()
 
-        healthy, latency_ms = (
-            self._check_health() if running else (False, None)
-        )
+        healthy, latency_ms = self._check_health() if running else (False, None)
         return ServerStatus(
             running=running,
             healthy=healthy,
