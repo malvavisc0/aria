@@ -330,7 +330,9 @@ class ServerManager:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         self._started_at = datetime.now()
         self._save_state()
-        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess lifetime
+        log_file = open(
+            log_path, "a"
+        )  # noqa: WPS515 — kept open for subprocess lifetime
         try:
             from aria.config.folders import get_augmented_env
 

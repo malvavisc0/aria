@@ -67,7 +67,7 @@ hidden_imports = [
 # ── Application data files ────────────────────────────────────────────────────
 app_datas = [
     # Aria's own public assets (Chainlit CSS, theme, logos, avatars)
-    (str(ROOT / "public"), "aria/public"),
+    (str(ROOT / "src" / "aria" / "public"), "aria/public"),
     # Chainlit welcome page
     (str(ROOT / "chainlit.md"), "aria/chainlit.md"),
     # Default configuration template (copied to cwd on first run)

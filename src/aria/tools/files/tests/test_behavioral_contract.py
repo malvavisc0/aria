@@ -140,9 +140,9 @@ class TestListFilesParameterNaming:
         """list_files should have 'pattern' parameter."""
         sig = inspect.signature(unified_read.list_files)
         params = list(sig.parameters.keys())
-        assert "pattern" in params, (
-            f"list_files should have 'pattern' parameter, got {params}"
-        )
+        assert (
+            "pattern" in params
+        ), f"list_files should have 'pattern' parameter, got {params}"
 
     def test_list_files_has_recursive_parameter(self):
         """list_files should have 'recursive' parameter."""

@@ -59,9 +59,9 @@ def test_detect_shell_unix():
     """Test shell detection on Unix-like systems."""
     shell = detect_shell()
     # Shell could be a full path or just a name
-    assert any(s in shell for s in ["bash", "zsh", "sh", "fish"]), (
-        f"Unexpected shell: {shell}"
-    )
+    assert any(
+        s in shell for s in ["bash", "zsh", "sh", "fish"]
+    ), f"Unexpected shell: {shell}"
 
 
 @pytest.mark.skipif(not (IS_LINUX or IS_MACOS), reason="Unix-only test")
