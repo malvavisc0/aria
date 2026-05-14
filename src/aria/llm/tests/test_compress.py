@@ -372,6 +372,6 @@ class TestContextScaling:
             assert t262[key] > t131[key], f"{key} should grow with context"
             # Verify proportionality (within rounding)
             ratio_262_32 = t262[key] / t32[key]
-            assert (
-                7.5 < ratio_262_32 < 8.5
-            ), f"{key}: 262K/32K ratio should be ~8×, got {ratio_262_32}"
+            assert 7.5 < ratio_262_32 < 8.5, (
+                f"{key}: 262K/32K ratio should be ~8×, got {ratio_262_32}"
+            )

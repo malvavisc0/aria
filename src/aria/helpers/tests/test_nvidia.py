@@ -1073,9 +1073,9 @@ class TestCalculateGpuMemoryUtilization:
             49152,
         ]:
             result = calculate_gpu_memory_utilization(vram, context_size=32768)
-            assert (
-                0.50 <= result <= 0.95
-            ), f"VRAM={vram} MiB → utilization={result} outside [0.50, 0.95]"
+            assert 0.50 <= result <= 0.95, (
+                f"VRAM={vram} MiB → utilization={result} outside [0.50, 0.95]"
+            )
 
     def test_no_model_path_uses_default(self):
         """Test that missing model path uses default 4096 MiB estimate."""

@@ -48,7 +48,7 @@ def test_server_run_shows_clean_failure_panel() -> None:
     assert result.exit_code == 1
     assert "Startup failed" in result.output
     assert "model load error" in result.output
-    assert "vllm.log" in result.output
+    assert "vLLM log:" in result.output
 
 
 def test_server_run_shows_captured_error_after_clean_return() -> None:
