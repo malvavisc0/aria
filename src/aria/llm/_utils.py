@@ -101,12 +101,21 @@ def get_instructions_extras(agent_name: str, add_agent_id: bool = True) -> str:
     except Exception:
         browser = False
 
+    # Workspace path so agents know their default operating directory
+    try:
+        from aria.config.folders import Workspace
+
+        workspace_path = str(Workspace.path)
+    except Exception:
+        workspace_path = "~/.aria/workspace"
+
     lines: list[str] = [
         "The following runtime context is always active — factor it into every response and tool use.",
         "",
         f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
         f"- **System OS**: {host}",
         f"- **Shell**: {shell_name}",
+        f"- **Workspace**: `{workspace_path}` — file and shell operations default here",
         f"- **Vision Enabled**: {'Yes' if vision else 'No'}",
         f"- **Browser Available**: {'Yes' if browser else 'No'}",
         f"- **Max Output Tokens**: {max_tok} (keep responses concise to avoid truncation)",

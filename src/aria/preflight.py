@@ -310,16 +310,44 @@ def _check_models(checks: list[CheckResult]) -> None:
 def _check_token_limit(checks: list[CheckResult]) -> None:
     """Check that TOKEN_LIMIT_RATIO is within safe bounds.
 
-    The memory token limit (TOKEN_LIMIT_RATIO × CHAT_CONTEXT_SIZE) must
+    The memory token limit (TOKEN_LIMIT_RATIO × effective_context) must
     leave room for system prompt, tool definitions, user input, and model
     response generation.
+
+    Uses the **effective** context (after GPU KV cache clamping) rather
+    than the raw requested CHAT_CONTEXT_SIZE, since the model will
+    actually support the clamped value.
     """
     from aria.config.api import Vllm as VllmConfig
+    from aria.config.models import Chat
     from aria.config.models import Embeddings as EmbeddingsConfig
 
-    token_limit = EmbeddingsConfig.token_limit
     ratio = EmbeddingsConfig.token_limit_ratio
-    ctx_size = VllmConfig.chat_context_size
+    requested_ctx = VllmConfig.chat_context_size
+
+    # Compute effective context (same clamping as _check_kv_cache_memory)
+    effective_ctx = requested_ctx
+    ctx_was_clamped = False
+    if Chat.model_path:
+        from aria.server.vllm import VllmServerManager
+
+        effective_ctx = VllmServerManager._resolve_max_model_len(
+            Chat.model_path, requested_ctx
+        )
+        gpu_mem = VllmConfig.gpu_memory_utilization
+        if gpu_mem is None:
+            gpu_mem = 0.90  # Conservative estimate for preflight
+        clamped = VllmServerManager._clamp_context_to_gpu_kv(
+            model_path=Chat.model_path,
+            requested_context=effective_ctx,
+            gpu_memory_utilization=gpu_mem,
+            kv_cache_dtype=VllmConfig.kv_cache_dtype,
+        )
+        if clamped < effective_ctx:
+            effective_ctx = clamped
+            ctx_was_clamped = True
+
+    token_limit = int(effective_ctx * ratio)
 
     # Reserve 10% of context for system prompt, tools, and response
     max_safe_ratio = 0.90
@@ -332,8 +360,8 @@ def _check_token_limit(checks: list[CheckResult]) -> None:
                 category="environment",
                 error=(
                     f"TOKEN_LIMIT_RATIO ({ratio:.0%}) exceeds safe limit "
-                    f"({max_safe_ratio:.0%}) of CHAT_CONTEXT_SIZE ({ctx_size}). "
-                    f"Max safe token limit: {int(ctx_size * max_safe_ratio)}"
+                    f"({max_safe_ratio:.0%}) of {effective_ctx:,} context. "
+                    f"Max safe token limit: {int(effective_ctx * max_safe_ratio):,}"
                 ),
                 hint=(
                     "Reduce TOKEN_LIMIT_RATIO in your .env file to leave room "
@@ -342,12 +370,18 @@ def _check_token_limit(checks: list[CheckResult]) -> None:
             )
         )
     else:
+        # Human-readable token counts (K = thousands)
+        limit_k = f"{token_limit // 1000}K"
+        ctx_k = f"{effective_ctx // 1000}K"
+        clamp_note = " (auto-clamped)" if ctx_was_clamped else ""
         checks.append(
             CheckResult(
                 name="Token limit",
                 passed=True,
                 category="environment",
-                details=f"{token_limit} ({ratio:.0%} of {ctx_size})",
+                details=(
+                    f"{limit_k} for memory ({ratio:.0%} of {ctx_k} context{clamp_note})"
+                ),
             )
         )
 
@@ -650,17 +684,17 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
                 )
             )
         elif ram_sufficient and will_be_clamped:
+            req_k = effective_context_size // 1000
+            clamped_k = clamped_context // 1000
             checks.append(
                 CheckResult(
                     name="KV cache memory",
                     passed=True,  # Will auto-clamp at launch
                     category="hardware",
                     details=(
-                        f"Requested context ({effective_context_size:,}) "
-                        f"exceeds GPU KV cache capacity. Will auto-clamp "
-                        f"to ~{clamped_context:,} at launch. "
-                        f"KV offloading to RAM supports concurrent "
-                        f"requests but cannot extend per-request context."
+                        f"Context {req_k}K → ~{clamped_k}K "
+                        f"(GPU KV cache limit). "
+                        f"RAM offload active for concurrency."
                     ),
                 )
             )

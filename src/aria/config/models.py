@@ -109,8 +109,37 @@ class Embeddings:
         lambda: float(get_optional_env("TOKEN_LIMIT_RATIO", "0.85"))
     )
     token_limit = _Lazy(
-        lambda: int(VllmConfig.chat_context_size * Embeddings.token_limit_ratio)
+        lambda: int(Embeddings._effective_context_size() * Embeddings.token_limit_ratio)
     )
+
+    @staticmethod
+    def _effective_context_size() -> int:
+        """Compute the effective context after GPU KV cache clamping.
+
+        Uses the same logic as ``VllmServerManager._clamp_context_to_gpu_kv``
+        so the memory system's token budget matches what the model actually
+        supports.
+        """
+        requested = VllmConfig.chat_context_size
+        model_path = _resolve_model_path(get_optional_env("CHAT_MODEL_PATH", ""))
+        if not model_path or not Path(model_path).exists():
+            return requested
+        try:
+            from aria.server.vllm import VllmServerManager
+
+            ctx = VllmServerManager._resolve_max_model_len(model_path, requested)
+            gpu_mem = VllmConfig.gpu_memory_utilization
+            if gpu_mem is None:
+                gpu_mem = 0.90
+            return VllmServerManager._clamp_context_to_gpu_kv(
+                model_path=model_path,
+                requested_context=ctx,
+                gpu_memory_utilization=gpu_mem,
+                kv_cache_dtype=VllmConfig.kv_cache_dtype,
+            )
+        except Exception:
+            return requested
+
     chat_history_token_ratio = _Lazy(
         lambda: float(get_optional_env("CHAT_HISTORY_TOKEN_RATIO", "0.10"))
     )

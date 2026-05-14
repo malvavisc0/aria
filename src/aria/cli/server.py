@@ -114,13 +114,16 @@ def _print_preflight_result(result) -> bool:
     """Print preflight results in grouped format and return True if all pass."""
     grouped = result.group_by_category()
 
-    # Category icons and labels
+    # Category icons and labels — ordered for logical flow
+    # Hardware first (most impactful), then environment, then rest
     category_config = {
-        "environment": {"icon": "📦", "label": "Environment Variables"},
-        "storage": {"icon": "📁", "label": "Data & Storage"},
-        "binaries": {"icon": "⚙️ ", "label": "Binaries"},
-        "models": {"icon": "🧠", "label": "Models"},
         "hardware": {"icon": "🖥️ ", "label": "Hardware"},
+        "environment": {"icon": "📦", "label": "Environment"},
+        "models": {"icon": "🧠", "label": "Models"},
+        "binaries": {"icon": "⚙️ ", "label": "Binaries"},
+        "storage": {"icon": "📁", "label": "Storage"},
+        "connectivity": {"icon": "🌐", "label": "Connectivity"},
+        "tools": {"icon": "🔧", "label": "Tools"},
     }
 
     for category in category_config.keys():
@@ -133,7 +136,8 @@ def _print_preflight_result(result) -> bool:
 
         if passed == len(checks):
             console.print(
-                f"{config['icon']} {config['label']} [green]{passed}/{len(checks)}[/green]"
+                f"{config['icon']} {config['label']} "
+                f"[green]{passed}/{len(checks)}[/green]"
             )
         else:
             console.print(
@@ -146,9 +150,12 @@ def _print_preflight_result(result) -> bool:
                 console.print(f"   [green]✓[/green] {check.name}{details}")
             else:
                 console.print(
-                    f"   [red]✗[/red] {check.name} - [red]{check.error}[/red]"
+                    f"   [red]✗[/red] {check.name} — [red]{check.error}[/red]"
                 )
+                if check.hint:
+                    console.print(f"     [dim]→ {check.hint}[/dim]")
 
+    console.print()
     return result.passed
 
 

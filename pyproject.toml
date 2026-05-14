@@ -37,10 +37,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gui = [
-    "pyside6",
-] # GUI dependencies — required for aria-gui and standalone AppImage/.exe builds
-vllm = ["vllm>=0.20.0"]
+gui = ["pyside6"]
+vllm = ["vllm"]
 
 [project.scripts]
 aria = "aria:main"
@@ -74,6 +72,7 @@ dev = [
     "black",
     "flake8",
     "isort",
+    "pre-commit",
     "ruff",
     "pyinstaller",
     "pytest",
@@ -85,6 +84,16 @@ dev = [
 [tool.isort]
 profile = "black"
 line_length = 88
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

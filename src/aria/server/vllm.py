@@ -590,15 +590,19 @@ class VllmServerManager:
         if gpu_mem is None:
             from aria.helpers.nvidia import (
                 calculate_gpu_memory_utilization,
+                get_free_vram_per_gpu,
                 get_total_vram_mb,
             )
 
             total_vram = get_total_vram_mb()
+            free_vram_list = get_free_vram_per_gpu()
+            free_vram = sum(free_vram_list) if free_vram_list else 0
             gpu_mem = calculate_gpu_memory_utilization(
                 total_vram_mb=total_vram,
                 model_path=Chat.model_path,
                 context_size=max_model_len,
                 kv_cache_dtype=VllmConfig.kv_cache_dtype,
+                free_vram_mb=free_vram,
             )
 
         # --- Clamp max_model_len to GPU KV cache capacity ---
@@ -670,6 +674,9 @@ class VllmServerManager:
         # No separate vLLM server is needed.
 
         from aria.config.folders import Debug as DebugConfig
+
+        # Ensure log directory exists (may not be created if initialization was skipped)
+        DebugConfig.path.mkdir(parents=True, exist_ok=True)
 
         # Start all processes with stderr redirected to log files
         procs: dict[str, subprocess.Popen] = {}

@@ -6,9 +6,6 @@ prompt engineering best practices to improve clarity, specificity, and overall
 quality of user prompts.
 """
 
-import platform
-from datetime import datetime
-
 from llama_index.core.agent import FunctionAgent
 from llama_index.core.llms import LLM
 from pydantic import BaseModel, Field
@@ -62,59 +59,60 @@ class PromptEnhancerAgent(FunctionAgent):
     def get_instructions(cls) -> str:
         """Return the full system prompt as the agent would see it at runtime.
 
-        Composes the agent-specific markdown with the runtime extras
-        (date, time, timezone) that ``get_agent`` generates.
+        Uses the shared ``get_instructions_extras`` helper but strips
+        sections irrelevant to the enhancer (managed binaries, venv
+        commands) since it never executes commands.
 
         Returns:
             The complete system prompt string.
         """
+        from aria.llm import get_instructions_extras
 
-        def _ordinal_suffix(day: int) -> str:
-            # 11th, 12th, 13th are special-cased.
-            if 11 <= (day % 100) <= 13:
-                return "th"
-            return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-
-        timestamp = datetime.now()
-        host = f"{platform.system()} {platform.release()}"
-
-        day = timestamp.day
-        date_str = (
-            f"{timestamp.strftime('%B')} {day}{_ordinal_suffix(day)} {timestamp.year}"
+        extras = cls._strip_irrelevant_extras(
+            get_instructions_extras(agent_name="prompt_enhancer")
         )
+        return cls.get_system_prompt(extras=extras)
 
-        tz = timestamp.astimezone().tzinfo
-        lines: list[str] = [
-            f"- **Date**: {date_str} {timestamp.strftime('%H:%M')} ({tz})",
-            f"- **OS**: {host}",
-        ]
-        return cls.get_system_prompt("\n".join(lines))
+    @staticmethod
+    def _strip_irrelevant_extras(extras: str) -> str:
+        """Remove runtime context sections the enhancer doesn't need.
+
+        Strips Aria-Managed Binaries and Virtual Environment Commands
+        sections since the prompt enhancer never executes commands.
+        """
+        import re
+
+        # Remove "### Aria-Managed Binaries" through the next section heading
+        extras = re.sub(
+            r"### Aria-Managed Binaries.*?(?=### |\Z)",
+            "",
+            extras,
+            flags=re.DOTALL,
+        )
+        # Remove "### Virtual Environment Commands" to end of string
+        extras = re.sub(
+            r"### Virtual Environment Commands.*$", "", extras, flags=re.DOTALL
+        )
+        return extras.strip()
 
 
 def get_agent(
     llm: LLM,
 ) -> PromptEnhancerAgent:
-    """
-    Create a prompt enhancer agent with the given LLM.
+    """Create a prompt enhancer agent with the given LLM.
 
-    This function initializes and returns a FunctionAgent configured for
-    prompt enhancement operations. The agent specializes in applying prompt
-    engineering best practices to improve clarity, specificity, and
-    effectiveness of user prompts.
+    Uses ``get_instructions_extras`` to inject full runtime context
+    (date, OS, shell, workspace, vision, browser, max tokens, max
+    iterations, agent ID, managed binaries, venv commands).
 
     Args:
-        llm (LLM): The language model to use for the agent
+        llm: The language model to use for the agent.
 
     Returns:
-        PromptEnhancerAgent: A configured prompt enhancement agent instance
-                            ready for prompt optimization tasks
-
-    Example:
-        >>> from llama_index.core.llms import OpenAI
-        >>> llm = OpenAI(model="gpt-4")
-        >>> agent = get_agent(llm, extras="Focus on technical documentation")
-        >>> # Agent is now ready to enhance prompts
+        A configured PromptEnhancerAgent instance.
     """
+    from aria.llm import get_instructions_extras
+
     tools = []
 
     agent = PromptEnhancerAgent(
@@ -126,7 +124,11 @@ def get_agent(
         ),
         tools=tools,
         llm=llm,
-        system_prompt=PromptEnhancerAgent.get_system_prompt(),
+        system_prompt=PromptEnhancerAgent.get_system_prompt(
+            extras=PromptEnhancerAgent._strip_irrelevant_extras(
+                get_instructions_extras(agent_name="prompt_enhancer")
+            )
+        ),
         streaming=False,
         verbose=False,
         output_cls=PromptEnhancementResult,

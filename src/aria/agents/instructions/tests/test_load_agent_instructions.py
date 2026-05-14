@@ -85,7 +85,7 @@ class TestLoadAgentInstructions:
 
     def test_base_sections_selective_loading(self):
         """Only requested base sections should be included."""
-        result = load_agent_instructions("aria", base_sections=["core"])
+        result = load_agent_instructions("prompt_enhancer", base_sections=["core"])
         assert "Core Rules" in result
         assert "## Tools" not in result
         assert "Failure Handling" not in result

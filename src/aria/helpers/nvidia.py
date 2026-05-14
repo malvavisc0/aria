@@ -639,6 +639,7 @@ def calculate_gpu_memory_utilization(
     safety_factor: float = 1.20,
     headroom_mb: int = 1024,
     vllm_overhead_mb: int = 512,
+    free_vram_mb: int = 0,
 ) -> float:
     """Calculate the optimal ``gpu_memory_utilization`` fraction for vLLM.
 
@@ -742,6 +743,30 @@ def calculate_gpu_memory_utilization(
 
     # Clamp to safe bounds
     utilization = max(MIN_UTILIZATION, min(MAX_UTILIZATION, round(utilization, 2)))
+
+    # --- Step 4b: Account for other CUDA processes ---
+    # When other processes consume VRAM, vLLM's --gpu-memory-utilization
+    # is applied to TOTAL VRAM, not free VRAM.  If utilization × total > free,
+    # vLLM will OOM during warmup.  Clamp to what's actually available.
+    if free_vram_mb > 0:
+        # Leave a small margin for CUDA context overhead
+        cuda_margin_mb = 256
+        max_safe_util = max(
+            MIN_UTILIZATION,
+            (free_vram_mb - cuda_margin_mb) / total_vram_mb,
+        )
+        if utilization > max_safe_util:
+            logger.info(
+                "Clamping gpu_memory_utilization from {orig:.2f} to "
+                "{clamped:.2f} — other CUDA processes using "
+                "{used_mb} MiB VRAM (free: {free} MiB, total: {total} MiB)",
+                orig=utilization,
+                clamped=round(max_safe_util, 2),
+                used_mb=total_vram_mb - free_vram_mb,
+                free=free_vram_mb,
+                total=total_vram_mb,
+            )
+            utilization = round(max_safe_util, 2)
 
     # --- Step 5: Log the reasoning ---
     logger.info(
