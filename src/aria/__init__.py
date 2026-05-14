@@ -15,9 +15,7 @@ def main():
     # as APP_ROOT.  This MUST happen before any `import chainlit` because
     # chainlit.config evaluates APP_ROOT at module-import time via
     # os.getenv("CHAINLIT_APP_ROOT", os.getcwd()).
-    aria_home = str(
-        Path(os.environ.get("ARIA_HOME", Path.home() / ".aria")).resolve()
-    )
+    aria_home = str(Path(os.environ.get("ARIA_HOME", Path.home() / ".aria")).resolve())
     os.environ.setdefault("CHAINLIT_APP_ROOT", aria_home)
     os.makedirs(aria_home, exist_ok=True)
     os.chdir(aria_home)
