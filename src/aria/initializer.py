@@ -26,12 +26,26 @@ def _get_aria_home() -> Path:
     return Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
 
 
+def _has_valid_secret(value: str) -> bool:
+    """Return True if the secret is non-empty and not a placeholder."""
+    return bool(value) and value not in ("your-secret-here", "changeme")
+
+
 def is_initialized() -> bool:
     """Check if the environment is already initialized.
 
-    Returns True if .env exists in ARIA_HOME with a non-empty
-    CHAINLIT_AUTH_SECRET.
+    Returns True when a valid CHAINLIT_AUTH_SECRET is available — either
+    already loaded into ``os.environ`` (e.g. Docker with a mounted .env)
+    or present inside the ARIA_HOME ``.env`` file.
     """
+    import os
+
+    # Fast path: secret already in the environment (Docker / pre-loaded).
+    env_secret = os.environ.get("CHAINLIT_AUTH_SECRET", "").strip()
+    if _has_valid_secret(env_secret):
+        return True
+
+    # Fallback: check the ARIA_HOME .env file directly.
     env_file = _get_aria_home() / ".env"
     if not env_file.exists():
         return False
@@ -41,10 +55,7 @@ def is_initialized() -> bool:
         if line.startswith("CHAINLIT_AUTH_SECRET"):
             if "=" in line:
                 value = line.split("=", 1)[1].strip()
-                return bool(value) and value not in (
-                    "your-secret-here",
-                    "changeme",
-                )
+                return _has_valid_secret(value)
     return False
 
 
@@ -57,6 +68,9 @@ def setup_env_file() -> bool:
     """Create .env from .env.example with generated secret and network IP.
 
     Creates the .env file in ARIA_HOME (defaults to ~/.aria).
+    If a .env was already loaded into the environment (Docker mount),
+    generates a missing CHAINLIT_AUTH_SECRET in-memory and skips
+    file creation.
     """
     import os
 
@@ -67,6 +81,17 @@ def setup_env_file() -> bool:
     if env_file.exists():
         return False
 
+    # Docker / pre-loaded path: env vars are set but no .env in ARIA_HOME.
+    # Generate a secret in-memory and skip file creation.
+    if os.environ.get("CHAT_MODEL") or os.environ.get("CHAT_OPENAI_API"):
+        if not _has_valid_secret(os.environ.get("CHAINLIT_AUTH_SECRET", "").strip()):
+            secret = generate_secret()
+            os.environ["CHAINLIT_AUTH_SECRET"] = secret
+            console.print("   [green]✓[/green] Auto-generated CHAINLIT_AUTH_SECRET")
+        console.print("   [green]✓[/green] Using pre-loaded configuration")
+        return True
+
+    # Standard path: copy .env.example into ARIA_HOME.
     env_example_ref = files("aria").joinpath(".env.example")
     with as_file(env_example_ref) as env_example:
         copyfile(env_example, env_file)
@@ -134,6 +159,41 @@ def setup_database() -> None:
     console.print("   [green]✓[/green] Initialized database")
 
 
+def setup_public_assets() -> None:
+    """Copy public/ assets (CSS, logos, theme) from the package to ARIA_HOME.
+
+    Chainlit expects a ``public/`` directory in its CWD. When running
+    from a pip-installed package (e.g. Docker), these files aren't present
+    in the filesystem — they live inside the installed package. This
+    function extracts them once into ARIA_HOME so Chainlit can find them.
+    """
+    import os
+    from shutil import copy2
+
+    aria_home = Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
+    public_dest = aria_home / "public"
+
+    if public_dest.exists():
+        return
+
+    public_ref = files("aria").joinpath("public")
+    with as_file(public_ref) as public_src:
+        if not public_src.is_dir():
+            return
+
+        public_dest.mkdir(parents=True, exist_ok=True)
+        for item in public_src.iterdir():
+            if item.is_dir():
+                sub_dest = public_dest / item.name
+                sub_dest.mkdir(exist_ok=True)
+                for child in item.iterdir():
+                    copy2(child, sub_dest / child.name)
+            else:
+                copy2(item, public_dest / item.name)
+
+    console.print("   [green]✓[/green] Installed public assets (CSS, logos)")
+
+
 def setup_logs() -> None:
     """Create log file if it doesn't exist."""
     from aria.config.folders import Debug
@@ -144,6 +204,56 @@ def setup_logs() -> None:
     console.print("   [green]✓[/green] Created log file")
 
 
+def setup_chainlit_config() -> None:
+    """Copy .chainlit/ (config + translations) and chainlit.md to ARIA_HOME.
+
+    Chainlit expects these files in its CWD.  When running from a
+    pip-installed package (e.g. Docker), they live inside the installed
+    package and must be extracted once into ARIA_HOME.
+    """
+    import os
+    from shutil import copy2
+
+    aria_home = Path(os.environ.get("ARIA_HOME", Path.home() / ".aria"))
+    chainlit_dest = aria_home / ".chainlit"
+    config_dest = chainlit_dest / "config.toml"
+    trans_dest = chainlit_dest / "translations"
+    md_dest = aria_home / "chainlit.md"
+
+    # Skip if everything is already in place.
+    if config_dest.exists() and trans_dest.exists() and md_dest.exists():
+        return
+
+    # ── .chainlit/config.toml ────────────────────────────────────────
+    if not config_dest.exists():
+        config_ref = files("aria").joinpath(".chainlit", "config.toml")
+        with as_file(config_ref) as config_src:
+            if config_src.is_file():
+                chainlit_dest.mkdir(parents=True, exist_ok=True)
+                copy2(config_src, config_dest)
+
+    # ── .chainlit/translations/*.json ────────────────────────────────
+    if not trans_dest.exists():
+        trans_ref = files("aria").joinpath(".chainlit", "translations")
+        with as_file(trans_ref) as trans_src:
+            if trans_src.is_dir():
+                trans_dest.mkdir(parents=True, exist_ok=True)
+                for json_file in trans_src.iterdir():
+                    if json_file.suffix == ".json":
+                        copy2(json_file, trans_dest / json_file.name)
+
+    # ── chainlit.md (welcome message) ────────────────────────────────
+    if not md_dest.exists():
+        md_ref = files("aria").joinpath("chainlit.md")
+        with as_file(md_ref) as md_src:
+            if md_src.is_file():
+                copy2(md_src, md_dest)
+
+    console.print(
+        "   [green]✓[/green] Installed Chainlit config, translations, and welcome page"
+    )
+
+
 def run_initialization() -> None:
     """Run all initialization steps for first-time setup."""
     console.print("🔧 [bold]First-time setup...[/bold]")
@@ -151,4 +261,6 @@ def run_initialization() -> None:
     setup_directories()
     setup_database()
     setup_logs()
+    setup_public_assets()
+    setup_chainlit_config()
     console.print()

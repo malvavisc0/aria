@@ -151,10 +151,31 @@ def _init_chat_llm() -> None:
 
 
 def _load_embeddings_sync() -> None:
-    """Load the embeddings model in-process (CPU-only, no vLLM dependency)."""
-    _state.embeddings = get_embeddings_model(
-        model_name=EmbeddingsConfig.model_path or EmbeddingsConfig.model,
-    )
+    """Load the embeddings model in-process (CPU-only, no vLLM dependency).
+
+    Uses the local model path resolved by ``_ensure_models_downloaded()``
+    (runs before the server starts).  If that path doesn't exist, we fall
+    back to the HuggingFace model name — ``sentence-transformers`` will
+    attempt its own download to its cache, but on constrained devices this
+    may OOM or hang.  A warning is emitted so the operator can pre-download.
+    """
+    from pathlib import Path
+
+    model_ref = EmbeddingsConfig.model_path or EmbeddingsConfig.model
+    model_path = Path(model_ref) if model_ref else None
+
+    if model_path and model_path.is_dir():
+        resolved = str(model_path)
+    else:
+        logger.warning(
+            f"Embeddings model path '{model_ref}' not found locally. "
+            "Falling back to HuggingFace download — this may be slow "
+            "or fail on low-memory devices. "
+            "Pre-download with: aria models download --model embeddings"
+        )
+        resolved = model_ref
+
+    _state.embeddings = get_embeddings_model(model_name=resolved)
 
 
 def _init_vector_db() -> None:

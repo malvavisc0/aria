@@ -5,7 +5,6 @@ and monitoring the Aria Chainlit webserver process.
 """
 
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -175,7 +174,9 @@ class ServerManager:
             "pid": self.pid,
             "host": self._host,
             "port": self._port,
-            "started_at": (self._started_at.isoformat() if self._started_at else None),
+            "started_at": (
+                self._started_at.isoformat() if self._started_at else None
+            ),
         }
         save_state(self.PID_FILE, data)
 
@@ -230,18 +231,23 @@ class ServerManager:
     def _build_command(self) -> list[str]:
         """Build the chainlit run command.
 
-        Detects whether running in a uv development environment or as an
-        installed package, and builds the appropriate command.
+        Always invokes ``chainlit`` directly (found via the augmented
+        ``PATH`` set by :func:`get_augmented_env`).  Both the subprocess
+        CWD (via :meth:`_resolve_cwd`) and the ``CHAINLIT_APP_ROOT``
+        env var are set to ARIA_HOME so that Chainlit discovers
+        ``public/``, ``.chainlit/``, and ``chainlit.md`` there — never
+        in the caller's CWD.  The env var is the authoritative
+        override because ``uv run`` can reset the OS-level CWD before
+        the Python interpreter starts importing modules.
 
-        Note: ``--root-path`` is intentionally omitted. It is a URL path
-        prefix for reverse-proxy deployments (e.g. ``/aria``), not a
-        filesystem path. Passing ``Path.cwd()`` would produce a broken
-        URL like ``http://host:port/home/user/project/login``.
+        Note: ``--root-path`` is intentionally omitted. It is a URL
+        path prefix for reverse-proxy deployments, not a filesystem
+        path.
 
         Returns:
             List of command arguments for subprocess.
         """
-        chainlit_args = [
+        return [
             "chainlit",
             "run",
             "--no-cache",
@@ -252,14 +258,15 @@ class ServerManager:
             self._target,
         ]
 
-        # Heuristic: detect uv dev environment by checking the
-        # interpreter path (avoids CWD-dependent pyproject.toml check
-        # that would false-positive in unrelated project directories).
-        in_uv = "uv" in sys.executable
-        if in_uv:
-            return ["uv", "run"] + chainlit_args
+    def _resolve_cwd(self) -> str:
+        """Return ARIA_HOME as the CWD for the Chainlit subprocess.
 
-        return chainlit_args
+        Chainlit resolves ``public/``, ``.chainlit/``, and
+        ``chainlit.md`` relative to its CWD.  Running from ARIA_HOME
+        ensures these assets (extracted during initialization) are
+        always found, regardless of where the CLI was invoked.
+        """
+        return str(DataConfig.path)
 
     def start(self) -> bool:
         """Start the webserver as a background subprocess.
@@ -286,16 +293,20 @@ class ServerManager:
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = self._build_command()
-        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess
+        log_file = open(
+            log_path, "a"
+        )  # noqa: WPS515 — kept open for subprocess
         from aria.config.folders import get_augmented_env
 
         env = get_augmented_env()
         env["DEBUG"] = "false"
+        env["CHAINLIT_APP_ROOT"] = self._resolve_cwd()
         self._process = subprocess.Popen(
             cmd,
             stdout=log_file,
             stderr=log_file,
             env=env,
+            cwd=self._resolve_cwd(),
         )
         log_file.close()  # safe: the OS dup'd the fd into the child process
         self._started_at = datetime.now()
@@ -316,23 +327,29 @@ class ServerManager:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         self._started_at = datetime.now()
         self._save_state()
-        log_file = open(log_path, "a")  # noqa: WPS515 — kept open for subprocess lifetime
+        log_file = open(
+            log_path, "a"
+        )  # noqa: WPS515 — kept open for subprocess lifetime
         try:
             from aria.config.folders import get_augmented_env
 
             env = get_augmented_env()
             env["DEBUG"] = "false"
+            env["CHAINLIT_APP_ROOT"] = self._resolve_cwd()
             result = subprocess.run(
                 cmd,
                 env=env,
                 stdout=log_file,
                 stderr=log_file,
+                cwd=self._resolve_cwd(),
             )
             if result.returncode != 0:
                 startup_error = self.get_startup_error()
                 if startup_error:
                     raise RuntimeError(startup_error)
-                raise RuntimeError(f"Web UI exited with status {result.returncode}")
+                raise RuntimeError(
+                    f"Web UI exited with status {result.returncode}"
+                )
         finally:
             log_file.close()
             self._clear_state()
@@ -454,11 +471,15 @@ class ServerManager:
             ServerStatus dataclass with current server information.
         """
         running = self.is_running()
-        if not running and (self._process is not None or self._started_at is not None):
+        if not running and (
+            self._process is not None or self._started_at is not None
+        ):
             # Process died on its own — clear stale state so labels reset
             self._clear_state()
 
-        healthy, latency_ms = self._check_health() if running else (False, None)
+        healthy, latency_ms = (
+            self._check_health() if running else (False, None)
+        )
         return ServerStatus(
             running=running,
             healthy=healthy,

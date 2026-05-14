@@ -281,12 +281,13 @@ def _ensure_models_downloaded() -> None:
     Checks each configured model (chat, embeddings). If the model
     directory does not exist locally and the env var contains a
     HuggingFace repo ID (not an absolute path), downloads the
-    snapshot automatically.
+    snapshot automatically with a progress indicator and retry logic.
     """
     from os import getenv
     from pathlib import Path
 
     from huggingface_hub import snapshot_download
+    from rich.status import Status
 
     from aria.config.huggingface import HuggingFace
     from aria.config.models import Chat, Embeddings
@@ -295,6 +296,8 @@ def _ensure_models_downloaded() -> None:
         ("chat", "CHAT_MODEL_PATH", Chat),
         ("embeddings", "EMBED_MODEL_PATH", Embeddings),
     ]
+
+    max_retries = 3
 
     for alias, env_var, config_cls in models_to_check:
         model_path = config_cls.model_path
@@ -311,18 +314,43 @@ def _ensure_models_downloaded() -> None:
         if not raw_value or Path(raw_value).is_absolute():
             continue  # Missing or local path that doesn't exist
 
-        console.print(
-            f"[dim]{alias} model not found — downloading from HuggingFace...[/dim]"
-        )
-        try:
-            snapshot_download(
-                repo_id=raw_value,
-                local_dir=str(path),
-                token=HuggingFace.token,
+        last_error: Exception | None = None
+        for attempt in range(1, max_retries + 1):
+            label = (
+                f"Downloading {alias} model ({raw_value})"
+                if attempt == 1
+                else (
+                    f"Retrying {alias} model download (attempt {attempt}/{max_retries})"
+                )
             )
-            console.print(f"[green]✓[/green] {alias} model ready at {path}")
-        except Exception as e:
-            error_console.print(f"[red]Failed to download {alias} model: {e}[/red]")
+            try:
+                with Status(f"[dim]{label}…[/dim]", console=console):
+                    snapshot_download(
+                        repo_id=raw_value,
+                        local_dir=str(path),
+                        token=HuggingFace.token,
+                        ignore_patterns=[
+                            "onnx/*",
+                            "openvino/*",
+                            "openvino_model.*",
+                        ],
+                    )
+                console.print(f"[green]✓[/green] {alias} model ready at {path}")
+                last_error = None
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries:
+                    console.print(
+                        f"[yellow]⚠[/yellow] {alias} model download failed "
+                        f"(attempt {attempt}/{max_retries}): {e}"
+                    )
+
+        if last_error is not None:
+            error_console.print(
+                f"[red]Failed to download {alias} model after "
+                f"{max_retries} attempts: {last_error}[/red]"
+            )
             raise typer.Exit(1)
 
 

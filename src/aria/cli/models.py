@@ -167,6 +167,7 @@ def download_command(
             "repo_id": repo_id,
             "local_dir": local_dir,
             "token": resolved_token,
+            "ignore_patterns": ["onnx/*", "openvino/*", "openvino_model.*"],
         }
         if force:
             download_kwargs["force_download"] = True

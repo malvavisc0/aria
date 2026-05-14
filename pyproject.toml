@@ -57,6 +57,18 @@ version = { attr = "aria.__version__" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+aria = [
+    ".env.example",
+    "chainlit.md",
+    ".chainlit/config.toml",
+    ".chainlit/translations/*.json",
+    "public/*.css",
+    "public/*.json",
+    "public/*.png",
+    "public/avatars/*.png",
+]
+
 [dependency-groups]
 dev = [
     "black",
