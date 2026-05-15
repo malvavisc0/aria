@@ -278,9 +278,9 @@ def _build_help(family: str | None) -> str:
 
 @log_tool_call
 async def ax(
-    reason: Reason,
-    family: str,
-    command: str,
+    reason: Reason = "",
+    family: str = "",
+    command: str = "",
     args: dict[str, Any] | None = None,
 ) -> str:
     """Dispatch to a domain tool family with structured I/O.
@@ -298,9 +298,40 @@ async def ax(
     Returns:
         Structured JSON response from the target function.
     """
-    family = family.lower().strip()
-    command = command.lower().strip()
+    family = (family or "").lower().strip()
+    command = (command or "").lower().strip()
     call_args: dict[str, Any] = args or {}
+
+    if not reason:
+        return tool_response(
+            tool="ax",
+            reason="missing_reason",
+            data={
+                "error": {
+                    "code": "missing_reason",
+                    "message": "The 'reason' argument is required. Explain why you are calling this tool.",
+                    "hint": "Pass a brief reason string, e.g. reason='Search for Python tutorials'.",
+                }
+            },
+        )
+
+    if not family or not command:
+        return tool_response(
+            tool="ax",
+            reason=reason or "missing_args",
+            data={
+                "error": {
+                    "code": "missing_required_args",
+                    "message": "ax() requires 'family' and 'command' arguments.",
+                    "expected": {
+                        "reason": "Brief explanation of why you are calling this.",
+                        "family": "Tool family: web, knowledge, finance, imdb, http, dev, processes, check, worker",
+                        "command": "Subcommand within the family",
+                        "args": "Optional arguments dict (exclude 'reason')",
+                    },
+                }
+            },
+        )
 
     if command == "help":
         return _build_help(family)
@@ -360,6 +391,32 @@ async def ax(
     kwargs: dict[str, Any] = {"reason": reason, **call_args}
     if inject_action:
         kwargs["action"] = command
+
+    # Strip kwargs that the target function doesn't accept to avoid
+    # TypeError from hallucinated args (e.g. 'timeout', 'mode').
+    # Skip filtering if the signature has no params (likely a mock,
+    # wrapper, or C function we can't inspect).
+    try:
+        sig = inspect.signature(fn)
+        accepted = set(sig.parameters.keys())
+        has_var_keyword = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+        # If the function accepts **kwargs, nothing to strip.
+        # If the signature is empty (mock / uninspectable), skip.
+        if accepted and not has_var_keyword:
+            filtered = {k: v for k, v in kwargs.items() if k in accepted}
+            dropped = set(kwargs.keys()) - accepted
+            if dropped:
+                logger.debug(
+                    "ax dispatch: stripping unknown args {} for {}.{}",
+                    dropped,
+                    family,
+                    command,
+                )
+            kwargs = filtered
+    except (ValueError, TypeError):
+        pass  # Built-in or C function — can't inspect, pass everything.
 
     # Call the function (handle async targets like browser tools)
     try:

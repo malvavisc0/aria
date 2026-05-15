@@ -124,7 +124,8 @@ class TestCheckKvCacheMemory:
         _check_kv_cache_memory(checks)
         assert len(checks) == 1
         assert checks[0].passed is True
-        assert "Fits in VRAM" in checks[0].details
+        assert "needed" in checks[0].details
+        assert "free" in checks[0].details
 
     @patch("aria.helpers.memory.detect_system_ram", return_value=(32768, 28000))
     @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])
@@ -147,7 +148,8 @@ class TestCheckKvCacheMemory:
         _check_kv_cache_memory(checks)
         assert len(checks) == 1
         assert checks[0].passed is True  # Warning only
-        assert "may not fit" in checks[0].details
+        assert "needed >" in checks[0].details
+        assert "Consider ARIA_VLLM_KV_OFFLOAD_MODE=auto" in checks[0].details
 
     @patch("aria.helpers.memory.detect_system_ram", return_value=(32768, 28000))
     @patch("aria.helpers.nvidia.get_free_vram_per_gpu", return_value=[2000])

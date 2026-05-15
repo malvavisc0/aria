@@ -1,16 +1,18 @@
 """Sanitization utilities for malformed tool-call arguments.
 
-The ``ministral`` tool-call parser in vLLM sometimes produces malformed
-``function.arguments`` strings (e.g. two concatenated JSON objects, trailing
-garbage, or non-JSON text).  When LlamaIndex stores these in the chat history
-and replays them on the next turn, vLLM's ``_postprocess_messages`` crashes
-with ``JSONDecodeError: Extra data``.
+vLLM tool-call parsers (e.g. ``qwen3_coder``, ``ministral``) sometimes
+produce malformed ``function.arguments`` strings (e.g. two concatenated
+JSON objects, trailing garbage, or non-JSON text).  When LlamaIndex
+stores these in the chat history and replays them on the next turn,
+vLLM's ``_postprocess_messages`` crashes with ``JSONDecodeError: Extra
+data``.
 
 This module provides helpers to clean up such arguments and a subclass of
 :class:`~llama_index.llms.openai_like.OpenAILike` that applies them
 transparently before every API call.
 """
 
+import copy
 import json
 import re
 from typing import Any, Iterable, List, Sequence, cast
@@ -85,10 +87,28 @@ def _sanitize_tool_call_args(arguments: Any) -> dict[str, Any]:
         pass
 
     # Last resort: try to pull key=value pairs with a regex.
-    kv_pattern = re.compile(r'"(\w+)"\s*:\s*"([^"]*)"')
+    # Matches string values, numbers, booleans, and null.
+    kv_pattern = re.compile(
+        r'"(\w+)"\s*:\s*' r'("(?:[^"\\]|\\.)*"|[\d.]+|true|false|null)'
+    )
     matches = kv_pattern.findall(arguments)
     if matches:
-        recovered = {k: v for k, v in matches}
+        recovered: dict[str, Any] = {}
+        for k, raw_v in matches:
+            if raw_v.startswith('"'):
+                # Strip surrounding quotes and unescape.
+                recovered[k] = json.loads(raw_v)
+            elif raw_v == "true":
+                recovered[k] = True
+            elif raw_v == "false":
+                recovered[k] = False
+            elif raw_v == "null":
+                recovered[k] = None
+            else:
+                try:
+                    recovered[k] = json.loads(raw_v)
+                except (json.JSONDecodeError, ValueError):
+                    recovered[k] = raw_v
         logger.warning("Regex-recovered tool-call arguments: {}", recovered)
         return recovered
 
@@ -165,6 +185,7 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
 
         # --- Path 2: additional_kwargs["tool_calls"] ---
         ak = msg.additional_kwargs
+        ak_copy: dict[str, Any] | None = None
         if "tool_calls" in ak:
             raw_tool_calls = ak["tool_calls"]
             new_tool_calls = []
@@ -180,6 +201,13 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
                             repr(raw_args)[:120],
                             repr(fixed)[:120],
                         )
+                        # Deep-copy ak on first mutation to avoid
+                        # mutating the caller's original message.
+                        if ak_copy is None:
+                            ak_copy = copy.deepcopy(ak)
+                            raw_tool_calls = ak_copy["tool_calls"]
+                            # Re-point tc to the copy's entry.
+                            tc = raw_tool_calls[len(new_tool_calls)]
                         tc.function.arguments = fixed
                         changed = True
                 elif isinstance(tc, dict):
@@ -188,6 +216,11 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
                         raw_args = func["arguments"]
                         fixed = _sanitize_tool_call_arguments_json(raw_args)
                         if fixed != raw_args:
+                            if ak_copy is None:
+                                ak_copy = copy.deepcopy(ak)
+                                raw_tool_calls = ak_copy["tool_calls"]
+                                tc = raw_tool_calls[len(new_tool_calls)]
+                                func = tc.get("function", {})
                             func["arguments"] = fixed
                             changed = True
                 new_tool_calls.append(tc)
@@ -197,7 +230,7 @@ def _sanitize_messages(messages: Sequence[ChatMessage]) -> List[ChatMessage]:
                 ChatMessage(
                     role=msg.role,
                     blocks=new_blocks,
-                    additional_kwargs=ak,
+                    additional_kwargs=ak_copy or ak,
                     content=msg.content,
                 )
             )
@@ -222,15 +255,19 @@ def _reorder_system_messages(messages: List[ChatMessage]) -> List[ChatMessage]:
 class SanitizedOpenAILike(OpenAILike):
     """OpenAILike subclass that sanitizes tool-call arguments before API calls.
 
-    The ``ministral`` tool-call parser in vLLM sometimes produces
-    malformed ``function.arguments`` strings (e.g. two concatenated JSON
-    objects).  When LlamaIndex stores these in the chat history and
+    vLLM tool-call parsers (e.g. ``qwen3_coder``, ``ministral``) sometimes
+    produce malformed ``function.arguments`` strings (e.g. two concatenated
+    JSON objects).  When LlamaIndex stores these in the chat history and
     replays them on the next turn, vLLM's ``_postprocess_messages``
     crashes with ``JSONDecodeError: Extra data``.
 
-    This subclass intercepts ``achat`` and ``astream_chat`` to clean up
-    any malformed arguments before they reach the API.
+    This subclass intercepts ``achat``, ``chat``, and ``astream_chat``
+    to clean up any malformed arguments before they reach the API.
     """
+
+    def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> "ChatResponse":
+        messages = _reorder_system_messages(_sanitize_messages(messages))
+        return super().chat(messages, **kwargs)
 
     async def achat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
@@ -303,6 +340,11 @@ class SanitizedOpenAILike(OpenAILike):
                         first_chat_chunk
                         and response.choices[0].delta.content is None
                         and response.choices[0].delta.tool_calls is None
+                        and not getattr(
+                            response.choices[0].delta,
+                            "reasoning_content",
+                            None,
+                        )
                     ):
                         first_chat_chunk = False
                         continue
@@ -368,7 +410,9 @@ class SanitizedOpenAILike(OpenAILike):
                                 blocks.append(
                                     ToolCallBlock(
                                         tool_call_id=tool_call.id,
-                                        tool_kwargs=raw_args,
+                                        tool_kwargs=_sanitize_tool_call_arguments_json(
+                                            raw_args
+                                        ),
                                         tool_name=(tool_call.function.name or ""),
                                     )
                                 )

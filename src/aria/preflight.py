@@ -328,9 +328,11 @@ def _check_token_limit(checks: list[CheckResult]) -> None:
     # Compute effective context (same clamping as _check_kv_cache_memory)
     effective_ctx = requested_ctx
     ctx_was_clamped = False
+    model_max_ctx = None
     if Chat.model_path:
         from aria.server.vllm import VllmServerManager
 
+        model_max_ctx = VllmServerManager._get_model_max_context(Chat.model_path)
         effective_ctx = VllmServerManager._resolve_max_model_len(
             Chat.model_path, requested_ctx
         )
@@ -352,6 +354,19 @@ def _check_token_limit(checks: list[CheckResult]) -> None:
     # Reserve 10% of context for system prompt, tools, and response
     max_safe_ratio = 0.90
 
+    # Build context chain description
+    def _k(n: int) -> str:
+        return f"{n // 1000}K"
+
+    ctx_parts = [f"effective {_k(effective_ctx)}"]
+    if model_max_ctx is not None and model_max_ctx != effective_ctx:
+        ctx_parts.append(f"model max {_k(model_max_ctx)}")
+    if requested_ctx != effective_ctx:
+        ctx_parts.append(f"configured {_k(requested_ctx)}")
+    if ctx_was_clamped:
+        ctx_parts.append("GPU KV clamped")
+    ctx_detail = ", ".join(ctx_parts)
+
     if ratio > max_safe_ratio:
         checks.append(
             CheckResult(
@@ -370,17 +385,16 @@ def _check_token_limit(checks: list[CheckResult]) -> None:
             )
         )
     else:
-        # Human-readable token counts (K = thousands)
-        limit_k = f"{token_limit // 1000}K"
-        ctx_k = f"{effective_ctx // 1000}K"
-        clamp_note = " (auto-clamped)" if ctx_was_clamped else ""
+        limit_k = _k(token_limit)
+        ctx_k = _k(effective_ctx)
         checks.append(
             CheckResult(
                 name="Token limit",
                 passed=True,
                 category="environment",
                 details=(
-                    f"{limit_k} for memory ({ratio:.0%} of {ctx_k} context{clamp_note})"
+                    f"{limit_k} for memory ({ratio:.0%} of {ctx_k} context)"
+                    f" [{ctx_detail}]"
                 ),
             )
         )
@@ -536,6 +550,26 @@ def _check_memory_requirements(checks: list[CheckResult]) -> None:
             )
         )
 
+    # Show model weight size so users understand VRAM requirements
+    from aria.config.models import Chat
+
+    if Chat.model_path:
+        from pathlib import Path
+
+        from aria.helpers.memory import get_model_file_size as _get_model_size
+
+        model_size_mb = _get_model_size(Path(Chat.model_path))
+        if model_size_mb > 0:
+            model_size_gb = model_size_mb / 1024
+            checks.append(
+                CheckResult(
+                    name="Model weights",
+                    passed=True,
+                    category="hardware",
+                    details=f"{model_size_gb:.1f} GB on disk ({Chat.model_path})",
+                )
+            )
+
 
 def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
     """Check if KV cache fits in VRAM or can be offloaded to RAM.
@@ -605,15 +639,28 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
     vram_needed_mb = model_size_mb + kv_cache_mb + overhead_mb
     vram_sufficient = max_free_vram_mb >= vram_needed_mb
 
+    # Build budget breakdown strings
+    model_gb = model_size_mb / 1024
+    kv_gb = kv_cache_mb / 1024
+    overhead_gb = overhead_mb / 1024
+    needed_gb = vram_needed_mb / 1024
+    free_gb = max_free_vram_mb / 1024
+    dtype_label = (
+        VllmConfig.kv_cache_dtype if VllmConfig.kv_cache_dtype != "auto" else "fp16"
+    )
+    ctx_label = f"{effective_context_size // 1000}K"
+
     if vram_sufficient:
         checks.append(
             CheckResult(
-                name="KV cache memory",
+                name="VRAM budget",
                 passed=True,
                 category="hardware",
                 details=(
-                    f"Fits in VRAM ({kv_cache_mb} MiB, "
-                    f"free VRAM: {max_free_vram_mb} MiB)"
+                    f"model {model_gb:.1f} GB + KV {kv_gb:.1f} GB "
+                    f"({ctx_label} ctx, {dtype_label}) + "
+                    f"overhead {overhead_gb:.1f} GB = "
+                    f"{needed_gb:.1f} GB needed / {free_gb:.1f} GB free"
                 ),
             )
         )
@@ -646,13 +693,15 @@ def _check_kv_cache_memory(checks: list[CheckResult]) -> None:
     if mode == "off":
         checks.append(
             CheckResult(
-                name="KV cache memory",
+                name="VRAM budget",
                 passed=True,  # Warning only in 'off' mode
                 category="hardware",
                 details=(
-                    f"KV cache ({kv_cache_mb} MiB) may not fit in VRAM "
-                    f"({max_free_vram_mb} MiB free). Consider setting "
-                    f"ARIA_VLLM_KV_OFFLOAD_MODE=auto in .env"
+                    f"model {model_gb:.1f} GB + KV {kv_gb:.1f} GB "
+                    f"({ctx_label} ctx, {dtype_label}) + "
+                    f"overhead {overhead_gb:.1f} GB = "
+                    f"{needed_gb:.1f} GB needed > {free_gb:.1f} GB free. "
+                    f"Consider ARIA_VLLM_KV_OFFLOAD_MODE=auto"
                 ),
             )
         )

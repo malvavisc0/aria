@@ -185,3 +185,53 @@ class TestDispatch:
             data = json.loads(result)
             assert data["data"]["error"]["code"] == "invalid_args"
             assert "query" in data["data"]["error"]["message"]
+
+    @pytest.mark.asyncio
+    async def test_empty_reason_returns_error(self):
+        result = await ax(reason="", family="web", command="search")
+        data = json.loads(result)
+        assert data["data"]["error"]["code"] == "missing_reason"
+        assert "reason" in data["data"]["error"]["hint"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_args_returns_missing_reason(self):
+        result = await ax()
+        data = json.loads(result)
+        # reason check fires before family/command check
+        assert data["data"]["error"]["code"] == "missing_reason"
+
+    @pytest.mark.asyncio
+    async def test_empty_family_returns_error(self):
+        result = await ax(reason="test", family="", command="search")
+        data = json.loads(result)
+        assert data["data"]["error"]["code"] == "missing_required_args"
+
+    @pytest.mark.asyncio
+    async def test_empty_command_returns_error(self):
+        result = await ax(reason="test", family="web", command="")
+        data = json.loads(result)
+        assert data["data"]["error"]["code"] == "missing_required_args"
+
+    @pytest.mark.asyncio
+    async def test_strips_unknown_kwargs(self):
+        """Unknown kwargs are stripped before forwarding to the target function."""
+
+        # Define a local function with a known signature so inspect.signature
+        # can determine the accepted parameters (unlike MagicMock which has
+        # an empty signature and causes the filter to be skipped).
+        def fake_search(reason, query):
+            return '{"tool":"web_search","data":{"results":[]}}'
+
+        with patch(
+            "aria.tools.ax.dispatcher._web_search",
+            return_value=fake_search,
+        ):
+            result = await ax(
+                reason="test search",
+                family="web",
+                command="search",
+                args={"query": "python", "timeout": 30, "mode": "markdown"},
+            )
+            # The function should succeed — unknown args stripped silently
+            data = json.loads(result)
+            assert "results" in data["data"]
