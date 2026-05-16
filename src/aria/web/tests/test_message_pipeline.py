@@ -52,9 +52,11 @@ class TestStreamAgentResponse:
         handler = self._make_handler(event)
         output = self._make_output()
 
-        emitted = await pipeline._stream_agent_response(handler, output)
+        emitted, meta = await pipeline._stream_agent_response(handler, output)
 
         assert emitted is True
+        assert meta["tools_called"] == []
+        assert meta["has_thinking"] is False
         output.stream_token.assert_any_await("hello")
 
     @pytest.mark.asyncio
@@ -70,8 +72,10 @@ class TestStreamAgentResponse:
         handler = self._make_handler(event)
         output = self._make_output()
 
-        emitted = await pipeline._stream_agent_response(handler, output)
+        emitted, meta = await pipeline._stream_agent_response(handler, output)
         assert emitted is True
+        assert meta["has_thinking"] is True
+        assert meta["tools_called"] == []
 
         output.stream_token.assert_any_await(pipeline._BLOCKQUOTE_PREFIX)
         output.stream_token.assert_any_await("pondering")
@@ -94,9 +98,10 @@ class TestStreamAgentResponse:
         handler = self._make_handler(thinking, regular)
         output = self._make_output()
 
-        emitted = await pipeline._stream_agent_response(handler, output)
+        emitted, meta = await pipeline._stream_agent_response(handler, output)
 
         assert emitted is True
+        assert meta["has_thinking"] is True
         calls = [c.args[0] for c in output.stream_token.call_args_list]
         assert calls == [
             pipeline._BLOCKQUOTE_PREFIX,
@@ -119,9 +124,11 @@ class TestStreamAgentResponse:
         handler = self._make_handler(event)
         output = self._make_output()
 
-        emitted = await pipeline._stream_agent_response(handler, output)
+        emitted, meta = await pipeline._stream_agent_response(handler, output)
 
         assert emitted is True
+        assert meta["tools_called"] == []
+        assert meta["has_thinking"] is False
         output.stream_token.assert_any_await("fallback answer")
 
 
@@ -401,10 +408,11 @@ class TestHandleMessageVision:
             elements=[],
         )
 
-        result = await pipeline._handle_message(message)
+        prompt, meta = await pipeline._handle_message(message)
 
-        assert "[Attached images]:" in result
-        assert "[Image 1 (a.png)]: A red circle on white background." in result
+        assert "[Attached images]:" in prompt
+        assert "[Image 1 (a.png)]: A red circle on white background." in prompt
+        assert meta == {}
 
     @pytest.mark.asyncio
     async def test_appends_disabled_notice_when_vision_off(self, monkeypatch) -> None:
@@ -425,11 +433,11 @@ class TestHandleMessageVision:
             elements=[],
         )
 
-        result = await pipeline._handle_message(message)
+        prompt, meta = await pipeline._handle_message(message)
 
-        assert "[Attached images]:" in result
-        assert "vision disabled" in result
-        assert "ARIA_VLLM_VISION_ENABLED" in result
+        assert "[Attached images]:" in prompt
+        assert "vision disabled" in prompt
+        assert "ARIA_VLLM_VISION_ENABLED" in prompt
 
     @pytest.mark.asyncio
     async def test_no_image_block_when_no_images(self, monkeypatch) -> None:
@@ -443,10 +451,11 @@ class TestHandleMessageVision:
             elements=[],
         )
 
-        result = await pipeline._handle_message(message)
+        prompt, meta = await pipeline._handle_message(message)
 
-        assert "[Attached images]:" not in result
-        assert result.startswith("[Thread ID: t1]")
+        assert "[Attached images]:" not in prompt
+        assert prompt.endswith("[Thread ID: t1]")
+        assert meta == {}
 
     @pytest.mark.asyncio
     async def test_mixed_files_and_images(self, monkeypatch) -> None:
@@ -494,14 +503,15 @@ class TestHandleMessageVision:
             elements=[],
         )
 
-        result = await pipeline._handle_message(message)
+        prompt, meta = await pipeline._handle_message(message)
 
-        assert "[Uploaded files]:" in result
-        assert "report.pdf" in result
-        assert "report.md" in result
-        assert "42 lines" in result
-        assert "[Attached images]:" in result
-        assert "A bar chart." in result
+        assert "[Uploaded files]:" in prompt
+        assert "report.pdf" in prompt
+        assert "report.md" in prompt
+        assert "42 lines" in prompt
+        assert "[Attached images]:" in prompt
+        assert "A bar chart." in prompt
+        assert meta["attachments"] == ["report.pdf"]
 
     @pytest.mark.asyncio
     async def test_fallback_when_vision_api_fails(self, monkeypatch) -> None:
@@ -527,10 +537,10 @@ class TestHandleMessageVision:
             elements=[],
         )
 
-        result = await pipeline._handle_message(message)
+        prompt, meta = await pipeline._handle_message(message)
 
-        assert "[Attached images]:" in result
-        assert "<description unavailable>" in result
+        assert "[Attached images]:" in prompt
+        assert "<description unavailable>" in prompt
 
 
 class TestEditDetection:
@@ -564,8 +574,14 @@ class TestEditDetection:
 
         assert len(created_steps) == 1
         meta = created_steps[0]["metadata"]
-        assert meta["_aria_processed"] is True
+        assert meta["processed"] is True
         assert meta["location"] == "http://localhost"
+        # All default keys are always present
+        assert meta["tools_called"] == []
+        assert meta["has_thinking"] is False
+        assert meta["prompt_enhanced"] is False
+        assert meta["attachments"] == []
+        assert meta["error"] == ""
 
     @pytest.mark.asyncio
     async def test_edit_detected_when_processed_flag_set(self, monkeypatch) -> None:
@@ -598,7 +614,7 @@ class TestEditDetection:
         monkeypatch.setattr(
             pipeline,
             "_handle_message",
-            AsyncMock(return_value="prompt"),
+            AsyncMock(return_value=("prompt", {})),
         )
 
         # Mock user_session
@@ -616,7 +632,7 @@ class TestEditDetection:
         monkeypatch.setattr(
             pipeline,
             "_stream_agent_response",
-            AsyncMock(return_value=True),
+            AsyncMock(return_value=(True, {})),
         )
 
         mock_handler = MagicMock()
@@ -632,14 +648,14 @@ class TestEditDetection:
             lambda **kw: mock_output,
         )
 
-        # Create message WITH _aria_processed (simulating edit)
+        # Create message WITH processed (simulating edit)
         message = SimpleNamespace(
             id="msg-1",
             content="Edited hello",
             command=None,
             thread_id="thread-1",
             elements=[],
-            metadata={"_aria_processed": True},
+            metadata={"processed": True},
         )
 
         await pipeline.on_message_handler(message)
@@ -664,7 +680,7 @@ class TestEditDetection:
         monkeypatch.setattr(
             pipeline,
             "_handle_message",
-            AsyncMock(return_value="prompt"),
+            AsyncMock(return_value=("prompt", {})),
         )
 
         mock_memory = MagicMock()
@@ -684,7 +700,7 @@ class TestEditDetection:
         monkeypatch.setattr(
             pipeline,
             "_stream_agent_response",
-            AsyncMock(return_value=True),
+            AsyncMock(return_value=(True, {})),
         )
 
         mock_handler = MagicMock()
@@ -699,7 +715,7 @@ class TestEditDetection:
             lambda **kw: mock_output,
         )
 
-        # First message — no _aria_processed in metadata
+        # First message — no processed in metadata
         message = SimpleNamespace(
             id="msg-1",
             content="Hello",
