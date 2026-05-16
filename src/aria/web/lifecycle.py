@@ -110,20 +110,45 @@ def _init_logging() -> None:
 
 
 def _init_storage_mount() -> None:
-    """Mount the local storage directory as a static file server."""
+    """Mount the local storage directory as a static file server.
+
+    Inserts a route at the START of Chainlit's router so that
+    ``/storage/`` requests are served before the catch-all SPA
+    route intercepts them and returns HTML.
+    """
+    from pathlib import PurePosixPath
+
     from chainlit.server import app
-    from starlette.staticfiles import StaticFiles
+    from starlette.requests import Request
+    from starlette.responses import FileResponse, Response
+    from starlette.routing import Route
 
     from aria.config.folders import Storage as StorageConfig
 
     storage_dir = StorageConfig.path
     storage_dir.mkdir(parents=True, exist_ok=True)
-    app.mount(
-        "/storage",
-        StaticFiles(directory=str(storage_dir)),
+
+    async def storage_endpoint(request: Request) -> Response:
+        """Serve files from the local storage directory."""
+        rel = request.path_params.get("file_path", "")
+        safe = PurePosixPath("/", rel)
+        file_path = storage_dir / str(safe).lstrip("/")
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        from starlette.responses import JSONResponse
+
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+
+    # Insert the storage route at the BEGINNING of the router
+    # so it matches before Chainlit's catch-all SPA route.
+    storage_route = Route(
+        "/storage/{file_path:path}",
+        endpoint=storage_endpoint,
         name="local-storage",
     )
-    logger.info(f"Mounted /storage → {storage_dir}")
+    app.router.routes.insert(0, storage_route)
+
+    logger.info(f"Mounted /storage route → {storage_dir}")
 
 
 def _init_database() -> None:

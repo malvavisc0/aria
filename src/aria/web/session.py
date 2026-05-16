@@ -13,6 +13,7 @@ persistent conversation state across messages and sessions.
 from __future__ import annotations
 
 import base64
+import io
 import shutil
 import uuid
 from pathlib import Path
@@ -22,12 +23,18 @@ from chainlit.types import ThreadDict
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.memory import Memory
 from loguru import logger
+from PIL import Image
 
 from aria.config.folders import Uploads as UploadsConfig
 from aria.config.folders import Workspace as WorkspaceConfig
 from aria.config.models import Embeddings as EmbeddingsConfig
 from aria.llm import get_default_memory
 from aria.web.state import ROOT_MESSAGE_TYPES, _state
+
+# Maximum dimension (width or height) for images sent to the vision API.
+# Larger images are resized to prevent processor failures in vLLM
+# (e.g. Qwen3VLProcessor crashing on 3840×2160 images).
+_MAX_VISION_DIMENSION = 1024
 
 # Image MIME types and extensions for detection
 _IMAGE_MIME_TYPES = {
@@ -86,8 +93,56 @@ async def wait_for_initialization(timeout: float = 30.0) -> bool:
         return False
 
 
+def _resize_image_for_vision(
+    image_bytes: bytes, max_dim: int = _MAX_VISION_DIMENSION
+) -> bytes:
+    """Resize an image if it exceeds *max_dim* on either side.
+
+    Maintains the original aspect ratio.  Returns the (possibly resized)
+    image bytes as JPEG.  If the image is already within bounds the
+    original bytes are returned unchanged.
+
+    Args:
+        image_bytes: Raw image file bytes.
+        max_dim: Maximum allowed width or height in pixels.
+
+    Returns:
+        Image bytes, resized if necessary.
+    """
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+    except Exception:
+        # Cannot open — return original bytes and let the API decide.
+        return image_bytes
+
+    w, h = img.size
+    if w <= max_dim and h <= max_dim:
+        return image_bytes
+
+    ratio = min(max_dim / w, max_dim / h)
+    new_size = (int(w * ratio), int(h * ratio))
+    img = img.resize(new_size, Image.Resampling.LANCZOS)
+    logger.debug(
+        f"Resized image from {w}×{h} to {new_size[0]}×{new_size[1]} "
+        f"for vision API (max {max_dim}px)"
+    )
+
+    buf = io.BytesIO()
+    # Preserve original format; fall back to JPEG.
+    fmt = img.format or "JPEG"
+    if fmt.upper() == "JPEG":
+        img.save(buf, format=fmt, quality=85)
+    else:
+        img.save(buf, format=fmt)
+    return buf.getvalue()
+
+
 def extract_image_data(message: cl.Message) -> list[dict]:
     """Extract base64-encoded image data from uploaded file elements.
+
+    Images larger than ``_MAX_VISION_DIMENSION`` on either side are
+    resized before encoding to prevent processor failures in the vision
+    model (e.g. Qwen3VLProcessor crashing on 3840×2160 images).
 
     Returns a list of dicts with keys:
         - mime_type: str (e.g. "image/jpeg")
@@ -114,7 +169,9 @@ def extract_image_data(message: cl.Message) -> list[dict]:
 
         try:
             with open(path, "rb") as f:
-                data = base64.b64encode(f.read()).decode("utf-8")
+                raw = f.read()
+            raw = _resize_image_for_vision(raw)
+            data = base64.b64encode(raw).decode("utf-8")
             images.append(
                 {
                     "mime_type": mime or f"image/{ext.lstrip('.')}",

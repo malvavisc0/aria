@@ -83,7 +83,7 @@ async def _rollback_memory(memory: Memory | None) -> None:
         memory.set(messages[:-1])
 
 
-async def _describe_image(mime_type: str, base64_data: str, name: str) -> str:
+async def _describe_image(mime_type: str, base64_data: str, prompt: str) -> str:
     """Send an image to the vision endpoint and get a text description.
 
     Uses the same vLLM endpoint configured for the main chat model.
@@ -103,11 +103,7 @@ async def _describe_image(mime_type: str, base64_data: str, name: str) -> str:
                         "content": [
                             {
                                 "type": "text",
-                                "text": (
-                                    "Describe this image concisely in 2-3 sentences. "
-                                    "Focus on key visual elements, text content, "
-                                    "and anything relevant to answering questions about it."
-                                ),
+                                "text": prompt,
                             },
                             {
                                 "type": "image_url",
@@ -191,9 +187,7 @@ async def _handle_message(message: cl.Message) -> str:
         descriptions = []
         for i, img in enumerate(image_data, 1):
             try:
-                desc = await _describe_image(
-                    img["mime_type"], img["base64"], img["name"]
-                )
+                desc = await _describe_image(img["mime_type"], img["base64"], prompt)
                 descriptions.append(f"[Image {i} ({img['name']})]: {desc}")
             except Exception as e:
                 logger.warning(f"Vision description failed for {img['name']}: {e}")

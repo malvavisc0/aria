@@ -1,8 +1,5 @@
 {
-   "custom_fonts": [
-      "https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css",
-      "https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css"
-   ],
+   "custom_fonts": [],
    "variables": {
       "light": {
          "--font-sans": "'Geist Sans', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

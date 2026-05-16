@@ -43,8 +43,9 @@ import json
 import logging
 import uuid as _uuid
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
+import aiofiles
 from chainlit import PersistedUser
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.step import StepDict
@@ -55,6 +56,9 @@ from chainlit.types import (
     ThreadFilter,
 )
 from chainlit.user import User
+
+if TYPE_CHECKING:
+    from chainlit.element import Element
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +324,93 @@ class SQLiteSQLAlchemyDataLayer(SQLAlchemyDataLayer):
             metadata=metadata,
             tags=cast(Any, tags_json),
         )
+
+    async def create_element(self, element: "Element"):
+        """Override to fix race condition: resolve userId from session context.
+
+        Chainlit's create_element() calls _get_user_id_by_thread() which
+        queries the thread's userId column. But create_element runs as a
+        fire-and-forget task BEFORE update_thread sets the userId, causing
+        the lookup to return None and fall back to "unknown". This results
+        in files being stored under storage/unknown/ instead of the user's
+        actual directory.
+
+        By resolving the userId from the Chainlit session context (which is
+        always available at message time), we avoid the race condition.
+        """
+        from chainlit.logger import logger as chainlit_logger
+
+        if not self.storage_provider:
+            return
+        if not element.for_id:
+            return
+
+        # Resolve userId from session context (available immediately)
+        # instead of querying DB where thread.userId may not be set yet
+        user_id = "unknown"
+        try:
+            from chainlit.context import context
+
+            if context.session.user:
+                persisted = await self.get_user(context.session.user.identifier)
+                if persisted:
+                    user_id = persisted.id
+        except Exception:
+            pass
+
+        # Fallback to DB lookup if session context unavailable
+        if user_id == "unknown":
+            user_id = await self._get_user_id_by_thread(element.thread_id) or "unknown"
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"create_element: element_id={element.id}, "
+                f"user_id={user_id}, name={element.name}"
+            )
+
+        content: Optional[Union[bytes, str]] = None
+
+        if element.path:
+            async with aiofiles.open(element.path, "rb") as f:
+                content = await f.read()
+        elif element.url:
+            content = None
+        elif element.content:
+            content = element.content
+        else:
+            chainlit_logger.warning(f"create_element: no content {element.id}")
+
+        if content is not None and self.storage_provider:
+            file_key = f"{user_id}/{element.id}" + (
+                f"/{element.name}" if element.name else ""
+            )
+            if not element.mime:
+                element.mime = "application/octet-stream"
+
+            uploaded = await self.storage_provider.upload_file(
+                object_key=file_key,
+                data=content,
+                mime=element.mime,
+                overwrite=True,
+            )
+            if uploaded:
+                element.url = uploaded.get("url")
+                setattr(element, "objectKey", uploaded.get("object_key"))
+
+        element_dict = cast(dict[str, Any], element.to_dict())
+        element_dict_cleaned = {k: v for k, v in element_dict.items() if v is not None}
+        if "props" in element_dict_cleaned:
+            element_dict_cleaned["props"] = json.dumps(element_dict_cleaned["props"])
+
+        columns = ", ".join(f'"{c}"' for c in element_dict_cleaned)
+        placeholders = ", ".join(f":{c}" for c in element_dict_cleaned)
+        updates = ", ".join(f'"{c}" = :{c}' for c in element_dict_cleaned if c != "id")
+        query = (
+            f"INSERT INTO elements ({columns}) "
+            f"VALUES ({placeholders}) "
+            f"ON CONFLICT (id) DO UPDATE SET {updates};"
+        )
+        await self.execute_sql(query=query, parameters=element_dict_cleaned)
 
     async def create_step(self, step_dict: StepDict):
         """Create/update a step, ensuring SQLite-safe serialization.
