@@ -531,3 +531,219 @@ class TestHandleMessageVision:
 
         assert "[Attached images]:" in result
         assert "<description unavailable>" in result
+
+
+class TestEditDetection:
+    """Tests for metadata-based edit detection."""
+
+    @pytest.mark.asyncio
+    async def test_mark_message_processed(self, monkeypatch) -> None:
+        """_mark_message_processed persists _aria_processed in metadata."""
+        created_steps = []
+        mock_data_layer = MagicMock()
+        mock_data_layer.create_step = AsyncMock(
+            side_effect=lambda d: created_steps.append(d)
+        )
+        monkeypatch.setattr(
+            pipeline,
+            "get_data_layer_handler",
+            lambda: mock_data_layer,
+        )
+
+        message = MagicMock()
+        message.id = "msg-1"
+        message.metadata = {"location": "http://localhost"}
+        message.to_dict.return_value = {
+            "id": "msg-1",
+            "type": "user_message",
+            "output": "Hello",
+            "metadata": {"location": "http://localhost"},
+        }
+
+        await pipeline._mark_message_processed(message)
+
+        assert len(created_steps) == 1
+        meta = created_steps[0]["metadata"]
+        assert meta["_aria_processed"] is True
+        assert meta["location"] == "http://localhost"
+
+    @pytest.mark.asyncio
+    async def test_edit_detected_when_processed_flag_set(self, monkeypatch) -> None:
+        """on_message_handler detects edit via _aria_processed metadata."""
+        # Track whether _reset_memory_for_edit was called
+        reset_called = []
+        mock_memory = MagicMock()
+        mock_memory.session_id = "thread-1"
+        mock_memory.aget = AsyncMock(return_value=[])
+        mock_memory.set = MagicMock()
+
+        async def mock_reset(thread_id):
+            reset_called.append(thread_id)
+            return mock_memory
+
+        monkeypatch.setattr(pipeline, "_reset_memory_for_edit", mock_reset)
+        monkeypatch.setattr(pipeline, "_mark_message_processed", AsyncMock())
+
+        # Mock all the dependencies — use object.__setattr__ to bypass
+        # Pydantic's frozen/strict __setattr__ on AppState.
+        mock_workflow = MagicMock()
+        object.__setattr__(pipeline._state, "agents_workflow", mock_workflow)
+        object.__setattr__(
+            pipeline._state,
+            "validate_initialized",
+            lambda: None,
+        )
+
+        # Mock _handle_message
+        monkeypatch.setattr(
+            pipeline,
+            "_handle_message",
+            AsyncMock(return_value="prompt"),
+        )
+
+        # Mock user_session
+        mock_session = {"memory": mock_memory}
+        monkeypatch.setattr(
+            pipeline.cl,
+            "user_session",
+            SimpleNamespace(
+                get=lambda k: mock_session.get(k),
+                set=lambda k, v: mock_session.__setitem__(k, v),
+            ),
+        )
+
+        # Mock the workflow run + streaming
+        monkeypatch.setattr(
+            pipeline,
+            "_stream_agent_response",
+            AsyncMock(return_value=True),
+        )
+
+        mock_handler = MagicMock()
+        pipeline._state.agents_workflow.run = MagicMock(return_value=mock_handler)
+
+        # Mock cl.Message for output
+        mock_output = MagicMock()
+        mock_output.send = AsyncMock()
+        mock_output.remove = AsyncMock()
+        monkeypatch.setattr(
+            pipeline.cl,
+            "Message",
+            lambda **kw: mock_output,
+        )
+
+        # Create message WITH _aria_processed (simulating edit)
+        message = SimpleNamespace(
+            id="msg-1",
+            content="Edited hello",
+            command=None,
+            thread_id="thread-1",
+            elements=[],
+            metadata={"_aria_processed": True},
+        )
+
+        await pipeline.on_message_handler(message)
+
+        assert reset_called == ["thread-1"]
+
+    @pytest.mark.asyncio
+    async def test_no_reset_on_first_message(self, monkeypatch) -> None:
+        """on_message_handler does NOT reset memory on first message."""
+        reset_called = []
+
+        async def mock_reset(thread_id):
+            reset_called.append(thread_id)
+            return MagicMock()
+
+        monkeypatch.setattr(pipeline, "_reset_memory_for_edit", mock_reset)
+        monkeypatch.setattr(pipeline, "_mark_message_processed", AsyncMock())
+
+        mock_workflow = MagicMock()
+        object.__setattr__(pipeline._state, "agents_workflow", mock_workflow)
+        object.__setattr__(pipeline._state, "validate_initialized", lambda: None)
+        monkeypatch.setattr(
+            pipeline,
+            "_handle_message",
+            AsyncMock(return_value="prompt"),
+        )
+
+        mock_memory = MagicMock()
+        mock_memory.session_id = "thread-1"
+        mock_memory.aget = AsyncMock(return_value=[])
+        mock_memory.set = MagicMock()
+        mock_session = {"memory": mock_memory}
+        monkeypatch.setattr(
+            pipeline.cl,
+            "user_session",
+            SimpleNamespace(
+                get=lambda k: mock_session.get(k),
+                set=lambda k, v: mock_session.__setitem__(k, v),
+            ),
+        )
+
+        monkeypatch.setattr(
+            pipeline,
+            "_stream_agent_response",
+            AsyncMock(return_value=True),
+        )
+
+        mock_handler = MagicMock()
+        pipeline._state.agents_workflow.run = MagicMock(return_value=mock_handler)
+
+        mock_output = MagicMock()
+        mock_output.send = AsyncMock()
+        mock_output.remove = AsyncMock()
+        monkeypatch.setattr(
+            pipeline.cl,
+            "Message",
+            lambda **kw: mock_output,
+        )
+
+        # First message — no _aria_processed in metadata
+        message = SimpleNamespace(
+            id="msg-1",
+            content="Hello",
+            command=None,
+            thread_id="thread-1",
+            elements=[],
+            metadata={},
+        )
+
+        await pipeline.on_message_handler(message)
+
+        assert reset_called == []
+
+    @pytest.mark.asyncio
+    async def test_reset_memory_for_edit(self, monkeypatch) -> None:
+        """_reset_memory_for_edit rebuilds memory from DB."""
+        mock_vector_db = MagicMock()
+        monkeypatch.setattr(pipeline._state, "vector_db", mock_vector_db)
+
+        mock_memory = MagicMock()
+        monkeypatch.setattr(pipeline, "create_memory", lambda tid: mock_memory)
+
+        mock_thread = {
+            "id": "thread-1",
+            "name": "Test",
+            "steps": [],
+        }
+        mock_data_layer = MagicMock()
+        mock_data_layer.get_thread = AsyncMock(return_value=mock_thread)
+        monkeypatch.setattr(
+            pipeline,
+            "get_data_layer_handler",
+            lambda: mock_data_layer,
+        )
+
+        restored_memory = MagicMock()
+        monkeypatch.setattr(
+            pipeline,
+            "restore_chat_history",
+            AsyncMock(return_value=restored_memory),
+        )
+
+        result = await pipeline._reset_memory_for_edit("thread-1")
+
+        mock_vector_db.delete_collection.assert_called_once_with("thread-1")
+        mock_data_layer.get_thread.assert_awaited_once_with("thread-1")
+        assert result is restored_memory

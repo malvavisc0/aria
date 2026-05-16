@@ -27,14 +27,19 @@ from aria.agents.prompt_enhancer import PromptEnhancementResult
 from aria.config.api import Vllm as VllmConfig
 from aria.config.models import Chat as ChatConfig
 from aria.helpers.ui import maybe_remove_step, send_tool_step
+from aria.web.hooks import get_data_layer_handler
 from aria.web.session import (
     _sanitize_chat_history,
     convert_documents_to_markdown,
     create_memory,
     extract_file_paths,
     extract_image_data,
+    restore_chat_history,
 )
 from aria.web.state import AppStateNotInitializedError, _state
+
+# Metadata key used to mark messages as processed (for edit detection)
+_PROCESSED_KEY = "_aria_processed"
 
 # Markdown formatting for thinking/reasoning content (blockquote style)
 _BLOCKQUOTE_PREFIX = "> "
@@ -81,6 +86,55 @@ async def _rollback_memory(memory: Memory | None) -> None:
             f"({len(messages)} → {len(messages) - 1} messages)"
         )
         memory.set(messages[:-1])
+
+
+async def _mark_message_processed(message: cl.Message) -> None:
+    """Mark a message as processed in the DB via metadata.
+
+    Persists ``_aria_processed: True`` into the step's metadata
+    so that future deliveries of the same message (i.e. edits)
+    can be detected.
+    """
+    try:
+        data_layer = get_data_layer_handler()
+        step_dict = message.to_dict()
+        step_dict["metadata"] = {
+            **(message.metadata or {}),
+            _PROCESSED_KEY: True,
+        }
+        await data_layer.create_step(step_dict)
+    except Exception:
+        logger.warning(
+            f"Failed to mark message {message.id} as processed",
+            exc_info=True,
+        )
+
+
+async def _reset_memory_for_edit(
+    thread_id: str,
+) -> Memory:
+    """Reset and rebuild memory after a message edit.
+
+    Deletes the vector collection for the thread, creates fresh
+    memory, and restores chat history from the persisted thread
+    data (which Chainlit has already updated with the edited
+    content).
+    """
+    try:
+        if _state.vector_db is not None:
+            _state.vector_db.delete_collection(thread_id)
+    except Exception:
+        logger.debug(
+            f"Could not delete vector collection for {thread_id}",
+            exc_info=True,
+        )
+
+    memory = create_memory(thread_id)
+    data_layer = get_data_layer_handler()
+    thread = await data_layer.get_thread(thread_id)
+    if thread:
+        memory = await restore_chat_history(thread)
+    return memory
 
 
 async def _describe_image(mime_type: str, base64_data: str, prompt: str) -> str:
@@ -330,6 +384,9 @@ async def on_message_handler(message: cl.Message) -> None:
         _state.validate_initialized()
         prompt = await _handle_message(message)
 
+        # --- Edit detection via metadata marker ---
+        is_edit = bool(message.metadata and message.metadata.get(_PROCESSED_KEY))
+
         memory = cl.user_session.get("memory")
         # Reuse existing memory only if it belongs to the same thread;
         # Memory.session_id is set by create_memory() to the thread_id.
@@ -337,6 +394,16 @@ async def on_message_handler(message: cl.Message) -> None:
             memory = create_memory(message.thread_id)
             cl.user_session.set("memory", memory)
             logger.debug(f"Created new Memory for thread {message.thread_id}")
+
+        if is_edit:
+            logger.info(
+                f"Edit detected for message {message.id}, "
+                "resetting memory from persisted history"
+            )
+            memory = await _reset_memory_for_edit(
+                message.thread_id,
+            )
+            cl.user_session.set("memory", memory)
 
         # Repair broken alternation left by a previous failed turn
         # before handing the memory to the workflow.
@@ -356,6 +423,10 @@ async def on_message_handler(message: cl.Message) -> None:
         finally:
             if _run_succeeded:
                 await output.send()
+                # Mark as processed only after successful completion
+                # so failed runs don't falsely trigger edit detection
+                # on retry/re-delivery.
+                await _mark_message_processed(message)
             else:
                 # Don't persist partial/incomplete assistant content to
                 # the data layer — remove the placeholder instead.
