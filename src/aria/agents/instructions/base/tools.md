@@ -27,14 +27,26 @@
 
 For judgment-heavy work: `start` → 1-3 `step` → optional `reflect` → `end`. Skip for routine tasks.
 
+#### When to Use `reasoning`
+
+Use the `reasoning` tool when:
+
+- The decision has **>2 viable approaches** with meaningful tradeoffs
+- You're diagnosing a **non-obvious failure** (not a simple typo or missing file)
+- You need to **synthesize** information from multiple sources before acting
+
+Skip it for straightforward tasks — don't reason about what you can just do.
+
 ### File Tools
 
 - `read_file`: up to 200 lines. Use `search_files` first to locate.
 - `write_file`: always use absolute path. Creates dirs automatically.
 - `edit_file`: line-based with `offset`/`length`/`new_lines`. Always read first.
 
+**Multi-file edits:** When changes span multiple files, read all targets first, then apply edits. If >3 files need coordinated changes, outline the plan first or delegate to a worker.
+
 ### File Format Handling
 
-- **HTML/XML**: `ax` `web` `fetch` (returns markdown)
+- **HTML/XML**: `ax` `web` `fetch` (set `convert_to_markdown=True`; returns file path → read it)
 - **PDFs**: `markitdown file.pdf > /tmp/output.md` then read
 - **JSON/XML**: Python script to extract fields

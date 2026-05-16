@@ -33,7 +33,10 @@ def with_file_operation_error_handling(operation_name: str) -> Callable:
         def wrapper(*args, **kwargs):
             # First arg is `reason`. Try to extract a human-friendly identifier
             # for error reporting (file_name, dir_name, source, etc.).
-            reason = args[0] if args else ""
+            # Inject default if the LLM omitted reason — prevents crash.
+            if not args and "reason" not in kwargs:
+                kwargs["reason"] = "No reason provided"
+            reason = args[0] if args else kwargs.get("reason", "")
             file_identifier = "unknown"
             if len(args) > 1 and isinstance(args[1], str):
                 file_identifier = args[1]

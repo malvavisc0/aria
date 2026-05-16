@@ -482,9 +482,6 @@ class VllmServerManager:
                     mode=kv_offload_mode,
                 )
 
-        # Override model's generation_config.json (may cap max_tokens too low)
-        cmd.extend(["--generation-config", "vllm"])
-
         if not vision_enabled:
             # Skip multi-modal warmup — saves ~6s startup when not using vision
             cmd.extend(["--limit-mm-per-prompt", '{"image": 0}'])

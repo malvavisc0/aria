@@ -111,12 +111,11 @@ _EXCLUDED_BINARIES: set[str] = {
     "llamaindex-cli",
     "markdown-it",
     "markdownify",
+    "pre-commit",
 }
 
 # Glob patterns for excluded binaries (e.g. "pyside6*" excludes all pyside6-* binaries).
-_EXCLUDED_PATTERNS: set[str] = {
-    "pyside6*",
-}
+_EXCLUDED_PATTERNS: set[str] = {"pyside6*", "gguf-*"}
 
 # Binaries that require external dependencies to be useful.
 # If the dependency is not found on PATH, the binary is excluded.
