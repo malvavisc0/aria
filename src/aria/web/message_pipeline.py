@@ -24,12 +24,15 @@ from loguru import logger
 from workflows.handler import WorkflowHandler
 
 from aria.agents.prompt_enhancer import PromptEnhancementResult
+from aria.config.api import Vllm as VllmConfig
 from aria.config.models import Chat as ChatConfig
 from aria.helpers.ui import maybe_remove_step, send_tool_step
 from aria.web.session import (
     _sanitize_chat_history,
+    convert_documents_to_markdown,
     create_memory,
     extract_file_paths,
+    extract_image_data,
 )
 from aria.web.state import AppStateNotInitializedError, _state
 
@@ -80,11 +83,53 @@ async def _rollback_memory(memory: Memory | None) -> None:
         memory.set(messages[:-1])
 
 
+async def _describe_image(mime_type: str, base64_data: str, name: str) -> str:
+    """Send an image to the vision endpoint and get a text description.
+
+    Uses the same vLLM endpoint configured for the main chat model.
+    Returns a concise description (~2-3 sentences) suitable for context.
+    """
+    image_url = f"data:{mime_type};base64,{base64_data}"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{ChatConfig.api_url}/chat/completions",
+            headers={"Authorization": f"Bearer {VllmConfig.api_key}"},
+            json={
+                "model": ChatConfig.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": (
+                                    "Describe this image concisely in 2-3 sentences. "
+                                    "Focus on key visual elements, text content, "
+                                    "and anything relevant to answering questions about it."
+                                ),
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": image_url},
+                            },
+                        ],
+                    }
+                ],
+                "max_tokens": 256,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"] or ""
+
+
 async def _handle_message(message: cl.Message) -> str:
     """Process and enhance a user message before agent execution.
 
-    Handles prompt enhancement if requested via command, and extracts
-    file paths from uploaded files to include in the prompt.
+    Handles prompt enhancement if requested via command, extracts
+    file paths from uploaded files, and describes uploaded images
+    via the vision API.
 
     Args:
         message: The incoming Chainlit message from the user.
@@ -117,10 +162,56 @@ async def _handle_message(message: cl.Message) -> str:
 
     # Deduplicate while preserving order (same file attached twice)
     file_paths = list(dict.fromkeys(extract_file_paths(message)))
+    image_data = extract_image_data(message)
+
+    # Non-image files → convert documents to markdown, pass metadata
     if file_paths:
-        paths_block = "\n".join(f"- {p}" for p in file_paths)
+        conversions = convert_documents_to_markdown(file_paths)
+        file_lines = []
+        for conv in conversions:
+            if conv["markdown_path"]:
+                file_lines.append(
+                    f"- {conv['name']} (original: {conv['original_path']})\n"
+                    f"  Converted to markdown: {conv['markdown_path']} "
+                    f"({conv['lines']} lines, {conv['chars']} chars)"
+                )
+            elif conv["error"]:
+                file_lines.append(
+                    f"- {conv['name']}: {conv['original_path']} "
+                    f"(conversion failed: {conv['error']})"
+                )
+            else:
+                file_lines.append(f"- {conv['original_path']}")
+        paths_block = "\n".join(file_lines)
         prompt = f"{prompt}\n\n[Uploaded files]:\n{paths_block}"
         logger.debug(f"Appended {len(file_paths)} file path(s) to prompt")
+
+    # Images → vision description
+    if image_data and VllmConfig.vision_enabled:
+        descriptions = []
+        for i, img in enumerate(image_data, 1):
+            try:
+                desc = await _describe_image(
+                    img["mime_type"], img["base64"], img["name"]
+                )
+                descriptions.append(f"[Image {i} ({img['name']})]: {desc}")
+            except Exception as e:
+                logger.warning(f"Vision description failed for {img['name']}: {e}")
+                descriptions.append(
+                    f"[Image {i} ({img['name']})]: <description unavailable>"
+                )
+
+        if descriptions:
+            images_block = "\n".join(descriptions)
+            prompt = f"{prompt}\n\n[Attached images]:\n{images_block}"
+            logger.debug(f"Described {len(descriptions)} image(s) via vision API")
+    elif image_data:
+        # Vision disabled — mention images without describing them
+        mentions = [
+            f"[Image {i} ({img['name']})]: <vision disabled — enable ARIA_VLLM_VISION_ENABLED>"
+            for i, img in enumerate(image_data, 1)
+        ]
+        prompt = f"{prompt}\n\n[Attached images]:\n" + "\n".join(mentions)
 
     # Inject thread context so Aria can pass --thread-id when spawning workers
     thread_id = message.thread_id

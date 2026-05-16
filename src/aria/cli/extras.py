@@ -107,6 +107,10 @@ _EXCLUDED_BINARIES: set[str] = {
     "uvicorn",
     "watchfiles",
     "wsdump",
+    "llama-parse",
+    "llamaindex-cli",
+    "markdown-it",
+    "markdownify",
 }
 
 # Glob patterns for excluded binaries (e.g. "pyside6*" excludes all pyside6-* binaries).

@@ -260,3 +260,274 @@ class TestRollbackMemory:
         await pipeline._rollback_memory(memory)
         result = await memory.aget()
         assert len(result) == 2
+
+
+# ---------------------------------------------------------------------------
+# _describe_image — vision API call for image description
+# ---------------------------------------------------------------------------
+
+
+class TestDescribeImage:
+    """Tests for the _describe_image helper."""
+
+    @staticmethod
+    def _patch_chat_config(monkeypatch):
+        """Set ChatConfig attributes for tests (bypasses _Lazy descriptors).
+
+        _Lazy is a non-data descriptor that caches its value internally.
+        We patch the _value attribute directly to avoid triggering the
+        factory (which requires env vars that aren't set in tests).
+        """
+        from aria.config.models import Chat as ChatConfigCls
+
+        monkeypatch.setattr(
+            ChatConfigCls.__dict__["api_url"], "_value", "http://test:9090/v1"
+        )
+        monkeypatch.setattr(ChatConfigCls.__dict__["model"], "_value", "test-model")
+        monkeypatch.setattr(pipeline.VllmConfig, "api_key", "sk-test")
+
+    @staticmethod
+    def _make_mock_httpx(mock_client):
+        """Build a mock httpx module with AsyncClient returning mock_client."""
+        mock_httpx = MagicMock()
+        mock_httpx.AsyncClient.return_value = mock_client
+        return mock_httpx
+
+    @pytest.mark.asyncio
+    async def test_returns_description_on_success(self, monkeypatch) -> None:
+        self._patch_chat_config(monkeypatch)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "A screenshot of a dashboard."}}]
+        }
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        monkeypatch.setattr(pipeline, "httpx", self._make_mock_httpx(mock_client))
+
+        result = await pipeline._describe_image("image/png", "base64data", "test.png")
+        assert result == "A screenshot of a dashboard."
+
+    @pytest.mark.asyncio
+    async def test_raises_on_http_error(self, monkeypatch) -> None:
+        import httpx as real_httpx
+
+        self._patch_chat_config(monkeypatch)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = real_httpx.HTTPStatusError(
+            "Bad request",
+            request=MagicMock(),
+            response=MagicMock(status_code=400),
+        )
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        monkeypatch.setattr(pipeline, "httpx", self._make_mock_httpx(mock_client))
+
+        with pytest.raises(real_httpx.HTTPStatusError):
+            await pipeline._describe_image("image/jpeg", "base64data", "bad.jpg")
+
+    @pytest.mark.asyncio
+    async def test_sends_correct_payload(self, monkeypatch) -> None:
+        self._patch_chat_config(monkeypatch)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "desc"}}]
+        }
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        monkeypatch.setattr(pipeline, "httpx", self._make_mock_httpx(mock_client))
+
+        await pipeline._describe_image("image/png", "abc123", "img.png")
+
+        call_kwargs = mock_client.post.call_args
+        url = call_kwargs[0][0]
+        assert url == "http://test:9090/v1/chat/completions"
+
+        headers = call_kwargs[1]["headers"]
+        assert headers["Authorization"] == "Bearer sk-test"
+
+        body = call_kwargs[1]["json"]
+        assert body["model"] == "test-model"
+        assert body["max_tokens"] == 256
+        content = body["messages"][0]["content"]
+        assert content[1]["image_url"]["url"] == "data:image/png;base64,abc123"
+
+
+# ---------------------------------------------------------------------------
+# _handle_message — vision integration in prompt assembly
+# ---------------------------------------------------------------------------
+
+
+class TestHandleMessageVision:
+    """Tests for _handle_message vision image processing."""
+
+    @pytest.mark.asyncio
+    async def test_appends_image_descriptions_when_vision_enabled(
+        self, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(pipeline.VllmConfig, "vision_enabled", True)
+        monkeypatch.setattr(
+            pipeline,
+            "extract_image_data",
+            lambda msg: [{"mime_type": "image/png", "base64": "b64", "name": "a.png"}],
+        )
+        monkeypatch.setattr(pipeline, "extract_file_paths", lambda msg: [])
+        monkeypatch.setattr(
+            pipeline,
+            "_describe_image",
+            AsyncMock(return_value="A red circle on white background."),
+        )
+
+        message = SimpleNamespace(
+            content="What is this?",
+            command=None,
+            thread_id="t1",
+            elements=[],
+        )
+
+        result = await pipeline._handle_message(message)
+
+        assert "[Attached images]:" in result
+        assert "[Image 1 (a.png)]: A red circle on white background." in result
+
+    @pytest.mark.asyncio
+    async def test_appends_disabled_notice_when_vision_off(self, monkeypatch) -> None:
+        monkeypatch.setattr(pipeline.VllmConfig, "vision_enabled", False)
+        monkeypatch.setattr(
+            pipeline,
+            "extract_image_data",
+            lambda msg: [
+                {"mime_type": "image/png", "base64": "b64", "name": "pic.png"}
+            ],
+        )
+        monkeypatch.setattr(pipeline, "extract_file_paths", lambda msg: [])
+
+        message = SimpleNamespace(
+            content="Look at this",
+            command=None,
+            thread_id="t1",
+            elements=[],
+        )
+
+        result = await pipeline._handle_message(message)
+
+        assert "[Attached images]:" in result
+        assert "vision disabled" in result
+        assert "ARIA_VLLM_VISION_ENABLED" in result
+
+    @pytest.mark.asyncio
+    async def test_no_image_block_when_no_images(self, monkeypatch) -> None:
+        monkeypatch.setattr(pipeline, "extract_image_data", lambda msg: [])
+        monkeypatch.setattr(pipeline, "extract_file_paths", lambda msg: [])
+
+        message = SimpleNamespace(
+            content="Just text",
+            command=None,
+            thread_id="t1",
+            elements=[],
+        )
+
+        result = await pipeline._handle_message(message)
+
+        assert "[Attached images]:" not in result
+        assert result.startswith("[Thread ID: t1]")
+
+    @pytest.mark.asyncio
+    async def test_mixed_files_and_images(self, monkeypatch) -> None:
+        monkeypatch.setattr(pipeline.VllmConfig, "vision_enabled", True)
+        monkeypatch.setattr(
+            pipeline,
+            "extract_file_paths",
+            lambda msg: ["/tmp/report.pdf"],
+        )
+        monkeypatch.setattr(
+            pipeline,
+            "convert_documents_to_markdown",
+            lambda paths: [
+                {
+                    "original_path": "/tmp/report.pdf",
+                    "markdown_path": "/workspace/uploads/report.md",
+                    "name": "report.pdf",
+                    "lines": 42,
+                    "chars": 1200,
+                    "error": None,
+                }
+            ],
+        )
+        monkeypatch.setattr(
+            pipeline,
+            "extract_image_data",
+            lambda msg: [
+                {
+                    "mime_type": "image/jpeg",
+                    "base64": "b64",
+                    "name": "chart.jpg",
+                }
+            ],
+        )
+        monkeypatch.setattr(
+            pipeline,
+            "_describe_image",
+            AsyncMock(return_value="A bar chart."),
+        )
+
+        message = SimpleNamespace(
+            content="Analyze these",
+            command=None,
+            thread_id="t2",
+            elements=[],
+        )
+
+        result = await pipeline._handle_message(message)
+
+        assert "[Uploaded files]:" in result
+        assert "report.pdf" in result
+        assert "report.md" in result
+        assert "42 lines" in result
+        assert "[Attached images]:" in result
+        assert "A bar chart." in result
+
+    @pytest.mark.asyncio
+    async def test_fallback_when_vision_api_fails(self, monkeypatch) -> None:
+        monkeypatch.setattr(pipeline.VllmConfig, "vision_enabled", True)
+        monkeypatch.setattr(
+            pipeline,
+            "extract_image_data",
+            lambda msg: [
+                {"mime_type": "image/png", "base64": "b64", "name": "fail.png"}
+            ],
+        )
+        monkeypatch.setattr(pipeline, "extract_file_paths", lambda msg: [])
+        monkeypatch.setattr(
+            pipeline,
+            "_describe_image",
+            AsyncMock(side_effect=Exception("connection refused")),
+        )
+
+        message = SimpleNamespace(
+            content="What's this?",
+            command=None,
+            thread_id="t3",
+            elements=[],
+        )
+
+        result = await pipeline._handle_message(message)
+
+        assert "[Attached images]:" in result
+        assert "<description unavailable>" in result

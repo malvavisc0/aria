@@ -43,8 +43,10 @@ hidden_imports = [
     *collect_submodules("chainlit"),
     # LlamaIndex extensions
     *collect_submodules("llama_index"),
-    # ChromaDB backends
-    *collect_submodules("chromadb"),
+    # ChromaDB backends (exclude server submodules that pull in
+    # uninstalled opentelemetry.instrumentation.fastapi)
+    *[m for m in collect_submodules("chromadb")
+      if not m.startswith("chromadb.server")],
     # SQLAlchemy dialects
     "sqlalchemy.dialects.sqlite",
     # Aria packages
@@ -69,7 +71,7 @@ app_datas = [
     # Aria's own public assets (Chainlit CSS, theme, logos, avatars)
     (str(ROOT / "src" / "aria" / "public"), "aria/public"),
     # Chainlit welcome page
-    (str(ROOT / "chainlit.md"), "aria/chainlit.md"),
+    (str(ROOT / "src" / "aria" / "chainlit.md"), "aria/chainlit.md"),
     # Default configuration template (copied to cwd on first run)
     (str(ROOT / "src" / "aria" / ".env.example"), "aria/.env.example"),
     # Agent system prompt files

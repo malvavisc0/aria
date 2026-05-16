@@ -53,10 +53,29 @@ reaction_on_message_received = false
 
 # Authorize users to spontaneously upload files with messages
 [features.spontaneous_file_upload]
-enabled = false
-# PDF and image files supported by the vision-language agent.
+enabled = true
+# Documents (converted to markdown via MarkItDown) and images (vision API).
 accept = [
     "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/csv",
+    "text/html",
+    "text/plain",
+    "text/xml",
+    "text/markdown",
+    "text/x-python",
+    "text/x-script",
+    "text/yaml",
+    "text/x-yaml",
+    "application/xml",
+    "application/json",
+    "application/x-yaml",
+    "application/toml",
     "image/png",
     "image/jpeg",
     "image/webp",

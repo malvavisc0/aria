@@ -8,6 +8,161 @@ import pytest
 from aria.web import session as session_module
 
 
+class TestExtractImageData:
+    """Tests for extract_image_data()."""
+
+    @staticmethod
+    def test_returns_base64_for_image_elements(tmp_path: Path) -> None:
+        img_file = tmp_path / "photo.png"
+        img_file.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
+
+        message = SimpleNamespace(
+            elements=[
+                SimpleNamespace(
+                    path=str(img_file),
+                    mime="image/png",
+                    name="photo.png",
+                ),
+            ],
+        )
+
+        result = session_module.extract_image_data(message)
+
+        assert len(result) == 1
+        assert result[0]["mime_type"] == "image/png"
+        assert result[0]["name"] == "photo.png"
+        assert isinstance(result[0]["base64"], str)
+        assert len(result[0]["base64"]) > 0
+
+    @staticmethod
+    def test_skips_non_image_elements(tmp_path: Path) -> None:
+        pdf_file = tmp_path / "doc.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4")
+
+        message = SimpleNamespace(
+            elements=[
+                SimpleNamespace(
+                    path=str(pdf_file),
+                    mime="application/pdf",
+                    name="doc.pdf",
+                ),
+            ],
+        )
+
+        result = session_module.extract_image_data(message)
+        assert result == []
+
+    @staticmethod
+    def test_detects_image_by_extension_when_mime_missing(
+        tmp_path: Path,
+    ) -> None:
+        img_file = tmp_path / "shot.jpg"
+        img_file.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 20)
+
+        message = SimpleNamespace(
+            elements=[
+                SimpleNamespace(
+                    path=str(img_file),
+                    mime="",
+                    name="shot.jpg",
+                ),
+            ],
+        )
+
+        result = session_module.extract_image_data(message)
+
+        assert len(result) == 1
+        assert result[0]["mime_type"] == "image/jpg"
+
+    @staticmethod
+    def test_handles_multiple_images(tmp_path: Path) -> None:
+        img1 = tmp_path / "a.png"
+        img2 = tmp_path / "b.webp"
+        img1.write_bytes(b"\x89PNG" + b"\x00" * 10)
+        img2.write_bytes(b"RIFF" + b"\x00" * 10)
+
+        message = SimpleNamespace(
+            elements=[
+                SimpleNamespace(path=str(img1), mime="image/png", name="a.png"),
+                SimpleNamespace(path=str(img2), mime="image/webp", name="b.webp"),
+            ],
+        )
+
+        result = session_module.extract_image_data(message)
+
+        assert len(result) == 2
+        assert result[0]["name"] == "a.png"
+        assert result[1]["name"] == "b.webp"
+
+    @staticmethod
+    def test_returns_empty_for_no_elements() -> None:
+        message = SimpleNamespace(elements=[])
+        assert session_module.extract_image_data(message) == []
+
+    @staticmethod
+    def test_returns_empty_when_elements_is_none() -> None:
+        message = SimpleNamespace(elements=None)
+        assert session_module.extract_image_data(message) == []
+
+    @staticmethod
+    def test_skips_element_without_path() -> None:
+        message = SimpleNamespace(
+            elements=[
+                SimpleNamespace(path=None, mime="image/png", name="no.png"),
+            ],
+        )
+
+        result = session_module.extract_image_data(message)
+        assert result == []
+
+    @staticmethod
+    def test_handles_unreadable_file_gracefully(tmp_path: Path) -> None:
+        """When the image file doesn't exist, a warning is logged and skipped."""
+        message = SimpleNamespace(
+            elements=[
+                SimpleNamespace(
+                    path=str(tmp_path / "missing.png"),
+                    mime="image/png",
+                    name="missing.png",
+                ),
+            ],
+        )
+
+        result = session_module.extract_image_data(message)
+        assert result == []
+
+
+def test_extract_file_paths_skips_image_elements(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Image elements should be excluded from file_paths output."""
+    uploads_dir = tmp_path / "uploads"
+    uploads_dir.mkdir()
+    monkeypatch.setattr(session_module.UploadsConfig, "path", uploads_dir)
+
+    img_file = tmp_path / "photo.png"
+    img_file.write_bytes(b"\x89PNG" + b"\x00" * 10)
+    pdf_file = tmp_path / "doc.pdf"
+    pdf_file.write_bytes(b"%PDF-1.4")
+
+    message = SimpleNamespace(
+        thread_id="t1",
+        elements=[
+            SimpleNamespace(path=str(img_file), mime="image/png", name="photo.png"),
+            SimpleNamespace(
+                path=str(pdf_file),
+                mime="application/pdf",
+                name="doc.pdf",
+            ),
+        ],
+    )
+
+    paths = session_module.extract_file_paths(message)
+
+    assert len(paths) == 1
+    assert "doc.pdf" in paths[0]
+
+
 def test_extract_file_paths_uses_unique_destination_names(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -245,6 +400,254 @@ async def test_restore_chat_history_drops_trailing_user_message(
         "Hello",
         "Hi!",
     ]
+
+
+class TestConvertDocumentsToMarkdown:
+    """Tests for convert_documents_to_markdown()."""
+
+    @staticmethod
+    def test_converts_pdf_to_markdown(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        pdf_file = tmp_path / "report.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4 fake content")
+
+        # Mock MarkItDown
+        class FakeResult:
+            text_content = "# Report\n\nSome content here."
+
+        class FakeMarkItDown:
+            def convert(self, path):
+                return FakeResult()
+
+        monkeypatch.setattr(
+            "aria.web.session.MarkItDown",
+            FakeMarkItDown,
+            raising=False,
+        )
+        # Patch the import inside the function
+        import aria.web.session as mod
+
+        original_fn = mod.convert_documents_to_markdown
+
+        def patched_convert(file_paths):
+            import builtins
+
+            real_import = builtins.__import__
+
+            def fake_import(name, *args, **kwargs):
+                if name == "markitdown":
+                    import types
+
+                    m = types.ModuleType("markitdown")
+                    m.MarkItDown = FakeMarkItDown
+                    return m
+                return real_import(name, *args, **kwargs)
+
+            monkeypatch.setattr(builtins, "__import__", fake_import)
+            try:
+                return original_fn(file_paths)
+            finally:
+                monkeypatch.setattr(builtins, "__import__", real_import)
+
+        results = patched_convert([str(pdf_file)])
+
+        assert len(results) == 1
+        assert results[0]["markdown_path"] is not None
+        assert results[0]["name"] == "report.pdf"
+        assert results[0]["lines"] > 0
+        assert results[0]["chars"] > 0
+        assert results[0]["error"] is None
+        assert Path(results[0]["markdown_path"]).exists()
+
+    @staticmethod
+    def test_skips_unsupported_extensions(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        bin_file = tmp_path / "data.bin"
+        bin_file.write_bytes(b"\x00\x01\x02")
+
+        results = session_module.convert_documents_to_markdown([str(bin_file)])
+
+        assert len(results) == 1
+        assert results[0]["markdown_path"] is None
+        assert results[0]["error"] is None
+
+    @staticmethod
+    def test_returns_empty_for_empty_input() -> None:
+        assert session_module.convert_documents_to_markdown([]) == []
+
+    @staticmethod
+    def test_handles_conversion_failure_gracefully(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        pdf_file = tmp_path / "bad.pdf"
+        pdf_file.write_bytes(b"not a real pdf")
+
+        results = session_module.convert_documents_to_markdown([str(pdf_file)])
+
+        assert len(results) == 1
+        # Either converts successfully or reports error gracefully
+        r = results[0]
+        assert r["name"] == "bad.pdf"
+        # If markitdown isn't installed, it'll error; if it is, it may succeed or fail
+        assert r["markdown_path"] is not None or r["error"] is not None
+
+    @staticmethod
+    def _patched_convert(file_paths, monkeypatch):
+        """Run convert_documents_to_markdown with a mocked MarkItDown import."""
+
+        class FakeResult:
+            def __init__(self, text):
+                self.text_content = text
+
+        class FakeMarkItDown:
+            def convert(self, path):
+                content = Path(path).read_text(encoding="utf-8")
+                return FakeResult(content)
+
+        import builtins
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "markitdown":
+                import types
+
+                m = types.ModuleType("markitdown")
+                m.MarkItDown = FakeMarkItDown
+                return m
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        try:
+            return session_module.convert_documents_to_markdown(file_paths)
+        finally:
+            monkeypatch.setattr(builtins, "__import__", real_import)
+
+    @staticmethod
+    def test_converts_txt_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        txt_file = tmp_path / "notes.txt"
+        txt_file.write_text("Hello, world!\nLine two.")
+
+        results = TestConvertDocumentsToMarkdown._patched_convert(
+            [str(txt_file)], monkeypatch
+        )
+
+        assert len(results) == 1
+        r = results[0]
+        assert r["name"] == "notes.txt"
+        assert r["markdown_path"] is not None
+        assert r["error"] is None
+        assert r["lines"] == 2
+        assert r["chars"] == 23
+        assert Path(r["markdown_path"]).exists()
+        assert Path(r["markdown_path"]).read_text(encoding="utf-8") == (
+            "Hello, world!\nLine two."
+        )
+
+    @staticmethod
+    def test_converts_json_file(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        json_file = tmp_path / "data.json"
+        json_file.write_text('{"key": "value", "count": 42}')
+
+        results = TestConvertDocumentsToMarkdown._patched_convert(
+            [str(json_file)], monkeypatch
+        )
+
+        assert len(results) == 1
+        r = results[0]
+        assert r["name"] == "data.json"
+        assert r["markdown_path"] is not None
+        assert r["error"] is None
+        assert r["lines"] > 0
+
+    @staticmethod
+    def test_converts_python_file(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        py_file = tmp_path / "script.py"
+        py_file.write_text("def hello():\n    print('hi')\n\nhello()\n")
+
+        results = TestConvertDocumentsToMarkdown._patched_convert(
+            [str(py_file)], monkeypatch
+        )
+
+        assert len(results) == 1
+        r = results[0]
+        assert r["name"] == "script.py"
+        assert r["markdown_path"] is not None
+        assert r["error"] is None
+        assert r["lines"] > 0
+
+    @staticmethod
+    def test_converts_yaml_file(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            session_module.WorkspaceConfig, "path", tmp_path / "workspace"
+        )
+
+        yaml_file = tmp_path / "config.yaml"
+        yaml_file.write_text("name: aria\nversion: 1\n")
+
+        results = TestConvertDocumentsToMarkdown._patched_convert(
+            [str(yaml_file)], monkeypatch
+        )
+
+        assert len(results) == 1
+        r = results[0]
+        assert r["name"] == "config.yaml"
+        assert r["markdown_path"] is not None
+        assert r["error"] is None
+
+    @staticmethod
+    def test_text_extensions_in_markitdown_set() -> None:
+        """All common text extensions should be recognised for conversion."""
+        expected = {
+            ".txt",
+            ".md",
+            ".rst",
+            ".json",
+            ".xml",
+            ".yaml",
+            ".yml",
+            ".toml",
+            ".py",
+            ".js",
+            ".ts",
+            ".sh",
+            ".log",
+            ".ini",
+            ".cfg",
+        }
+        assert expected.issubset(session_module._MARKITDOWN_EXTENSIONS)
 
 
 def test_sanitize_chat_history_empty() -> None:
